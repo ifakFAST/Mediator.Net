@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="Module_IO" elementFormDefault="qualified" targetNamespace="Module_IO" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="IO_Model" type="tns:IO_Model" />
+  <xs:complexType name="IO_Model">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="Scheduling" type="tns:Scheduling" />
+      <xs:element minOccurs="1" maxOccurs="1" name="History" type="tns:History" />
+      <xs:element minOccurs="1" maxOccurs="1" name="RootFolder" type="tns:Folder" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Scheduling">
+    <xs:attribute name="mode" type="tns:SchedulingMode" use="required" />
+    <xs:attribute name="interval" type="tns:Duration" />
+    <xs:attribute name="offset" type="tns:Duration" />
+	<xs:attribute name="useTimestampFromSource" type="xs:boolean" />
+  </xs:complexType>
+  <xs:simpleType name="SchedulingMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None" />
+      <xs:enumeration value="Interval" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="History">
+    <xs:attribute name="mode" type="tns:HistoryMode" use="required" />
+    <xs:attribute name="interval" type="tns:Duration" />
+    <xs:attribute name="offset" type="tns:Duration" />
+  </xs:complexType>
+  <xs:simpleType name="HistoryMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None" />
+      <xs:enumeration value="Complete" />
+      <xs:enumeration value="ValueOrQualityChanged" />
+      <xs:enumeration value="Interval" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Folder">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="Folders" type="tns:ArrayOfFolder" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Adapters" type="tns:ArrayOfIO_Adapter" />
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfFolder">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Folder" type="tns:Folder" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfIO_Adapter">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="IO_Adapter" type="tns:IO_Adapter" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="IO_Adapter">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="Scheduling" type="tns:Scheduling" />
+      <xs:element minOccurs="0" maxOccurs="1" name="History" type="tns:History" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Config" type="tns:ArrayOfNamedValue" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Nodes" type="tns:ArrayOfNode" />
+      <xs:element minOccurs="0" maxOccurs="1" name="DataItems" type="tns:ArrayOfDataItem" />
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required" />
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="assembly" type="xs:string" use="required"/>
+    <xs:attribute name="class" type="xs:string" use="required"/>
+    <xs:attribute name="enabled" type="xs:boolean" default="true"/>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfNamedValue">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="NamedValue" type="tns:NamedValue" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="NamedValue">
+    <xs:attribute name="name" type="xs:string" />
+    <xs:attribute name="value" type="xs:string" />
+  </xs:complexType>
+  <xs:complexType name="ArrayOfNode">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Node" type="tns:Node" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Node">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="Scheduling" type="tns:Scheduling" />
+      <xs:element minOccurs="0" maxOccurs="1" name="History" type="tns:History" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Config" type="tns:ArrayOfNamedValue" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Nodes" type="tns:ArrayOfNode" />
+      <xs:element minOccurs="0" maxOccurs="1" name="DataItems" type="tns:ArrayOfDataItem" />
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" />
+    <xs:attribute name="name" type="xs:string" />
+    <xs:attribute name="enabled" type="xs:boolean" />
+  </xs:complexType>
+  <xs:complexType name="ArrayOfDataItem">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="DataItem" type="tns:DataItem" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="DataItem">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="TypeConstraints" type="xs:string" />
+      <xs:element minOccurs="0" maxOccurs="1" name="DimensionNames" type="tns:ArrayOfString" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Scheduling" type="tns:Scheduling" />
+      <xs:element minOccurs="0" maxOccurs="1" name="History" type="tns:History" />
+      <xs:element minOccurs="0" maxOccurs="1" name="InitialValue" type="tns:DataValue" />
+      <xs:element minOccurs="0" maxOccurs="1" name="ReplacementValue" type="tns:DataValue" />
+      <xs:element minOccurs="0" maxOccurs="1" name="Config" type="tns:ArrayOfNamedValue" />
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required" />
+    <xs:attribute name="name" type="xs:string" use="required" />
+    <xs:attribute name="unit" type="xs:string" />
+    <xs:attribute name="type" type="tns:DataType" default="Float64" />
+    <xs:attribute name="dimension" type="xs:int" default="1" />
+    <xs:attribute name="read" type="xs:boolean" default="false" />
+    <xs:attribute name="write" type="xs:boolean" default="false" />
+    <xs:attribute name="address" type="xs:string" />
+  </xs:complexType>
+  <xs:complexType name="ArrayOfString">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="string" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="DataType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Bool" />
+      <xs:enumeration value="Byte" />
+      <xs:enumeration value="Int" />
+      <xs:enumeration value="Float32" />
+      <xs:enumeration value="Float64" />
+      <xs:enumeration value="Decimal" />
+      <xs:enumeration value="Complex" />
+      <xs:enumeration value="Bytes" />
+      <xs:enumeration value="String" />
+      <xs:enumeration value="JsonString" />
+      <xs:enumeration value="XmlString" />
+      <xs:enumeration value="Guid" />
+      <xs:enumeration value="ObjectRef" />
+      <xs:enumeration value="NamedValue" />
+      <xs:enumeration value="URI" />
+      <xs:enumeration value="LocalDate" />
+      <xs:enumeration value="LocalTime" />
+      <xs:enumeration value="LocalDateTime" />
+      <xs:enumeration value="Timestamp" />
+      <xs:enumeration value="Duration" />
+      <xs:enumeration value="Enum" />
+      <xs:enumeration value="Struct" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Duration">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9]+\ ?(ms|s|min|m|h|d)"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DataValue">
+    <xs:restriction base="xs:string">
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

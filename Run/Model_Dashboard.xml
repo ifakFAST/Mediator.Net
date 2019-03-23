@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Dashboard_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Dashboard">
+  <Views>
+    <View id="variables" name="Variables" type="ModuleVariables" group="">
+      <Config>
+        { 
+          "ExcludeModules": [ "EventLog", "Dashboard" ] 
+        }
+      </Config>
+    </View>
+    <View id="io" name="IO" type="GenericModuleConfig" group="">
+      <Config>
+        { 
+          "ModuleID": "IO" 
+        }
+      </Config>
+    </View>
+    <View id="eventLog" name="EventLog" type="EventLog" group="">
+      <Config />
+    </View>
+    <View id="history" name="History" type="HistoryPlots" group="">
+      <Config>
+        {
+          "Tabs": [
+            {
+              "Name": "Control",
+              "PlotConfig": {
+                "MaxDataPoints": 9000,
+                "LeftAxisName": "Measurements",
+                "LeftAxisStartFromZero": true,
+                "RightAxisName": "Control Output",
+                "RightAxisStartFromZero": true
+              },
+              "Items": [
+                {
+                  "Name": "SO",
+                  "Color": "#1BA1E2",
+                  "Size": 3.0,
+                  "SeriesType": "Scatter",
+                  "Axis": "Left",
+                  "Checked": true,
+                  "Variable": {
+                    "Object": "IO:Data_001",
+                    "Name": "Value"
+                  }
+                },
+                {
+                  "Name": "NH",
+                  "Color": "#A05000",
+                  "Size": 3.0,
+                  "SeriesType": "Scatter",
+                  "Axis": "Left",
+                  "Checked": true,
+                  "Variable": {
+                    "Object": "IO:Data_002",
+                    "Name": "Value"
+                  }
+                },
+                {
+                  "Name": "Setpoint",
+                  "Color": "#339933",
+                  "Size": 3.0,
+                  "SeriesType": "Scatter",
+                  "Axis": "Right",
+                  "Checked": true,
+                  "Variable": {
+                    "Object": "IO:Data_004",
+                    "Name": "Value"
+                  }
+                }
+              ]
+            },
+            {
+              "Name": "Sinus",
+              "PlotConfig": {
+                "MaxDataPoints": 12000,
+                "LeftAxisName": "",
+                "LeftAxisStartFromZero": false,
+                "RightAxisName": "",
+                "RightAxisStartFromZero": false
+              },
+              "Items": [
+                {
+                  "Name": "Sine",
+                  "Color": "#1BA1E2",
+                  "Size": 3.0,
+                  "SeriesType": "Line",
+                  "Axis": "Left",
+                  "Checked": true,
+                  "Variable": {
+                    "Object": "IO:Data_006",
+                    "Name": "Value"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      </Config>
+    </View>
+  </Views>
+</Dashboard_Model>

@@ -1,0 +1,22 @@
+{
+  "profiles": {
+    "Mediator": {
+      "commandName": "Project",
+      "workingDirectory": "..\\..\\Run"
+    },
+    "Mediator Debug": {
+      "commandName": "Project",
+      "commandLineArgs": "--config AppConfig_Debug.xml",
+      "workingDirectory": "..\\..\\Run"
+    },
+    "Mediator Local": {
+      "commandName": "Project",
+      "workingDirectory": "..\\..\\RunLocal"
+    },
+    "Test": {
+      "commandName": "Project",
+      "commandLineArgs": "--clearDBs --config TestConfig.xml",
+      "workingDirectory": "..\\..\\Run\\TestHistorianDBs"
+    }
+  }
+}

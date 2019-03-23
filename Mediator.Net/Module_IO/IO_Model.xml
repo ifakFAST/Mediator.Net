@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<IO_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_IO">
+  <Scheduling mode="Interval" interval="5 s" />
+  <History mode="Interval" interval="1 min" />
+  <RootFolder id="RootFolder" name="RootFolder">
+    <Adapters>
+      <IO_Adapter id="opc" name="OPC" assembly="" class="">
+        <Config>
+          <NamedValue name="ServerProgID" value="Matrikon.OPC.Simulation" />
+          <NamedValue name="Source_Cache" value="false" />
+        </Config>
+        <DataItems>
+          <DataItem id="A" name="" read="true" address="Bucket Brigade.Real4" />
+          <DataItem id="B" name="" type="" read="true" address="Bucket Brigade.UInt2" />
+          <DataItem id="C" name="" dimension="0" read="true" address="Bucket Brigade.ArrayOfReal8" >
+            <InitialValue>5.78</InitialValue>
+            <ReplacementValue></ReplacementValue>
+          </DataItem>
+          
+        </DataItems>
+      </IO_Adapter>
+    </Adapters>
+  </RootFolder>
+</IO_Model>

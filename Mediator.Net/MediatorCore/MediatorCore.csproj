@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>    
+    <RootNamespace>Ifak.Fast.Mediator</RootNamespace>
+    <StartupObject>Ifak.Fast.Mediator.Program</StartupObject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.4.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.WebSockets" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Data.SQLite" Version="2.2.3" />
+    <PackageReference Include="NLog" Version="4.5.11" />
+    <PackageReference Include="Npgsql" Version="4.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MediatorLib\MediatorLib.csproj" />
+    <ProjectReference Include="..\Module_Dashboard\Module_Dashboard.csproj" />
+    <ProjectReference Include="..\Module_EventLog\Module_EventLog.csproj" />
+    <ProjectReference Include="..\Module_IO\Module_IO.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="NLog.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

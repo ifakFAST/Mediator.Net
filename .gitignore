@@ -1,0 +1,118 @@
+/Run/*
+!/Run/TestHistorianDBs
+/Run/TestHistorianDBs/*
+!/Run/TestHistorianDBs/TestConfig.xml
+!/Run/DashboardDist
+/Run/DashboardDist/*
+!/Run/DashboardDist/README.md
+!/Run/README.md
+!/Run/AppConfig.xml
+!/Run/AppConfig_Debug.xml
+!/Run/Model_Dashboard.xml
+!/Run/Model_EventLog.xml
+!/Run/Model_IO.xml
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+*.pdf
+
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+.vs/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUNIT
+*.VisualState.xml
+TestResult.xml
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# JustCode is a .NET coding add-in
+.JustCode
+
+# DotCover is a Code Coverage Tool
+*.dotCover
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+*.pubxml
+*.publishproj
+
+# NuGet Packages
+*.nupkg
+
+# The packages folder can be ignored because of Package Restore
+**/packages/*
+
+# except build/, which is used as an MSBuild target.
+!**/packages/build/
+
+# NuGet v3's project.json files produces more ignoreable files
+*.nuget.props
+*.nuget.targets
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!*.[Cc]ache/
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+node_modules/
+orleans.codegen.cs
+
+# Backup & report files from converting an old project file
+# to a newer Visual Studio version. Backup files are not needed,
+# because we have git ;-)
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+
+# SQL Server files
+*.mdf
+*.ldf
+
+# GhostDoc plugin setting file
+*.GhostDoc.xml
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+
