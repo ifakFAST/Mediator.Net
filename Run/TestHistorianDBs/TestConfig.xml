@@ -1,46 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Configuration>
 
-	<ClientListenPort>8081</ClientListenPort>
-	
-	<Modules>
-		<Module id="testSQL" name="Test SQL" enabled="true" concurrentInit="false">
-			<ImplAssembly>MediatorCore.dll</ImplAssembly>
-			<ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
-			<HistoryDBs>
-				<HistoryDB name="Test_DB" type="SQLite" prioritizeReadRequests="false">
-					<ConnectionString>Filename=./Test_DB.db</ConnectionString>
-					<Settings>
-						<string>page_size=8192</string>
-						<string>cache_size=2000</string>
-					</Settings>
-				</HistoryDB>
-			</HistoryDBs>
-		</Module>
+    <ClientListenPort>8081</ClientListenPort>
+    
+    <Modules>
+        <Module id="testSQL" name="Test SQL" enabled="true" concurrentInit="false">
+            <ImplAssembly>MediatorCore.dll</ImplAssembly>
+            <ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
+            <HistoryDBs>
+                <HistoryDB name="Test_DB" type="SQLite" prioritizeReadRequests="false">
+                    <ConnectionString>Filename=./Test_DB.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=8192</string>
+                        <string>cache_size=2000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
         
         <Module id="testPostgres" name="Test Postgres" enabled="true" concurrentInit="false">
-			<ImplAssembly>MediatorCore.dll</ImplAssembly>
-			<ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
-			<HistoryDBs>
-				<HistoryDB name="TEST_DB" type="Postgres" prioritizeReadRequests="false">
-					<ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=TEST_DB</ConnectionString>
-				</HistoryDB>
-			</HistoryDBs>
-		</Module>
+            <ImplAssembly>MediatorCore.dll</ImplAssembly>
+            <ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
+            <HistoryDBs>
+                <HistoryDB name="TEST_DB" type="Postgres" prioritizeReadRequests="false">
+                    <ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=TEST_DB</ConnectionString>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
         
-	</Modules>
-	
-	<UserManagement>
-		<Users>
-			<User id="ifak" login="ifak" name="Demo User" encryptedPassword="cH8j7vythfU=" inactive="false">
-				<Roles>
-					<string>Admin</string>
-				</Roles>
-			</User>
-		</Users>
-		<Roles>
-			<Role name="Admin" />
-		</Roles>
-	</UserManagement>
-	
+    </Modules>
+    
+    <UserManagement>
+        <Users>
+            <User id="ifak" login="ifak" name="Demo User" encryptedPassword="cH8j7vythfU=" inactive="false">
+                <Roles>
+                    <string>Admin</string>
+                </Roles>
+            </User>
+        </Users>
+        <Roles>
+            <Role name="Admin" />
+        </Roles>
+    </UserManagement>
+    
 </Configuration>
