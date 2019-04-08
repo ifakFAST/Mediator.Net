@@ -34,6 +34,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
 
         private static Module theModule = null;
+        private static SynchronizationContext theSyncContext = null;
         private IWebHost webHost = null;
 
         public Module() {
@@ -46,6 +47,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                                         VariableValue[] restoreVariableValues,
                                         Notifier notifier,
                                         ModuleThread moduleThread) {
+
+            theSyncContext = SynchronizationContext.Current;
 
             await base.Init(info, restoreVariableValues, notifier, moduleThread);
 
@@ -131,8 +134,13 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             app.UseStaticFiles();
 
-            app.Run(async (context) => {
-                await theModule.HandleClientRequest(context);
+            app.Run((context) => {
+                var promise = new TaskCompletionSource<bool>();
+                theSyncContext.Post(_ => {
+                    Task task = theModule.HandleClientRequest(context);
+                    task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
+                }, null);
+                return promise.Task;
             });
         }
 
@@ -467,5 +475,21 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class InvalidSessionException : Exception
     {
         public InvalidSessionException() : base("Invalid Session ID") { }
+    }
+
+    internal static class TaskUtil
+    {
+        internal static void CompleteFromTask(this TaskCompletionSource<bool> promise, Task completedTask) {
+
+            if (completedTask.IsCompletedSuccessfully) {
+                promise.SetResult(true);
+            }
+            else if (completedTask.IsFaulted) {
+                promise.SetException(completedTask.Exception);
+            }
+            else {
+                promise.SetCanceled();
+            }
+        }
     }
 }

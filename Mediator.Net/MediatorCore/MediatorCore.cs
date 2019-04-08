@@ -37,6 +37,7 @@ namespace Ifak.Fast.Mediator
         private bool shutdown = false;
 
         private static MediatorCore theCore = null;
+        private static SynchronizationContext theSyncContext = null;
 
         public MediatorCore() {
             reqHandler = new HandleClientRequests(this);
@@ -63,12 +64,19 @@ namespace Ifak.Fast.Mediator
                 ReceiveBufferSize = 8 * 1024
             };
             app.UseWebSockets(webSocketOptions);
-            app.Run(async (context) => {
-                await theCore.HandleClientRequest(context);
+            app.Run((context) => {
+                var promise = new TaskCompletionSource<bool>();
+                theSyncContext.Post(_ => {
+                    Task task = theCore.HandleClientRequest(context);
+                    task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
+                }, null);
+                return promise.Task;
             });
         }
 
         internal async Task Run(string configFileName, bool clearDBs) {
+
+            theSyncContext = SynchronizationContext.Current;
 
             Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
             userManagement = config.UserManagement;
@@ -597,5 +605,21 @@ namespace Ifak.Fast.Mediator
         Running,
         ShutdownStarted,
         ShutdownCompleted
+    }
+
+    internal static class TaskUtil
+    {
+        internal static void CompleteFromTask(this TaskCompletionSource<bool> promise, Task completedTask) {
+
+            if (completedTask.IsCompletedSuccessfully) {
+                promise.SetResult(true);
+            }
+            else if (completedTask.IsFaulted) {
+                promise.SetException(completedTask.Exception);
+            }
+            else {
+                promise.SetCanceled();
+            }
+        }
     }
 }
