@@ -36,6 +36,13 @@ The Mediator core and all generic modules in this repository are licensed under 
 * Define control model by flow-based diagrams with [SIMBA#](https://simba.ifak.eu/)
 * Evaluate control solution by integrated simulation of process and control model
 
+## Quick Start
+1. Get the [latest release](https://github.com/ifakFAST/Mediator.Net/releases/latest)
+2. Unzip
+3. Run: Either start *Run.bat* on Windows or type *sh Run.bat* on Linux
+4. Navigte to http://localhost:8082/ using the browser
+5. Login with user name and password, for default values see ReadMe.txt
+
 ## Further documentation
 * IO adapter implementation for custom data sources: [HowTo_AdapterIO](./Doc/HowTo_AdapterIO.md)
 * Module implementation for application logic: [HowTo_Modules](./Doc/HowTo_Modules.md)
