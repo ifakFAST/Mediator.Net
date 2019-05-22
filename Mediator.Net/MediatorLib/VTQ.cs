@@ -37,6 +37,18 @@ namespace Ifak.Fast.Mediator
 
         public static VTQ Make(bool value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromBool(value));
 
+        public static VTQ Make(string value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromString(value));
+
+        public static VTQ Make(Duration value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromDuration(value));
+
+        public static VTQ Make(LocalDateTime value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromLocalDateTime(value));
+
+        public static VTQ Make(LocalDate value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromLocalDate(value));
+
+        public static VTQ Make(LocalTime value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromLocalTime(value));
+
+        public static VTQ Make(Timestamp value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromTimestamp(value));
+
         public override string ToString() => $"{T} {Q} {V}";
 
         public override int GetHashCode() => (int)T.JavaTicks;

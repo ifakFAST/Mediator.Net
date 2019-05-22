@@ -100,6 +100,26 @@ namespace Ifak.Fast.Mediator
 
         public static DataValue FromBoolArray(bool[] v) => new DataValue(StdJson.ValueToString(v));
 
+        public static DataValue FromDuration(Duration v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromDurationArray(Duration[] v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromTimestamp(Timestamp v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromTimestampArray(Timestamp[] v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalDateTime(LocalDateTime v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalDateTimeArray(LocalDateTime[] v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalDate(LocalDate v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalDateArray(LocalDate[] v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalTime(LocalTime v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocalTimeArray(LocalTime[] v) => new DataValue(StdJson.ValueToString(v));
+
         public static DataValue FromObject(object obj, bool indented = false) => new DataValue(StdJson.ObjectToString(obj, indented: indented));
 
         public static DataValue FromJSON(string json) => string.IsNullOrWhiteSpace(json) || json == "null" ? new DataValue(null) : new DataValue(json);
