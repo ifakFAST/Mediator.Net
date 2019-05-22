@@ -17,14 +17,14 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class Session : EventListener, ViewContext
     {
         public string ID { get; private set; }
-        public WebSocket WebSocket { get; set; }
+        private WebSocket WebSocket { get; set; }
 
         private Connection connection;
         private readonly Dictionary<string, ViewBase> views = new Dictionary<string, ViewBase>();
         private string moduleID = "";
 
         private ViewBase currentView = null;
-        private bool closedByWebsocket = false;
+        private bool closed = false;
 
         public Timestamp lastActivity = Timestamp.Now;
 
@@ -44,7 +44,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public bool IsAbandoned => closedByWebsocket || (Timestamp.Now - lastActivity) > Duration.FromMinutes(15);
+        public bool IsAbandoned => closed || (Timestamp.Now - lastActivity) > Duration.FromMinutes(15);
 
         public async Task OnActivateView(string viewID) {
 
@@ -146,13 +146,18 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         internal async Task Close() {
 
-            try {
-                if (WebSocket != null) {
-                    await WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    WebSocket = null;
+            if (closed) return;
+
+            closed = true;
+
+            if (WebSocket != null) {
+                var socket = WebSocket;
+                WebSocket = null;
+                try {
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
+                catch (Exception) { }
             }
-            catch (Exception) { }
 
             if (currentView != null) {
                 try {
@@ -180,24 +185,41 @@ namespace Ifak.Fast.Mediator.Dashboard
                 Console.Out.WriteLine(msg);
         }
 
-        public async Task ReadWebSocket() {
+        public async Task ReadWebSocket(WebSocket socket) {
+
+            if (WebSocket != null) {
+                try {
+                    Task ignored = WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                }
+                catch (Exception) { }
+            }
+
+            WebSocket = socket;
 
             const int maxMessageSize = 1024;
             byte[] receiveBuffer = new byte[maxMessageSize];
 
-            while (WebSocket != null) {
+            while (!closed) {
 
                 try {
 
-                    WebSocketReceiveResult receiveResult = await WebSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                    WebSocketReceiveResult receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
                     if (receiveResult.MessageType == WebSocketMessageType.Close) {
                         await Close();
-                        closedByWebsocket = true;
                         return;
                     }
                     lastActivity = Timestamp.Now;
                 }
-                catch (Exception) { }
+                catch (Exception) {
+                    try {
+                        Task ignored = socket.CloseAsync(WebSocketCloseStatus.ProtocolError, string.Empty, CancellationToken.None);
+                    }
+                    catch (Exception) { }
+                    if (socket == WebSocket) {
+                        WebSocket = null;
+                    }
+                    return;
+                }
             }
         }
     }

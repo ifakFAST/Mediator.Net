@@ -25,6 +25,10 @@
 
       <v-spacer></v-spacer>
 
+      <v-alert class="mx-4" outline :value="connectionState > 0" icon="cloud_off" :color="connectionColor" transition="scale-transition">
+        {{ connectionText }}
+      </v-alert>
+
       <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showTimeEdit">
          <div slot="activator">
             Time Range:
@@ -94,6 +98,7 @@
       currViewSrc: String,
       views: Array,
       busy: Boolean,
+      connectionState: Number,
       showTime: Boolean,
       timeRangeSelected: Object
     },
@@ -197,6 +202,14 @@
       isValidTimeLast() {
          const num = this.timeRangeEdit.lastCount;
          return Number.isInteger(num) && num > 0;
+      },
+       connectionColor() {
+        if (this.connectionState === 1) { return 'warning' }
+        return 'error'
+      },
+      connectionText() {
+        if (this.connectionState === 1) { return 'Trying to reconnect...' }
+        return 'No Connection!'
       }
     }
   }

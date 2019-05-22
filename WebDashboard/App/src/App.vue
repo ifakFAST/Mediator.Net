@@ -5,7 +5,7 @@
         </template>
 
         <template v-else>
-            <dashboard :views="model.views" :busy="busy" :currViewSrc="currentViewSource"
+            <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewSrc="currentViewSource"
                        :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"></dashboard>
         </template>
@@ -17,6 +17,7 @@ import axios from "axios";
 import Login from "./Login.vue";
 import Dashboard from "./Dashboard.vue";
 import globalState from "./Global.js";
+import { setTimeout } from 'timers';
 
 export default {
   data() {
@@ -40,25 +41,13 @@ export default {
     loginSuccess(event) {
       this.sessionID = event.session;
       this.model = event.model;
-      if (window.WebSocket) {
-        const context = this;
-        const socket = new WebSocket("ws://" + window.location.host + "/websocket/");
-        socket.onopen = function(openEvent) {
-          socket.send(context.sessionID);
-          const doKeepAlive = function() {
-             socket.send("KA");
-          };
-          context.intervalVar = setInterval(doKeepAlive, 5000);
-        };
-        socket.onmessage = function(wsEvent) {
-          const parsedData = JSON.parse(wsEvent.data);
-          context.eventListener(parsedData.event, parsedData.payload);
-        };
-        context.eventSocket = socket;
-      }
+      this.openWebSocket()
     },
     logout() {
-      clearInterval(this.intervalVar);
+      if (this.intervalVar !== 0) {
+        clearInterval(this.intervalVar);
+        this.intervalVar = 0;
+      }
       axios.post("/logout", this.sessionID);
       this.sessionID = "";
       this.model = {};
@@ -69,6 +58,42 @@ export default {
       }
       catch(error) {
          console.log("Error closing websocket: " + error);
+      }
+    },
+    openWebSocket() {
+      if (window.WebSocket) {
+        const context = this;
+        const socket = new WebSocket("ws://" + window.location.host + "/websocket/");
+        context.eventSocket = socket;
+
+        socket.onopen = function(openEvent) {
+          context.connectionState = 0;
+          socket.send(context.sessionID);
+          const doKeepAlive = function() {
+            socket.send("KA");
+          };
+          context.intervalVar = setInterval(doKeepAlive, 5000);
+        };
+
+        socket.onmessage = function(wsEvent) {
+          context.connectionState = 0;
+          const parsedData = JSON.parse(wsEvent.data);
+          context.eventListener(parsedData.event, parsedData.payload);
+        };
+
+        socket.onclose = function(ev) {
+          context.connectionState = (ev.wasClean ? 2 : 1);
+          if (context.intervalVar !== 0) {
+            clearInterval(context.intervalVar);
+            context.intervalVar = 0;
+          }
+          if (!ev.wasClean) {
+            const reconnect = function() {
+              context.openWebSocket();
+            };
+            setTimeout(reconnect, 3000);
+          }
+        }
       }
     },
     activateView(viewID) {

@@ -165,6 +165,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             shutdown = true;
 
+            Task closeTask = Task.WhenAll(sessions.Values.Select(session => session.Close()).ToArray());
+            await Task.WhenAny(closeTask, Task.Delay(2000));
+
             Task ignored = webHost.StopAsync();
         }
 
@@ -201,17 +204,19 @@ namespace Ifak.Fast.Mediator.Dashboard
                     var sessionID = Encoding.UTF8.GetString(receiveBuffer, 0, count);
 
                     if (!sessions.ContainsKey(sessionID)) {
+                        Task ignored = socket.CloseAsync(WebSocketCloseStatus.ProtocolError, string.Empty, CancellationToken.None);
                         throw new InvalidSessionException();
                     }
 
                     Session session = sessions[sessionID];
-                    session.WebSocket = socket;
-                    await session.ReadWebSocket();
+
+                    await session.ReadWebSocket(socket);
                 }
             }
             catch (Exception exp) {
                 if (!(exp is InvalidSessionException)) {
-                    logWarn("Error handling web socket request", exp);
+                    Exception e = exp.GetBaseException() ?? exp;
+                    logWarn("Error handling web socket request: " + e.Message);
                 }
             }
         }
@@ -438,16 +443,12 @@ namespace Ifak.Fast.Mediator.Dashboard
             return result;
         }
 
-        private static void logError(string msg, Exception exp = null) {
+        private static void logWarn(string msg, Exception exp = null) {
             Exception exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
             if (exception != null)
-                Console.Error.WriteLine(msg + " " + exception.Message + "\n" + exception.StackTrace);
+                Console.Out.WriteLine(msg + " " + exception.Message + "\n" + exception.StackTrace);
             else
-                Console.Error.WriteLine(msg);
-        }
-
-        private static void logWarn(string msg, Exception exp = null) {
-            logError(msg, exp);
+                Console.Out.WriteLine(msg);
         }
     }
 
