@@ -136,11 +136,11 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 
         public Channel[] DoCreateChannels(Span<ChannelInfo> channels) {
 
-            var tableNames = new HashSet<string>();
+            var lowerCaseTableNames = new HashSet<string>();
             using (var command = Factory.MakeCommand($"SELECT table_name FROM channel_defs", connection)) {
                 using (var reader = command.ExecuteReader()) {
                     while (reader.Read()) {
-                        tableNames.Add((string)reader["table_name"]);
+                        lowerCaseTableNames.Add(((string)reader["table_name"]).ToLowerInvariant());
                     }
                 }
             }
@@ -153,7 +153,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 
                     foreach (ChannelInfo ch in channels) {
 
-                        string tableName = MakeValidTableName(ch.Object, ch.Variable, tableNames);
+                        string tableName = MakeValidTableName(ch.Object, ch.Variable, lowerCaseTableNames);
 
                         using (var command = Factory.MakeCommand("INSERT INTO channel_defs VALUES (@obj, @var, @type, @table_name)", connection)) {
                             command.Transaction = transaction;
@@ -177,9 +177,8 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 
                     return res.ToArray();
                 }
-                catch (Exception ex) {
+                catch (Exception) {
                     transaction.Rollback();
-                    logger.Error(ex, "Creating channels failed: " + ex.Message);
                     throw;
                 }
             }
@@ -236,12 +235,12 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             }
         }
 
-        protected string MakeValidTableName(string obj, string varName, HashSet<string> existingNames) {
+        protected string MakeValidTableName(string obj, string varName, HashSet<string> existingNamesLowerCase) {
             obj = obj.Replace('\"', '\'');
             varName = varName.Replace('\"', '\'');
             string res = obj + "$" + varName;
             int i = 1;
-            while (existingNames.Contains(res)) {
+            while (existingNamesLowerCase.Contains(res.ToLowerInvariant())) {
                 res = obj + "$" + varName + "_" + string.Format("{0:000}", i);
                 i += 1;
             }
