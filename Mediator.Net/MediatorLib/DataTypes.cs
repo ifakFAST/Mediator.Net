@@ -194,19 +194,21 @@ namespace Ifak.Fast.Mediator
 
             if (millis == 0) return "0 s";
 
-            if (millis % MS_PerSecond > 0) {
+            long millisAbs = Math.Abs(millis);
+
+            if (millisAbs % MS_PerSecond > 0) {
                 return millis.ToString() + " ms";
             }
 
-            if (millis % MS_PerMinute > 0) {
+            if (millisAbs % MS_PerMinute > 0) {
                 return (millis / MS_PerSecond).ToString() + " s";
             }
 
-            if (millis % MS_PerHour > 0) {
+            if (millisAbs % MS_PerHour > 0) {
                 return (millis / MS_PerMinute).ToString() + " min";
             }
 
-            if (millis % MS_PerDay > 0) {
+            if (millisAbs % MS_PerDay > 0) {
                 return (millis / MS_PerHour).ToString() + " h";
             }
 
