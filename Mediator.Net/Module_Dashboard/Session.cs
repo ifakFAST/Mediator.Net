@@ -107,9 +107,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             currentView?.OnConnectionClosed();
         }
 
-        void ViewContext.SendEventToUI(string eventName, object payload) {
-            if (WebSocket == null || WebSocket.State != WebSocketState.Open) return;
-            var ignored = SendWebSocket(WebSocket, "{ \"event\": \"" + eventName + "\", \"payload\": ", payload);
+        Task ViewContext.SendEventToUI(string eventName, object payload) {
+            if (WebSocket == null || WebSocket.State != WebSocketState.Open) return Task.FromResult(true);
+            return SendWebSocket(WebSocket, "{ \"event\": \"" + eventName + "\", \"payload\": ", payload);
         }
 
         async Task ViewContext.SaveViewConfiguration(DataValue newConfig) {

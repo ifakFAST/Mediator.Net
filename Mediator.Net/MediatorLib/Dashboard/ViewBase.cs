@@ -9,7 +9,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 {
     public interface ViewContext
     {
-        void SendEventToUI(string eventName, object payload);
+        Task SendEventToUI(string eventName, object payload);
         Task SaveViewConfiguration(DataValue newConfig);
     }
 
