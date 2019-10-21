@@ -828,7 +828,7 @@ namespace Ifak.Fast.Mediator
                 throw;
             }
 
-            res.ContinueWith(tt => {
+            res.ContinueOnMainThread(tt => {
 
                 if (tt.IsFaulted) {
                     Exception exp = tt.Exception.GetBaseException() ?? tt.Exception;

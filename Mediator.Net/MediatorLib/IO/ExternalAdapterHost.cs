@@ -120,7 +120,7 @@ namespace Ifak.Fast.Mediator.IO
             private void WrapCall<T>(Func<Task<T>> call, Action<T, Stream> serializer, int reqID) {
                 try {
                     Task<T> task = call();
-                    var tnext = task.ContinueWith(t => {
+                    var tnext = task.ContinueOnMainThread(t => {
                         if (t.IsFaulted) {
                             Console.Error.WriteLine(MakeStr(t.Exception));
                             Console.Error.Flush();
@@ -142,7 +142,7 @@ namespace Ifak.Fast.Mediator.IO
             private void WrapVoidCall(Func<Task> call, int reqID) {
                 try {
                     Task task = call();
-                    var tnext = task.ContinueWith(t => {
+                    var tnext = task.ContinueOnMainThread(t => {
                         if (t.IsFaulted) {
                             Console.Error.WriteLine(MakeStr(t.Exception));
                             Console.Error.Flush();

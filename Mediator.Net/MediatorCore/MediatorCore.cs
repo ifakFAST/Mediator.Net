@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Ifak.Fast.Json.Linq;
+using Ifak.Fast.Mediator.Util;
 using NLog;
 
 namespace Ifak.Fast.Mediator
@@ -197,7 +198,7 @@ namespace Ifak.Fast.Mediator
             Func<bool> fShutdown = () => { return module.State == State.ShutdownStarted; };
             Task runTask = module.Instance
                 .Run(fShutdown)
-                .ContinueWith((task) => {
+                .ContinueOnMainThread((task) => {
                     if (module.State == State.Running) {
                         string restartReason = "";
                         if (task.IsFaulted) {
@@ -208,7 +209,7 @@ namespace Ifak.Fast.Mediator
                         else {
                             restartReason = "Early return from Run";
                         }
-                        Task.Delay(1000).ContinueWith( (tt) => {
+                        Task.Delay(1000).ContinueOnMainThread( (tt) => {
                             Task ignored = RestartModule(module, restartReason);
                         });
                     }
@@ -388,7 +389,7 @@ namespace Ifak.Fast.Mediator
 
             try {
                 Task<ObjectInfo[]> task = module.Instance.GetAllObjects();
-                task.ContinueWith(t => {
+                task.ContinueOnMainThread(t => {
                     if (t.IsFaulted) {
                         var ignored = RestartModule(module, "GetAllObjects() failed in Notify_ConfigChanged: " + t.Exception?.Message);
                     }

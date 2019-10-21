@@ -202,7 +202,7 @@ namespace Ifak.Fast.Mediator
                             var promise = (TaskCompletionSource<bool>)it.Promise;
                             try {
                                 Task t = module.Run((Func<bool>)it.Param1);
-                                Task ignored = t.ContinueWith(x => {
+                                Task ignored = t.ContinueOnMainThread(x => {
                                     hasTerminated = true;
                                     if (x.IsFaulted) {
                                         promise.SetException(x.Exception);

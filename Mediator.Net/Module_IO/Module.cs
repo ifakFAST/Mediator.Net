@@ -229,9 +229,10 @@ namespace Ifak.Fast.Mediator.IO
                 adapter.SetGroups(groups);
             }
             catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
                 adapter.State = State.InitError;
-                adapter.LastError = exp.Message;
-                throw new Exception($"Initialize of adapter {info.Name} failed: " + exp.Message, exp);
+                adapter.LastError = e.Message;
+                throw new Exception($"Initialize of adapter {info.Name} failed: " + e.Message, exp);
             }
         }
 
@@ -259,7 +260,8 @@ namespace Ifak.Fast.Mediator.IO
                 }
             }
             catch (Exception exp) {
-                Log_Warn("AdapterShutdownError", "Shutdown exception: " + exp.Message);
+                Exception e = exp.GetBaseException() ?? exp;
+                Log_Warn("AdapterShutdownError", "Shutdown exception: " + e.Message);
             }
             adapter.State = State.ShutdownCompleted;
             adapter.Instance = null;
@@ -441,7 +443,7 @@ namespace Ifak.Fast.Mediator.IO
 
             try {
                 IList<WriteTask> writeTasks = adapter.WriteItems(items, timeout);
-                Task<WriteDataItemsResult>[] tasks = writeTasks.Select(writeTask => writeTask.Task.ContinueWith(t => {
+                Task<WriteDataItemsResult>[] tasks = writeTasks.Select(writeTask => writeTask.Task.ContinueOnMainThread(t => {
                     adapter.SetOfPendingWriteItems.ExceptWith(writeTask.IDs);
                     return t.Result;
                 })).ToArray();
@@ -461,7 +463,7 @@ namespace Ifak.Fast.Mediator.IO
         private void StartScheduledReadTask(AdapterState adapter) {
             Task readTask = AdapterScheduledReadTask(adapter);
             adapter.ScheduledReadingTask = readTask;
-            var ignored1 = readTask.ContinueWith(t => {
+            var ignored1 = readTask.ContinueOnMainThread(t => {
                 if (t.IsFaulted) {
                     Exception exp = t.Exception.GetBaseException() ?? t.Exception;
                     Task ignored2 = RestartAdapterOrCrash(adapter, "Read exception: " + exp.Message);
@@ -535,7 +537,7 @@ namespace Ifak.Fast.Mediator.IO
                                 IList<ReadTask> readTasks = adapter.ReadItems(requests, null);
 
                                 foreach (ReadTask rt in readTasks) {
-                                    Task tx = rt.Task.ContinueWith(completedReadTask => {
+                                    Task tx = rt.Task.ContinueOnMainThread(completedReadTask => {
                                         adapter.SetOfPendingReadItems.ExceptWith(rt.IDs);
                                         if (adapter.State == State.Running) {
 
@@ -906,14 +908,14 @@ namespace Ifak.Fast.Mediator.IO
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
                     Task<VTQ[]> t = Instance.ReadDataItems(group, values, timeout);
-                    Task<DataItemValue[]> tt = t.ContinueWith(f);
+                    Task<DataItemValue[]> tt = t.ContinueOnMainThread(f);
                     return new ReadTask[] { new ReadTask(tt, values.Select(x => x.ID).ToArray()) };
                 }
                 else {
                     return values.GroupBy(x => MapItem2GroupID[x.ID]).Select(group => {
                         ReadRequest[] items = group.ToArray();
                         Task<VTQ[]> t = Instance.ReadDataItems(group.Key, items, timeout);
-                        Task<DataItemValue[]> tt = t.ContinueWith(f);
+                        Task<DataItemValue[]> tt = t.ContinueOnMainThread(f);
                         return new ReadTask(tt, items.Select(x => x.ID).ToArray());
                     }).ToArray();
                 }
