@@ -2,6 +2,7 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.IO;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_OPC
@@ -20,7 +21,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC
                 return local;
             }
             else {
-                return Path.GetFullPath(Path.Combine(baseDir, @"..\..\..\..\..\OPC\Adapter\bin\Release\OPC_Adapter.exe"));
+                string path = Path.GetFullPath(Path.Combine(baseDir, @"..\..\..\..\..\..\OPC\Adapter\bin\Release\OPC_Adapter.exe"));
+                if (!File.Exists(path)) {
+                    Console.Error.WriteLine("File not found: " + path);
+                }
+                return path;
             }
         }
 
