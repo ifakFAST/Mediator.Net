@@ -529,7 +529,8 @@ namespace Ifak.Fast.Mediator
         Delete,
         Insert,
         Update,
-        Upsert
+        Upsert,
+        Mixed,
     }
 
     public enum ModifyMode
