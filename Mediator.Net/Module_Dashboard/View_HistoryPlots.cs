@@ -376,11 +376,6 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         public override async Task OnVariableHistoryChanged(HistoryChange[] changes) {
-            await Foo(changes);
-            await Task.Delay(1000);
-        }
-
-        private async Task Foo(HistoryChange[] changes) {
 
             var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
 

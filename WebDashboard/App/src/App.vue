@@ -79,6 +79,10 @@ export default {
           context.connectionState = 0;
           const parsedData = JSON.parse(wsEvent.data);
           context.eventListener(parsedData.event, parsedData.payload);
+          const doACK = function() {
+            socket.send("OK");
+          };
+          setTimeout(doACK, 500);
         };
 
         socket.onclose = function(ev) {

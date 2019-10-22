@@ -540,8 +540,10 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        private const string ConnectionClosedMessage = "Connection is closed.";
+
         private JObject MakeSessionRequest() {
-            if (IsClosed) throw new Exception("Connection is closed.");
+            if (IsClosed) throw new Exception(ConnectionClosedMessage);
             JObject request = new JObject();
             request["session"] = session;
             return request;
@@ -611,7 +613,9 @@ namespace Ifak.Fast.Mediator
                         }
                         catch (Exception exp) {
                             Exception exception = exp.GetBaseException() ?? exp;
-                            Console.Error.WriteLine("Exception in event dispatch: " + exception.Message);
+                            if (exception.Message != ConnectionClosedMessage) {
+                                Console.Error.WriteLine("Exception in event dispatch: " + exception.Message);
+                            }
                         }
 
                         try {

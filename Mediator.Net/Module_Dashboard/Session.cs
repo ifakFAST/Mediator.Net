@@ -88,7 +88,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
-            if (currentView != null) {
+            if (currentView != null && !closed) {
                 return currentView.OnConfigChanged(changedObjects);
             }
             else {
@@ -97,7 +97,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnVariableValueChanged(VariableValue[] variables) {
-            if (currentView != null) {
+            if (currentView != null && !closed) {
                 return currentView.OnVariableValueChanged(variables);
             }
             else {
@@ -106,7 +106,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
-            if (currentView != null) {
+            if (currentView != null && !closed) {
                 return currentView.OnVariableHistoryChanged(changes);
             }
             else {
@@ -115,7 +115,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
-            if (currentView != null) {
+            if (currentView != null && !closed) {
                 return currentView.OnAlarmOrEvents(alarmOrEvents);
             }
             else {
@@ -150,6 +150,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
+        private bool eventAcked = false;
+
         private async Task SendWebSocket(WebSocket socket, string msgStart, object content) {
             try {
                 using (var stream = MemoryManager.GetMemoryStream("Session.SendWebSocket")) {
@@ -161,7 +163,14 @@ namespace Ifak.Fast.Mediator.Dashboard
                     byte[] bytes = stream.GetBuffer();
                     int count = (int)stream.Length;
                     var segment = new ArraySegment<byte>(bytes, 0, count);
+                    eventAcked = false;
                     await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+
+                int counter = 0;
+                while (!eventAcked && !closed && counter < 100) {
+                    await Task.Delay(50);
+                    counter += 1;
                 }
             }
             catch (Exception exp) {
@@ -232,6 +241,9 @@ namespace Ifak.Fast.Mediator.Dashboard
                     if (receiveResult.MessageType == WebSocketMessageType.Close) {
                         await Close();
                         return;
+                    }
+                    if (receiveResult.Count == 2 && receiveBuffer[0] == (byte)'O' && receiveBuffer[1] == (byte)'K') {
+                        eventAcked = true;
                     }
                     lastActivity = Timestamp.Now;
                 }
