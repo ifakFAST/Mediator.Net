@@ -663,7 +663,7 @@ namespace Ifak.Fast.Mediator
 
                     case "OnAlarmOrEvent": {
                             AlarmOrEvent alarmOrEvent = StdJson.ObjectFromJToken<AlarmOrEvent>(theEvent["alarmOrEvent"]);
-                            listener.OnAlarmOrEvent(alarmOrEvent);
+                            listener.OnAlarmOrEvents(new AlarmOrEvent[] { alarmOrEvent });
                         }
                         break;
 

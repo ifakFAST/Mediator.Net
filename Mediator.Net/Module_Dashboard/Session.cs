@@ -99,8 +99,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             currentView?.OnVariableHistoryChanged(changes);
         }
 
-        void EventListener.OnAlarmOrEvent(AlarmOrEvent alarmOrEvent) {
-            currentView?.OnAlarmOrEvent(alarmOrEvent);
+        void EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+            currentView?.OnAlarmOrEvents(alarmOrEvents);
         }
 
         void EventListener.OnConnectionClosed() {

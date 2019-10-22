@@ -123,7 +123,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 lastAlarms = alarms;
                 lastEvents = events;
 
-                Context.SendEventToUI("Event", new {
+                await Context.SendEventToUI("Event", new {
                     Alarms = newOrChangedAlarms,
                     Events = newOrChangedEvents
                 });

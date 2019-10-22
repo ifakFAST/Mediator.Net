@@ -42,7 +42,7 @@ namespace Ifak.Fast.Mediator.EventLog
             running = true;
 
             foreach (var entry in initBuffer) {
-                OnAlarmOrEvent(entry);
+                await OnAlarmOrEvent(entry);
             }
             initBuffer.Clear();
 
@@ -92,7 +92,13 @@ namespace Ifak.Fast.Mediator.EventLog
 
         public void OnVariableHistoryChanged(HistoryChange[] changes) { }
 
-        public async void OnAlarmOrEvent(AlarmOrEvent alarmOrEvent) {
+        public async void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+            foreach (AlarmOrEvent ae in alarmOrEvents) {
+                await OnAlarmOrEvent(ae);
+            }
+        }
+
+        private async Task OnAlarmOrEvent(AlarmOrEvent alarmOrEvent) {
 
             if (!running) {
                 initBuffer.Add(alarmOrEvent);

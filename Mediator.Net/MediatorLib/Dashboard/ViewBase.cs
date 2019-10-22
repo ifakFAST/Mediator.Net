@@ -40,7 +40,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public virtual void OnVariableHistoryChanged(HistoryChange[] changes) { }
 
-        public virtual void OnAlarmOrEvent(AlarmOrEvent alarmOrEvent) { }
+        public virtual void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) { }
 
         public virtual void OnConnectionClosed() { }
     }

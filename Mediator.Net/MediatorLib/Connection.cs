@@ -150,7 +150,7 @@ namespace Ifak.Fast.Mediator
 
         /// <summary>
         /// Enables receiving alarms and events that are send by modules or Mediator core.
-        /// The alarms and events can be received by <see cref="EventListener.OnAlarmOrEvent"/>.
+        /// The alarms and events can be received by <see cref="EventListener.OnAlarmOrEvents"/>.
         /// </summary>
         /// <param name="minSeverity">The minimum severity of the alarms or events to receive</param>
         public abstract Task EnableAlarmsAndEvents(Severity minSeverity = Severity.Info);
@@ -488,7 +488,7 @@ namespace Ifak.Fast.Mediator
 
         void OnVariableHistoryChanged(HistoryChange[] changes);
 
-        void OnAlarmOrEvent(AlarmOrEvent alarmOrEvent);
+        void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents);
 
         void OnConnectionClosed();
     }
