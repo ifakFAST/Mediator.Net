@@ -86,13 +86,13 @@ namespace Ifak.Fast.Mediator.EventLog
             return vttq.V.Object<AggregatedEvent>();
         }
 
-        public void OnConfigChanged(ObjectRef[] changedObjects) { }
+        public Task OnConfigChanged(ObjectRef[] changedObjects) { return Task.FromResult(true); }
 
-        public void OnVariableValueChanged(VariableValue[] variables) { }
+        public Task OnVariableValueChanged(VariableValue[] variables) { return Task.FromResult(true); }
 
-        public void OnVariableHistoryChanged(HistoryChange[] changes) { }
+        public Task OnVariableHistoryChanged(HistoryChange[] changes) { return Task.FromResult(true); }
 
-        public async void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        public async Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
             foreach (AlarmOrEvent ae in alarmOrEvents) {
                 await OnAlarmOrEvent(ae);
             }
@@ -142,7 +142,7 @@ namespace Ifak.Fast.Mediator.EventLog
             }
         }
 
-        public void OnConnectionClosed() { }
+        public Task OnConnectionClosed() { return Task.FromResult(true); }
 
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 

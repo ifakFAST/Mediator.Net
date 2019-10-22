@@ -85,7 +85,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public override void OnVariableValueChanged(VariableValue[] variables) {
+        public override async Task OnVariableValueChanged(VariableValue[] variables) {
 
             var changes = new List<ChangeEntry>(variables.Length);
 
@@ -103,7 +103,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 catch (Exception) { }
             }
 
-            Context.SendEventToUI("Change", changes);
+            await Context.SendEventToUI("Change", changes);
         }
 
         private void SetObjectNameMap(ObjectInfo[] objects) {

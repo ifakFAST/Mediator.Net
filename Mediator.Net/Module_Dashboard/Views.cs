@@ -49,9 +49,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public override void OnVariableValueChanged(VariableValue[] variables) {
+        public override Task OnVariableValueChanged(VariableValue[] variables) {
             Console.Out.WriteLine("OnVariableValueChanged " + variables[0].ToString());
-            Context.SendEventToUI("VarChange", variables);
+            return Context.SendEventToUI("VarChange", variables);
         }
     }
 }

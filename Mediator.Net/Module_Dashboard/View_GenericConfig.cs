@@ -257,7 +257,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public override void OnVariableValueChanged(VariableValue[] variables) {
+        public override async Task OnVariableValueChanged(VariableValue[] variables) {
 
             var changes = new List<VarChange>(variables.Length);
 
@@ -272,7 +272,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     Q = vv.Value.Q
                 });
             }
-            Context.SendEventToUI("VarChange", changes);
+            await Context.SendEventToUI("VarChange", changes);
         }
 
         private async Task<List<ObjectMember>> GetObjectMembers(string id, string type) {

@@ -101,7 +101,7 @@ namespace Ifak.Fast.Mediator.EventLog
             return Transform(vttq.V.Object<AggregatedEvent>());
         }
 
-        public async override void OnVariableHistoryChanged(HistoryChange[] changes) {
+        public async override Task OnVariableHistoryChanged(HistoryChange[] changes) {
 
             var alarms = await GetActiveAlarms();
             var events = await GetEvents(lastTimeRange, alarms);

@@ -310,6 +310,8 @@ namespace Ifak.Fast.Mediator
 
         public bool IsEmpty => ticks == 0;
 
+        public bool NonEmpty => ticks != 0;
+
         public static Timestamp FromJavaTicks(long ticks) { return new Timestamp(ticks); }
 
         public static Timestamp FromDotNetTicks(long ticks) {

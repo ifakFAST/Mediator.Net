@@ -375,50 +375,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             return sb.ToString();
         }
 
-        private Dictionary<VariableRef, HistoryChange> bufferedHistoryChanges = new Dictionary<VariableRef, HistoryChange>();
-        private bool forceEventBuffering = false;
-
-        public override void OnVariableHistoryChanged(HistoryChange[] changes) {
-
-            if (forceEventBuffering) {
-                bufferHistoryChanges(changes);
-            }
-            else {
-                Task ignored = SendEventDataAndWait(changes);
-            }
-        }
-
-        private async Task SendEventDataAndWait(HistoryChange[] changes) {
-
-            try {
-                forceEventBuffering = true;
-                await Foo(changes);
-                await Task.Delay(1000);
-            }
-            finally {
-                forceEventBuffering = false;
-            }
-
-            if (bufferedHistoryChanges.Count > 0) {
-                HistoryChange[] bufferedChanges = bufferedHistoryChanges.Values.ToArray();
-                bufferedHistoryChanges.Clear();
-                Task ignored = SendEventDataAndWait(bufferedChanges);
-            }
-        }
-
-        private void bufferHistoryChanges(HistoryChange[] changes) {
-            foreach (HistoryChange h in changes) {
-                VariableRef key = h.Variable;
-                if (bufferedHistoryChanges.ContainsKey(key)) {
-                    HistoryChange hh = bufferedHistoryChanges[key];
-                    hh.ChangeStart = Timestamp.MinOf(h.ChangeStart, hh.ChangeStart);
-                    hh.ChangeEnd = Timestamp.MaxOf(h.ChangeEnd, hh.ChangeEnd);
-                    bufferedHistoryChanges[key] = hh;
-                }
-                else {
-                    bufferedHistoryChanges[key] = h;
-                }
-            }
+        public override async Task OnVariableHistoryChanged(HistoryChange[] changes) {
+            await Foo(changes);
+            await Task.Delay(1000);
         }
 
         private async Task Foo(HistoryChange[] changes) {

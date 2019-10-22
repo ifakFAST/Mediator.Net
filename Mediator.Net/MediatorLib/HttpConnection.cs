@@ -573,6 +573,8 @@ namespace Ifak.Fast.Mediator
 
             protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action notifyConnectionBroken) {
 
+                byte[] bytesOK = new byte[] { (byte)'O', (byte)'K' };
+                ArraySegment<byte> ok = new ArraySegment<byte>(bytesOK);
                 var buffer = new ArraySegment<byte>(new byte[8192]);
                 var stream = new MemoryStream(8192);
 
@@ -590,7 +592,7 @@ namespace Ifak.Fast.Mediator
                             if (!cancelToken.IsCancellationRequested) {
                                 notifyConnectionBroken();
                             }
-                            listener.OnConnectionClosed();
+                            Task ignored = listener.OnConnectionClosed();
                             return;
                         }
                         stream.Write(buffer.Array, buffer.Offset, result.Count);
@@ -600,15 +602,28 @@ namespace Ifak.Fast.Mediator
                     stream.Seek(0, SeekOrigin.Begin);
 
                     if (result.MessageType == WebSocketMessageType.Text) {
+                        JObject eventObj = null;
                         using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
-                            JObject eventObj = StdJson.JObjectFromReader(reader);
-                            try {
-                                DispatchEvent(eventObj);
+                            eventObj = StdJson.JObjectFromReader(reader);
+                        }
+                        try {
+                            await DispatchEvent(eventObj);
+                        }
+                        catch (Exception exp) {
+                            Exception exception = exp.GetBaseException() ?? exp;
+                            Console.Error.WriteLine("Exception in event dispatch: " + exception.Message);
+                        }
+
+                        try {
+                            await webSocket.SendAsync(ok, WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        catch (Exception) {
+                            var t = CloseSocket(); // no need to wait for completion
+                            if (!cancelToken.IsCancellationRequested) {
+                                notifyConnectionBroken();
                             }
-                            catch (Exception exp) {
-                                Exception exception = exp.GetBaseException() ?? exp;
-                                Console.Error.WriteLine("Exception in event dispatch: " + exception.Message);
-                            }
+                            Task ignored = listener.OnConnectionClosed();
+                            return;
                         }
                     }
                     else if (result.MessageType == WebSocketMessageType.Close) {
@@ -616,7 +631,7 @@ namespace Ifak.Fast.Mediator
                         if (!cancelToken.IsCancellationRequested) {
                             notifyConnectionBroken();
                         }
-                        listener.OnConnectionClosed();
+                        await listener.OnConnectionClosed();
                         return;
                     }
                 }
@@ -635,7 +650,7 @@ namespace Ifak.Fast.Mediator
                 webSocketCancel = null;
             }
 
-            protected void DispatchEvent(JObject theEvent) {
+            protected Task DispatchEvent(JObject theEvent) {
 
                 string eventName = (string)theEvent["event"];
 
@@ -643,33 +658,29 @@ namespace Ifak.Fast.Mediator
                     case "OnVariableValueChanged": {
                             JArray jVariables = (JArray)theEvent["variables"];
                             VariableValue[] variables = StdJson.ObjectFromJToken<VariableValue[]>(jVariables);
-                            listener.OnVariableValueChanged(variables);
+                            return listener.OnVariableValueChanged(variables);
                         }
-                        break;
 
                     case "OnVariableHistoryChanged": {
                             JArray jChanges = (JArray)theEvent["changes"];
                             HistoryChange[] variables = StdJson.ObjectFromJToken<HistoryChange[]>(jChanges);
-                            listener.OnVariableHistoryChanged(variables);
+                            return listener.OnVariableHistoryChanged(variables);
                         }
-                        break;
 
                     case "OnConfigChanged": {
                             JArray jChanges = (JArray)theEvent["changedObjects"];
                             ObjectRef[] changes = StdJson.ObjectFromJToken<ObjectRef[]>(jChanges);
-                            listener.OnConfigChanged(changes);
+                            return listener.OnConfigChanged(changes);
                         }
-                        break;
 
                     case "OnAlarmOrEvent": {
-                            AlarmOrEvent alarmOrEvent = StdJson.ObjectFromJToken<AlarmOrEvent>(theEvent["alarmOrEvent"]);
-                            listener.OnAlarmOrEvents(new AlarmOrEvent[] { alarmOrEvent });
+                            AlarmOrEvent[] alarmOrEvents = StdJson.ObjectFromJToken<AlarmOrEvent[]>(theEvent["events"]);
+                            return listener.OnAlarmOrEvents(alarmOrEvents);
                         }
-                        break;
 
                     default:
                         Console.Error.WriteLine("Unknown event: " + eventName);
-                        break;
+                        return Task.FromResult(true);
                 }
             }
         }

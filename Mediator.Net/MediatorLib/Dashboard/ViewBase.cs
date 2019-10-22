@@ -34,14 +34,14 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public abstract Task<ReqResult> OnUiRequestAsync(string command, DataValue parameters);
 
-        public virtual void OnConfigChanged(ObjectRef[] changedObjects) { }
+        public virtual Task OnConfigChanged(ObjectRef[] changedObjects) { return Task.FromResult(true); }
 
-        public virtual void OnVariableValueChanged(VariableValue[] variables) { }
+        public virtual Task OnVariableValueChanged(VariableValue[] variables) { return Task.FromResult(true); }
 
-        public virtual void OnVariableHistoryChanged(HistoryChange[] changes) { }
+        public virtual Task OnVariableHistoryChanged(HistoryChange[] changes) { return Task.FromResult(true); }
 
-        public virtual void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) { }
+        public virtual Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) { return Task.FromResult(true); }
 
-        public virtual void OnConnectionClosed() { }
+        public virtual Task OnConnectionClosed() { return Task.FromResult(true); }
     }
 }

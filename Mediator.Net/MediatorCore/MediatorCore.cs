@@ -49,7 +49,7 @@ namespace Ifak.Fast.Mediator
 
         public void RequestShutdown() {
             shutdown = true;
-            reqHandler.terminating = true;
+            reqHandler.setTerminating();
         }
 
         public void ConfigureServices(IServiceCollection services) {

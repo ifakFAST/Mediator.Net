@@ -20,7 +20,14 @@ namespace Ifak.Fast.Mediator
     {
         private static Logger logger = LogManager.GetLogger("HandleClientRequests");
 
-        public bool terminating = false;
+        private bool terminating = false;
+
+        public void setTerminating() {
+            terminating = true;
+            foreach (SessionInfo session in sessions.Values) {
+                session.terminating = true;
+            }
+        }
 
         const string Req_Login = "/Mediator/Login";
         const string Req_Auth = "/Mediator/Authenticate";
@@ -878,7 +885,7 @@ namespace Ifak.Fast.Mediator
                     }
 
                     if (filtered.Count > 0) {
-                        var ignored = SendWebSocket(session.EventSocket, "{ \"event\": \"OnVariableValueChanged\", \"variables\": ", filtered);
+                        session.SendEvent_VariableValuesChanged(filtered);
                     }
                 }
             }
@@ -956,7 +963,7 @@ namespace Ifak.Fast.Mediator
                     }
 
                     if (filtered.Count > 0) {
-                        var ignored = SendWebSocket(session.EventSocket, "{ \"event\": \"OnVariableHistoryChanged\", \"changes\": ", filtered);
+                        session.SendEvent_VariableHistoryChanged(filtered);
                     }
                 }
             }
@@ -983,7 +990,7 @@ namespace Ifak.Fast.Mediator
                     .ToArray();
 
                 if (filtered.Length > 0) {
-                    var ignored = SendWebSocket(session.EventSocket, "{ \"event\": \"OnConfigChanged\", \"changedObjects\": ", filtered);
+                    session.SendEvent_ConfigChanged(filtered);
                 }
             }
         }
@@ -995,33 +1002,7 @@ namespace Ifak.Fast.Mediator
             SessionInfo[] relevantSessions = sessions.Values.Where(s => s.AlarmsAndEventsEnabled && s.EventSocket != null && s.EventSocket.State == WebSocketState.Open && (int)s.MinSeverity <= (int)ae.Severity).ToArray();
 
             foreach (var session in relevantSessions) {
-                var ignored = SendWebSocket(session.EventSocket, "{ \"event\": \"OnAlarmOrEvent\", \"alarmOrEvent\": ", ae);
-            }
-        }
-
-        private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-
-        private async Task SendWebSocket(WebSocket socket, string msgStart, object content) {
-
-            try {
-
-                using (var stream = MemoryManager.GetMemoryStream("HandleClientRequests.SendWebSocket")) {
-                    using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
-                        writer.Write(msgStart);
-                        StdJson.ObjectToWriter(content, writer);
-                        writer.Write("}");
-                    }
-                    byte[] bytes = stream.GetBuffer();
-                    int count = (int)stream.Length;
-                    var segment = new ArraySegment<byte>(bytes, 0, count);
-                    try {
-                        await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    catch (Exception) { }
-                }
-            }
-            catch (Exception exp) {
-                logger.Warn("Exception in SendWebSocket: " + exp.Message);
+                session.SendEvent_AlarmOrEvents(ae);
             }
         }
 
@@ -1128,6 +1109,8 @@ namespace Ifak.Fast.Mediator
 
         public class SessionInfo
         {
+            public bool terminating = false;
+
             public Origin Origin { get; set; }
             public string Challenge { get; set; } = "";
             public string Password { get; set; } = "";
@@ -1143,6 +1126,227 @@ namespace Ifak.Fast.Mediator
             public HashSet<ObjectRef> ConfigChangeObjects { get; private set; } = new HashSet<ObjectRef>();
             public bool AlarmsAndEventsEnabled { get; set; } = false;
             public Severity MinSeverity { get; set; } = Severity.Info;
+
+            private bool forceEventBuffering = false;
+
+            private Timestamp lastTimeVarValues = Timestamp.Empty;
+            private Dictionary<VariableRef, VariableValue> bufferVarValues = new Dictionary<VariableRef, VariableValue>();
+
+            private Timestamp lastTimeVarHistory = Timestamp.Empty;
+            private Dictionary<VariableRef, HistoryChange> bufferVarHistory = new Dictionary<VariableRef, HistoryChange>();
+
+            private Timestamp lastTimeConfigChanged = Timestamp.Empty;
+            private HashSet<ObjectRef> bufferConfigChanges = new HashSet<ObjectRef>();
+
+            private Timestamp lastTimeEvents = Timestamp.Empty;
+            private List<AlarmOrEvent> bufferEvents = new List<AlarmOrEvent>();
+
+            public void SendEvent_VariableValuesChanged(List<VariableValue> values) {
+                if (forceEventBuffering) {
+                    foreach (VariableValue vv in values) {
+                        bufferVarValues[vv.Variable] = vv;
+                    }
+                    lastTimeVarValues = Timestamp.Now;
+                }
+                else {
+                    var ignored = SendVariables(values);
+                }
+            }
+
+            public void SendEvent_VariableHistoryChanged(List<HistoryChange> changes) {
+                if (forceEventBuffering) {
+                    foreach (HistoryChange h in changes) {
+                        VariableRef key = h.Variable;
+                        if (bufferVarHistory.ContainsKey(key)) {
+                            HistoryChange hh = bufferVarHistory[key];
+                            hh.ChangeStart = Timestamp.MinOf(h.ChangeStart, hh.ChangeStart);
+                            hh.ChangeEnd = Timestamp.MaxOf(h.ChangeEnd, hh.ChangeEnd);
+                            hh.ChangeType = h.ChangeType == hh.ChangeType ? hh.ChangeType : HistoryChangeType.Mixed;
+                            bufferVarHistory[key] = hh;
+                        }
+                        else {
+                            bufferVarHistory[key] = h;
+                        }
+                    }
+                    lastTimeVarHistory = Timestamp.Now;
+                }
+                else {
+                    var ignored = SendVariableHistory(changes);
+                }
+            }
+
+            public void SendEvent_ConfigChanged(ObjectRef[] changes) {
+                if (forceEventBuffering) {
+                    foreach (ObjectRef obj in changes) {
+                        bufferConfigChanges.Add(obj);
+                    }
+                    lastTimeConfigChanged = Timestamp.Now;
+                }
+                else {
+                    var ignored = SendConfigChanged(changes);
+                }
+            }
+
+            public void SendEvent_AlarmOrEvents(AlarmOrEvent ae) {
+                if (forceEventBuffering) {
+                    if (bufferEvents.Count > 10000) {
+                        logger.Warn("bufferEvents.Count > 10000");
+                        bufferEvents.Clear();
+                    }
+                    else {
+                        bufferEvents.Add(ae);
+                        lastTimeEvents = Timestamp.Now;
+                    }
+                }
+                else {
+                    var ignored = SendAlarmOrEvents(new AlarmOrEvent[] { ae });
+                }
+            }
+
+            private async Task SendVariables(IList<VariableValue> values) {
+
+                try {
+                    forceEventBuffering = true;
+                    await SendWebSocket("{ \"event\": \"OnVariableValueChanged\", \"variables\": ", values);
+                }
+                finally {
+                    forceEventBuffering = false;
+                }
+                CheckPendingEvents();
+            }
+
+            private async Task SendVariableHistory(IList<HistoryChange> values) {
+
+                try {
+                    forceEventBuffering = true;
+                    await SendWebSocket("{ \"event\": \"OnVariableHistoryChanged\", \"changes\": ", values);
+                }
+                finally {
+                    forceEventBuffering = false;
+                }
+                CheckPendingEvents();
+            }
+
+            private async Task SendConfigChanged(ObjectRef[] changes) {
+
+                try {
+                    forceEventBuffering = true;
+                    await SendWebSocket("{ \"event\": \"OnConfigChanged\", \"changedObjects\": ", changes);
+                }
+                finally {
+                    forceEventBuffering = false;
+                }
+                CheckPendingEvents();
+            }
+
+            private async Task SendAlarmOrEvents(AlarmOrEvent[] events) {
+
+                try {
+                    forceEventBuffering = true;
+                    await SendWebSocket("{ \"event\": \"OnAlarmOrEvent\", \"events\": ", events);
+                }
+                finally {
+                    forceEventBuffering = false;
+                }
+                CheckPendingEvents();
+            }
+
+            private void CheckPendingEvents() {
+
+                if (terminating) return;
+
+                int idx = MinIndexNotEmpty(lastTimeVarValues, lastTimeVarHistory, lastTimeConfigChanged, lastTimeEvents);
+                if (idx < 0) return;
+
+                switch (idx) {
+                    case 0: {
+                            var nextValues = bufferVarValues.Values.ToArray();
+                            bufferVarValues.Clear();
+                            lastTimeVarValues = Timestamp.Empty;
+                            Task ignored = SendVariables(nextValues);
+                            break;
+                        }
+                    case 1: {
+                            var nextValues = bufferVarHistory.Values.ToArray();
+                            bufferVarHistory.Clear();
+                            lastTimeVarHistory = Timestamp.Empty;
+                            Task ignored = SendVariableHistory(nextValues);
+                            break;
+                        }
+                    case 2: {
+                            var nextValues = bufferConfigChanges.ToArray();
+                            bufferConfigChanges.Clear();
+                            lastTimeConfigChanged = Timestamp.Empty;
+                            Task ignored = SendConfigChanged(nextValues);
+                            break;
+                        }
+                    case 3: {
+                            var nextValues = bufferEvents.ToArray();
+                            bufferEvents.Clear();
+                            lastTimeEvents = Timestamp.Empty;
+                            Task ignored = SendAlarmOrEvents(nextValues);
+                            break;
+                        }
+                }
+            }
+
+            private int MinIndexNotEmpty(params Timestamp[] timestamps) {
+
+                if (timestamps.All(t => t.IsEmpty)) return -1;
+
+                int startIdx = 0;
+                for (int i = 0; i < timestamps.Length; ++i) {
+                    Timestamp t = timestamps[i];
+                    if (t.NonEmpty) {
+                        startIdx = i;
+                        break;
+                    }
+                }
+
+                Timestamp minT = timestamps[startIdx];
+                int minIdx = startIdx;
+                for (int n = startIdx + 1; n < timestamps.Length; ++n) {
+                    Timestamp t = timestamps[n];
+                    if (t.NonEmpty && t < minT) {
+                        minT = t;
+                        minIdx = n;
+                    }
+                }
+                return minIdx;
+            }
+
+            private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+            private ArraySegment<byte> ackByteBuffer = new ArraySegment<byte>(new byte[32]);
+
+            private async Task SendWebSocket(string msgStart, object content) {
+
+                try {
+
+                    using (var stream = MemoryManager.GetMemoryStream("HandleClientRequests.SendWebSocket")) {
+                        using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
+                            writer.Write(msgStart);
+                            StdJson.ObjectToWriter(content, writer);
+                            writer.Write("}");
+                        }
+                        byte[] bytes = stream.GetBuffer();
+                        int count = (int)stream.Length;
+                        var segment = new ArraySegment<byte>(bytes, 0, count);
+                        try {
+                            await EventSocket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        catch (Exception) { }
+                    }
+                }
+                catch (Exception exp) {
+                    logger.Warn("Exception in SendWebSocket: " + exp.Message);
+                }
+
+                try {
+                    await EventSocket.ReceiveAsync(ackByteBuffer, CancellationToken.None);
+                }
+                catch (Exception) { }
+            }
         }
     }
 

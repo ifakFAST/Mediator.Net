@@ -482,15 +482,15 @@ namespace Ifak.Fast.Mediator
 
     public interface EventListener
     {
-        void OnConfigChanged(ObjectRef[] changedObjects);
+        Task OnConfigChanged(ObjectRef[] changedObjects);
 
-        void OnVariableValueChanged(VariableValue[] variables);
+        Task OnVariableValueChanged(VariableValue[] variables);
 
-        void OnVariableHistoryChanged(HistoryChange[] changes);
+        Task OnVariableHistoryChanged(HistoryChange[] changes);
 
-        void OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents);
+        Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents);
 
-        void OnConnectionClosed();
+        Task OnConnectionClosed();
     }
 
     public class AlarmOrEvent // several instances of the same (ModuleID, IsSystem, Severity, Type, AffectedObjects) combination should be grouped together

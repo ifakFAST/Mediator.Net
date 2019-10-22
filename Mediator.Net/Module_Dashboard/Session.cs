@@ -87,24 +87,49 @@ namespace Ifak.Fast.Mediator.Dashboard
             return (ViewBase)viewObj;
         }
 
-        void EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
-            currentView?.OnConfigChanged(changedObjects);
+        Task EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
+            if (currentView != null) {
+                return currentView.OnConfigChanged(changedObjects);
+            }
+            else {
+                return Task.FromResult(true);
+            }
         }
 
-        void EventListener.OnVariableValueChanged(VariableValue[] variables) {
-            currentView?.OnVariableValueChanged(variables);
+        Task EventListener.OnVariableValueChanged(VariableValue[] variables) {
+            if (currentView != null) {
+                return currentView.OnVariableValueChanged(variables);
+            }
+            else {
+                return Task.FromResult(true);
+            }
         }
 
-        void EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
-            currentView?.OnVariableHistoryChanged(changes);
+        Task EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
+            if (currentView != null) {
+                return currentView.OnVariableHistoryChanged(changes);
+            }
+            else {
+                return Task.FromResult(true);
+            }
         }
 
-        void EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
-            currentView?.OnAlarmOrEvents(alarmOrEvents);
+        Task EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+            if (currentView != null) {
+                return currentView.OnAlarmOrEvents(alarmOrEvents);
+            }
+            else {
+                return Task.FromResult(true);
+            }
         }
 
-        void EventListener.OnConnectionClosed() {
-            currentView?.OnConnectionClosed();
+        Task EventListener.OnConnectionClosed() {
+            if (currentView != null) {
+                return currentView.OnConnectionClosed();
+            }
+            else {
+                return Task.FromResult(true);
+            }
         }
 
         Task ViewContext.SendEventToUI(string eventName, object payload) {
