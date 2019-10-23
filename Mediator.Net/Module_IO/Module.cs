@@ -653,9 +653,10 @@ namespace Ifak.Fast.Mediator.IO
             }
             else if (badItems.Count > 1) {
                 string names = string.Join(", ", badItems.Select(it => it.Name));
-                string msg = $"Bad quality for reading {badItems.Count} data items: " + names;
+                string msg = $"Bad quality for reading {badItems.Count} data items: {badItems[0].Name}, ...";
                 ObjectRef[] objs = badItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
                 var ev = AlarmOrEventInfo.Warning("Quality", msg, objs);
+                ev.Details = names;
                 notifier.Notify_AlarmOrEvent(ev);
             }
             if (goodItems.Count == 1) {
@@ -665,9 +666,10 @@ namespace Ifak.Fast.Mediator.IO
             }
             else if (goodItems.Count > 1) {
                 string names = string.Join(", ", goodItems.Select(it => it.Name));
-                string msg = $"Good quality restored for {goodItems.Count} data items: " + names;
+                string msg = $"Good quality restored for {goodItems.Count} data items: {goodItems[0].Name}, ... ";
                 ObjectRef[] objs = goodItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
                 var ev = AlarmOrEventInfo.Info("Quality", msg, objs);
+                ev.Details = names;
                 notifier.Notify_AlarmOrEvent(ev);
             }
         }
