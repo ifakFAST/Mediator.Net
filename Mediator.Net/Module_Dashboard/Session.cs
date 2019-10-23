@@ -87,39 +87,59 @@ namespace Ifak.Fast.Mediator.Dashboard
             return (ViewBase)viewObj;
         }
 
-        Task EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
+        async Task EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
             if (currentView != null && !closed) {
-                return currentView.OnConfigChanged(changedObjects);
-            }
-            else {
-                return Task.FromResult(true);
+                ViewBase view = currentView;
+                try {
+                    await currentView.OnConfigChanged(changedObjects);
+                }
+                catch (Exception exp) {
+                    ReportEventException(view, nameof(currentView.OnConfigChanged), exp);
+                }
             }
         }
 
-        Task EventListener.OnVariableValueChanged(VariableValue[] variables) {
+        async Task EventListener.OnVariableValueChanged(VariableValue[] variables) {
             if (currentView != null && !closed) {
-                return currentView.OnVariableValueChanged(variables);
-            }
-            else {
-                return Task.FromResult(true);
+                ViewBase view = currentView;
+                try {
+                    await currentView.OnVariableValueChanged(variables);
+                }
+                catch (Exception exp) {
+                    ReportEventException(view, nameof(currentView.OnVariableValueChanged), exp);
+                }
             }
         }
 
-        Task EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
+        async Task EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
             if (currentView != null && !closed) {
-                return currentView.OnVariableHistoryChanged(changes);
-            }
-            else {
-                return Task.FromResult(true);
+                ViewBase view = currentView;
+                try {
+                    await currentView.OnVariableHistoryChanged(changes);
+                }
+                catch(Exception exp) {
+                    ReportEventException(view, nameof(currentView.OnVariableHistoryChanged), exp);
+                }
             }
         }
 
-        Task EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        async Task EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
             if (currentView != null && !closed) {
-                return currentView.OnAlarmOrEvents(alarmOrEvents);
+                ViewBase view = currentView;
+                try {
+                    await currentView.OnAlarmOrEvents(alarmOrEvents);
+                }
+                catch (Exception exp) {
+                    ReportEventException(view, nameof(currentView.OnAlarmOrEvents), exp);
+                }
             }
-            else {
-                return Task.FromResult(true);
+        }
+
+        private void ReportEventException(ViewBase view, string eventName, Exception exp) {
+            Exception e = exp.GetBaseException() ?? exp;
+            if (!(e is ConnectivityException)) {
+                string msg = $"{view.GetType().Name}.{eventName}: {e.Message}";
+                Console.Error.WriteLine(msg);
             }
         }
 

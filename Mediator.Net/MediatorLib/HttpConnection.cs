@@ -508,17 +508,8 @@ namespace Ifak.Fast.Mediator
                 throw new ConnectivityException(errMsg);
             }
             else {
-
-                bool sessionInvalid = GetBoolPropertyOrDefault(errObj, "sessionInvalid", false);
-                if (sessionInvalid) {
-                    string errMsg = GetStringPropertyOrDefault(errObj, "error", "Session expired");
-                    OnConnectionBroken();
-                    throw new ConnectivityException(errMsg);
-                }
-                else {
-                    string errMsg = GetStringPropertyOrDefault(errObj, PropertyError, response.StatusCode.ToString());
-                    throw new RequestException(errMsg);
-                }
+                string errMsg = GetStringPropertyOrDefault(errObj, PropertyError, response.StatusCode.ToString());
+                throw new RequestException(errMsg);
             }
         }
 
@@ -543,7 +534,7 @@ namespace Ifak.Fast.Mediator
         private const string ConnectionClosedMessage = "Connection is closed.";
 
         private JObject MakeSessionRequest() {
-            if (IsClosed) throw new Exception(ConnectionClosedMessage);
+            if (IsClosed) throw new ConnectivityException(ConnectionClosedMessage);
             JObject request = new JObject();
             request["session"] = session;
             return request;
@@ -613,8 +604,12 @@ namespace Ifak.Fast.Mediator
                         }
                         catch (Exception exp) {
                             Exception exception = exp.GetBaseException() ?? exp;
-                            if (exception.Message != ConnectionClosedMessage) {
-                                Console.Error.WriteLine("Exception in event dispatch: " + exception.Message);
+                            string msg = "Exception in event dispatch: " + exception.Message;
+                            if (exception is ConnectivityException) {
+                                Console.Out.WriteLine(msg);
+                            }
+                            else {
+                                Console.Error.WriteLine(msg);
                             }
                         }
 

@@ -289,12 +289,16 @@ namespace Ifak.Fast.Mediator
 
             if (shutdown) {
                 response.StatusCode = 400; // BAD Request
+                string path = request.Path.ToString();
+                string methodName = path.StartsWith(HandleClientRequests.PathPrefix) ? path.Substring(HandleClientRequests.PathPrefix.Length) : path;
+                byte[] bytes = Encoding.UTF8.GetBytes($"Can not respond to {methodName} request because system is shutting down.");
+                Task ignored = response.Body.WriteAsync(bytes, 0, bytes.Length);
                 return;
             }
 
             try {
 
-                if (request.Path == "/Mediator/" && context.WebSockets.IsWebSocketRequest) {
+                if (request.Path == HandleClientRequests.PathPrefix && context.WebSockets.IsWebSocketRequest) {
                     WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
                     await HandleClientWebSocket(webSocket);
                     return;
