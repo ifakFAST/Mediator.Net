@@ -209,6 +209,7 @@ export default class ViewGeneric extends Vue {
     const objectMap = this.objectMap
     for (const entry of entries) {
       const obj = objectMap[entry.ObjectID]
+      if (obj === undefined) { return }
       for (const variable of obj.Variables) {
         if (variable.Name === entry.VarName) {
           variable.V = entry.V

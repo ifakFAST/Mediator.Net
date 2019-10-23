@@ -96,7 +96,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     changes.Add(new ChangeEntry() {
                         N = idx,
                         V = vv.Value.V,
-                        T = vv.Value.T,
+                        T = Timestamp2Str(vv.Value.T),
                         Q = vv.Value.Q
                     });
                 }
@@ -121,9 +121,13 @@ namespace Ifak.Fast.Mediator.Dashboard
                 Obj = name,
                 Var = vv.Variable.Name,
                 V = vv.Value.V,
-                T = vv.Value.T,
+                T = Timestamp2Str(vv.Value.T),
                 Q = vv.Value.Q
             };
+        }
+
+        private string Timestamp2Str(Timestamp t) {
+            return t.ToString().Replace('T', '\u00A0');
         }
 
         public class ReadModuleVariables_Params
@@ -157,7 +161,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string Obj { get; set; }
             public string Var { get; set; }
             public DataValue V { get; set; }
-            public Timestamp T { get; set; }
+            public string T { get; set; }
             public Quality Q { get; set; }
         }
 
@@ -165,7 +169,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         {
             public int N { get; set; }
             public DataValue V { get; set; }
-            public Timestamp T { get; set; }
+            public string T { get; set; }
             public Quality Q { get; set; }
         }
 

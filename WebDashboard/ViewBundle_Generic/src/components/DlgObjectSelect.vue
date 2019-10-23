@@ -10,7 +10,7 @@
 
           <v-toolbar >
               <v-select class="ml-4 mr-4" solo hide-details v-bind:items="modules" v-model="currModuleID" item-text="Name" item-value="ID"
-                      @change="refreshObjects" label="Module" single-line bottom></v-select>
+                      @change="refreshObjects" label="Module" single-line menu-props="bottom"></v-select>
               <v-spacer></v-spacer>
               <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>

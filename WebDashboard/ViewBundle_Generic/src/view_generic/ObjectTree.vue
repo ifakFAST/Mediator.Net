@@ -59,6 +59,7 @@ export default class ObjectTree extends Vue {
         typeName = fullType.substring(i + 1)
       }
       if (typeName === this.model.Name) { return typeName }
+      if (typeName === 'DataItem') { return this.model.Name }
       return typeName + ' ' + this.model.Name
     }
     return ''

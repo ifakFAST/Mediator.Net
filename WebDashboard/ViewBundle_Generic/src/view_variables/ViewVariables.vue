@@ -11,7 +11,7 @@
           <v-toolbar >
               <v-toolbar-title>Module</v-toolbar-title>
               <v-select class="ml-4 mr-4" solo hide-details v-bind:items="modules" v-model="selectedModuleID" item-text="Name" item-value="ID"
-                @change='refreshVariables' label="Module" single-line bottom></v-select>
+                @change='refreshVariables' label="Module" single-line menu-props="bottom"></v-select>
               <v-btn @click.stop="refresh">Refresh</v-btn>
               <v-spacer></v-spacer>
               <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
@@ -21,7 +21,7 @@
               <template slot="items" slot-scope="props">
                 <td>{{ props.item.Obj }}</td>
                 <td>{{ props.item.Var }}</td>
-                <td class="text-xs-right">
+                <td class="text-xs-right" style="min-width: 12em">
                     <a @click.stop="edit(props.item)">{{ props.item.V }}</a>
                 </td>
                 <td v-bind:style="{ color: qualityColor(props.item.Q) }" class="text-xs-right">{{ props.item.Q }}</td>
