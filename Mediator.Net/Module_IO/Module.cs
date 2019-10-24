@@ -5,6 +5,7 @@
 using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -227,6 +228,25 @@ namespace Ifak.Fast.Mediator.IO
                 var groups = await adapter.Instance.Initialize(info, wrapper, items);
                 adapter.State = State.InitComplete;
                 adapter.SetGroups(groups);
+
+                Duration maxInitDelayForGoodQuality = adapter.Config.MaxInitDelayForGoodQuality;
+                if (adapter.ScheduledDataItems.Length > 0 && maxInitDelayForGoodQuality.TotalMilliseconds > 0) {
+                    VTQ empty = new VTQ();
+                    ReadRequest[] requests = adapter.ScheduledDataItems.Select(di => new ReadRequest(di.DataItemID, empty)).ToArray();
+                    Func<VTQ, bool> NonGood = x => x.Q != Quality.Good;
+
+                    VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                    if (readResults.Any(NonGood)) {
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        do {
+                            await Task.Delay(200);
+                            readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                        }
+                        while (readResults.Any(NonGood) && sw.Elapsed < maxInitDelayForGoodQuality.ToTimeSpan());
+                        sw.Stop();
+                    }
+                }
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
@@ -332,11 +352,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             try {
-                IList<ReadTask> readTasks = adapter.ReadItems(requests, timeout);
-                Task<DataItemValue[]>[] tasks = readTasks.Select(readTask => readTask.Task).ToArray();
-                DataItemValue[][] res = await Task.WhenAll(tasks);
-                VTQ[] vtqs = res.SelectMany(dataItemValues => dataItemValues.Select(item => item.Value)).ToArray();
-                return vtqs;
+                return await DoAdapterRead(adapter, requests, timeout);
             }
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException() ?? exception;
@@ -345,6 +361,14 @@ namespace Ifak.Fast.Mediator.IO
                 VTQ[] failures = requests.Select(it => new VTQ(now, Quality.Bad, it.LastValue.V)).ToArray();
                 return failures;
             }
+        }
+
+        private async Task<VTQ[]> DoAdapterRead(AdapterState adapter, IList<ReadRequest> requests, Duration? timeout) {
+            IList<ReadTask> readTasks = adapter.ReadItems(requests, timeout);
+            Task<DataItemValue[]>[] tasks = readTasks.Select(readTask => readTask.Task).ToArray();
+            DataItemValue[][] res = await Task.WhenAll(tasks);
+            VTQ[] vtqs = res.SelectMany(dataItemValues => dataItemValues.Select(item => item.Value)).ToArray();
+            return vtqs;
         }
 
         public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {

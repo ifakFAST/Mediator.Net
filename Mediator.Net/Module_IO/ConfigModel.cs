@@ -105,6 +105,8 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public int? MaxFractionalDigits { get; set; } = 3;
 
+        public Duration MaxInitDelayForGoodQuality { get; set; } = Duration.FromSeconds(0);
+
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         public Login? Login { get; set; } = null;
@@ -118,6 +120,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeLogin() => Login.HasValue;
         public bool ShouldSerializeNodes() => Nodes.Count > 0;
         public bool ShouldSerializeFractionalDigits() => MaxFractionalDigits.HasValue;
+        public bool ShouldSerializeMaxInitDelayForGoodQuality() => MaxInitDelayForGoodQuality.TotalMilliseconds != 0;
         public bool ShouldSerializeConfig() => Config.Count > 0;
         public bool ShouldSerializeDataItems() => DataItems.Count > 0;
 
