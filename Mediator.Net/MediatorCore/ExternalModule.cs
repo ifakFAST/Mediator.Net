@@ -5,6 +5,7 @@
 using NLog;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -326,24 +327,35 @@ namespace Ifak.Fast.Mediator
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
-            process.OutputDataReceived += OnReceivedOutput;
-            process.ErrorDataReceived += OnReceivedError;
             process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+
+            // We need to use one thread with sync reading because process.BeginOutputReadLine() is
+            // not truely asynchronous thereby randomly blocking threads of the common thread pool!
+
+            StartStreamReadThread(process.StandardOutput, (line) => {
+                logger.Info(line);
+            });
+            StartStreamReadThread(process.StandardError, (line) => {
+                logger.Error(line);
+            });
+
             return process;
         }
 
-        private void OnReceivedOutput(object sender, DataReceivedEventArgs e) {
-            if (!string.IsNullOrEmpty(e.Data)) {
-                logger.Info(e.Data);
-            }
-        }
-
-        private void OnReceivedError(object sender, DataReceivedEventArgs e) {
-            if (!string.IsNullOrEmpty(e.Data)) {
-                logger.Error(e.Data);
-            }
+        private static void StartStreamReadThread(StreamReader reader, Action<string> onGotLine) {
+            var thread = new Thread(() => {
+                while (true) {
+                    string line = reader.ReadLine();
+                    if (line == null) {
+                        return;
+                    }
+                    if (line != "") {
+                        onGotLine(line);
+                    }
+                }
+            });
+            thread.IsBackground = true;
+            thread.Start();
         }
 
         private void StopProcess(Process p) {
