@@ -588,7 +588,7 @@ namespace Ifak.Fast.Mediator.IO
                                                     else if (vtq.Q == Quality.Good && istate.LastReadValue.Q != Quality.Good) {
                                                         goodItems.Add(istate);
                                                     }
-                                                    vtq = RoundFloat(istate, vtq);
+                                                    vtq = NormalizeReadValue(istate, vtq);
                                                     istate.LastReadValue = vtq;
                                                     values.Add(VariableValue.Make(moduleID, val.ID, VariableName, vtq));
                                                 }
@@ -609,16 +609,29 @@ namespace Ifak.Fast.Mediator.IO
             } // while running
         }
 
-        private VTQ RoundFloat(ItemState istate, VTQ vtq) {
-            bool isFloat = istate.Type.IsFloat();
-            try {
-                if (isFloat && istate.FractionalDigits.HasValue && !vtq.V.IsArray) {
-                    int digits = istate.FractionalDigits.Value;
-                    vtq.V = DataValue.FromDouble(Math.Round(vtq.V.GetDouble(), digits));
+        private VTQ NormalizeReadValue(ItemState istate, VTQ vtq) {
+
+            bool SrcIsBool = vtq.V.IsBool;
+            bool DstIsFloat = istate.Type.IsFloat();
+
+            if (SrcIsBool) {
+                if (DstIsFloat) {
+                    vtq.V = DataValue.FromDouble(vtq.V.GetBool() ? 1 : 0);
+                }
+                else if (istate.Type.IsNumeric()) {
+                    vtq.V = DataValue.FromInt(vtq.V.GetBool() ? 1 : 0);
                 }
             }
-            catch (Exception exp) {
-                Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: " + vtq.V.ToString(), exp.Message);
+            else {
+                try {
+                    if (DstIsFloat && istate.FractionalDigits.HasValue && !vtq.V.IsArray) {
+                        int digits = istate.FractionalDigits.Value;
+                        vtq.V = DataValue.FromDouble(Math.Round(vtq.V.GetDouble(), digits));
+                    }
+                }
+                catch (Exception exp) {
+                    Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: " + vtq.V.ToString(), exp.Message);
+                }
             }
             return vtq;
         }
@@ -733,7 +746,7 @@ namespace Ifak.Fast.Mediator.IO
             foreach (DataItemValue val in result) {
                 if (dataItemsState.ContainsKey(val.ID)) {
                     ItemState istate = dataItemsState[val.ID];
-                    VTQ vtq = RoundFloat(istate, val.Value);
+                    VTQ vtq = NormalizeReadValue(istate, val.Value);
                     istate.LastReadValue = vtq;
                     values.Add(VariableValue.Make(ObjectRef.Make(moduleID, val.ID), VariableName, vtq));
                 }

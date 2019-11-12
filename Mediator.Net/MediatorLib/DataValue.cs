@@ -293,6 +293,8 @@ namespace Ifak.Fast.Mediator
 
         public bool IsArray => !string.IsNullOrEmpty(json) && (json[0] == '[' || FirstNonWhitespace(json) == '[');
 
+        public bool IsBool => json == "true" || json == "false";
+
         public T Object<T>() => StdJson.ObjectFromString<T>(json);
 
         public object Object(Type t) => StdJson.ObjectFromString(t, json);
