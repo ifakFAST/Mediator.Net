@@ -511,6 +511,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         public RelativePath RelativePath { get; }
         public NodeId StartingNode { get; }
 
+        public const char Separator = '/';
         private const string Objects = "Objects/";
         private const string Views = "Views/";
 
@@ -528,7 +529,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 if (address.StartsWith(Objects)) {
                     StartingNode = NodeId.Parse(ObjectIds.ObjectsFolder);
                     string path = address.Substring(Objects.Length);
-                    string[] components = path.Split('/');
+                    List<string> components = GetComponents(path);
                     RelativePath = new RelativePath() {
                         Elements = components.Select(comp => new RelativePathElement() { TargetName = QualifiedName.Parse(comp) }).ToArray()
                     };
@@ -536,7 +537,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 else {
                     StartingNode = NodeId.Parse(ObjectIds.ViewsFolder);
                     string path = address.Substring(Views.Length);
-                    string[] components = path.Split('/');
+                    List<string> components = GetComponents(path);
                     RelativePath = new RelativePath() {
                         Elements = components.Select(comp => new RelativePathElement() { TargetName = QualifiedName.Parse(comp) }).ToArray()
                     };
@@ -545,6 +546,26 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             else {
                 Node = NodeId.Parse(address);
             }
+        }
+
+        private static List<string> GetComponents(string path) {
+            string[] componentsSource = path.Split(Separator);
+            var components = new List<string>();
+            foreach (string component in componentsSource) {
+                if (components.Count == 0 || HasNamespaceIdx(component))
+                    components.Add(component);
+                else
+                    components[components.Count - 1] = components[components.Count - 1] + Separator + component;
+            }
+            return components;
+        }
+
+        private static bool HasNamespaceIdx(string s) {
+            int idx = s.IndexOf(':');
+            if (idx <= 0) return false;
+            string ns = s.Substring(0, idx);
+            int x;
+            return int.TryParse(ns, out x);
         }
     }
 
@@ -572,7 +593,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
             else {
                 PrintPath(node.Parent, sb);
-                sb.Append('/');
+                sb.Append(ItemInfo.Separator);
                 sb.Append(node.BrowseName.ToString());
             }
         }
