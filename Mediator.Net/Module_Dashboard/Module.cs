@@ -388,7 +388,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                         var vt = new ViewType() {
                             Name = id.ID,
                             HtmlPath = "/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
-                            Type = type
+                            Type = type,
+                            Icon = id.Icon ??  ""
                         };
                         result.Add(vt);
                     }
@@ -435,6 +436,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     viewID = v.ID,
                     viewName = v.Name,
                     viewURL = url ? v.Config.Object<ViewURLConfig>().URL : viewType.HtmlPath,
+                    viewIcon = viewType.Icon,
                     viewGroup = v.Group
                 };
 
@@ -456,6 +458,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     {
         public string Name { get; set; } = "";
         public string HtmlPath { get; set; } = "";
+        public string Icon { get; set; } = "";
         public Type Type { get; set; }
     }
 
@@ -468,6 +471,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class ViewInstance
     {
         public string viewID { get; set; } = "";
+        public string viewIcon { get; set; } = "";
         public string viewName { get; set; } = "";
         public string viewURL { get; set; } = "";
         public string viewGroup { get; set; } = "";

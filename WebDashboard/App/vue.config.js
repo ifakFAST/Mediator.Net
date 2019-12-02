@@ -3,5 +3,8 @@ module.exports = {
   outputDir: '../../Run/DashboardDist/App',
   configureWebpack: {
     performance: { hints: false }
-  }
+  },
+  transpileDependencies: [
+    'vuetify'
+  ]
 }

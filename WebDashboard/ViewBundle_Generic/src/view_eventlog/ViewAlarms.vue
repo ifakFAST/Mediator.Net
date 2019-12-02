@@ -3,16 +3,16 @@
     <v-content>
       <v-container>
 
-         <v-tabs v-model="currentTab">
+        <v-tabs v-model="currentTab">
 
           <v-tab>Active Alarms</v-tab>
           <v-tab-item>
-              <active-alarms class="px-1 py-1" :alarms="alarms" @ackreset="onAckResetAlarms"></active-alarms>
+            <active-alarms class="px-1 py-1" :alarms="alarms" @ackreset="onAckResetAlarms"></active-alarms>
           </v-tab-item>
 
           <v-tab>Event Log</v-tab>
           <v-tab-item>
-              <event-log class="px-1 py-1" :events="events" :time-range="timeRange"></event-log>
+            <event-log class="px-1 py-1" :events="events" :time-range="timeRange"></event-log>
           </v-tab-item>
 
         </v-tabs>
@@ -28,6 +28,8 @@ import ActiveAlarms from './ActiveAlarms.vue'
 import EventLog from './EventLog.vue'
 import { Component, Vue, Watch } from 'vue-property-decorator'
 
+import { Alarm } from './types'
+
 @Component({
   components: {
     ActiveAlarms,
@@ -37,7 +39,7 @@ import { Component, Vue, Watch } from 'vue-property-decorator'
 export default class ViewAlarms extends Vue {
 
   currentTab = 0
-  alarms = []
+  alarms: Alarm[] = []
   events = []
   timeRange = {
       type: 'Last',
@@ -52,7 +54,7 @@ export default class ViewAlarms extends Vue {
     const para = this.timeRange
     window.parent['dashboardApp'].sendViewRequest('Load', para, (strResponse) => {
       const response = JSON.parse(strResponse)
-      context.alarms = response.Alarms
+      context.alarms = response.Alarms.map(this.attachSelected)
       context.events = response.Events
     })
   }
@@ -62,9 +64,14 @@ export default class ViewAlarms extends Vue {
     para.TimeRange = this.timeRange
     window.parent['dashboardApp'].sendViewRequest('AckReset', para, (strResponse) => {
       const response = JSON.parse(strResponse)
-      context.alarms = response.Alarms
+      context.alarms = response.Alarms.map(this.attachSelected)
       context.events = response.Events
     })
+  }
+
+  attachSelected(alarm: Alarm): Alarm {
+    alarm.selected = false
+    return alarm
   }
 
   @Watch('currentTab')
@@ -114,53 +121,53 @@ export default class ViewAlarms extends Vue {
 
 <style>
  html {
-      font-size: 16px;
+    font-size: 16px;
   }
   @media only screen and (min-width: 1400px) {
-      .container {
-        max-width: 1300px;
-      }
+    .container {
+      max-width: 1300px;
+    }
   }
   @media only screen and (min-width: 1700px) {
-      .container {
-        max-width: 1600px;
-      }
+    .container {
+      max-width: 1600px;
+    }
   }
-  table.v-table thead th {
-      font-size: 16px;
-      font-weight: bold;
-      padding: 0 10px!important;
+  .v-data-table-header th {
+    font-size: 16px;
+    font-weight: bold;
   }
-  table.v-table tbody td {
-      font-size: 16px;
-      height: auto;
-      padding: 0 10px!important;
+  .v-data-table tbody td {
+    font-size: 16px;
+    height: auto;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
   }
   .container {
-      padding: 16px 0px!important;
+    padding: 16px 0px!important;
   }
   .bold {
-      font-weight: bold!important;
+    font-weight: bold!important;
   }
   .ErrWarning {
-      color: orange;
+    color: orange;
   }
   .ErrAlarm {
-      color: red;
+    color: red;
   }
   .small {
-      min-width: 42px;
-      width: 42px;
+    min-width: 42px;
+    width: 42px;
   }
   .dataTable {
-      border-collapse: separate;
-      border-spacing: 5px;
+    border-collapse: separate;
+    border-spacing: 5px;
   }
   .dataHead {
-      font-weight: bold!important;
-      vertical-align: top;
+    font-weight: bold!important;
+    vertical-align: top;
   }
   .dataBody {
-      vertical-align: top;
+    vertical-align: top;
   }
 </style>

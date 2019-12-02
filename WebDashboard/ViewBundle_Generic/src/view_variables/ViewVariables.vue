@@ -4,32 +4,34 @@
       <v-container>
 
         <div v-if="loading">
-          <p class="text-xs-center">Loading ...</p>
+          <p class="text-center">Loading ...</p>
         </div>
 
         <div v-else>
-          <v-toolbar >
+          <v-toolbar>
               <v-toolbar-title>Module</v-toolbar-title>
-              <v-select class="ml-4 mr-4" solo hide-details v-bind:items="modules" v-model="selectedModuleID" item-text="Name" item-value="ID"
+              <v-select class="ml-4 mr-4" style="max-width: 20em" solo hide-details v-bind:items="modules" v-model="selectedModuleID" item-text="Name" item-value="ID"
                 @change='refreshVariables' label="Module" single-line menu-props="bottom"></v-select>
               <v-btn @click.stop="refresh">Refresh</v-btn>
               <v-spacer></v-spacer>
-              <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
+              <v-text-field class="ml-4" append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>
 
-          <v-data-table :no-data-text="noDataText" :headers="headers" :items="items" :search="search" :custom-filter="customFilter" class="elevation-4 mt-2" :rows-per-page-items="rowsPerPageItems">
-              <template slot="items" slot-scope="props">
-                <td>{{ props.item.Obj }}</td>
-                <td>{{ props.item.Var }}</td>
-                <td class="text-xs-right" style="min-width: 12em">
-                    <a @click.stop="edit(props.item)">{{ props.item.V }}</a>
-                </td>
-                <td v-bind:style="{ color: qualityColor(props.item.Q) }" class="text-xs-right">{{ props.item.Q }}</td>
-                <td class="text-xs-right">{{ props.item.T }}</td>
+          <v-data-table :no-data-text="noDataText" :headers="headers" :items="items" :search="search"
+                        :custom-filter="customFilter" class="elevation-4 mt-2" :footer-props="footer" >
+
+              <template v-slot:item="{ item }">
+                <tr>
+                  <td>{{ item.Obj }}</td>
+                  <td>{{ item.Var }}</td>
+                  <td class="text-right" style="min-width: 12em">
+                    <a @click.stop="edit(item)">{{ item.V }}</a>
+                  </td>
+                  <td v-bind:style="{ color: qualityColor(item.Q) }" class="text-right">{{ item.Q }}</td>
+                  <td class="text-right">{{ item.T }}</td>
+                </tr>
               </template>
-              <template slot="pageText" slot-scope="{ pageStart, pageStop }">
-                From {{ pageStart }} to {{ pageStop }}
-              </template>
+
           </v-data-table>
 
           <v-dialog v-model="editDialog" max-width="290" @keydown="editKeydown">
@@ -40,8 +42,8 @@
                 </v-card-text>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn color="blue darken-1" flat="flat" @click.stop="editDialog = false">Cancel</v-btn>
-                  <v-btn color="blue darken-1" flat="flat" @click.stop="editWrite">Write</v-btn>
+                  <v-btn color="grey darken-1" text @click.stop="editDialog = false">Cancel</v-btn>
+                  <v-btn color="primary darken-1" text @click.stop="editWrite">Write</v-btn>
                 </v-card-actions>
               </v-card>
             </v-dialog>
@@ -60,6 +62,7 @@ interface VarEntry {
   ObjID: string
   Obj: string
   Var: string
+  V: string
 }
 
 @Component
@@ -67,32 +70,31 @@ export default class ViewVariables extends Vue {
 
   loading = true
   search = ''
-  pagination = {}
   modules = []
   selectedModuleID = ''
   items = []
   noDataText = 'No variables in selected module'
-  rowsPerPageItems = [50, 100, 500, 1000, { text: 'Show All', value: -1 }]
+  footer = {
+    showFirstLastPage: true,
+    itemsPerPageOptions: [50, 100, 500, 1000, { text: 'All', value: -1 }],
+  }
   editTmp = ''
   editDialog = false
-  editItem: VarEntry = { ObjID: '', Obj: '', Var: ''}
+  editItem: VarEntry = { ObjID: '', Obj: '', Var: '', V: ''}
   headers = [
-      { text: 'Object Name', align: 'left', sortable: false, value: 'Obj' },
-      { text: 'Variable', align: 'left', sortable: false, value: 'Var' },
-      { text: 'Value', align: 'right', sortable: false, value: 'V' },
-      { text: 'Quality', align: 'right', sortable: false, value: 'Q' },
-      { text: 'Timestamp', align: 'right', sortable: false, value: 'T' },
+      { text: 'Object Name', align: 'left',  sortable: false, filterable: true,  value: 'Obj' },
+      { text: 'Variable',    align: 'left',  sortable: false, filterable: false, value: 'Var' },
+      { text: 'Value',       align: 'right', sortable: false, filterable: false, value: 'V' },
+      { text: 'Quality',     align: 'right', sortable: false, filterable: false, value: 'Q' },
+      { text: 'Timestamp',   align: 'right', sortable: false, filterable: false, value: 'T' },
   ]
 
-  customFilter(items: any, search: any, filter: any, headers: any) {
-    search = search.toString().toLowerCase()
-    if (search.trim() === '') { return items }
+  customFilter(value: any, search: string | null, item: VarEntry) {
+    if (search === null ) { return true }
+    search = search.toLowerCase()
     const words = search.split(' ').filter((w) => w !== '')
-    const isFilterMatch = (val) => {
-      const valLower = val.toLowerCase()
-      return words.every((word) => valLower.indexOf(word) !== -1)
-    }
-    return items.filter((item) => isFilterMatch(item.Obj + ' ' + item.Var + ' ' + item.V.toString()))
+    const valLower = (item.Obj + ' ' + item.Var + ' ' + item.V).toLowerCase()
+    return words.every((word) => valLower.indexOf(word) !== -1)
   }
 
   validateVariableValue(v: any) {
@@ -185,14 +187,15 @@ export default class ViewVariables extends Vue {
 }
 </script>
 
+
 <style>
 
-  table.v-table thead th {
+  .v-data-table-header th {
     font-size: 16px;
     font-weight: bold;
   }
 
-  table.v-table tbody td {
+  .v-data-table tbody td {
     font-size: 16px;
     height: auto;
     padding-top: 9px !important;

@@ -1,21 +1,25 @@
 <template>
   <v-app light>
 
-    <v-navigation-drawer app fixed clipped :mini-variant="miniVariant" v-model="drawer" width="250" hide-overlay disable-resize-watcher>
-      <v-list>
-        <v-list-tile v-for="(view, i) in views" :key="i" value="true" @click="activateView(view.viewID)">
-          <v-list-tile-action>
-            <v-icon light v-html="icon"></v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content>
-            <v-list-tile-title v-text="view.viewName"></v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
+    <v-navigation-drawer app fixed clipped :mini-variant="miniVariant" v-model="drawer" width="220" hide-overlay disable-resize-watcher>
+
+      <v-list nav dense class="mt-4">
+        <v-list-item-group :value="currViewID" >
+          <v-list-item v-for="(view, i) in views" :value="view.viewID" :key="i" @click="activateView(view.viewID)">
+            <v-list-item-icon>
+              <v-icon light>{{iconFromView(view)}}</v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title style="font-size: 15px" v-text="view.viewName"></v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+        </v-list-item-group>
       </v-list>
+
     </v-navigation-drawer>
 
-    <v-toolbar app fixed clipped-left>
-      <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
+    <v-app-bar app fixed clipped-left>
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <v-btn icon @click.stop="miniVariant = !miniVariant">
         <v-icon v-html="miniVariant ? 'chevron_right' : 'chevron_left'"></v-icon>
       </v-btn>
@@ -25,20 +29,22 @@
 
       <v-spacer></v-spacer>
 
-      <v-alert class="mx-4" outline :value="connectionState > 0" icon="cloud_off" :color="connectionColor" transition="scale-transition">
+      <v-alert class="mx-4 my-0" outlined :value="connectionState > 0" icon="cloud_off" :color="connectionColor" transition="scale-transition">
         {{ connectionText }}
       </v-alert>
 
       <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showTimeEdit">
-         <div slot="activator">
+         <template v-slot:activator="{ on }">
+          <div v-on="on">
             Time Range:
-            <v-btn flat color="primary" style="margin-left: 0px; margin-right: 30px;" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
-         </div>
+            <v-btn text color="primary" style="margin-left: 0px; margin-right: 30px;" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
+          </div>
+         </template>
          <v-list>
-            <v-list-tile v-for="item in predefinedTimeRanges" :key="item.title" @click="predefinedTimeRangeSelected(item)">
-               <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-            </v-list-tile>
-            <v-list-tile>
+            <v-list-item v-for="item in predefinedTimeRanges" :key="item.title" @click="predefinedTimeRangeSelected(item)">
+               <v-list-item-title>{{ item.title }}</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
                <table>
                   <tr>
                      <td>
@@ -48,14 +54,14 @@
                         <v-select style="width: 110px;" v-model="timeRangeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']"></v-select>
                      </td>
                      <td>
-                        <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidTimeLast" flat @click="timeRangeApply"><v-icon>check</v-icon></v-btn>
+                        <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidTimeLast" text @click="timeRangeApply"><v-icon>check</v-icon></v-btn>
                      </td>
                   </tr>
                </table>
-            </v-list-tile>
-            <v-list-tile @click="customTimeRangeSelected">
-               <v-list-tile-title>Custom range...</v-list-tile-title>
-            </v-list-tile>
+            </v-list-item>
+            <v-list-item @click="customTimeRangeSelected">
+               <v-list-item-title>Custom range...</v-list-item-title>
+            </v-list-item>
          </v-list>
       </v-menu>
 
@@ -75,13 +81,13 @@
             </v-card-text>
             <v-card-actions>
                <v-spacer></v-spacer>
-               <v-btn color="primary" :disabled="!isValidTimeRange" flat @click="timeRangeApply2">Apply</v-btn>
+               <v-btn color="primary" :disabled="!isValidTimeRange" text @click="timeRangeApply2">Apply</v-btn>
             </v-card-actions>
          </v-card>
       </v-dialog>
 
-      <v-btn flat @click.stop="logout">Logout</v-btn>
-    </v-toolbar>
+      <v-btn text @click.stop="logout">Logout</v-btn>
+    </v-app-bar>
 
     <v-content>
       <v-container fluid fill-height>
@@ -95,6 +101,7 @@
 <script>
   export default {
     props: {
+      currViewID: String,
       currViewSrc: String,
       views: Array,
       busy: Boolean,
@@ -107,7 +114,6 @@
          drawer: true,
          miniVariant: false,
          title: 'Dashboard',
-         icon: 'bubble_chart',
          showTimeEdit: false,
          timeRangeEdit: {
             type: 'Last',
@@ -174,6 +180,11 @@
          const day = bits[2];
          const d = new Date(year, month - 1, day);
          return d.getFullYear() == year && d.getMonth() + 1 == month && year > 1900 && year < 3000;
+      },
+      iconFromView(view) {
+        const icon = view.viewIcon;
+        if (icon === undefined || icon === '') return 'bubble_chart'
+        return icon
       }
     },
     watch: {

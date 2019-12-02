@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="value" scrollable max-width="720px" @keydown="(e) => { if (e.keyCode === 27) { close(); }}">
+  <v-dialog v-model="value" scrollable max-width="790px" @keydown="(e) => { if (e.keyCode === 27) { close(); }}">
     <v-card>
 
         <v-card-title>
@@ -9,34 +9,28 @@
         <v-card-text>
 
           <v-toolbar >
-              <v-select class="ml-4 mr-4" solo hide-details v-bind:items="modules" v-model="currModuleID" item-text="Name" item-value="ID"
+              <v-select class="ml-4 mr-4" style="max-width: 12em" hide-details v-bind:items="modules" v-model="currModuleID" item-text="Name" item-value="ID"
                       @change="refreshObjects" label="Module" single-line menu-props="bottom"></v-select>
               <v-spacer></v-spacer>
               <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>
 
-          <v-data-table no-data-text="No objects in selected module" :headers="headers" :items="items"
-                          :search="search" :custom-filter="customObjectFilter" class="elevation-4 mt-2"
-                          :rows-per-page-items="rowsPerPageItems" select-all
-                          item-key="ID" v-model="selected">
+          <v-data-table dense no-data-text="No objects with numeric variables in selected module" :headers="headers" :items="items"
+                        :search="search" :custom-filter="customObjectFilter" class="elevation-4 mt-2"
+                        show-select single-select :footer-props="footer" item-key="ID" v-model="selected">
 
-              <template slot="items" slot-scope="props">
-                <td><v-checkbox primary hide-details v-model="props.selected"></v-checkbox></td>
-                <td>{{ getShortTypeName(props.item.Type) }}</td>
-                <td>{{ props.item.Name }}</td>
-                <td>{{ props.item.ID }}</td>
+              <template v-slot:item.Type="{ item }">
+                {{ getShortTypeName(item.Type) }}
               </template>
-              <template slot="pageText" slot-scope="{ pageStart, pageStop }">
-                From {{ pageStart }} to {{ pageStop }}
-              </template>
+
           </v-data-table>
 
         </v-card-text>
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="red darken-1"  flat @click.native="close">Cancel</v-btn>
-          <v-btn color="blue darken-1" flat @click.native="selectObject_OK" :disabled="!isSelectObjectOK">OK</v-btn>
+          <v-btn color="grey darken-1"  text @click.native="close">Cancel</v-btn>
+          <v-btn color="primary darken-1" text @click.native="selectObject_OK" :disabled="!isSelectObjectOK">OK</v-btn>
         </v-card-actions>
 
     </v-card>
@@ -76,9 +70,10 @@ export default class DlgObjectSelect extends Vue {
   selected: Obj[] = []
   search = ''
   items: Obj[] = []
-
-  pagination = {}
-  rowsPerPageItems = [10, 50, 100, 500, { text: 'All Items', value: -1 }]
+  footer = {
+    showFirstLastPage: true,
+    itemsPerPageOptions: [10, 50, 100, 500, { text: 'All', value: -1 }],
+  }
   headers = [
     { text: 'Type', align: 'left', sortable: true, value: 'Type' },
     { text: 'Name', align: 'left', sortable: true, value: 'Name' },
@@ -140,32 +135,12 @@ export default class DlgObjectSelect extends Vue {
     }
   }
 
-  @Watch('selected')
-  watch_selectObject_selected(val: Obj[], oldVal: Obj[]) {
-
-    if (val.length === 2 && oldVal.length === 1) {
-      if (val[0] === oldVal[0]) {
-        this.selected = [val[1]]
-      }
-      else {
-        this.selected = [val[0]]
-      }
-    }
-    else if (val.length > 1) {
-      const last = val[val.length - 1]
-      this.selected = [last]
-    }
-  }
-
-  customObjectFilter(items: Obj[], search: string, filter, headers) {
+  customObjectFilter(value: any, search: string | null, item: Obj): boolean {
+    if (search === null ) { return true }
     search = search.toLowerCase()
-    if (search.trim() === '') { return items }
-    const words: string[] = search.split(' ').filter((w) => w !== '')
-    const isFilterMatch = (val: string) => {
-      const valLower = val.toLowerCase()
-      return words.every((word) => valLower.indexOf(word) !== -1)
-    }
-    return items.filter((item: Obj) => isFilterMatch(item.Type + ' ' + item.Name + ' ' + item.ID))
+    const words = search.split(' ').filter((w) => w !== '')
+    const valLower = (item.Type + ' ' + item.Name + ' ' + item.ID).toLowerCase()
+    return words.every((word) => valLower.indexOf(word) !== -1)
   }
 
 }

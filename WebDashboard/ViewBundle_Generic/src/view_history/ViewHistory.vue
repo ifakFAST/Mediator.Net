@@ -9,32 +9,32 @@
               @click="currentTab = tab">{{tab.Name}}</a>
           <v-spacer></v-spacer>
           <v-menu bottom left offset-y>
-              <v-btn slot="activator" icon>
-                <v-icon>more_vert</v-icon>
-              </v-btn>
-              <v-list>
-                <v-list-tile @click="tabs_Add_Start">
-                    <v-list-tile-title>Add new Tab</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="tabs_Rename_Start" v-if="hasTab">
-                    <v-list-tile-title>Rename Tab</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="tabs_Move_Left" v-if="canTabMoveLeft">
-                    <v-list-tile-title>Move Left</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="tabs_Move_Right" v-if="canTabMoveRight">
-                    <v-list-tile-title>Move Right</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="showConfirmDeleteTab = true" v-if="hasTab">
-                    <v-list-tile-title>Delete Tab</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="editItems" v-if="hasTab">
-                    <v-list-tile-title>Configure Plot Items</v-list-tile-title>
-                </v-list-tile>
-                <v-list-tile @click="editPlot" v-if="hasTab">
-                    <v-list-tile-title>Configure Plot</v-list-tile-title>
-                </v-list-tile>
-              </v-list>
+            <template v-slot:activator="{ on }">
+              <v-btn v-on="on" icon><v-icon>more_vert</v-icon></v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="tabs_Add_Start">
+                  <v-list-item-title>Add new Tab</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="tabs_Rename_Start" v-if="hasTab">
+                  <v-list-item-title>Rename Tab</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="tabs_Move_Left" v-if="canTabMoveLeft">
+                  <v-list-item-title>Move Left</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="tabs_Move_Right" v-if="canTabMoveRight">
+                  <v-list-item-title>Move Right</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="showConfirmDeleteTab = true" v-if="hasTab">
+                  <v-list-item-title>Delete Tab</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="editItems" v-if="hasTab">
+                  <v-list-item-title>Configure Plot Items</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="editPlot" v-if="hasTab">
+                  <v-list-item-title>Configure Plot</v-list-item-title>
+              </v-list-item>
+            </v-list>
           </v-menu>
         </v-toolbar>
 
@@ -43,149 +43,151 @@
                 :graph-options="currentTab.Options"
                 :graph-reset-zoom="zoomResetTime"></dy-graph>
 
-        <v-dialog v-model="editorItems.show" persistent max-width="1050px" @keydown="(e) => { if (e.keyCode === 27 && !selectObject.show) { editorItems.show = false; }}">
+        <v-dialog v-model="editorItems.show" persistent max-width="1100px" @keydown="(e) => { if (e.keyCode === 27 && !selectObject.show) { editorItems.show = false; }}">
           <v-card>
               <v-card-title>
                 <span class="headline">Configure Plot Items</span>
               </v-card-title>
               <v-card-text>
                 <table>
-                    <thead>
-                      <tr>
-                          <th>Name</th>
-                          <th>&nbsp;&nbsp;Color</th>
-                          <th>&nbsp;</th>
-                          <th>Size</th>
-                          <th>Type</th>
-                          <th>Axis</th>
-                          <th>Check&nbsp;&nbsp;</th>
-                          <th>Object Name</th>
-                          <th>&nbsp;</th>
-                          <th>Variable</th>
-                          <th>&nbsp;</th>
-                          <th>&nbsp;</th>
-                      </tr>
-                    </thead>
-                    <template v-for="(item, idx) in editorItems.items">
-                      <tr v-bind:key="idx">
-                          <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
-                          <td>
-                            <v-menu offset-y>
-                                <v-btn slot="activator" v-bind:style="{ backgroundColor: item.Color }" style="min-width:32px;width:32px;height:32px"></v-btn>
-                                <div>
-                                  <div v-for="(color, index) in editorItems.colorList" :key="index" @click="item.Color = color">
-                                      <div style="padding:6px; cursor: pointer;" v-bind:style="{ backgroundColor: color }">{{color}}</div>
-                                  </div>
-                                </div>
-                            </v-menu>
-                          </td>
-                          <td><v-text-field class="tabcontent" v-model="item.Color"      style="width:9ch;"></v-text-field></td>
-                          <td><v-text-field class="tabcontent" v-model="item.Size"       style="margin-left: 1ex; width:5ch;"></v-text-field></td>
-                          <td><v-select     class="tabcontent" v-model="item.SeriesType" style="margin-left: 1ex; width:9ch;" :items="['Scatter', 'Line']"></v-select></td>
-                          <td><v-select     class="tabcontent" v-model="item.Axis"       style="margin-left: 1ex; width:8ch;" :items="['Left', 'Right']"></v-select></td>
-                          <td><v-checkbox   class="tabcontent" v-model="item.Checked"    style="margin-left: 1ex;"></v-checkbox></td>
-                          <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
-                          <td><v-btn style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
-                          <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable.Object)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
-                          <td><v-btn style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
-                          <td><v-btn style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
-                      </tr>
-                    </template>
+                  <thead>
                     <tr>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td><v-btn style="min-width:36px;width:36px;" @click="editorItems_AddItem"><v-icon>add</v-icon></v-btn></td>
-                      <td>&nbsp;</td>
+                      <th>Name</th>
+                      <th class="text-center">Color</th>
+                      <th>&nbsp;</th>
+                      <th>Size</th>
+                      <th>Type</th>
+                      <th>Axis</th>
+                      <th>Check</th>
+                      <th>Object Name</th>
+                      <th>&nbsp;</th>
+                      <th>Variable</th>
+                      <th>&nbsp;</th>
+                      <th>&nbsp;</th>
                     </tr>
+                  </thead>
+                  <template v-for="(item, idx) in editorItems.items">
+                    <tr v-bind:key="idx">
+                      <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
+                      <td>
+                        <v-menu offset-y>
+                          <template v-slot:activator="{ on }">
+                            <v-btn v-on="on" v-bind:style="{ backgroundColor: item.Color }" class="ml-2 mr-2" style="min-width:32px;width:32px;height:32px"></v-btn>
+                          </template>
+                          <div>
+                            <div v-for="(color, index) in editorItems.colorList" :key="index" @click="item.Color = color">
+                              <div style="padding:6px; cursor: pointer;" v-bind:style="{ backgroundColor: color }">{{color}}</div>
+                            </div>
+                          </div>
+                        </v-menu>
+                      </td>
+                      <td><v-text-field class="tabcontent" v-model="item.Color"      style="width:9ch;"></v-text-field></td>
+                      <td><v-text-field class="tabcontent" v-model="item.Size"       style="margin-left: 1ex; width:5ch;"></v-text-field></td>
+                      <td><v-select     class="tabcontent" v-model="item.SeriesType" style="margin-left: 1ex; width:10ch;" :items="['Scatter', 'Line']"></v-select></td>
+                      <td><v-select     class="tabcontent" v-model="item.Axis"       style="margin-left: 1ex; width:8ch;" :items="['Left', 'Right']"></v-select></td>
+                      <td><v-checkbox   class="tabcontent" v-model="item.Checked"    style="margin-left: 1ex; margin-right: 1ex;"></v-checkbox></td>
+                      <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
+                      <td><v-btn class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
+                      <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable.Object)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
+                      <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
+                      <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
+                    </tr>
+                  </template>
+                  <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td><v-btn style="min-width:36px;width:36px;" @click="editorItems_AddItem"><v-icon>add</v-icon></v-btn></td>
+                    <td>&nbsp;</td>
+                  </tr>
                 </table>
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="red darken-1"  flat @click.native="editorItems.show = false">Cancel</v-btn>
-                <v-btn color="blue darken-1" flat :disabled="!isItemsOK" @click.native="editorItems_Save">Save</v-btn>
+                <v-btn color="grey darken-1"  text @click.native="editorItems.show = false">Cancel</v-btn>
+                <v-btn color="primary darken-1" text :disabled="!isItemsOK" @click.native="editorItems_Save">Save</v-btn>
               </v-card-actions>
           </v-card>
         </v-dialog>
 
         <v-dialog v-model="showConfirmDeleteTab" persistent max-width="300px" @keydown="(e) => { if (e.keyCode === 27) { showConfirmDeleteTab = false; }}">
           <v-card>
-              <v-card-title class="headline">Delete tab?</v-card-title>
-              <v-card-text>
-                Do you really want to permanently delete tab {{currentTab !== null ? currentTab.Name : ''}}?
-              </v-card-text>
-              <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="blue darken-1" flat @click.native="showConfirmDeleteTab = false">Cancel</v-btn>
-                <v-btn color="red darken-1"  flat @click.native="tabs_Delete">OK</v-btn>
-              </v-card-actions>
+            <v-card-title class="headline">Delete tab?</v-card-title>
+            <v-card-text>
+              Do you really want to permanently delete tab {{currentTab !== null ? currentTab.Name : ''}}?
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="grey darken-1" text @click.native="showConfirmDeleteTab = false">Cancel</v-btn>
+              <v-btn color="primary darken-1"  text @click.native="tabs_Delete">OK</v-btn>
+            </v-card-actions>
           </v-card>
         </v-dialog>
 
         <v-dialog v-model="showRenameTab" persistent max-width="300px" @keydown="(e) => { if (e.keyCode === 27) { showRenameTab = false; }}">
           <v-card>
-              <v-card-title class="headline">Rename tab</v-card-title>
-              <v-card-text>
-                <v-text-field v-model="tabNameBuffer" ref="editTextRename" label="Tab Name"></v-text-field>
-              </v-card-text>
-              <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="blue darken-1" flat @click.native="showRenameTab = false">Cancel</v-btn>
-                <v-btn color="red darken-1"  flat @click.native="tabs_Rename">OK</v-btn>
-              </v-card-actions>
+            <v-card-title class="headline">Rename tab</v-card-title>
+            <v-card-text>
+              <v-text-field v-model="tabNameBuffer" ref="editTextRename" label="Tab Name"></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="grey darken-1" text @click.native="showRenameTab = false">Cancel</v-btn>
+              <v-btn color="primary darken-1" text @click.native="tabs_Rename">OK</v-btn>
+            </v-card-actions>
           </v-card>
         </v-dialog>
 
         <v-dialog v-model="showAddTab" persistent max-width="300px" @keydown="(e) => { if (e.keyCode === 27) { showAddTab = false; }}">
           <v-card>
-              <v-card-title class="headline">Add tab</v-card-title>
-              <v-card-text>
-                <v-text-field v-model="tabNameBuffer" ref="editTextAdd" label="Tab Name"></v-text-field>
-              </v-card-text>
-              <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="blue darken-1" flat @click.native="showAddTab = false">Cancel</v-btn>
-                <v-btn color="red darken-1"  flat @click.native="tabs_Add">OK</v-btn>
-              </v-card-actions>
+            <v-card-title class="headline">Add tab</v-card-title>
+            <v-card-text>
+              <v-text-field v-model="tabNameBuffer" ref="editTextAdd" label="Tab Name"></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="grey darken-1" text @click.native="showAddTab = false">Cancel</v-btn>
+              <v-btn color="primary darken-1"  text @click.native="tabs_Add">OK</v-btn>
+            </v-card-actions>
           </v-card>
         </v-dialog>
 
         <v-dialog v-model="editorPlot.show" persistent max-width="400px" @keydown="(e) => { if (e.keyCode === 27) { editorPlot.show = false; }}">
           <v-card>
-              <v-card-title>
-                <span class="headline">Configure Plot</span>
-              </v-card-title>
-              <v-card-text>
-                <table style="width:100%;">
-                    <tr>
-                      <td><v-text-field v-model="editorPlot.plot.LeftAxisName"  label="Left Axis Caption" ></v-text-field></td>
-                    </tr>
-                    <tr>
-                      <td><v-checkbox v-model="editorPlot.plot.LeftAxisStartFromZero" label="Left Y Axis: Start From Zero"></v-checkbox></td>
-                    </tr>
-                    <tr>
-                      <td><v-text-field v-model="editorPlot.plot.RightAxisName" label="Right Axis Caption" ></v-text-field></td>
-                    </tr>
-                    <tr>
-                      <td><v-checkbox v-model="editorPlot.plot.RightAxisStartFromZero" label="Right Y Axis: Start From Zero"></v-checkbox></td>
-                    </tr>
-                    <tr>
-                      <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
-                    </tr>
-                </table>
-              </v-card-text>
-              <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn color="red darken-1"  flat @click.native="editorPlot.show = false">Cancel</v-btn>
-                <v-btn color="blue darken-1" flat @click.native="editorPlot_Save">Save</v-btn>
-              </v-card-actions>
+            <v-card-title>
+              <span class="headline">Configure Plot</span>
+            </v-card-title>
+            <v-card-text>
+              <table style="width:100%;">
+                <tr>
+                  <td><v-text-field v-model="editorPlot.plot.LeftAxisName"  label="Left Axis Caption" ></v-text-field></td>
+                </tr>
+                <tr>
+                  <td><v-checkbox v-model="editorPlot.plot.LeftAxisStartFromZero" label="Left Y Axis: Start From Zero"></v-checkbox></td>
+                </tr>
+                <tr>
+                  <td><v-text-field v-model="editorPlot.plot.RightAxisName" label="Right Axis Caption" ></v-text-field></td>
+                </tr>
+                <tr>
+                  <td><v-checkbox v-model="editorPlot.plot.RightAxisStartFromZero" label="Right Y Axis: Start From Zero"></v-checkbox></td>
+                </tr>
+                <tr>
+                  <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
+                </tr>
+              </table>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn color="grey darken-1"  text @click.native="editorPlot.show = false">Cancel</v-btn>
+              <v-btn color="primary darken-1" text @click.native="editorPlot_Save">Save</v-btn>
+            </v-card-actions>
           </v-card>
         </v-dialog>
 
@@ -810,12 +812,6 @@ export default class ViewHistory extends Vue {
     margin: 12px !important;
   }
 
-  table.v-table tbody td {
-    height: auto;
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
-  }
-
   th {
     text-align: left;
   }
@@ -828,12 +824,7 @@ export default class ViewHistory extends Vue {
     min-height: 0px;
   }
 
-  table.v-table thead th {
-    font-size: 14px;
-    font-weight: bold;
-  }
-
-  table.v-table tbody td {
+  .v-data-table th {
     font-size: 14px;
   }
 

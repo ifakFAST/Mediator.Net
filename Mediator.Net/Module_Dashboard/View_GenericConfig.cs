@@ -10,7 +10,7 @@ using Ifak.Fast.Json.Linq;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
-    [Identify(id: "GenericModuleConfig", bundle: "Generic", path: "generic.html")]
+    [Identify(id: "GenericModuleConfig", bundle: "Generic", path: "generic.html", icon: "mdi-swap-vertical")]
     public class View_GenericConfig : ViewBase
     {
         private ViewConfig configuration = new ViewConfig();

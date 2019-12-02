@@ -1,8 +1,11 @@
 <template>
     <v-app light>
       <v-content>
-        <v-layout row>
-          <v-flex xs12 sm4 offset-sm4>
+
+        <v-container>
+          <v-row justify="center" align="center">
+            <v-col cols="12" sm="6">
+
             <v-card raised class="mt-4">
               <v-card-title class="headline">
                 Dashboard Login
@@ -12,14 +15,17 @@
                 <v-text-field label="Password" v-model="loginPass" type="password" v-on:keyup.enter="login"></v-text-field>
               </v-card-text>
               <v-card-actions>
-                <v-btn @click="login">LogIn</v-btn>
+                <v-btn class="mx-2 mb-2 px-4" @click="login">LogIn</v-btn>
               </v-card-actions>
             </v-card>
             <v-alert color="error" icon="warning" dismissible v-model="hasAlert">
               {{alertText}}
             </v-alert>
-          </v-flex>
-        </v-layout>
+
+            </v-col>
+          </v-row>
+        </v-container>
+
       </v-content>
     </v-app>
 </template>

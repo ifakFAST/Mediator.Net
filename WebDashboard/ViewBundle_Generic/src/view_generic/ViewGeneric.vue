@@ -2,9 +2,9 @@
  <v-app>
   <v-content>
 
-    <v-container grid-list-md fluid>
-      <v-layout row wrap>
-        <v-flex xs4 style="min-width: 250px;">
+    <v-container fluid>
+      <v-row  >
+        <v-col cols="4" style="min-width: 250px;">
           <ul>
 
             <object-tree class="item"
@@ -16,16 +16,16 @@
                 @dragDrop="onDragDrop"></object-tree>
 
           </ul>
-        </v-flex>
-        <v-flex xs8>
+        </v-col>
+        <v-col cols="8">
 
           <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse"
               :selection="selectedObject"
               :members="currObjectValues"
               :child-types="childTypes"></object-editor>
 
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
 
   </v-content>

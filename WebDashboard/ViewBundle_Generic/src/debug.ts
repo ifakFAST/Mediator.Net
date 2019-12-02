@@ -52,7 +52,7 @@ export function setupDashboardEnv(theViewID: string): void {
     getCurrentTimeRange() {
       return {
         type: 'Last',
-        lastCount: 1,
+        lastCount: 30,
         lastUnit: 'Days',
         rangeStart: '',
         rangeEnd: '',

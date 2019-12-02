@@ -4,22 +4,25 @@
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "build": "vue-cli-service build"
   },
   "dependencies": {
-    "material-design-icons-iconfont": "^5.0.1",
-    "typeface-roboto": "0.0.54",
-    "vue": "^2.6.10",
-    "vue-class-component": "^7.1.0",
-    "vue-property-decorator": "^8.1.1",
-    "vuetify": "1.5.14"
+    "material-design-icons-iconfont": "5.0.1",
+    "typeface-roboto": "0.0.75",
+    "vue": "2.6.10",
+    "vue-class-component": "7.1.0",
+    "vue-property-decorator": "8.3.0",
+    "vuetify": "2.1.14"
   },
   "devDependencies": {
-    "@vue/cli-plugin-typescript": "^3.8.1",
-    "@vue/cli-service": "^3.8.0",
-    "typescript": "^3.5.1",
-    "vue-cli-plugin-vuetify": "^0.5.0",
-    "vue-template-compiler": "^2.6.10"
+    "@mdi/font": "4.7.95",
+    "@vue/cli-plugin-typescript": "4.1.1",
+    "@vue/cli-service": "4.1.1",
+    "sass": "1.23.7",
+    "sass-loader": "8.0.0",
+    "typescript": "3.7.3",
+    "vue-cli-plugin-vuetify": "2.0.2",
+    "vue-template-compiler": "2.6.10",
+    "vuetify-loader": "1.4.3"
   }
 }

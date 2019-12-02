@@ -1,8 +1,8 @@
 import 'typeface-roboto/index.css'
 import 'material-design-icons-iconfont/dist/material-design-icons.css'
-import '@babel/polyfill'
+import '@mdi/font/css/materialdesignicons.css'
 import Vue from 'vue'
-import './plugins/vuetify'
+import vuetify from './plugins/vuetify'
 import App from './App'
 import axios from "axios";
 import globalState from "./Global.js";
@@ -11,6 +11,7 @@ Vue.config.productionTip = false
 
 window.dashboardApp = new Vue({
   el: '#app',
+  vuetify,
   render: h => h(App),
   methods: {
     sendViewRequest(request, payload, successHandler) {

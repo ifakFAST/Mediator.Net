@@ -10,7 +10,7 @@ using System.Globalization;
 
 namespace Ifak.Fast.Mediator.EventLog
 {
-    [Identify(id: "EventLog", bundle: "Generic", path: "eventlog.html")]
+    [Identify(id: "EventLog", bundle: "Generic", path: "eventlog.html", icon:"mdi-alert-circle-outline")]
     public class View_EventLog : ViewBase
     {
         const string Module = "EventLog";

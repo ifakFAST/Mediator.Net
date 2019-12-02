@@ -2,30 +2,27 @@
   <div>
 
     <v-toolbar>
-      <v-btn flat @click.stop="startAckOrReset(true)"  :disabled="!ackEnabled">Acknowledge</v-btn>
-      <v-btn flat @click.stop="startAckOrReset(false)" :disabled="!resetEnabled">Reset</v-btn>
+      <v-btn text @click.stop="startAckOrReset(true)"  :disabled="!ackEnabled">Acknowledge</v-btn>
+      <v-btn text @click.stop="startAckOrReset(false)" :disabled="!resetEnabled">Reset</v-btn>
       <v-spacer></v-spacer>
       <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
     </v-toolbar>
 
-    <v-data-table :headers="headers" :items="alarms" :rows-per-page-items="rowsPerPageItems"
-                  :pagination.sync="pagination" :search="search" :custom-filter="customFilter"
+    <v-data-table :headers="headers" :items="alarms" :footer-props="footer"
+                  sort-by="T" :sort-desc="true" :search="search" :custom-filter="customFilter"
                   no-data-text="No active warnings or alarms" class="elevation-4 mt-2"
-                  v-model="selected" item-key="T" select-all must-sort>
-      <template slot="items" slot-scope="props">
-        <tr>
-          <td class="pad9"><v-checkbox primary hide-details v-model="props.selected"></v-checkbox></td>
-          <td v-bind:class="classObject(props.item)">{{ props.item.TimeFirstLocal }}</td>
-          <td v-bind:class="classObject(props.item)">{{ props.item.Msg  }}</td>
-          <td v-bind:class="classObject(props.item)">{{ props.item.Source }}</td>
-          <td v-bind:class="classObject(props.item)">{{ props.item.State  }}</td>
-          <td v-bind:class="classObject(props.item)" class="text-xs-right">{{ props.item.Count }}</td>
-          <td class="pad9"><v-btn flat small class="small" @click="showDetails(props.item)"><v-icon>more_horiz</v-icon></v-btn></td>
-        </tr>
+                  v-model="selected" item-key="T" show-select must-sort>
+
+      <template v-slot:item.T="{ item }">
+        <span v-bind:class="classObject(item)">{{ item.TimeFirstLocal }}</span>
       </template>
-      <template slot="pageText" slot-scope="{ pageStart, pageStop }">
-          From {{ pageStart }} to {{ pageStop }}
+      <template v-slot:item.Msg="{ item }">
+        <span v-bind:class="classObject(item)">{{ item.Msg }}</span>
       </template>
+      <template v-slot:item.Details="{ item }">
+        <v-btn text small class="small" @click="showDetails(item)"><v-icon>more_horiz</v-icon></v-btn>
+      </template>
+
     </v-data-table>
 
     <v-dialog v-model="details" max-width="800px" @keydown="editKeydown">
@@ -35,55 +32,55 @@
           </v-card-title>
           <v-card-text>
             <table class="dataTable">
-                <tr><td class="dataHead">Time&nbsp;First</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.TimeFirstLocal}}</td>
-                </tr>
-                <tr v-if="multi"><td class="dataHead">Time&nbsp;Last</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.TimeLastLocal + ' (total count: ' + detailItem.Count + ')'}}</td>
-                </tr>
-                <tr><td class="dataHead">Source</td><td>&nbsp;</td>
-                  <td class="dataBody">{{detailItem.Source}}</td>
-                </tr>
-                <tr><td class="dataHead">Type</td><td>&nbsp;</td>
-                  <td class="dataBody">{{detailItem.Type}}</td>
-                </tr>
-                <tr v-if="initiator.length > 0"><td class="dataHead">Inititator</td><td>&nbsp;</td>
-                  <td class="dataBody">{{initiator}}</td>
-                </tr>
-                <tr><td class="dataHead">Message</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.Message}}</td>
-                </tr>
-                <tr><td class="dataHead">State</td><td>&nbsp;</td>
-                  <td class="dataBody" style="white-space: pre-wrap;">{{state}}</td>
-                </tr>
-                <tr v-if="hasDetails"><td class="dataHead">Details</td><td>&nbsp;</td>
-                    <td class="dataBody" style="white-space: pre-wrap;">{{detailItem.Details}}</td>
-                </tr>
-                <tr v-if="hasObjects"><td class="dataHead">Affected&nbsp;Objects</td><td>&nbsp;</td>
-                  <td class="dataBody">{{objects}}</td>
+              <tr><td class="dataHead">Time&nbsp;First</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.TimeFirstLocal}}</td>
+              </tr>
+              <tr v-if="multi"><td class="dataHead">Time&nbsp;Last</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.TimeLastLocal + ' (total count: ' + detailItem.Count + ')'}}</td>
+              </tr>
+              <tr><td class="dataHead">Source</td><td>&nbsp;</td>
+                <td class="dataBody">{{detailItem.Source}}</td>
+              </tr>
+              <tr><td class="dataHead">Type</td><td>&nbsp;</td>
+                <td class="dataBody">{{detailItem.Type}}</td>
+              </tr>
+              <tr v-if="initiator.length > 0"><td class="dataHead">Inititator</td><td>&nbsp;</td>
+                <td class="dataBody">{{initiator}}</td>
+              </tr>
+              <tr><td class="dataHead">Message</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.Message}}</td>
+              </tr>
+              <tr><td class="dataHead">State</td><td>&nbsp;</td>
+                <td class="dataBody" style="white-space: pre-wrap;">{{state}}</td>
+              </tr>
+              <tr v-if="hasDetails"><td class="dataHead">Details</td><td>&nbsp;</td>
+                  <td class="dataBody" style="white-space: pre-wrap;">{{detailItem.Details}}</td>
+              </tr>
+              <tr v-if="hasObjects"><td class="dataHead">Affected&nbsp;Objects</td><td>&nbsp;</td>
+                <td class="dataBody">{{objects}}</td>
               </tr>
             </table>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" flat @click.native="details = false">Close</v-btn>
+            <v-btn color="blue darken-1" text @click.native="details = false">Close</v-btn>
           </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="showAckReset" max-width="600px" @keydown="editKeydown">
       <v-card>
-          <v-card-title>
-            <span class="headline">{{ ackResetTitel }}</span>
-          </v-card-title>
-          <v-card-text>
-            <v-text-field label="Comment" ref="txtComment" v-model="comment"></v-text-field>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" flat @click.native="commitAckOrReset">OK</v-btn>
-            <v-btn color="blue darken-1" flat @click.native="showAckReset = false">Cancel</v-btn>
-          </v-card-actions>
+        <v-card-title>
+          <span class="headline">{{ ackResetTitel }}</span>
+        </v-card-title>
+        <v-card-text>
+          <v-text-field label="Comment" ref="txtComment" v-model="comment"></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1" text @click.native="showAckReset = false">Cancel</v-btn>
+          <v-btn color="primary darken-1" text @click.native="commitAckOrReset">OK</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -102,18 +99,17 @@ export default class ActiveAlarms extends Vue {
 
   search = ''
   selected = []
-  rowsPerPageItems = [50, 100, 500, 1000, { text: 'Show All', value: -1 }]
-  pagination = {
-    sortBy: 'T',
-    descending: true,
+  footer = {
+    showFirstLastPage: true,
+    itemsPerPageOptions: [50, 100, 500, 1000, { text: 'All', value: -1 }],
   }
   headers = [
-    { text: 'Time (Local)', align: 'left',   sortable: true,  value: 'T'                    },
-    { text: 'Message',      align: 'left',   sortable: true,  value: 'Msg'                  },
-    { text: 'Source',       align: 'left',   sortable: true,  value: 'Source'               },
-    { text: 'State',        align: 'left',   sortable: true,  value: 'State'                },
-    { text: 'Count',        align: 'right',  sortable: true,  value: 'Count', width: '65px' },
-    { text: 'Details',      align: 'center', sortable: false                                },
+    { text: 'Time (Local)', align: 'left',   sortable: true,  filterable: false, value: 'T'                     },
+    { text: 'Message',      align: 'left',   sortable: true,  filterable: true,  value: 'Msg'                   },
+    { text: 'Source',       align: 'left',   sortable: true,  filterable: false, value: 'Source'                },
+    { text: 'State',        align: 'left',   sortable: true,  filterable: false, value: 'State'                 },
+    { text: 'Count',        align: 'center', sortable: true,  filterable: false, value: 'Count', width: '94px'  },
+    { text: 'Details',      align: 'center', sortable: false, filterable: false , value: 'Details'              },
   ]
   details = false
   detailItem: any = {}
@@ -121,7 +117,7 @@ export default class ActiveAlarms extends Vue {
   isACK = false
   comment = ''
 
-  classObject(item) {
+  classObject(item: Alarm) {
     return {
       bold:       item.State === 'New',
       ErrWarning: item.Severity === 'Warning',
@@ -163,15 +159,12 @@ export default class ActiveAlarms extends Vue {
     this.selected = []
   }
 
-  customFilter(items, search, filter, headers) {
-    search = search.toString().toLowerCase()
-    if (search.trim() === '') { return items }
+  customFilter(value: any, search: string | null, item: Alarm): boolean {
+    if (search === null ) { return true }
+    search = search.toLowerCase()
     const words = search.split(' ').filter((w) => w !== '')
-    const isFilterMatch = (val) => {
-      const valLower = val.toLowerCase()
-      return words.every((word) => valLower.indexOf(word) !== -1)
-    }
-    return items.filter((item) => isFilterMatch(item.Message + ' ' + item.Source))
+    const valLower = (item.Message + ' ' + item.Source).toLowerCase()
+    return words.every((word) => valLower.indexOf(word) !== -1)
   }
 
   get ackResetTitel() {

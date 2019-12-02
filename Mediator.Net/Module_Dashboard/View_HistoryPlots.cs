@@ -12,7 +12,7 @@ using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
-    [Identify(id: "HistoryPlots", bundle: "Generic", path: "history.html")]
+    [Identify(id: "HistoryPlots", bundle: "Generic", path: "history.html", icon: "mdi-chart-line-variant")]
     public class View_HistoryPlots : ViewBase
     {
         private ViewConfig configuration = new ViewConfig();

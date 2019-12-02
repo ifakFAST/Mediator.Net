@@ -74,10 +74,16 @@ namespace Ifak.Fast.Mediator.Dashboard
         /// </summary>
         public string Path { get; set; }
 
-        public Identify(string id, string bundle, string path) {
+        /// <summary>
+        /// The optional name of the icon to use in the dashboard, e.g. "bubble_chart", "mdi-tilde"
+        /// </summary>
+        public string Icon { get; set; }
+
+        public Identify(string id, string bundle, string path, string icon = null) {
             ID = id;
             Bundle = bundle;
             Path = path;
+            Icon = icon;
         }
     }
 }

@@ -4,16 +4,16 @@
     <v-toolbar dense>
       <v-toolbar-title>{{ title }}</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-btn flat @click="save" :disabled="!isDirty">Save</v-btn>
-      <v-btn flat @click="deleteObject">Delete</v-btn>
-      <v-btn v-for="type in childTypes" :key="type.TypeName" flat @click="showAddChildDialog(type)">Add {{getShortTypeName(type.TypeName)}}</v-btn>
-      <v-btn style="min-width: 18px;" flat @click="moveUp" :disabled="selection === null || selection.First"><v-icon>arrow_upward</v-icon></v-btn>
-      <v-btn style="min-width: 18px;" flat @click="moveDown" :disabled="selection === null || selection.Last"><v-icon>arrow_downward</v-icon></v-btn>
+      <v-btn text @click="save" :disabled="!isDirty">Save</v-btn>
+      <v-btn text @click="deleteObject">Delete</v-btn>
+      <v-btn v-for="type in childTypes" :key="type.TypeName" text @click="showAddChildDialog(type)">Add {{getShortTypeName(type.TypeName)}}</v-btn>
+      <v-btn style="min-width: 18px;" text @click="moveUp" :disabled="selection === null || selection.First"><v-icon>arrow_upward</v-icon></v-btn>
+      <v-btn style="min-width: 18px;" text @click="moveDown" :disabled="selection === null || selection.Last"><v-icon>arrow_downward</v-icon></v-btn>
     </v-toolbar>
 
     <v-toolbar flat dense color="white" style="margin-top: 8px;">
-      <a v-bind:class="classObject(cat.Category)" flat v-for="cat in categoryMembers" :key="cat.Category" @click="currentTab = cat.Category">{{cat.Category}}</a>
-      <a v-bind:class="classObject('Variables')" flat @click="currentTab = 'Variables'">Variables</a>
+      <a v-bind:class="classObject(cat.Category)" text v-for="cat in categoryMembers" :key="cat.Category" @click="currentTab = cat.Category">{{cat.Category}}</a>
+      <a v-bind:class="classObject('Variables')" text @click="currentTab = 'Variables'">Variables</a>
     </v-toolbar>
 
     <div v-for="cat in categoryMembers" :key="cat.Category">
@@ -125,14 +125,16 @@
 
     <div v-if="currentTab === 'Variables'">
 
-      <v-data-table no-data-text="No variables" :headers="varHeaders" :items="selection.Variables" hide-actions class="elevation-1 mx-1 mt-2 mb-1">
-          <template slot="items" slot-scope="props">
-            <td>{{ props.item.Name }}</td>
-            <td class="text-xs-right">
-                <a @click.stop="editVar(props.item)">{{ props.item.V }}</a>
-            </td>
-            <td v-bind:style="{ color: qualityColor(props.item.Q) }" class="text-xs-right">{{ props.item.Q }}</td>
-            <td class="text-xs-right">{{ props.item.T }}</td>
+      <v-data-table no-data-text="No variables" :headers="varHeaders" :items="selection.Variables" hide-default-footer class="elevation-1 mx-1 mt-2 mb-1">
+          <template v-slot:item="{ item }">
+            <tr>
+              <td>{{ item.Name }}</td>
+              <td class="text-right">
+                <a @click.stop="editVar(item)">{{ item.V }}</a>
+              </td>
+              <td v-bind:style="{ color: qualityColor(item.Q) }" class="text-right">{{ item.Q }}</td>
+              <td class="text-right">{{ item.T }}</td>
+            </tr>
           </template>
       </v-data-table>
 
@@ -144,8 +146,8 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="blue darken-1" flat="flat" @click.stop="editVarDialog = false">Cancel</v-btn>
-                <v-btn color="blue darken-1" flat="flat" @click.stop="editVarWrite">Write</v-btn>
+                <v-btn color="blue darken-1" text @click.stop="editVarDialog = false">Cancel</v-btn>
+                <v-btn color="blue darken-1" text @click.stop="editVarWrite">Write</v-btn>
             </v-card-actions>
           </v-card>
       </v-dialog>
@@ -164,8 +166,8 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" flat @click.native="onAddNewObject">Add</v-btn>
-            <v-btn color="red  darken-1" flat @click.native="addDialog.show = false">Cancel</v-btn>
+            <v-btn color="blue darken-1" text @click.native="onAddNewObject">Add</v-btn>
+            <v-btn color="red  darken-1" text @click.native="addDialog.show = false">Cancel</v-btn>
           </v-card-actions>
       </v-card>
     </v-dialog>
@@ -184,8 +186,8 @@
           <v-divider></v-divider>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" flat @click.native="browseOK">OK</v-btn>
-            <v-btn color="red  darken-1" flat @click.native="browseDialog.show = false">Cancel</v-btn>
+            <v-btn color="blue darken-1" text @click.native="browseOK">OK</v-btn>
+            <v-btn color="red  darken-1" text @click.native="browseDialog.show = false">Cancel</v-btn>
           </v-card-actions>
       </v-card>
     </v-dialog>
@@ -494,3 +496,20 @@ export default class ObjectEditor extends Vue {
 }
 
 </script>
+
+
+<style>
+
+  .v-data-table-header th {
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .v-data-table tbody td {
+    font-size: 16px;
+    height: auto;
+    padding-top: 9px !important;
+    padding-bottom: 9px !important;
+  }
+
+</style>

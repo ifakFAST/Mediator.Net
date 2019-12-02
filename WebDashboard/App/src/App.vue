@@ -5,7 +5,7 @@
         </template>
 
         <template v-else>
-            <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewSrc="currentViewSource"
+            <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
                        :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"></dashboard>
         </template>
@@ -42,6 +42,9 @@ export default {
       this.sessionID = event.session;
       this.model = event.model;
       this.openWebSocket()
+      if (this.model.views.length > 0) {
+        this.activateView(this.model.views[0].viewID)
+      }
     },
     logout() {
       if (this.intervalVar !== 0) {

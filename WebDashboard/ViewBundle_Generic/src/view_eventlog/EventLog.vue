@@ -2,70 +2,68 @@
   <div>
 
     <v-toolbar>
-        <v-checkbox label="Alarms"   hide-details style="max-width: 105px;" v-model="includeAlarms"></v-checkbox>
-        <v-checkbox label="Warnings" hide-details style="max-width: 120px;" v-model="includeWarnings"></v-checkbox>
-        <v-checkbox label="Info"     hide-details style="max-width: 120px;" v-model="includeInfos"></v-checkbox>
-        <v-spacer></v-spacer>
-        <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
+      <v-checkbox label="Alarms"   hide-details class="mr-4" v-model="includeAlarms"></v-checkbox>
+      <v-checkbox label="Warnings" hide-details class="mr-4" v-model="includeWarnings"></v-checkbox>
+      <v-checkbox label="Info"     hide-details class="mr-4" v-model="includeInfos"></v-checkbox>
+      <v-spacer></v-spacer>
+      <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
     </v-toolbar>
 
-    <v-data-table :headers="headers" :items="filteredEvents" :rows-per-page-items="rowsPerPageItems"
-                  :pagination.sync="pagination" :search="search" :custom-filter="customFilter"
-                  no-data-text="No events" class="elevation-4 mt-2" item-key="T" must-sort>
-        <template slot="items" slot-scope="props">
+    <v-data-table :headers="headers" :items="filteredEvents" :footer-props="footer" :search="search"
+                  :custom-filter="customFilter" no-data-text="No events" class="elevation-4 mt-2"
+                  sort-by="T" :sort-desc="true"
+                  item-key="T" must-sort>
+        <template v-slot:item="{ item }">
           <tr>
-              <td v-bind:class="classObject(props.item)" style="white-space: nowrap">{{ props.item.TimeFirstLocal }}</td>
-              <td v-bind:class="classObject(props.item)">{{ props.item.Severity  }}</td>
-              <td v-bind:class="classObject(props.item)">{{ props.item.Msg  }}</td>
-              <td v-bind:class="classObject(props.item)">{{ props.item.Source }}</td>
-              <td v-bind:class="classObject(props.item)">{{ stateCol(props.item) }}</td>
-              <td class="pad9"><v-btn flat small class="small" @click="showDetails(props.item)"><v-icon>more_horiz</v-icon></v-btn></td>
+            <td v-bind:class="classObject(item)" style="white-space: nowrap">{{ item.TimeFirstLocal }}</td>
+            <td v-bind:class="classObject(item)">{{ item.Severity  }}</td>
+            <td v-bind:class="classObject(item)">{{ item.Msg  }}</td>
+            <td v-bind:class="classObject(item)">{{ item.Source }}</td>
+            <td v-bind:class="classObject(item)">{{ stateCol(item) }}</td>
+            <td class="text-center"><v-btn text small class="small" @click="showDetails(item)"><v-icon>more_horiz</v-icon></v-btn></td>
           </tr>
-        </template>
-        <template slot="pageText" slot-scope="{ pageStart, pageStop }">
-          From {{ pageStart }} to {{ pageStop }}
         </template>
     </v-data-table>
 
     <v-dialog v-model="details" max-width="800px" @keydown="editKeydown">
         <v-card>
           <v-card-title>
-              <span class="headline">{{ detailItem.Severity }} Details</span>
+            <span class="headline">{{ detailItem.Severity }} Details</span>
           </v-card-title>
           <v-card-text>
-              <table class="dataTable">
-                <tr><td class="dataHead">{{timeTitle}}</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.TimeFirstLocal}}</td>
-                </tr>
-                <tr v-if="multi"><td class="dataHead">Time&nbsp;Last</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.TimeLastLocal + ' (total count: ' + detailItem.Count + ')'}}</td>
-                </tr>
-                <tr><td class="dataHead">Source</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.Source}}</td>
-                </tr>
-                <tr><td class="dataHead">Type</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.Type}}</td>
-                </tr>
-                <tr v-if="initiator.length > 0"><td class="dataHead">Inititator</td><td>&nbsp;</td>
-                    <td class="dataBody">{{initiator}}</td>
-                </tr>
-                <tr><td class="dataHead">Message</td><td>&nbsp;</td>
-                    <td class="dataBody">{{detailItem.Message}}</td>
-                </tr>
-                <tr v-if="showState"><td class="dataHead">State</td><td>&nbsp;</td>
-                    <td class="dataBody" style="white-space: pre-wrap;">{{state}}</td>
-                </tr>
-                <tr v-if="hasDetails"><td class="dataHead">Details</td><td>&nbsp;</td>
-                    <td class="dataBody" style="white-space: pre-wrap;">{{detailItem.Details}}</td>
-                </tr>
-                <tr v-if="hasObjects"><td class="dataHead">Affected&nbsp;Objects</td><td>&nbsp;</td>
-                    <td class="dataBody">{{objects}}</td>
-                </tr>
-              </table>
+            <table class="dataTable">
+              <tr><td class="dataHead">{{timeTitle}}</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.TimeFirstLocal}}</td>
+              </tr>
+              <tr v-if="multi"><td class="dataHead">Time&nbsp;Last</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.TimeLastLocal + ' (total count: ' + detailItem.Count + ')'}}</td>
+              </tr>
+              <tr><td class="dataHead">Source</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.Source}}</td>
+              </tr>
+              <tr><td class="dataHead">Type</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.Type}}</td>
+              </tr>
+              <tr v-if="initiator.length > 0"><td class="dataHead">Inititator</td><td>&nbsp;</td>
+                  <td class="dataBody">{{initiator}}</td>
+              </tr>
+              <tr><td class="dataHead">Message</td><td>&nbsp;</td>
+                  <td class="dataBody">{{detailItem.Message}}</td>
+              </tr>
+              <tr v-if="showState"><td class="dataHead">State</td><td>&nbsp;</td>
+                  <td class="dataBody" style="white-space: pre-wrap;">{{state}}</td>
+              </tr>
+              <tr v-if="hasDetails"><td class="dataHead">Details</td><td>&nbsp;</td>
+                  <td class="dataBody" style="white-space: pre-wrap;">{{detailItem.Details}}</td>
+              </tr>
+              <tr v-if="hasObjects"><td class="dataHead">Affected&nbsp;Objects</td><td>&nbsp;</td>
+                  <td class="dataBody">{{objects}}</td>
+              </tr>
+            </table>
           </v-card-text>
           <v-card-actions>
-              <v-spacer></v-spacer>
-              <v-btn color="blue darken-1" flat @click.native="details = false">Close</v-btn>
+            <v-spacer></v-spacer>
+            <v-btn color="blue darken-1" text @click.native="details = false">Close</v-btn>
           </v-card-actions>
         </v-card>
     </v-dialog>
@@ -87,23 +85,22 @@ export default class EventLog extends Vue {
   includeAlarms = true
   includeWarnings = true
   includeInfos = true
-  rowsPerPageItems = [50, 100, 500, 1000, { text: 'Show All', value: -1 }]
-  pagination = {
-      sortBy: 'T',
-      descending: true,
+  footer = {
+    showFirstLastPage: true,
+    itemsPerPageOptions: [50, 100, 500, 1000, { text: 'All', value: -1 }],
   }
   headers = [
-      { text: 'Time (Local)', align: 'left',   sortable: true,  value: 'T'        },
-      { text: 'Type',         align: 'left',   sortable: true,  value: 'Severity' },
-      { text: 'Message',      align: 'left',   sortable: true,  value: 'Msg'      },
-      { text: 'Source',       align: 'left',   sortable: true,  value: 'Source'   },
-      { text: 'State',        align: 'left',   sortable: true,  value: 'State'    },
-      { text: 'Details',      align: 'center', sortable: false                    },
+    { text: 'Time (Local)', align: 'left',   sortable: true,  filterable: false,  value: 'T'        },
+    { text: 'Type',         align: 'left',   sortable: true,  filterable: false,  value: 'Severity' },
+    { text: 'Message',      align: 'left',   sortable: true,  filterable: true,   value: 'Msg'      },
+    { text: 'Source',       align: 'left',   sortable: true,  filterable: false,  value: 'Source'   },
+    { text: 'State',        align: 'left',   sortable: true,  filterable: false,  value: 'State'    },
+    { text: 'Details',      align: 'center', sortable: false, filterable: false                     },
   ]
   details = false
   detailItem: any = {}
 
-  classObject(item) {
+  classObject(item: Alarm) {
     return {
       bold:       item.State === 'New' && (item.Severity === 'Warning' || item.Severity === 'Alarm'),
       ErrWarning: item.Severity === 'Warning' && item.State !== 'Reset',
@@ -122,15 +119,12 @@ export default class EventLog extends Vue {
     }
   }
 
-  customFilter(items, search, filter, headers) {
-    search = search.toString().toLowerCase()
-    if (search.trim() === '') { return items }
+  customFilter(value: any, search: string | null, item: Alarm) {
+    if (search === null ) { return true }
+    search = search.toLowerCase()
     const words = search.split(' ').filter((w) => w !== '')
-    const isFilterMatch = (val) => {
-      const valLower = val.toLowerCase()
-      return words.every((word) => valLower.indexOf(word) !== -1)
-    }
-    return items.filter((item) => isFilterMatch(item.Message + ' ' + item.Source))
+    const valLower = (item.Message + ' ' + item.Source).toLowerCase()
+    return words.every((word) => valLower.indexOf(word) !== -1)
   }
 
   stateCol(it) {
