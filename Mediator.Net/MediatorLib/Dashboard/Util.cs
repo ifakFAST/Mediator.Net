@@ -37,7 +37,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return new ReqResult(200, new MemoryStream(0));
         }
 
-        public static ReqResult OK(object obj) {
+        public static ReqResult OK(object obj, bool ignoreShouldSerializeMembers = false) {
 
             if (typeof(Task).IsAssignableFrom(obj.GetType())) {
                 throw new Exception("ReqResult.OK: obj may not be a Task!");
@@ -45,7 +45,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             var res = MemoryManager.GetMemoryStream("ReqResult.OK");
             try {
-                StdJson.ObjectToStream(obj, res, indented: true, ignoreNullValues: false);
+                StdJson.ObjectToStream(obj, res, indented: true, ignoreShouldSerializeMembers: ignoreShouldSerializeMembers);
                 res.Seek(0, SeekOrigin.Begin);
             }
             catch (Exception) {

@@ -186,6 +186,10 @@ namespace Ifak.Fast.Mediator
 
         public XmlSchema GetSchema() => null;
 
+        public bool ShouldSerializeInterval() => Interval.HasValue;
+
+        public bool ShouldSerializeOffset() => Offset.HasValue;
+
         public void ReadXml(XmlReader reader) {
             string m = reader["mode"];
             switch (m) {

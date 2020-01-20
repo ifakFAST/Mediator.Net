@@ -293,7 +293,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     defaultValue = m.DefaultValue.Value.JSON;
                 }
                 else if (m.Type == DataType.Struct) {
-                    defaultValue = StdJson.ObjectToString(GetStructDefaultValue(m), indented: true, ignoreNullValues: false);
+                    defaultValue = StdJson.ObjectToString(GetStructDefaultValue(m), indented: true, ignoreShouldSerializeMembers: false);
                     //Console.WriteLine("=> " + m.Name + ": " + defaultValue);
                 }
                 else {

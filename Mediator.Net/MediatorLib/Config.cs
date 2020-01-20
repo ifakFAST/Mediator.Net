@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator
 {
@@ -22,6 +23,8 @@ namespace Ifak.Fast.Mediator
                 map[nv.Name] = nv.Value;
             }
         }
+
+        public NamedValue[] ToNamedValues() => map.Keys.Select(k => new NamedValue(k, map[k])).ToArray();
 
         public bool GetOptionalBool(string name, bool defaultValue) {
             return map.ContainsKey(name) ? bool.Parse(map[name]) : defaultValue;

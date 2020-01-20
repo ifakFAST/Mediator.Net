@@ -120,7 +120,7 @@ namespace Ifak.Fast.Mediator
 
         public static DataValue FromLocalTimeArray(LocalTime[] v) => new DataValue(StdJson.ValueToString(v));
 
-        public static DataValue FromObject(object obj, bool indented = false) => new DataValue(StdJson.ObjectToString(obj, indented: indented));
+        public static DataValue FromObject(object obj, bool indented = false) => FromJSON(StdJson.ObjectToString(obj, indented: indented));
 
         public static DataValue FromJSON(string json) => string.IsNullOrWhiteSpace(json) || json == "null" ? new DataValue(null) : new DataValue(json);
 

@@ -5,6 +5,7 @@
 using Ifak.Fast.Json;
 using Ifak.Fast.Json.Converters;
 using Ifak.Fast.Json.Linq;
+using Ifak.Fast.Json.Serialization;
 using System;
 using System.Globalization;
 using System.IO;
@@ -15,41 +16,44 @@ namespace Ifak.Fast.Mediator
 {
     public class StdJson
     {
-        private static readonly JsonSerializerSettings settingsDefault = new JsonSerializerSettings {
-            DateParseHandling = DateParseHandling.None,
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters = new JsonConverter[] { new StringEnumConverter() }
-        };
 
-        private static readonly JsonSerializerSettings settingsIdented = new JsonSerializerSettings {
-            DateParseHandling = DateParseHandling.None,
-            NullValueHandling = NullValueHandling.Ignore,
-            Converters = new JsonConverter[] { new StringEnumConverter() },
-            Formatting = Formatting.Indented
-        };
-
-        private static readonly JsonSerializerSettings settingsNull = new JsonSerializerSettings {
-            DateParseHandling = DateParseHandling.None,
-            NullValueHandling = NullValueHandling.Include,
-            Converters = new JsonConverter[] { new StringEnumConverter() }
-        };
-
-        private static readonly JsonSerializerSettings settingsIdentedNull = new JsonSerializerSettings {
+        private static readonly JsonSerializerSettings settings_NoIndent_UseShouldSerializeMembers = new JsonSerializerSettings {
             DateParseHandling = DateParseHandling.None,
             NullValueHandling = NullValueHandling.Include,
             Converters = new JsonConverter[] { new StringEnumConverter() },
-            Formatting = Formatting.Indented
         };
 
-        private static JsonSerializerSettings GetSettings(bool indented, bool ignoreNull) {
-            if (!indented && ignoreNull) return settingsDefault;
-            if (!indented && !ignoreNull) return settingsNull;
-            if (ignoreNull) return settingsIdented;
-            return settingsIdentedNull;
+        private static readonly JsonSerializerSettings settings_Indent_UseShouldSerializeMembers = new JsonSerializerSettings {
+            DateParseHandling = DateParseHandling.None,
+            NullValueHandling = NullValueHandling.Include,
+            Converters = new JsonConverter[] { new StringEnumConverter() },
+            Formatting = Formatting.Indented,
+        };
+
+        private static readonly JsonSerializerSettings settings_NoIndent_IgnoreShouldSerializeMembers = new JsonSerializerSettings {
+            DateParseHandling = DateParseHandling.None,
+            NullValueHandling = NullValueHandling.Include,
+            Converters = new JsonConverter[] { new StringEnumConverter() },
+            ContractResolver = new DefaultContractResolver() { IgnoreShouldSerializeMembers = true },
+        };
+
+        private static readonly JsonSerializerSettings settings_Indent_IgnoreShouldSerializeMembers = new JsonSerializerSettings {
+            DateParseHandling = DateParseHandling.None,
+            NullValueHandling = NullValueHandling.Include,
+            Converters = new JsonConverter[] { new StringEnumConverter() },
+            Formatting = Formatting.Indented,
+            ContractResolver = new DefaultContractResolver() { IgnoreShouldSerializeMembers = true },
+        };
+
+        private static JsonSerializerSettings GetSettings(bool indented, bool ignoreShouldSerializeMembers) {
+            if (!indented && !ignoreShouldSerializeMembers) return settings_NoIndent_UseShouldSerializeMembers;
+            if (!indented && ignoreShouldSerializeMembers) return settings_NoIndent_IgnoreShouldSerializeMembers;
+            if (ignoreShouldSerializeMembers) return settings_Indent_IgnoreShouldSerializeMembers;
+            return settings_Indent_UseShouldSerializeMembers;
         }
 
-        public static string ObjectToString(object value, bool indented = false, bool ignoreNullValues = false) {
-            return JsonConvert.SerializeObject(value, GetSettings(indented, ignoreNullValues));
+        public static string ObjectToString(object value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
+            return JsonConvert.SerializeObject(value, GetSettings(indented, ignoreShouldSerializeMembers));
         }
 
         public static string ValueToString(bool value) => JsonConvert.ToString(value);
@@ -163,22 +167,22 @@ namespace Ifak.Fast.Mediator
             return res.ToString();
         }
 
-        public static void ObjectToWriter(object value, TextWriter writer, bool indented = false, bool ignoreNullValues = false) {
-            var serializer = JsonSerializer.CreateDefault(GetSettings(indented, ignoreNullValues));
+        public static void ObjectToWriter(object value, TextWriter writer, bool indented = false, bool ignoreShouldSerializeMembers = false) {
+            var serializer = JsonSerializer.CreateDefault(GetSettings(indented, ignoreShouldSerializeMembers));
             serializer.Serialize(writer, value);
         }
 
-        public static byte[] ObjectToBytes(object value, bool indented = false, bool ignoreNullValues = false) {
+        public static byte[] ObjectToBytes(object value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
             var buffer = new MemoryStream(512);
-            ObjectToStream(value, buffer, indented, ignoreNullValues);
+            ObjectToStream(value, buffer, indented, ignoreShouldSerializeMembers);
             return buffer.ToArray();
         }
 
         private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-        public static void ObjectToStream(object value, Stream streamOut, bool indented = false, bool ignoreNullValues = false) {
+        public static void ObjectToStream(object value, Stream streamOut, bool indented = false, bool ignoreShouldSerializeMembers = false) {
             using (var writer = new StreamWriter(streamOut, UTF8_NoBOM, 1024, leaveOpen: true)) {
-                ObjectToWriter(value, writer, indented, ignoreNullValues);
+                ObjectToWriter(value, writer, indented, ignoreShouldSerializeMembers);
             }
         }
 
@@ -334,15 +338,15 @@ namespace Ifak.Fast.Mediator
         }
 
         public static T ObjectFromString<T>(string json) {
-            return JsonConvert.DeserializeObject<T>(json, settingsDefault);
+            return JsonConvert.DeserializeObject<T>(json, settings_NoIndent_UseShouldSerializeMembers);
         }
 
         public static object ObjectFromString(Type t, string json) {
-            return JsonConvert.DeserializeObject(json, t, settingsDefault);
+            return JsonConvert.DeserializeObject(json, t, settings_NoIndent_UseShouldSerializeMembers);
         }
 
         public static T ObjectFromReader<T>(TextReader reader) {
-            var serializer = JsonSerializer.CreateDefault(settingsDefault);
+            var serializer = JsonSerializer.CreateDefault(settings_NoIndent_UseShouldSerializeMembers);
             return (T)serializer.Deserialize(reader, typeof(T));
         }
 
@@ -387,7 +391,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public static void PopulateObject(string json, object obj) {
-            JsonConvert.PopulateObject(json, obj, settingsDefault);
+            JsonConvert.PopulateObject(json, obj, settings_NoIndent_UseShouldSerializeMembers);
         }
     }
 
@@ -396,6 +400,7 @@ namespace Ifak.Fast.Mediator
         public override bool CanConvert(Type objectType) => objectType == typeof(Timestamp);
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+            if (reader.Value == null) return null;
             string str = reader.Value as string;
             if (str != null) {
                 return Timestamp.FromISO8601(str);
@@ -415,6 +420,7 @@ namespace Ifak.Fast.Mediator
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalDateTime);
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+            if (reader.Value == null) return null;
             string str = reader.Value as string;
             if (str != null) {
                 return LocalDateTime.FromISO8601(str);
@@ -434,6 +440,7 @@ namespace Ifak.Fast.Mediator
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalDate);
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+            if (reader.Value == null) return null;
             string str = reader.Value as string;
             if (str != null) {
                 return LocalDate.FromISO8601(str);
@@ -453,6 +460,7 @@ namespace Ifak.Fast.Mediator
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalTime);
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+            if (reader.Value == null) return null;
             string str = reader.Value as string;
             if (str != null) {
                 return LocalTime.FromISO8601(str);
@@ -473,6 +481,7 @@ namespace Ifak.Fast.Mediator
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
             string str = (string)reader.Value;
+            if (str == null) return null;
             return Duration.Parse(str);
         }
 
@@ -488,6 +497,7 @@ namespace Ifak.Fast.Mediator
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
             string str = (string)reader.Value;
+            if (str == null) return null;
             return ObjectRef.FromEncodedString(str);
         }
 
@@ -503,7 +513,8 @@ namespace Ifak.Fast.Mediator
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
             string str = (string)reader.Value;
-            return LocationRef.FromLocationID(str ?? "");
+            if (str == null) return null;
+            return LocationRef.FromLocationID(str);
         }
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
@@ -518,6 +529,7 @@ namespace Ifak.Fast.Mediator
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
             string str = (string)reader.Value;
+            if (str == null) return null;
             return DataValue.FromJSON(str);
         }
 
