@@ -192,6 +192,7 @@ namespace Ifak.Fast.Mediator
         public string LoginPassword { get; set; }
         public string LoginServer { get; set; }
         public int LoginPort { get; set; }
+        public string DataFolder { get; set; }
         public NamedValue[] Configuration { get; set; }
         public Config GetConfigReader() => new Config(Configuration);
     }

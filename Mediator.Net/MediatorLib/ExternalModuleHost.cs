@@ -40,7 +40,7 @@ namespace Ifak.Fast.Mediator
         private static async Task Loop(TcpConnectorSlave connector, ModuleBase module) {
 
             Process parentProcess = null;
-            using (Request request = await connector.ReceiveRequest()) {
+            using (Request request = await connector.ReceiveRequest(5000)) {
                 if (request.Code != ModuleHelper.ID_ParentInfo) {
                     throw new Exception("Missing ParentInfo request (update MediatorLib.dll)");
                 }

@@ -35,6 +35,7 @@ namespace Ifak.Fast.Mediator
         internal readonly HistoryManager history = new HistoryManager();
         private int listenPort = 8080;
 
+        private bool requestShutdown = false;
         private bool shutdown = false;
 
         private static MediatorCore theCore = null;
@@ -48,8 +49,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public void RequestShutdown() {
-            shutdown = true;
-            reqHandler.setTerminating();
+            requestShutdown = true;
         }
 
         public void ConfigureServices(IServiceCollection services) {
@@ -140,9 +140,12 @@ namespace Ifak.Fast.Mediator
                 StartRunningModule(module);
             }
 
-            while (!shutdown) {
-                await Task.Delay(500);
+            while (!requestShutdown) {
+                await Task.Delay(100);
             }
+
+            shutdown = true;
+            reqHandler.setTerminating();
 
             await Shutdown();
 
@@ -177,6 +180,7 @@ namespace Ifak.Fast.Mediator
                     LoginPassword = module.Password,
                     LoginServer = "localhost",
                     LoginPort = listenPort,
+                    DataFolder = GetDataFolder(module.Config),
                     Configuration = configItems.ToArray()
                 };
                 await module.Instance.Init(initInfo, restoreVariableValues, module, null);
@@ -190,6 +194,14 @@ namespace Ifak.Fast.Mediator
                 module.LastError = exp.Message;
                 throw new Exception($"Startup of module {info.Name} failed: " + exp.Message, exp);
             }
+        }
+
+        private static string GetDataFolder(Module module) {
+            string varFile = module.VariablesFileName;
+            if (string.IsNullOrEmpty(varFile)) {
+                return "";
+            }
+            return Path.GetDirectoryName(Path.GetFullPath(varFile));
         }
 
         private void StartRunningModule(ModuleState module) {
