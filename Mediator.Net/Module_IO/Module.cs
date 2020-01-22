@@ -55,6 +55,7 @@ namespace Ifak.Fast.Mediator.IO
                 string dataItemID = v.Variable.Object.LocalObjectID;
                 if (dataItemsState.ContainsKey(dataItemID)) {
                     dataItemsState[dataItemID].LastReadValue = v.Value;
+                    dataItemsState[dataItemID].LastWrittenValue = v.Value;
                 }
             }
 
@@ -299,8 +300,35 @@ namespace Ifak.Fast.Mediator.IO
 
             while (!shutdown()) {
                 await Task.Delay(500);
+                CheckWriteRepeat();
             }
             await Shutdown();
+        }
+
+        private void CheckWriteRepeat() {
+
+            foreach (AdapterState a in adapters) {
+                if (a.Config.RepeatWriteInterval.TotalMilliseconds <= 0) continue;
+                var now = Timestamp.Now;
+                var maxAge = now - a.Config.RepeatWriteInterval;
+                var staleWriteItems = a.Config.GetAllDataItems()
+                    .Where(di => di.Write && dataItemsState.ContainsKey(di.ID) && dataItemsState[di.ID].LastWritten < maxAge)
+                    .ToArray();
+
+                if (staleWriteItems.Length == 0) continue;
+
+                Origin origin = new Origin();
+                origin.Type = OriginType.Module;
+                origin.ID = moduleID;
+                origin.Name = moduleName;
+
+                var varValues = staleWriteItems.Select(di => {
+                    ItemState state = dataItemsState[di.ID];
+                    return VariableValue.Make(moduleID, di.ID, VariableName, state.LastWrittenValue);
+                }).ToArray();
+
+                Task ignored = WriteVariables(origin, varValues, null);
+            }
         }
 
         public override async Task<VTQ[]> ReadVariables(Origin origin, VariableRef[] variables, Duration? timeout) {
@@ -400,6 +428,9 @@ namespace Ifak.Fast.Mediator.IO
                     failed.Add(new VariableError(vv.Variable, $"Data item {id} is not writable"));
                     continue;
                 }
+
+                itemState.LastWritten = Timestamp.Now;
+                itemState.LastWrittenValue = vv.Value;
 
                 AdapterState adapter = itemState.Adapter;
                 if (adapter.SetOfPendingWriteItems.Contains(id)) {
@@ -1018,6 +1049,8 @@ namespace Ifak.Fast.Mediator.IO
             public int? FractionalDigits { get; set; }
             public AdapterState Adapter { get; set; }
             public VTQ LastReadValue { get; set; }
+            public Timestamp LastWritten { get; set; } = Timestamp.Empty;
+            public VTQ LastWrittenValue { get; set; }
         }
 
         struct ItemSchedule

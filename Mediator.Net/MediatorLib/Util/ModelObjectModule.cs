@@ -24,10 +24,12 @@ namespace Ifak.Fast.Mediator.Util
         protected Dictionary<ObjectRef, IModelObject> mapObjests = new Dictionary<ObjectRef, IModelObject>();
 
         protected string moduleID = null;
+        protected string moduleName = "";
         protected Notifier notifier = null;
 
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
             this.moduleID = info.ModuleID;
+            this.moduleName = info.ModuleName;
             this.notifier = notifier;
             var config = info.GetConfigReader();
             modelFileName = Path.GetFullPath(config.GetString("model-file"));

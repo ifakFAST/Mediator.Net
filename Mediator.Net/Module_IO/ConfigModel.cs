@@ -107,6 +107,8 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public Duration MaxInitDelayForGoodQuality { get; set; } = Duration.FromSeconds(0);
 
+        public Duration RepeatWriteInterval { get; set; } = Duration.FromSeconds(0);
+
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         public Login? Login { get; set; } = null;
