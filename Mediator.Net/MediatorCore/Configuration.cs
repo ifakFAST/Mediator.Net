@@ -12,9 +12,17 @@ namespace Ifak.Fast.Mediator
     {
         public string ClientListenHost { get; set; } = "localhost";
         public int ClientListenPort { get; set; } = 8080;
+        public TimestampWarnMode TimestampCheckWarning { get; set; } = TimestampWarnMode.Always;
         public List<Module> Modules { get; set; } = new List<Module>();
         public UserManagement UserManagement { get; set; } = new UserManagement();
         public List<Location> Locations { get; set; } = new List<Location>();
+    }
+
+    public enum TimestampWarnMode
+    {
+        Always,
+        OnlyWhenHistory,
+        Never
     }
 
     public class Module

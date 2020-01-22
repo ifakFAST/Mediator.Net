@@ -13,6 +13,8 @@ namespace Ifak.Fast.Mediator
 {
     public class HistoryManager
     {
+        public TimestampWarnMode TimestampCheckWarning { get; set; } = TimestampWarnMode.Always;
+
         private static Logger logger = LogManager.GetLogger("HistoryManager");
 
         private readonly Dictionary<string, ModuleDBs> dbs = new Dictionary<string, ModuleDBs>();
@@ -249,6 +251,12 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        private bool ReportTimestampWarning(History history) {
+            if (TimestampCheckWarning == TimestampWarnMode.Always) return true;
+            if (TimestampCheckWarning == TimestampWarnMode.Never) return false;
+            return history.Mode != HistoryMode.None;
+        }
+
         public int OnVariableValuesChanged(string moduleID, IList<VaribleValuePrev> values) {
 
             var valuesToSave = new List<StoreValue>();
@@ -266,18 +274,23 @@ namespace Ifak.Fast.Mediator
 
                 Timestamp tNew = value.Value.T;
                 Timestamp tOld = previousValue.T;
+                History history = variable.History;
 
                 if (tNew < tOld) {
-                    logger.Warn("Timestamp of new VTQ is older than current timestamp: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
+                    if (ReportTimestampWarning(history)) {
+                        logger.Warn("Timestamp of new VTQ is older than current timestamp: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
+                    }
                 }
                 else if (tNew == tOld) {
                     if (value.Value != previousValue) {
-                        logger.Warn("Timestamp of new VTQ is equal to current timestamp but value (or quality) differs: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
+                        if (ReportTimestampWarning(history)) {
+                            logger.Warn("Timestamp of new VTQ is equal to current timestamp but value (or quality) differs: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
+                        }
                     }
                 }
                 else {
                     DataType type = variable.Type;
-                    History history = variable.History;
+
                     switch (history.Mode) {
                         case HistoryMode.None:
                             break;

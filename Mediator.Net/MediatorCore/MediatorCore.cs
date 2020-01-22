@@ -106,6 +106,7 @@ namespace Ifak.Fast.Mediator
                 module.CreateInstance();
             }
 
+            history.TimestampCheckWarning = config.TimestampCheckWarning;
             await history.Start(enabledModules, GetVariableDescription, reqHandler.OnVariableHistoryChanged, clearDBs);
 
             try {
