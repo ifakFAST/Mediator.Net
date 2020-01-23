@@ -226,26 +226,29 @@ namespace Ifak.Fast.Mediator.IO
                     ToArray();
 
                 var wrapper = new Wrapper(this, info);
+                adapter.State = State.InitStarted;
                 var groups = await adapter.Instance.Initialize(info, wrapper, items);
-                adapter.State = State.InitComplete;
-                adapter.SetGroups(groups);
+                if (adapter.State == State.InitStarted) {
+                    adapter.State = State.InitComplete;
+                    adapter.SetGroups(groups);
 
-                Duration maxInitDelayForGoodQuality = adapter.Config.MaxInitDelayForGoodQuality;
-                if (adapter.ScheduledDataItems.Length > 0 && maxInitDelayForGoodQuality.TotalMilliseconds > 0) {
-                    VTQ empty = new VTQ();
-                    ReadRequest[] requests = adapter.ScheduledDataItems.Select(di => new ReadRequest(di.DataItemID, empty)).ToArray();
-                    Func<VTQ, bool> NonGood = x => x.Q != Quality.Good;
+                    Duration maxInitDelayForGoodQuality = adapter.Config.MaxInitDelayForGoodQuality;
+                    if (adapter.ScheduledDataItems.Length > 0 && maxInitDelayForGoodQuality.TotalMilliseconds > 0) {
+                        VTQ empty = new VTQ();
+                        ReadRequest[] requests = adapter.ScheduledDataItems.Select(di => new ReadRequest(di.DataItemID, empty)).ToArray();
+                        Func<VTQ, bool> NonGood = x => x.Q != Quality.Good;
 
-                    VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
-                    if (readResults.Any(NonGood)) {
-                        var sw = new Stopwatch();
-                        sw.Start();
-                        do {
-                            await Task.Delay(200);
-                            readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                        VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                        if (readResults.Any(NonGood)) {
+                            var sw = new Stopwatch();
+                            sw.Start();
+                            do {
+                                await Task.Delay(200);
+                                readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                            }
+                            while (readResults.Any(NonGood) && sw.Elapsed < maxInitDelayForGoodQuality.ToTimeSpan());
+                            sw.Stop();
                         }
-                        while (readResults.Any(NonGood) && sw.Elapsed < maxInitDelayForGoodQuality.ToTimeSpan());
-                        sw.Stop();
                     }
                 }
             }
@@ -262,7 +265,7 @@ namespace Ifak.Fast.Mediator.IO
         private async Task ShutdownAdapters(IEnumerable<AdapterState> adapters) {
 
             Task[] shutdownTasks = adapters
-                .Where(a => a.State == State.InitComplete || a.State == State.Running)
+                .Where(a => a.State == State.InitStarted || a.State == State.InitComplete || a.State == State.Running)
                 .Select(ShutdownAdapter)
                 .ToArray();
 
@@ -1064,6 +1067,7 @@ namespace Ifak.Fast.Mediator.IO
         enum State
         {
             Created,
+            InitStarted,
             InitError,
             InitComplete,
             Running,
