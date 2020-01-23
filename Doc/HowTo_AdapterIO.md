@@ -2,7 +2,7 @@
 
 ## Create project
 
-* Create a new class library project targeting .Net 4.6.1 or .Net Core 2.1
+* Create a new class library project targeting .Net 4.6.1 or .Net Core 3.1
 * Add a reference to **MediatorLib**
 
 ## Create adapter class

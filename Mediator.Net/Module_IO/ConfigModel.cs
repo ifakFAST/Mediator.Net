@@ -123,6 +123,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeNodes() => Nodes.Count > 0;
         public bool ShouldSerializeFractionalDigits() => MaxFractionalDigits.HasValue;
         public bool ShouldSerializeMaxInitDelayForGoodQuality() => MaxInitDelayForGoodQuality.TotalMilliseconds != 0;
+        public bool ShouldSerializeRepeatWriteInterval() => RepeatWriteInterval.TotalMilliseconds != 0;
         public bool ShouldSerializeConfig() => Config.Count > 0;
         public bool ShouldSerializeDataItems() => DataItems.Count > 0;
 

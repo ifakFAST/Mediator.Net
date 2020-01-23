@@ -20,6 +20,18 @@ namespace Ifak.Fast.Mediator
         private Notifier notifier;
         private string moduleName = "?";
 
+        private string ReplaceReleaseOrDebug(string str) {
+            const string releaseDebugPlaceHolder = "{RELEASE_OR_DEBUG}";
+            if (str.Contains(releaseDebugPlaceHolder)) {
+#if DEBUG
+                return str.Replace(releaseDebugPlaceHolder, "Debug");
+#else
+                return str.Replace(releaseDebugPlaceHolder, "Release");
+#endif
+            }
+            return str;
+        }
+
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
 
             this.moduleName = info.ModuleName;
@@ -28,8 +40,8 @@ namespace Ifak.Fast.Mediator
 
             var config = info.GetConfigReader();
 
-            string cmd = config.GetString("ExternalCommand");
-            string args = config.GetString("ExternalArgs");
+            string cmd = ReplaceReleaseOrDebug(config.GetString("ExternalCommand"));
+            string args = ReplaceReleaseOrDebug(config.GetString("ExternalArgs"));
 
             const string portPlaceHolder = "{PORT}";
             if (!args.Contains(portPlaceHolder)) throw new Exception("Missing port placeholder in args parameter: {PORT}");
@@ -38,15 +50,6 @@ namespace Ifak.Fast.Mediator
             int port = server.Port;
 
             args = args.Replace(portPlaceHolder, port.ToString());
-
-            const string releaseDebugPlaceHolder = "{RELEASE_OR_DEBUG}";
-            if (args.Contains(releaseDebugPlaceHolder)) {
-#if DEBUG
-                args = args.Replace(releaseDebugPlaceHolder, "Debug");
-#else
-                args = args.Replace(releaseDebugPlaceHolder, "Release");
-#endif
-            }
 
             try {
                 var taskConnect = server.WaitForConnect(TimeSpan.FromSeconds(60));

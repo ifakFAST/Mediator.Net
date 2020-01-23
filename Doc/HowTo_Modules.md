@@ -2,7 +2,7 @@
 
 ## Create project
 
-* Create a new console application project targeting .Net Core 2.1 or .Net 4.6.1 or higher
+* Create a new console application project targeting .Net Core 3.1 or .Net 4.6.1 or higher
 * Add a reference to **MediatorLib**
 
 ## Create module class
@@ -181,9 +181,9 @@ Here is an example configuration for the **second option** (separate process):
 ```XML
 <Module id="IO" name="IO" enabled="true">
     <VariablesFileName>Var_IO.xml</VariablesFileName>
-    <ExternalCommand>dotnet</ExternalCommand>
     <!-- path is relative to current working directory: -->
-    <ExternalArgs>./Bin/Module_IO/Module_IO.dll {PORT}</ExternalArgs>
+    <ExternalCommand>./Bin/Module_IO/Module_IO.exe</ExternalCommand>
+    <ExternalArgs>{PORT}</ExternalArgs>
     <Config>
         <NamedValue name="model-file" value="Model_IO.xml"/>
     </Config>

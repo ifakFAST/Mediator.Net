@@ -11,7 +11,7 @@ It is recommended (but not required) to implement the Web frontend using a moder
 
 ## Implementing the C# Backend
 
-Create a new public class that inherits from **Ifak.Fast.Mediator.Dashboard.ViewBase**. The project containing the class needs to have a reference to **MediatorLib** and target .Net Core 2.1 or .Net 4.6.1 (or higher).
+Create a new public class that inherits from **Ifak.Fast.Mediator.Dashboard.ViewBase**. The project containing the class needs to have a reference to **MediatorLib** and target .Net Core 3.1 or .Net 4.6.1 (or higher).
 
 You need to implement at least the methods **OnActivate** and **OnUiRequestAsync**:
 

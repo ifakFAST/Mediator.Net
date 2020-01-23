@@ -6,7 +6,7 @@ The [ifak*FAST*](https://fast.ifak.eu/) Mediator enables the composition and int
 
 The Mediator core is responsible for supervision and integration of the modules and provides time series data management and role-based rights management. Higher-level functionality needs to be provided by modules. A module is a software component with a specific configuration model (typically in form of an XML file) that defines a set of variables. A variable represents a runtime changing value with timestamp and quality, e.g. a measurement or set-point. A module may read and write variables and the configuration of other modules and may provide specific services for use by other modules.
 
-Running the Mediator requires [.Net Core 2.1](https://www.microsoft.com/net/download) or newer. Future versions of the Mediator will allow for creating modules with Java.
+Running the Mediator requires [.Net Core 3.1](https://www.microsoft.com/net/download). Future versions of the Mediator will allow for creating modules with Java.
 
 The Mediator core and all generic modules in this repository are licensed under the MIT License. We offer [professional support](https://fast.ifak.eu/contact) for development and customization of ifak*FAST* based solutions.
 
