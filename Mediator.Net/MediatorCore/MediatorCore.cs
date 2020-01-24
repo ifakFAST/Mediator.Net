@@ -75,7 +75,7 @@ namespace Ifak.Fast.Mediator
             });
         }
 
-        internal async Task Run(string configFileName, bool clearDBs) {
+        internal async Task Run(string configFileName, bool clearDBs, string fileStartComplete) {
 
             theSyncContext = SynchronizationContext.Current;
 
@@ -141,6 +141,13 @@ namespace Ifak.Fast.Mediator
                 StartRunningModule(module);
             }
 
+            if (!string.IsNullOrEmpty(fileStartComplete)) {
+                try {
+                    File.WriteAllText(fileStartComplete, DateTime.Now.ToString());
+                }
+                catch (Exception) { }
+            }
+
             while (!requestShutdown) {
                 await Task.Delay(100);
             }
@@ -149,6 +156,13 @@ namespace Ifak.Fast.Mediator
             reqHandler.setTerminating();
 
             await Shutdown();
+
+            if (!string.IsNullOrEmpty(fileStartComplete)) {
+                try {
+                    File.Delete(fileStartComplete);
+                }
+                catch (Exception) { }
+            }
 
             Task ignored = webHost.StopAsync(); // Don't wait for StopAsync to finish (takes a few seconds)
         }

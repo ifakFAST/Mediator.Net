@@ -26,6 +26,7 @@ namespace Ifak.Fast.Mediator
             string title = "";
             string logDir = "";
             string logName = "";
+            string fileStartComplete = "";
             bool clearDBs = false;
 
             Parser.Default.ParseArguments<Options>(args).WithParsed(o => {
@@ -33,6 +34,7 @@ namespace Ifak.Fast.Mediator
                 title = o.Title;
                 logDir = o.LogDir;
                 logName = o.LogName;
+                fileStartComplete = o.FileStartComplete;
                 clearDBs = o.ClearDBs;
             });
 
@@ -73,7 +75,7 @@ namespace Ifak.Fast.Mediator
             t.Start();
 
             try {
-                SingleThreadedAsync.Run(() => core.Run(configFileName, clearDBs: clearDBs));
+                SingleThreadedAsync.Run(() => core.Run(configFileName, clearDBs, fileStartComplete));
             }
             catch (Exception exp) {
                 logger.Error(exp.GetBaseException(), exp.Message);
@@ -113,5 +115,8 @@ namespace Ifak.Fast.Mediator
 
         [Option('d', "clearDBs", Required = false, HelpText = "Delete contents of historian databases, e.g. for clean testing", Default = false)]
         public bool ClearDBs { get; set; }
+
+        [Option('f', "filestartcomplete", Required = false, HelpText = "Name of the file that is written after successful start.", Default = "")]
+        public string FileStartComplete { get; set; }
     }
 }
