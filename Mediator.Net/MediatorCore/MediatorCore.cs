@@ -609,7 +609,7 @@ namespace Ifak.Fast.Mediator
                 implAssembly = implAssembly.Replace(releaseDebugPlaceHolder, "Release");
 #endif
             }
-            ModuleBase rawModule = Util.Reflect.CreateInstanceOrThrow<ModuleBase>(Config.ImplClass, implAssembly);
+            ModuleBase rawModule = ModuleLoader.CreateModuleInstanceOrThrow(Config.ImplClass, implAssembly);
             Instance = new SingleThreadModule(rawModule, Config.Name);
             State = State.Created;
         }

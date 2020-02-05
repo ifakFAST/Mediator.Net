@@ -60,12 +60,16 @@ namespace Ifak.Fast.Mediator.Util
                 }
             };
 
-            string BaseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string BaseDir = EnsurePathSep(AppDomain.CurrentDomain.BaseDirectory);
+            string CallingDir = EnsurePathSep(Path.GetDirectoryName(Assembly.GetCallingAssembly().Location));
+
+            // Console.WriteLine($"CallDir: {CallingDir}");
+            // Console.WriteLine($"BaseDir: {BaseDir}");
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 if (!assembly.IsDynamic) {
                     string location = assembly.Location;
-                    if (location.StartsWith(BaseDir)) {
+                    if (location.StartsWith(BaseDir) || location.StartsWith(CallingDir)) {
                         loadTypes(assembly);
                         processedAssemblies.Add(location);
                     }
@@ -85,6 +89,37 @@ namespace Ifak.Fast.Mediator.Util
             }
 
             return result;
+        }
+
+        private static string EnsurePathSep(string path) {
+            int N = path.Length;
+            if (N > 0 && path[N - 1] == Path.DirectorySeparatorChar) return path;
+            return path + Path.DirectorySeparatorChar;
+        }
+
+        public static Type GetNonAbstractSubclassInDomainBaseDirectory(Type baseClass, string typeName) {
+
+            string BaseDir = EnsurePathSep(AppDomain.CurrentDomain.BaseDirectory);
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+                if (!assembly.IsDynamic) {
+                    string location = assembly.Location;
+                    if (location.StartsWith(BaseDir)) {
+                        string file = Path.GetFileName(location);
+                        bool sysDll = (file.StartsWith("Microsoft.") || file.StartsWith("System."));
+                        if (!sysDll) {
+                            Type[] types = assembly.GetExportedTypes();
+                            foreach (Type t in types) {
+                                if (t.IsSubclassOf(baseClass) && !t.IsAbstract && t.FullName.Equals(typeName, StringComparison.InvariantCultureIgnoreCase)) {
+                                    return t;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -40,7 +40,7 @@ namespace Ifak.Fast.Mediator
         public bool ConcurrentInit { get; set; } = false;
 
         public string VariablesFileName { get; set; } = "";
-        public string ImplAssembly { get; set; } = "MediatorCore.dll";
+        public string ImplAssembly { get; set; } = "";
         public string ImplClass { get; set; } = "Ifak.Fast.Mediator.ExternalModule";
 
         public string ExternalCommand { get; set; } = "";
