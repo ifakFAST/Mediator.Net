@@ -8,8 +8,8 @@
     <Modules>
 
         <Module id="EventLog" name="EventLog" enabled="true" concurrentInit="false">
-            <ExternalCommand>../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_EventLog.exe</ExternalCommand>
-            <ExternalArgs>{PORT}</ExternalArgs>            
+            <ExternalCommand>dotnet</ExternalCommand>
+            <ExternalArgs>../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_EventLog.dll {PORT}</ExternalArgs>            
             <Config>
                 <NamedValue name="model-file" value="Model_EventLog.xml"/>
             </Config>
@@ -25,8 +25,8 @@
         </Module>
         
         <Module id="Dashboard" name="Dashboard" enabled="true" concurrentInit="false">
-            <ExternalCommand>../Mediator.Net/Module_Dashboard/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_Dashboard.exe</ExternalCommand>
-            <ExternalArgs>{PORT}</ExternalArgs>
+            <ExternalCommand>dotnet</ExternalCommand>
+            <ExternalArgs>../Mediator.Net/Module_Dashboard/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_Dashboard.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file"  value="Model_Dashboard.xml"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
@@ -38,8 +38,8 @@
         
         <Module id="IO" name="IO" enabled="true" concurrentInit="false">
             <VariablesFileName>Var_IO.xml</VariablesFileName>
-            <ExternalCommand>../Mediator.Net/Module_IO/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_IO.exe</ExternalCommand>
-            <ExternalArgs>{PORT}</ExternalArgs>
+            <ExternalCommand>dotnet</ExternalCommand>
+            <ExternalArgs>../Mediator.Net/Module_IO/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_IO.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_IO.xml"/>
                 <NamedValue name="adapter-assemblies" value=""/>
