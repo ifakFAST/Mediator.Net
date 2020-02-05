@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Linq;
 
 namespace Ifak.Fast.Mediator.IO
 {
@@ -25,30 +24,8 @@ namespace Ifak.Fast.Mediator.IO
             };
 
             var module = new Module();
-            module.fLoadAdaptersFromAssembly = LoadTypesFromAssemblyFile;
-
             ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
             Console.WriteLine("Terminated.");
-        }
-
-        private static Type[] LoadTypesFromAssemblyFile(string fileName) {
-            try {
-                Type baseClass = typeof(AdapterBase);
-
-                var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
-                        fileName,
-                        sharedTypes: new Type[] { baseClass });
-
-                return loader.LoadDefaultAssembly()
-                    .GetExportedTypes()
-                    .Where(t => t.IsSubclassOf(baseClass) && !t.IsAbstract)
-                    .ToArray();
-            }
-            catch (Exception exp) {
-                Console.Error.WriteLine($"Failed to load adapter types from assembly '{fileName}': {exp.Message}");
-                Console.Error.Flush();
-                return new Type[0];
-            }
         }
     }
 }

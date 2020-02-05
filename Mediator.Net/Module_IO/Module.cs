@@ -24,8 +24,6 @@ namespace Ifak.Fast.Mediator.IO
 
         private const string VariableName = "Value";
 
-        public Func<string, Type[]> fLoadAdaptersFromAssembly = (s) => new Type[0];
-
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
 
             this.moduleThread = moduleThread;
@@ -60,7 +58,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             var adapterTypes = Reflect.GetAllNonAbstractSubclasses(typeof(AdapterBase)).ToList();
-            adapterTypes.AddRange(absoluteAssemblies.SelectMany(fLoadAdaptersFromAssembly));
+            adapterTypes.AddRange(absoluteAssemblies.SelectMany(LoadTypesFromAssemblyFile));
 
             mapAdapterTypes.Clear();
             foreach (var type in adapterTypes) {
@@ -89,6 +87,26 @@ namespace Ifak.Fast.Mediator.IO
                 Console.Error.WriteLine(errMessage);
                 await Shutdown();
                 throw new Exception(errMessage);
+            }
+        }
+
+        private static Type[] LoadTypesFromAssemblyFile(string fileName) {
+            try {
+                Type baseClass = typeof(AdapterBase);
+
+                var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
+                        fileName,
+                        sharedTypes: new Type[] { baseClass });
+
+                return loader.LoadDefaultAssembly()
+                    .GetExportedTypes()
+                    .Where(t => t.IsSubclassOf(baseClass) && !t.IsAbstract)
+                    .ToArray();
+            }
+            catch (Exception exp) {
+                Console.Error.WriteLine($"Failed to load IO adapter types from assembly '{fileName}': {exp.Message}");
+                Console.Error.Flush();
+                return new Type[0];
             }
         }
 
