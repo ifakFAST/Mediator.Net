@@ -1,9 +1,11 @@
-﻿using Ifak.Fast.Mediator.Util;
+﻿// Licensed to ifak e.V. under one or more agreements.
+// ifak e.V. licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using Ifak.Fast.Mediator.Util;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Ifak.Fast.Mediator
 {
