@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MediatorLib\MediatorLib.csproj" />
+    <ProjectReference Include="..\Module_Calc\Module_Calc.csproj" />
     <ProjectReference Include="..\Module_Dashboard\Module_Dashboard.csproj" />
     <ProjectReference Include="..\Module_EventLog\Module_EventLog.csproj" />
     <ProjectReference Include="..\Module_IO\Module_IO.csproj" />

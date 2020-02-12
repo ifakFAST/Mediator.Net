@@ -39,6 +39,14 @@ namespace Ifak.Fast.Mediator.Util
             await OnConfigModelChanged(init: true);
         }
 
+        protected Origin GetModuleOrigin() {
+            var origin = new Origin();
+            origin.Type = OriginType.Module;
+            origin.ID = moduleID;
+            origin.Name = moduleName;
+            return origin;
+        }
+
         protected virtual void ModifyModelAfterInit() { }
 
         protected virtual string ReadConfigFileToString(string modelFileName) {

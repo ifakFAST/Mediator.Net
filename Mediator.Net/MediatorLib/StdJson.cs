@@ -187,6 +187,13 @@ namespace Ifak.Fast.Mediator
         }
 
         public static bool ObjectsDeepEqual(object a, object b) {
+
+            if (a is System.Collections.ICollection && b is System.Collections.ICollection) {
+                int countA = (a as System.Collections.ICollection).Count;
+                int countB = (b as System.Collections.ICollection).Count;
+                if (countA != countB) return false;
+            }
+
             using (MemoryStream bufA = Util.MemoryManager.GetMemoryStream("ObjectEqualsA"),
                                 bufB = Util.MemoryManager.GetMemoryStream("ObjectEqualsB")) {
 

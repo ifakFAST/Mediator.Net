@@ -9,6 +9,7 @@ module.exports = {
     eventlog:  'src/view_eventlog/main.ts',
     history:   'src/view_history/main.ts',
     generic:   'src/view_generic/main.ts',
+    calc:      'src/view_calc/main.ts',
   },
   transpileDependencies: [
     "vuetify"
