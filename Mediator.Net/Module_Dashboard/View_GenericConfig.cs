@@ -520,6 +520,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                 if (mapVariables.TryGetValue(key, out vtq)) {
                     listVariables.Add(new VariableVal() {
                         Name = v.Name,
+                        Struct = v.Type == DataType.Struct,
+                        Dim = v.Dimension,
                         V = vtq.V,
                         T = vtq.T,
                         Q = vtq.Q
@@ -570,6 +572,8 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class VariableVal
     {
         public string Name { get; set; }
+        public bool Struct { get; set; }
+        public int Dim { get; set; }
         public DataValue V { get; set; }
         public Timestamp T { get; set; }
         public Quality   Q { get; set; }

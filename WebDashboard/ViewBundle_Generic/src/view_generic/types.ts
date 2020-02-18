@@ -12,6 +12,8 @@ export interface TreeNode {
 
 export interface VariableVal {
   Name: string
+  Struct: boolean
+  Dim: number
   V: string
   T: string
   Q: Quality

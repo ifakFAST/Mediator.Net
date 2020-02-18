@@ -18,18 +18,28 @@
           </v-toolbar>
 
           <v-data-table :no-data-text="noDataText" :headers="headers" :items="items" :search="search"
-                        :custom-filter="customFilter" class="elevation-4 mt-2" :footer-props="footer" >
+                        :custom-filter="customFilter" class="elevation-4 mt-2" :footer-props="footer"
+                        show-expand :expanded.sync="expanded" :single-expand="false" item-key="ID">
 
-              <template v-slot:item="{ item }">
-                <tr>
-                  <td>{{ item.Obj }}</td>
-                  <td>{{ item.Var }}</td>
-                  <td class="text-right" style="min-width: 12em">
-                    <a @click.stop="edit(item)">{{ item.V }}</a>
-                  </td>
-                  <td v-bind:style="{ color: qualityColor(item.Q) }" class="text-right">{{ item.Q }}</td>
-                  <td class="text-right">{{ item.T }}</td>
-                </tr>
+              <template v-slot:item.V="{ item }">
+                <div style="min-width: 12em">
+                  <a @click.stop="edit(item)">{{ limitText(item) }}</a>
+                </div>
+              </template>
+
+              <template v-slot:item.Q="{ item }">
+                <div v-bind:style="{ color: qualityColor(item.Q) }">{{ item.Q }}</div>
+              </template>
+
+              <template v-slot:item.data-table-expand="{ item, isExpanded, expand  }">
+                <v-icon v-if="!isExpanded && item.Type==='Struct'" @click="expand(true)" >mdi-chevron-down</v-icon>
+                <v-icon v-if="isExpanded  && item.Type==='Struct'" @click="expand(false)">mdi-chevron-up</v-icon>
+              </template>
+
+              <template v-slot:expanded-item="{ headers, item }">
+                <td :colspan="headers.length">
+                  <struct-view style="float: right;" :value="item.V" :vertical="item.Dimension !== 1"></struct-view>
+                </td>
               </template>
 
           </v-data-table>
@@ -57,22 +67,34 @@
 <script lang="ts">
 
 import { Component, Vue } from 'vue-property-decorator'
+import * as fast from '../fast_types'
+import StructView from '../components/StructView.vue'
 
 interface VarEntry {
+  ID: string
   ObjID: string
   Obj: string
   Var: string
+  Type: fast.DataType
+  Dimension: number
   V: string
+  T: fast.Timestamp
+  Q: fast.Quality
 }
 
-@Component
+@Component({
+  components: {
+    StructView,
+  },
+})
 export default class ViewVariables extends Vue {
 
+  expanded: string[] = []
   loading = true
   search = ''
   modules = []
   selectedModuleID = ''
-  items = []
+  items: VarEntry[] = []
   noDataText = 'No variables in selected module'
   footer = {
     showFirstLastPage: true,
@@ -80,14 +102,31 @@ export default class ViewVariables extends Vue {
   }
   editTmp = ''
   editDialog = false
-  editItem: VarEntry = { ObjID: '', Obj: '', Var: '', V: ''}
+  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON', Dimension: 1, V: '', T: '', Q: 'Bad' }
   headers = [
       { text: 'Object Name', align: 'left',  sortable: false, filterable: true,  value: 'Obj' },
       { text: 'Variable',    align: 'left',  sortable: false, filterable: false, value: 'Var' },
       { text: 'Value',       align: 'right', sortable: false, filterable: false, value: 'V' },
       { text: 'Quality',     align: 'right', sortable: false, filterable: false, value: 'Q' },
       { text: 'Timestamp',   align: 'right', sortable: false, filterable: false, value: 'T' },
+      { text: '', value: 'data-table-expand' },
   ]
+
+  limitText(item: VarEntry): string {
+    if (item.Type === 'Struct') {
+      const str = item.V
+      const MaxLen = 60
+      if (str.length > MaxLen) {
+        return str.substring(0, MaxLen) + '\u00A0...'
+      }
+      else {
+        return str
+      }
+    }
+    else {
+      return item.V
+    }
+  }
 
   customFilter(value: any, search: string | null, item: VarEntry) {
     if (search === null ) { return true }
@@ -108,7 +147,7 @@ export default class ViewVariables extends Vue {
     }
   }
 
-  edit(item: any) {
+  edit(item: VarEntry) {
     this.editItem = item
     this.editTmp = item.V
     this.editDialog = true

@@ -45,7 +45,7 @@
           <Output id="Y" name="Y" />
         </Outputs>
       </Calculation>
-      <Calculation id="simba" name="Control" type="Simba" enabled="true">
+      <Calculation id="simba" name="Control" type="Simba" enabled="false">
         <WindowVisible>true</WindowVisible>
         <Cycle>5 s</Cycle>
         <Definition>SimbaControl\Test1\Test.simu</Definition>

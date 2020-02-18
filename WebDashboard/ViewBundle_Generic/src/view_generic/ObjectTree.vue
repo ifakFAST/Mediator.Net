@@ -1,16 +1,19 @@
 <template>
   <li>
-    <div :class="{bold: isSelected}" draggable="true" @dragstart="onDragStart" @dragover="onDragOver" @drop="onDrop">
-      <span @click="open = true"  v-if="isFolder && !open"><v-icon>keyboard_arrow_right</v-icon></span>
-      <span @click="open = false" v-if="isFolder &&  open"><v-icon>keyboard_arrow_down</v-icon></span>
-      <span v-if="!isFolder">&nbsp;&nbsp;&nbsp;&#8226;&nbsp;&nbsp;</span>
-      <span @click="selectObject">{{shortText}}</span>
+    <div :class="{bold: isSelected}">
+      <span @click="open = true"  v-if="isFolder && !open" style="cursor: pointer;"><v-icon>keyboard_arrow_right</v-icon></span>
+      <span @click="open = false" v-if="isFolder &&  open" style="cursor: pointer;"><v-icon>keyboard_arrow_down</v-icon></span>
+      <span v-if="!isFolder" style="cursor: pointer;">{{ '\xa0\u2022\xa0\xa0' }}</span>
+      <span style="cursor: pointer;" draggable="true" @dragstart="onDragStart" @dragover="onDragOver" @drop="onDrop" @click="selectObject">{{shortText}}</span>
       <span v-if="showVariableValue" v-bind:style="{ color: qualityColor }">
-            &nbsp;&nbsp;{{ model.Variables[0].V }}
+          {{ '\xa0\xa0' + varValue }}
       </span>
+      <span v-if="!showStruct && showVariableValue && firstVar.Struct" @click="showStruct = !showStruct" style="cursor: pointer;"><v-icon>keyboard_arrow_right</v-icon></span>
+      <span v-if=" showStruct && showVariableValue && firstVar.Struct" @click="showStruct = !showStruct" style="cursor: pointer;"><v-icon>keyboard_arrow_down</v-icon></span>
     </div>
+    <struct-view v-if="showStruct && showVariableValue && firstVar.Struct" :value="firstVar.V" :vertical="firstVar.Dim !== 1"></struct-view>
     <ul v-if="open">
-      <object-tree class="item" v-for="child in modelChildren" :key="child.ID" :model="child"
+      <object-tree v-for="child in modelChildren" :key="child.ID" :model="child"
           :selection-id="selectionId"
           :initial-open="false"
           :type-info="typeInfo"
@@ -23,10 +26,14 @@
 <script lang="ts">
 
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import { TreeNode, TypeMap, ObjMemInfo } from './types'
+import { TreeNode, VariableVal, TypeMap, ObjMemInfo } from './types'
+import StructView from '../components/StructView.vue'
 
 @Component({
   name: 'object-tree',
+  components: {
+    StructView,
+  },
 })
 export default class ObjectTree extends Vue {
 
@@ -36,6 +43,22 @@ export default class ObjectTree extends Vue {
   @Prop(Object) typeInfo: TypeMap
 
   open: boolean = this.initialOpen
+  showStruct: boolean = false
+
+  get firstVar(): VariableVal {
+    return this.model.Variables[0]
+  }
+
+  get varValue(): string {
+    const str = this.firstVar.V
+    const MaxLen = 25
+    if (str.length > MaxLen) {
+      return str.substring(0, MaxLen) + '\u00A0...'
+    }
+    else {
+      return str
+    }
+  }
 
   get modelChildren(): TreeNode[] {
     if (this.model === null) { return [] }
@@ -72,7 +95,7 @@ export default class ObjectTree extends Vue {
 
   get qualityColor(): string {
     if (this.model === null) { return 'black' }
-    const q = this.model.Variables[0].Q
+    const q = this.firstVar.Q
     if (q === 'Good') { return 'green' }
     if (q === 'Uncertain') { return 'orange' }
     return 'red'
@@ -136,3 +159,15 @@ export default class ObjectTree extends Vue {
 }
 
 </script>
+
+<style>
+
+  .fast-struct-table table thead th {
+    font-size: 14px;
+  }
+
+  .fast-struct-table table tbody td {
+    font-size: 14px;
+  }
+
+</style>

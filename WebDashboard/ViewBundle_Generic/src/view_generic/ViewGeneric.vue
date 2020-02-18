@@ -7,7 +7,7 @@
         <v-col cols="4" style="min-width: 250px;">
           <ul>
 
-            <object-tree class="item"
+            <object-tree
                 :model="objectTree"
                 :selection-id="selectedObjectID"
                 :initial-open="true"

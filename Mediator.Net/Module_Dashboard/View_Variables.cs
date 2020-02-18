@@ -14,7 +14,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     {
         private string activeModuleID = "";
         private ModuleInfo[] modules = new ModuleInfo[0];
-        private readonly Dictionary<ObjectRef, string> mapObjectToName = new Dictionary<ObjectRef, string>();
+        private readonly Dictionary<ObjectRef, ObjectInfo> mapObjectToObjectInfo = new Dictionary<ObjectRef, ObjectInfo>();
         private readonly Dictionary<VariableRef, int> mapIdx = new Dictionary<VariableRef, int>();
 
         public override async Task OnActivate() {
@@ -107,22 +107,28 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         private void SetObjectNameMap(ObjectInfo[] objects) {
-            mapObjectToName.Clear();
+            mapObjectToObjectInfo.Clear();
             foreach (var obj in objects) {
-                mapObjectToName[obj.ID] = obj.Name;
+                mapObjectToObjectInfo[obj.ID] = obj;
             }
         }
 
         private VarEntry MapVarValue(VariableValue vv) {
             ObjectRef obj = vv.Variable.Object;
-            string name = mapObjectToName.ContainsKey(obj) ? mapObjectToName[obj] : "???";
+            ObjectInfo info = mapObjectToObjectInfo.ContainsKey(obj) ? mapObjectToObjectInfo[obj] : null;
+            string varName = vv.Variable.Name;
+            Variable variable = info?.Variables.FirstOrDefault(v => v.Name == varName);
+
             return new VarEntry() {
+                ID = obj.ToString() + "___" + vv.Variable.Name,
                 ObjID = obj.ToString(),
-                Obj = name,
+                Obj = info?.Name ?? "???",
                 Var = vv.Variable.Name,
                 V = vv.Value.V,
                 T = Timestamp2Str(vv.Value.T),
-                Q = vv.Value.Q
+                Q = vv.Value.Q,
+                Type = variable?.Type ?? DataType.JSON,
+                Dimension = variable?.Dimension ?? 1,
             };
         }
 
@@ -157,9 +163,12 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class VarEntry
         {
+            public string ID { get; set; }
             public string ObjID { get; set; }
             public string Obj { get; set; }
             public string Var { get; set; }
+            public DataType Type { get; set; }
+            public int Dimension { get; set; }
             public DataValue V { get; set; }
             public string T { get; set; }
             public Quality Q { get; set; }
