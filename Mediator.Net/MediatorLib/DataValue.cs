@@ -303,7 +303,20 @@ namespace Ifak.Fast.Mediator
             StdJson.PopulateObject(json, obj);
         }
 
-        public double AsDouble() => IsArray ? StdJson.ToDoubleArray(json)[0] : StdJson.ToDouble(json);
+        public double? AsDouble() {
+            try {
+                return StdJson.ToDouble(json);
+            }
+            catch (Exception) {
+                if (json == "true") return 1;
+                if (json == "false") return 0;
+                try {
+                    return StdJson.ToDoubleArrayAcceptingFloats(json)[0];
+                }
+                catch (Exception) { }
+            }
+            return null;
+        }
 
         public double GetDouble() => StdJson.ToDouble(json);
 

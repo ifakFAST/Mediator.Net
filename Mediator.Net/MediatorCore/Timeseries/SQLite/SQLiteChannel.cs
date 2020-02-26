@@ -281,7 +281,10 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 while (reader.Read()) {
                     VTTQ x = ReadVTTQ(reader);
                     if (!x.V.IsEmpty) {
-                        buffer.Add(new VTTQ_D(x, x.V.AsDouble()));
+                        double? value = x.V.AsDouble();
+                        if (value.HasValue) {
+                            buffer.Add(new VTTQ_D(x, value.Value));
+                        }
                     }
                     if (buffer.Count >= itemsPerInterval) {
                         FlushBuffer(result, buffer, maxValues);

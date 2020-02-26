@@ -79,7 +79,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             foreach (InputValue v in inputValues) {
                 Input input = inputs.FirstOrDefault(inn => inn.Name == v.InputID);
                 if (input != null) {
-                    input.Value = v.Value.V.AsDouble();
+                    double? value = v.Value.V.AsDouble();
+                    input.Value = value.HasValue ? value.Value : 0;
                 }
             }
 

@@ -262,6 +262,19 @@ namespace Ifak.Fast.Mediator
 
         public static double[] ToDoubleArray(string s) => ToPrimitiveArray(s, ToDouble);
 
+        public static double ToDoubleAcceptingFloat(string s) {
+            try {
+                return double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
+            }
+            catch (Exception) {
+                if (s == "true") return 1;
+                if (s == "false") return 0;
+                throw;
+            }
+        }
+
+        public static double[] ToDoubleArrayAcceptingFloats(string s) => ToPrimitiveArray(s, ToDoubleAcceptingFloat);
+
         public static decimal ToDecimal(string s) => decimal.Parse(s, CultureInfo.InvariantCulture);
 
         public static decimal[] ToDecimalArray(string s) => ToPrimitiveArray(s, ToDecimal);
