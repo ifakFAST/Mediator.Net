@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
+using System.Globalization;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -87,7 +88,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
 
                         foreach (ObjectInfo info in infos) {
-                            var numericVariables = info.Variables.Where(IsNumeric).Select(v => v.Name).ToArray();
+                            var numericVariables = info.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray();
                             res.ObjectMap[info.ID.ToEncodedString()] = new ObjInfo() {
                                 Name = info.Name,
                                 Variables = numericVariables
@@ -320,11 +321,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
 
                         return ReqResult.OK(new {
-                            Items = objects.Where(o => o.Variables.Any(IsNumeric)).Select(o => new Obj() {
+                            Items = objects.Where(o => o.Variables.Any(IsNumericOrBool)).Select(o => new Obj() {
                                 Type = o.ClassName,
                                 ID = o.ID.ToEncodedString(),
                                 Name = o.Name,
-                                Variables = o.Variables.Where(IsNumeric).Select(v => v.Name).ToArray()
+                                Variables = o.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray()
                             })
                         });
                     }
@@ -429,7 +430,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             await Connection.EnableVariableHistoryChangedEvents(variables);
         }
 
-        private static bool IsNumeric(Variable v) => v.IsNumeric;
+        private static bool IsNumericOrBool(Variable v) => v.IsNumeric || v.Type == DataType.Bool;
 
         private void WriteUnifiedData(TextWriter writer, List<VTTQ[]> variables) {
 
@@ -459,7 +460,16 @@ namespace Ifak.Fast.Mediator.Dashboard
                     Timestamp? t = reader.Time;
                     if (t.HasValue && t.Value == time) {
                         DataValue v = reader.Value;
-                        writer.Write(v.JSON);
+                        if (IsSimpleDouble(v.JSON)) {
+                            writer.Write(v.JSON);
+                        }
+                        else {
+                            double? value = v.AsDouble();
+                            if (value.HasValue)
+                                writer.Write(value.Value.ToString("R", CultureInfo.InvariantCulture));
+                            else
+                                writer.Write("null");
+                        }
                         reader.MoveNext();
                     }
                     else {
@@ -475,6 +485,12 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             writer.Write(']');
             writer.Flush();
+        }
+
+        private static bool IsSimpleDouble(string str) {
+            if (str.Length == 0) return false;
+            char firstChar = str[0];
+            return char.IsDigit(firstChar) || firstChar == '-';
         }
 
         class HistReader
