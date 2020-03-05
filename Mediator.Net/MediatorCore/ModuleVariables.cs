@@ -52,10 +52,19 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            foreach (var entry in map) {
-                VariableRef vref = entry.Key;
+            List<VariableRef> varsToRemove = null;
+            foreach (VariableRef vref in map.Keys) {
                 if (!validVarRefs.Contains(vref)) {
-                    validVarRefs.Remove(vref);
+                    if (varsToRemove == null) {
+                        varsToRemove = new List<VariableRef>();
+                    }
+                    varsToRemove.Add(vref);
+                }
+            }
+
+            if (varsToRemove != null) {
+                foreach (VariableRef vref in varsToRemove) {
+                    map.Remove(vref);
                 }
             }
 
@@ -208,7 +217,7 @@ namespace Ifak.Fast.Mediator
 
             foreach (ObjectInfo obj in allObjects) {
 
-                if (obj.Variables == null || obj.Variables.Length == 0) continue;
+                if (obj.Variables == null || obj.Variables.Length == 0 || obj.Variables.All(v => !v.Remember)) continue;
 
                 writer.WriteStartElement("Obj");
                 writer.WriteAttributeString("name", obj.Name);
