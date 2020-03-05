@@ -23,7 +23,8 @@
 
               <template v-slot:item.V="{ item }">
                 <div style="min-width: 12em">
-                  <a @click.stop="edit(item)">{{ limitText(item) }}</a>
+                  <a v-if="item.Writable" @click.stop="edit(item)">{{ limitText(item) }}</a>
+                  <div v-else>{{ limitText(item) }}</div>
                 </div>
               </template>
 
@@ -34,6 +35,10 @@
               <template v-slot:item.data-table-expand="{ item, isExpanded, expand  }">
                 <v-icon v-if="!isExpanded && item.Type==='Struct'" @click="expand(true)" >mdi-chevron-down</v-icon>
                 <v-icon v-if="isExpanded  && item.Type==='Struct'" @click="expand(false)">mdi-chevron-up</v-icon>
+              </template>
+
+              <template v-slot:item.sync-read="{ item }">
+                <v-icon v-if="item.SyncReadable" @click="syncRead(item)">mdi-refresh</v-icon>
               </template>
 
               <template v-slot:expanded-item="{ headers, item }">
@@ -77,6 +82,8 @@ interface VarEntry {
   Var: string
   Type: fast.DataType
   Dimension: number
+  Writable: boolean
+  SyncReadable: boolean
   V: string
   T: fast.Timestamp
   Q: fast.Quality
@@ -102,7 +109,7 @@ export default class ViewVariables extends Vue {
   }
   editTmp = ''
   editDialog = false
-  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON', Dimension: 1, V: '', T: '', Q: 'Bad' }
+  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON', Dimension: 1, V: '', T: '', Q: 'Bad', Writable: false, SyncReadable: false }
   headers = [
       { text: 'Object Name', align: 'left',  sortable: false, filterable: true,  value: 'Obj' },
       { text: 'Variable',    align: 'left',  sortable: false, filterable: false, value: 'Var' },
@@ -110,6 +117,7 @@ export default class ViewVariables extends Vue {
       { text: 'Quality',     align: 'right', sortable: false, filterable: false, value: 'Q' },
       { text: 'Timestamp',   align: 'right', sortable: false, filterable: false, value: 'T' },
       { text: '', value: 'data-table-expand' },
+      { text: '', value: 'sync-read' },
   ]
 
   limitText(item: VarEntry): string {
@@ -162,6 +170,21 @@ export default class ViewVariables extends Vue {
   editWrite() {
     this.editDialog = false
     this.writeVariable(this.editItem.ObjID, this.editItem.Var, this.editTmp)
+  }
+
+  syncRead(item: VarEntry) {
+    const params = {
+      ObjID: item.ObjID,
+      Var: item.Var
+    }
+    const context = this
+    window.parent['dashboardApp'].sendViewRequest('SyncRead', params, (strResponse: string) => {
+      const response = JSON.parse(strResponse)
+      const variable = context.items[response.N]
+      variable.V = response.V
+      variable.T = response.T
+      variable.Q = response.Q
+    })
   }
 
   editKeydown(e: any) {

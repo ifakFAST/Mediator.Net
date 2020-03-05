@@ -454,7 +454,37 @@ namespace Ifak.Fast.Mediator
                             Task<VTQ[]>[] tasks = moduleIDs.Select(moduleID => {
                                 ModuleState module = ModuleFromIdOrThrow(moduleID);
                                 VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
-                                return RestartOnExp(module, m => m.ReadVariables(info.Origin, moduleVars, timeout));
+                                if (moduleVars.All(v => module.GetVarDescription(v).SyncReadable)) {
+                                    return RestartOnExp(module, m => m.ReadVariables(info.Origin, moduleVars, timeout));
+                                }
+                                else {
+                                    VTQ[] vtqRes = new VTQ[moduleVars.Length];
+                                    var listIdx = new List<int>(moduleVars.Length - 1);
+                                    var syncVars = new List<VariableRef>(moduleVars.Length - 1);
+                                    for (int i = 0; i < moduleVars.Length; ++i) {
+                                        VariableRef v = moduleVars[i];
+                                        if (module.GetVarDescription(v).SyncReadable) {
+                                            listIdx.Add(i);
+                                            syncVars.Add(v);
+                                        }
+                                        else {
+                                            vtqRes[i] = module.GetVarValue(v);
+                                        }
+                                    }
+                                    if (syncVars.Count > 0) {
+                                        Task<VTQ[]> syncValues = RestartOnExp(module, m => m.ReadVariables(info.Origin, syncVars.ToArray(), timeout));
+                                        return syncValues.ContinueOnMainThread<VTQ[], VTQ[]>((task) => {
+                                            VTQ[] syncValues = task.Result;
+                                            for (int i = 0; i < listIdx.Count; ++i) {
+                                                vtqRes[listIdx[i]] = syncValues[i];
+                                            }
+                                            return vtqRes;
+                                        });
+                                    }
+                                    else {
+                                        return Task.FromResult(vtqRes);
+                                    }
+                                }
                             }).ToArray();
 
 

@@ -65,15 +65,15 @@ namespace Ifak.Fast.Mediator
     {
         public Variable() { }
 
-        public Variable(string name, DataType type, int dimension = 1, bool remember = true) :
-            this(name, type, DataValue.FromDataType(type, dimension), History.None, dimension, remember) {
+        public Variable(string name, DataType type, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :
+            this(name, type, DataValue.FromDataType(type, dimension), History.None, dimension, remember, writable, syncReadable) {
         }
 
-        public Variable(string name, DataType type, DataValue defaultValue, History history, int dimension = 1, bool remember = true) :
-            this(name, type, defaultValue, "", dimension, new string[0], remember, history) {
+        public Variable(string name, DataType type, DataValue defaultValue, History history, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :
+            this(name, type, defaultValue, "", dimension, new string[0], remember, history, writable, syncReadable) {
         }
 
-        public Variable(string name, DataType type, DataValue defaultValue, string typeConstraints, int dimension, string[] dimensionNames, bool remember, History history) {
+        public Variable(string name, DataType type, DataValue defaultValue, string typeConstraints, int dimension, string[] dimensionNames, bool remember, History history, bool writable = false, bool syncReadable = false) {
             if (name == null) throw new ArgumentNullException(nameof(name), nameof(name) + " may not be null");
             if (dimension < 0) throw new ArgumentException(nameof(dimension) + " may not be negative", nameof(dimension));
 
@@ -89,11 +89,20 @@ namespace Ifak.Fast.Mediator
             DimensionNames = dimensionNames ?? new string[0];
             Remember = remember;
             History = history;
+            Writable = writable;
+            SyncReadable = syncReadable;
         }
 
         public string Name { get; set; } = "";
 
         public DataType Type { get; set; } = DataType.Float64;
+
+        public bool Writable { get; set; } = false;
+
+        /// <summary>
+        /// If True, then it is possible to use Connection.ReadVariablesSync to get a 'fresh' value for this variable.
+        /// </summary>
+        public bool SyncReadable { get; set; } = false;
 
         public DataValue DefaultValue { get; set; }
 

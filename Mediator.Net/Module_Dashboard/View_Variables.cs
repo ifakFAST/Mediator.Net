@@ -73,13 +73,29 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     return ReqResult.OK(result);
 
-                case "WriteVariable":
+                case "WriteVariable": {
 
-                    var write = parameters.Object<WriteVariable_Params>();
-                    VTQ vtq = new VTQ(Timestamp.Now, Quality.Good, DataValue.FromJSON(write.V));
-                    await Connection.WriteVariable(ObjectRef.FromEncodedString(write.ObjID), write.Var, vtq);
-                    return ReqResult.OK();
+                        var write = parameters.Object<WriteVariable_Params>();
+                        VTQ vtq = new VTQ(Timestamp.Now, Quality.Good, DataValue.FromJSON(write.V));
+                        await Connection.WriteVariable(ObjectRef.FromEncodedString(write.ObjID), write.Var, vtq);
+                        return ReqResult.OK();
+                    }
 
+                case "SyncRead": {
+
+                        var sread = parameters.Object<ReadSync_Params>();
+                        ObjectRef obj = ObjectRef.FromEncodedString(sread.ObjID);
+                        VariableRef varRef = VariableRef.Make(obj, sread.Var);
+                        VTQ vtq = await Connection.ReadVariableSync(varRef);
+                        int idx = mapIdx[varRef];
+                        var entry = new ChangeEntry() {
+                            N = idx,
+                            V = vtq.V,
+                            T = Timestamp2Str(vtq.T),
+                            Q = vtq.Q
+                        };
+                        return ReqResult.OK(entry);
+                    }
                 default:
                     return ReqResult.Bad("Unknown command: " + command);
             }
@@ -129,6 +145,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                 Q = vv.Value.Q,
                 Type = variable?.Type ?? DataType.JSON,
                 Dimension = variable?.Dimension ?? 1,
+                SyncReadable = variable?.SyncReadable ?? false,
+                Writable = variable?.Writable ?? false
             };
         }
 
@@ -146,6 +164,12 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string ObjID { get; set; }
             public string Var { get; set; }
             public string V { get; set; }
+        }
+
+        public class ReadSync_Params
+        {
+            public string ObjID { get; set; }
+            public string Var { get; set; }
         }
 
         public class ReadModuleVariables_Result {
@@ -169,6 +193,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string Var { get; set; }
             public DataType Type { get; set; }
             public int Dimension { get; set; }
+            public bool Writable { get; set; }
+            public bool SyncReadable { get; set; }
             public DataValue V { get; set; }
             public string T { get; set; }
             public Quality Q { get; set; }

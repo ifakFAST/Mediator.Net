@@ -345,7 +345,9 @@ namespace Ifak.Fast.Mediator.IO.Config
                     dimension: this.Dimension,
                     dimensionNames: this.DimensionNames,
                     remember: true,
-                    history: history);
+                    history: history,
+                    writable: this.Write,
+                    syncReadable: this.Read);
 
             return new Variable[] { variable };
         }
