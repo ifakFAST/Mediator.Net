@@ -9,7 +9,7 @@ using System.Xml.Serialization;
 
 namespace Ifak.Fast.Mediator
 {
-    public abstract class Connection
+    public abstract class Connection : IDisposable
     {
         /// <summary>
         /// Close the connection. Never throws an exception.
@@ -464,6 +464,8 @@ namespace Ifak.Fast.Mediator
         /// <param name="continueID">Used to continue a prior incomplete browsing</param>
         /// <returns></returns>
         public abstract Task<BrowseResult> BrowseObjectMemberValues(MemberRef member, int? continueID = null);
+
+        public abstract void Dispose();
     }
 
     public class ConnectivityException : Exception

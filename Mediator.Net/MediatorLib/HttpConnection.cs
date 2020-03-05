@@ -114,6 +114,10 @@ namespace Ifak.Fast.Mediator
             client.Dispose();
         }
 
+        public override void Dispose() {
+            Task ignored = Close();
+        }
+
         protected void OnConnectionBroken() {
 
             this.session = null;
