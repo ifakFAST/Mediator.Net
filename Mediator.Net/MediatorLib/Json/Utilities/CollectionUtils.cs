@@ -378,12 +378,7 @@ namespace Ifak.Fast.Json.Utilities
 #endif
         public static T[] ArrayEmpty<T>()
         {
-            T[] array = Enumerable.Empty<T>() as T[];
-            Debug.Assert(array != null);
-            // Defensively guard against a version of Linq where Enumerable.Empty<T> doesn't
-            // return an array, but throw in debug versions so a better strategy can be
-            // used if that ever happens.
-            return array ?? new T[0];
+            return Array.Empty<T>();
         }
     }
 }
