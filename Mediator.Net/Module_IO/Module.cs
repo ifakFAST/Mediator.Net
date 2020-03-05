@@ -354,9 +354,8 @@ namespace Ifak.Fast.Mediator.IO
 
         public override async Task<VTQ[]> ReadVariables(Origin origin, VariableRef[] variables, Duration? timeout) {
 
-            VTQ[] result = new VTQ[variables.Length];
+            var adapter2Items = new Dictionary<AdapterState, List<ReadRequest_Idx>>();
 
-            var adapter2Items = new Dictionary<AdapterState, List<ReadRequest>>();
             for (int i = 0; i < variables.Length; ++i) {
                 VariableRef vr = variables[i];
                 string id = vr.Object.LocalObjectID;
@@ -366,30 +365,67 @@ namespace Ifak.Fast.Mediator.IO
                     AdapterState adapter = itemState.Adapter;
 
                     if (!adapter2Items.ContainsKey(adapter)) {
-                        adapter2Items[adapter] = new List<ReadRequest>();
+                        adapter2Items[adapter] = new List<ReadRequest_Idx>();
                     }
 
                     VTQ value = itemState.LastReadValue;
-                    adapter2Items[adapter].Add(new ReadRequest(id, value));
+                    adapter2Items[adapter].Add(new ReadRequest_Idx(id, value, i));
                 }
                 else {
-                    result[i] = new VTQ(Timestamp.Empty, Quality.Bad, DataValue.Empty);
+                    throw new Exception($"No data item with id {id} found.");
                 }
             }
 
-            var allReadTasks = new List<Task<VTQ[]>>(adapter2Items.Count);
+            var allReadTasks = new List<Task<VTQ_Idx[]>>(adapter2Items.Count);
+
             foreach (var adapterItems in adapter2Items) {
 
                 AdapterState adapter = adapterItems.Key;
-                List<ReadRequest> requests = adapterItems.Value;
+                List<ReadRequest_Idx> requests = adapterItems.Value;
 
-                Task<VTQ[]> task = AdapterReadTask(adapter, requests, timeout);
-                allReadTasks.Add(task);
+                Task<VTQ[]> readTask = AdapterReadTask(adapter, requests.Select(r => r.V).ToList(), timeout);
+
+                Task<VTQ_Idx[]> combinedTask = readTask.ContinueOnMainThread((task) => {
+                    VTQ[] vtqs = task.Result;
+                    VTQ_Idx[] res = new VTQ_Idx[vtqs.Length];
+                    for (int i = 0; i < vtqs.Length; ++i) {
+                        res[i] = new VTQ_Idx(vtqs[i], requests[i].Idx);
+                    }
+                    return res;
+                });
+
+                allReadTasks.Add(combinedTask);
             }
 
-            VTQ[][] resArr = await Task.WhenAll(allReadTasks);
-            VTQ[] res = resArr.SelectMany(x => x).ToArray();
-            return res;
+            VTQ[] result = new VTQ[variables.Length];
+            VTQ_Idx[][] resArr = await Task.WhenAll(allReadTasks);
+            foreach (VTQ_Idx[] arr in resArr) {
+                foreach (VTQ_Idx v in arr) {
+                    result[v.Idx] = v.V;
+                }
+            }
+            return result;
+        }
+
+        internal struct VTQ_Idx {
+            public VTQ V { get; set; }
+            public int Idx { get; set; }
+
+            public VTQ_Idx(VTQ v, int idx) {
+                V = v;
+                Idx = idx;
+            }
+        }
+
+        internal struct ReadRequest_Idx
+        {
+            public ReadRequest V { get; set; }
+            public int Idx { get; set; }
+
+            public ReadRequest_Idx(string id, VTQ lastValue, int idx) {
+                V = new ReadRequest(id, lastValue);
+                Idx = idx;
+            }
         }
 
         private async Task<VTQ[]> AdapterReadTask(AdapterState adapter, List<ReadRequest> requests, Duration? timeout) {
@@ -416,8 +452,24 @@ namespace Ifak.Fast.Mediator.IO
             IList<ReadTask> readTasks = adapter.ReadItems(requests, timeout);
             Task<DataItemValue[]>[] tasks = readTasks.Select(readTask => readTask.Task).ToArray();
             DataItemValue[][] res = await Task.WhenAll(tasks);
-            VTQ[] vtqs = res.SelectMany(dataItemValues => dataItemValues.Select(item => item.Value)).ToArray();
+            DataItemValue[] dataValues = res.Length == 1 ? res[0] : res.SelectMany(xx => xx).ToArray();
+            VTQ[] vtqs = new VTQ[requests.Count];
+            for (int i = 0; i < requests.Count; ++i) {
+                string id = requests[i].ID;
+                DataItemValue dv = dataValues.First(dv => dv.ID == id);
+                vtqs[i] = GetNormalizedDataItemValue(dv);
+            }
             return vtqs;
+        }
+
+        private VTQ GetNormalizedDataItemValue(DataItemValue val) {
+            VTQ vtq = val.Value;
+            if (dataItemsState.ContainsKey(val.ID)) {
+                ItemState istate = dataItemsState[val.ID];
+                vtq = NormalizeReadValue(istate, vtq);
+                istate.LastReadValue = vtq;
+            }
+            return vtq;
         }
 
         public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
@@ -986,12 +1038,12 @@ namespace Ifak.Fast.Mediator.IO
 
             public IList<ReadTask> ReadItems(IList<ReadRequest> values, Duration? timeout) {
 
-                Func<Task<VTQ[]>, DataItemValue[]> f = task => {
+                Func<Task<VTQ[]>, IList<ReadRequest>, DataItemValue[]> f = (task, vals) => {
                     VTQ[] vtqs = task.Result;
-                    if (vtqs.Length != values.Count) throw new Exception("ReadDataItems returned wrong number of VTQs");
+                    if (vtqs.Length != vals.Count) throw new Exception("ReadDataItems returned wrong number of VTQs");
                     DataItemValue[] divalues = new DataItemValue[vtqs.Length];
                     for (int i = 0; i < vtqs.Length; ++i) {
-                        divalues[i] = new DataItemValue(values[i].ID, vtqs[i]);
+                        divalues[i] = new DataItemValue(vals[i].ID, vtqs[i]);
                     }
                     return divalues;
                 };
@@ -999,14 +1051,14 @@ namespace Ifak.Fast.Mediator.IO
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
                     Task<VTQ[]> t = Instance.ReadDataItems(group, values, timeout);
-                    Task<DataItemValue[]> tt = t.ContinueOnMainThread(f);
+                    Task<DataItemValue[]> tt = t.ContinueOnMainThread(t => f(t, values));
                     return new ReadTask[] { new ReadTask(tt, values.Select(x => x.ID).ToArray()) };
                 }
                 else {
                     return values.GroupBy(x => MapItem2GroupID[x.ID]).Select(group => {
                         ReadRequest[] items = group.ToArray();
                         Task<VTQ[]> t = Instance.ReadDataItems(group.Key, items, timeout);
-                        Task<DataItemValue[]> tt = t.ContinueOnMainThread(f);
+                        Task<DataItemValue[]> tt = t.ContinueOnMainThread(t => f(t, items));
                         return new ReadTask(tt, items.Select(x => x.ID).ToArray());
                     }).ToArray();
                 }

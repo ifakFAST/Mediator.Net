@@ -45,7 +45,13 @@ namespace Ifak.Fast.Mediator.Dashboard
                     var pars = parameters.Object<ReadModuleVariables_Params>();
                     string moduleID = string.IsNullOrEmpty(pars.ModuleID) ? modules[0].ID : pars.ModuleID;
 
-                    ObjectInfo rootObjInfo = await Connection.GetRootObject(moduleID);
+                    ObjectInfo rootObjInfo = null;
+                    while (true) {
+                        rootObjInfo = await Connection.GetRootObject(moduleID);
+                        if (rootObjInfo != null) break;
+                        await Task.Delay(500);
+                    }
+
                     ObjectRef rootObj = rootObjInfo.ID;
 
                     ObjectInfo[] objects = await Connection.GetAllObjects(moduleID);
