@@ -22,7 +22,7 @@
                         show-expand :expanded.sync="expanded" :single-expand="false" item-key="ID">
 
               <template v-slot:item.V="{ item }">
-                <div style="min-width: 12em">
+                <div style="min-width: 12em; word-break: break-all;">
                   <a v-if="item.Writable" @click.stop="edit(item)">{{ limitText(item) }}</a>
                   <div v-else>{{ limitText(item) }}</div>
                 </div>
@@ -33,8 +33,8 @@
               </template>
 
               <template v-slot:item.data-table-expand="{ item, isExpanded, expand  }">
-                <v-icon v-if="!isExpanded && item.Type==='Struct'" @click="expand(true)" >mdi-chevron-down</v-icon>
-                <v-icon v-if="isExpanded  && item.Type==='Struct'" @click="expand(false)">mdi-chevron-up</v-icon>
+                <v-icon v-if="!isExpanded && itemNeedsExapnd(item)" @click="expand(true)" >mdi-chevron-down</v-icon>
+                <v-icon v-if="isExpanded  && itemNeedsExapnd(item)" @click="expand(false)">mdi-chevron-up</v-icon>
               </template>
 
               <template v-slot:item.sync-read="{ item }">
@@ -43,7 +43,10 @@
 
               <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length">
-                  <struct-view style="float: right;" :value="item.V" :vertical="item.Dimension !== 1"></struct-view>
+                  <struct-view v-if="item.Type==='Struct'" style="float: right;" :value="item.V" :vertical="item.Dimension !== 1"></struct-view>
+                  <div v-else style="word-break: break-all;">
+                    {{ item.V }}
+                  </div>
                 </td>
               </template>
 
@@ -109,7 +112,8 @@ export default class ViewVariables extends Vue {
   }
   editTmp = ''
   editDialog = false
-  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON', Dimension: 1, V: '', T: '', Q: 'Bad', Writable: false, SyncReadable: false }
+  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON',
+                         Dimension: 1, V: '', T: '', Q: 'Bad', Writable: false, SyncReadable: false }
   headers = [
       { text: 'Object Name', align: 'left',  sortable: false, filterable: true,  value: 'Obj' },
       { text: 'Variable',    align: 'left',  sortable: false, filterable: false, value: 'Var' },
@@ -120,20 +124,21 @@ export default class ViewVariables extends Vue {
       { text: '', value: 'sync-read' },
   ]
 
+  maxValueLen = 60
+
   limitText(item: VarEntry): string {
-    if (item.Type === 'Struct') {
-      const str = item.V
-      const MaxLen = 60
-      if (str.length > MaxLen) {
-        return str.substring(0, MaxLen) + '\u00A0...'
-      }
-      else {
-        return str
-      }
+    const str = item.V
+    const MaxLen = this.maxValueLen
+    if (str.length > MaxLen) {
+      return str.substring(0, MaxLen) + '\u00A0...'
     }
     else {
-      return item.V
+      return str
     }
+  }
+
+  itemNeedsExapnd(item: VarEntry): boolean {
+    return item.Type === 'Struct' || item.V.length > this.maxValueLen
   }
 
   customFilter(value: any, search: string | null, item: VarEntry) {
@@ -175,7 +180,7 @@ export default class ViewVariables extends Vue {
   syncRead(item: VarEntry) {
     const params = {
       ObjID: item.ObjID,
-      Var: item.Var
+      Var: item.Var,
     }
     const context = this
     window.parent['dashboardApp'].sendViewRequest('SyncRead', params, (strResponse: string) => {
