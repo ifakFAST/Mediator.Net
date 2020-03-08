@@ -290,6 +290,13 @@ namespace Ifak.Fast.Mediator
         public abstract Task<VTQ[]> ReadVariables(VariableRef[] variables);
 
         /// <summary>
+        /// Reads the current value of variables from the Mediator cache.
+        /// If any of the variables does not exist, it will be excluded from the result.
+        /// </summary>
+        /// <param name="variables">The variables to read</param>
+        public abstract Task<VariableValue[]> ReadVariablesIgnoreMissing(VariableRef[] variables);
+
+        /// <summary>
         /// Reads the current value of a variable directly from the containing module.
         /// Throws an exception if the variable does not exist or the timeout expires.
         /// </summary>
@@ -319,6 +326,16 @@ namespace Ifak.Fast.Mediator
         /// <param name="timeout">Optional timeout</param>
         /// <returns></returns>
         public abstract Task<VTQ[]> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null);
+
+        /// <summary>
+        /// Reads the current value of variables directly from the containing module.
+        /// Throws an exception if the timeout expires.
+        /// Variables, that do not exist, are excluded from the result.
+        /// </summary>
+        /// <param name="variables">The variables to read</param>
+        /// <param name="timeout">Optional timeout</param>
+        /// <returns></returns>
+        public abstract Task<VariableValue[]> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null);
 
         /// <summary>
         /// Reads the current value of all variables of all objects in the tree of objects defined by the given object reference.
@@ -355,6 +372,14 @@ namespace Ifak.Fast.Mediator
         public abstract Task WriteVariables(params VariableValue[] values);
 
         /// <summary>
+        /// Writes new values to variables without waiting for the receiving module to complete the write request.
+        /// When any of the variables does not exist, it is ignored and a corresponding VariableError is returned
+        /// for each missing variable.
+        /// </summary>
+        /// <param name="values">The new variable values</param>
+        public abstract Task<WriteResult> WriteVariablesIgnoreMissing(params VariableValue[] values);
+
+        /// <summary>
         /// Writes a new value to a variable waiting for the receiving module to complete the write request.
         /// An exception is thrown when the variable does not exist. Check the return value to verify whether
         /// the receiving module successfully processed the write request.
@@ -377,6 +402,16 @@ namespace Ifak.Fast.Mediator
         /// <param name="values">The new variable values</param>
         /// <param name="timeout">Optional timeout</param>
         public abstract Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null);
+
+        /// <summary>
+        /// Writes new values to variables waiting for the receiving module to complete the write request.
+        /// When any of the variables does not exist, it is ignored and a corresponding VariableError is returned
+        /// for each missing variable.
+        /// Check the return value to verify whether the receiving module successfully processed the write requests.
+        /// </summary>
+        /// <param name="values">The new variable values</param>
+        /// <param name="timeout">Optional timeout</param>
+        public abstract Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null);
 
         #endregion
 

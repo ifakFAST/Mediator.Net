@@ -46,9 +46,13 @@ namespace Ifak.Fast.Mediator
         const string Req_GetMetaInfos = PathPrefix + "GetMetaInfos";
         const string Req_GetParentOfObject = PathPrefix + "GetParentOfObject";
         const string Req_ReadVariables = PathPrefix + "ReadVariables";
+        const string Req_ReadVariablesIgnoreMissing = PathPrefix + "ReadVariablesIgnoreMissing";
         const string Req_ReadVariablesSync = PathPrefix + "ReadVariablesSync";
+        const string Req_ReadVariablesSyncIgnoreMissing = PathPrefix + "ReadVariablesSyncIgnoreMissing";
         const string Req_WriteVariables = PathPrefix + "WriteVariables";
+        const string Req_WriteVariablesIgnoreMissing = PathPrefix + "WriteVariablesIgnoreMissing";
         const string Req_WriteVariablesSync = PathPrefix + "WriteVariablesSync";
+        const string Req_WriteVariablesSyncIgnoreMissing = PathPrefix + "WriteVariablesSyncIgnoreMissing";
         const string Req_ReadAllVariablesOfObjectTree = PathPrefix + "ReadAllVariablesOfObjectTree";
         const string Req_UpdateConfig = PathPrefix + "UpdateConfig";
         const string Req_CallMethod = PathPrefix + "CallMethod";
@@ -84,9 +88,13 @@ namespace Ifak.Fast.Mediator
             Req_GetMemberValues,
             Req_GetParentOfObject,
             Req_ReadVariables,
+            Req_ReadVariablesIgnoreMissing,
             Req_ReadVariablesSync,
+            Req_ReadVariablesSyncIgnoreMissing,
             Req_WriteVariables,
+            Req_WriteVariablesIgnoreMissing,
             Req_WriteVariablesSync,
+            Req_WriteVariablesSyncIgnoreMissing,
             Req_ReadAllVariablesOfObjectTree,
             Req_UpdateConfig,
             Req_CallMethod,
@@ -423,160 +431,44 @@ namespace Ifak.Fast.Mediator
 
                     case Req_ReadVariables: {
 
-                            JToken tokenVariables = req["variables"];
-                            if (tokenVariables == null) throw new Exception("Missing variables");
-                            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
-                            VTQ[] res = variables.Select(variable => {
-                                string mod = variable.Object.ModuleID;
-                                ModuleState module = ModuleFromIdOrThrow(mod);
-                                return module.GetVarValue(variable);
-                            }).ToArray();
-                            return Result_OK(res);
+                            VariableValue[] vvs = DoReadVariables(req, ignoreMissing: false);
+                            return Result_OK(vvs.Select(vv => vv.Value).ToArray());
+                        }
+
+                    case Req_ReadVariablesIgnoreMissing: {
+
+                            VariableValue[] vvs = DoReadVariables(req, ignoreMissing: true);
+                            return Result_OK(vvs);
                         }
 
                     case Req_ReadVariablesSync: {
 
-                            JToken tokenVariables = req["variables"];
-                            if (tokenVariables == null) throw new Exception("Missing variables");
-                            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
-                            string strTimeout = (string)req["timeout"];
-                            Duration? timeout = null;
-                            if (strTimeout != null) {
-                                timeout = Duration.Parse(strTimeout);
-                            }
-                            List<string> moduleIDs = variables.Select(x => x.Object.ModuleID).Distinct().ToList();
-                            foreach (string moduleID in moduleIDs) {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
-                                module.ValidateVariableRefsOrThrow(moduleVars);
-                            }
+                            List<VariableValue> vvs = await DoReadVariablesSync(req, info, ignoreMissing: false);
+                            return Result_OK(vvs.Select(vv => vv.Value).ToArray());
+                        }
 
-                            Task<VTQ[]>[] tasks = moduleIDs.Select(moduleID => {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
-                                if (moduleVars.All(v => module.GetVarDescription(v).SyncReadable)) {
-                                    return RestartOnExp(module, m => m.ReadVariables(info.Origin, moduleVars, timeout));
-                                }
-                                else {
-                                    VTQ[] vtqRes = new VTQ[moduleVars.Length];
-                                    var listIdx = new List<int>(moduleVars.Length - 1);
-                                    var syncVars = new List<VariableRef>(moduleVars.Length - 1);
-                                    for (int i = 0; i < moduleVars.Length; ++i) {
-                                        VariableRef v = moduleVars[i];
-                                        if (module.GetVarDescription(v).SyncReadable) {
-                                            listIdx.Add(i);
-                                            syncVars.Add(v);
-                                        }
-                                        else {
-                                            vtqRes[i] = module.GetVarValue(v);
-                                        }
-                                    }
-                                    if (syncVars.Count > 0) {
-                                        Task<VTQ[]> syncValues = RestartOnExp(module, m => m.ReadVariables(info.Origin, syncVars.ToArray(), timeout));
-                                        return syncValues.ContinueOnMainThread<VTQ[], VTQ[]>((task) => {
-                                            VTQ[] syncValues = task.Result;
-                                            for (int i = 0; i < listIdx.Count; ++i) {
-                                                vtqRes[listIdx[i]] = syncValues[i];
-                                            }
-                                            return vtqRes;
-                                        });
-                                    }
-                                    else {
-                                        return Task.FromResult(vtqRes);
-                                    }
-                                }
-                            }).ToArray();
+                    case Req_ReadVariablesSyncIgnoreMissing: {
 
-
-                            VTQ[][] res = await Task.WhenAll(tasks);
-                            int[] ii = new int[moduleIDs.Count];
-                            var result = new List<VTQ>(variables.Length);
-                            foreach (VariableRef vref in variables) {
-                                string mid = vref.Object.ModuleID;
-                                int mIdx = moduleIDs.IndexOf(mid);
-                                VTQ[] vtqs = res[mIdx];
-                                int i = ii[mIdx];
-                                result.Add(vtqs[i]);
-                                ii[mIdx] = i + 1;
-                            }
-
-                            return Result_OK(result);
+                            List<VariableValue> vvs = await DoReadVariablesSync(req, info, ignoreMissing: true);
+                            return Result_OK(vvs);
                         }
 
                     case Req_WriteVariables: {
-
-                            JToken tokenValues = req["values"];
-                            if (tokenValues == null) throw new Exception("Missing values");
-                            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
-                            string[] moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToArray();
-
-                            foreach (string moduleID in moduleIDs) {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
-                                module.ValidateVariableValuesOrThrow(moduleValues);
-                            }
-
-                            int maxBufferCount = 0;
-                            foreach (string moduleID in moduleIDs) {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
-                                int count = module.UpdateVariableValues(moduleValues);
-                                maxBufferCount = Math.Max(maxBufferCount, count);
-                                var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null));
-                            }
-
-                            if (maxBufferCount > 1000) {
-                                int waitTime = Math.Min(maxBufferCount - 900, 8000);
-                                var Now = Timestamp.Now;
-                                if (Now - timeLastWriteVariablesThrottle > Duration.FromMinutes(1)) {
-                                    timeLastWriteVariablesThrottle = Now;
-                                    logger.Info("Throttling WriteVariables because of excessive history DB queue length ({0})", maxBufferCount);
-                                }
-                                await Task.Delay(waitTime);
-                            }
-
+                            await DoWriteVariables(req, info, ignoreMissing: false);
                             return Result_OK();
                         }
 
+                    case Req_WriteVariablesIgnoreMissing: {
+                            WriteResult res = await DoWriteVariables(req, info, ignoreMissing: true);
+                            return Result_OK(res);
+                        }
+
                     case Req_WriteVariablesSync: {
+                            return await DoWriteVariablesSync(req, info, ignoreMissing: false);
+                        }
 
-                            JToken tokenValues = req["values"];
-                            if (tokenValues == null) throw new Exception("Missing values");
-                            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
-                            string strTimeout = (string)req["timeout"];
-                            Duration? timeout = null;
-                            if (strTimeout != null) {
-                                timeout = Duration.Parse(strTimeout);
-                            }
-                            List<string> moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToList();
-                            foreach (string moduleID in moduleIDs) {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
-                                module.ValidateVariableValuesOrThrow(moduleValues);
-                            }
-
-                            int maxBufferCount = 0;
-                            Task<WriteResult>[] tasks = moduleIDs.Select(moduleID => {
-                                ModuleState module = ModuleFromIdOrThrow(moduleID);
-                                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
-                                int count = module.UpdateVariableValues(moduleValues);
-                                maxBufferCount = Math.Max(maxBufferCount, count);
-                                return RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
-                            }).ToArray();
-
-                            WriteResult[] res = await Task.WhenAll(tasks);
-
-                            if (maxBufferCount > 1000) {
-                                int waitTime = Math.Min(maxBufferCount - 900, 8000);
-                                var Now = Timestamp.Now;
-                                if (Now - timeLastWriteVariablesSyncThrottle > Duration.FromMinutes(1)) {
-                                    timeLastWriteVariablesSyncThrottle = Now;
-                                    logger.Info("Throttling WriteVariablesSync because of excessive history DB queue length ({0})", maxBufferCount);
-                                }
-                                await Task.Delay(waitTime);
-                            }
-
-                            return Result_OK(WriteResult.FromResults(res));
+                    case Req_WriteVariablesSyncIgnoreMissing: {
+                            return await DoWriteVariablesSync(req, info, ignoreMissing: true);
                         }
 
                     case Req_ReadAllVariablesOfObjectTree: {
@@ -852,6 +744,198 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        private async Task<ReqResult> DoWriteVariablesSync(JObject req, SessionInfo info, bool ignoreMissing) {
+            JToken tokenValues = req["values"];
+            if (tokenValues == null) throw new Exception("Missing values");
+            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
+            VariableError[] ignoredVars = null;
+            if (ignoreMissing) {
+                VariableValue[] filteredValues = values.Where(VarExists).ToArray();
+                if (filteredValues.Length < values.Length) {
+                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, "Variable does not exist.")).ToArray();
+                }
+                values = filteredValues;
+            }
+            string strTimeout = (string)req["timeout"];
+            Duration? timeout = null;
+            if (strTimeout != null) {
+                timeout = Duration.Parse(strTimeout);
+            }
+            List<string> moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToList();
+            if (!ignoreMissing) {
+                foreach (string moduleID in moduleIDs) {
+                    ModuleState module = ModuleFromIdOrThrow(moduleID);
+                    VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
+                    module.ValidateVariableValuesOrThrow(moduleValues);
+                }
+            }
+            int maxBufferCount = 0;
+            Task<WriteResult>[] tasks = moduleIDs.Select(moduleID => {
+                ModuleState module = ModuleFromIdOrThrow(moduleID);
+                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
+                int count = module.UpdateVariableValues(moduleValues);
+                maxBufferCount = Math.Max(maxBufferCount, count);
+                return RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+            }).ToArray();
+
+            WriteResult[] res = await Task.WhenAll(tasks);
+
+            if (maxBufferCount > 1000) {
+                int waitTime = Math.Min(maxBufferCount - 900, 8000);
+                var Now = Timestamp.Now;
+                if (Now - timeLastWriteVariablesSyncThrottle > Duration.FromMinutes(1)) {
+                    timeLastWriteVariablesSyncThrottle = Now;
+                    logger.Info("Throttling WriteVariablesSync because of excessive history DB queue length ({0})", maxBufferCount);
+                }
+                await Task.Delay(waitTime);
+            }
+
+            var writeResult = WriteResult.FromResults(res);
+            if (ignoredVars != null) {
+                if (writeResult.IsOK()) {
+                    writeResult = WriteResult.Failure(ignoredVars);
+                }
+                else {
+                    var list = writeResult.FailedVariables.ToList();
+                    list.AddRange(ignoredVars);
+                    writeResult = WriteResult.Failure(list.ToArray());
+                }
+            }
+            return Result_OK(writeResult);
+        }
+
+        private async Task<WriteResult> DoWriteVariables(JObject req, SessionInfo info, bool ignoreMissing) {
+            JToken tokenValues = req["values"];
+            if (tokenValues == null) throw new Exception("Missing values");
+            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
+            VariableError[] ignoredVars = null;
+            if (ignoreMissing) {
+                VariableValue[] filteredValues = values.Where(VarExists).ToArray();
+                if (filteredValues.Length < values.Length) {
+                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, "Variable does not exist.")).ToArray();
+                }
+                values = filteredValues;
+            }
+            string[] moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToArray();
+
+            if (!ignoreMissing) {
+                foreach (string moduleID in moduleIDs) {
+                    ModuleState module = ModuleFromIdOrThrow(moduleID);
+                    VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
+                    module.ValidateVariableValuesOrThrow(moduleValues);
+                }
+            }
+
+            int maxBufferCount = 0;
+            foreach (string moduleID in moduleIDs) {
+                ModuleState module = ModuleFromIdOrThrow(moduleID);
+                VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
+                int count = module.UpdateVariableValues(moduleValues);
+                maxBufferCount = Math.Max(maxBufferCount, count);
+                var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null));
+            }
+
+            if (maxBufferCount > 1000) {
+                int waitTime = Math.Min(maxBufferCount - 900, 8000);
+                var Now = Timestamp.Now;
+                if (Now - timeLastWriteVariablesThrottle > Duration.FromMinutes(1)) {
+                    timeLastWriteVariablesThrottle = Now;
+                    logger.Info("Throttling WriteVariables because of excessive history DB queue length ({0})", maxBufferCount);
+                }
+                await Task.Delay(waitTime);
+            }
+
+            return ignoredVars == null ? WriteResult.OK : WriteResult.Failure(ignoredVars);
+        }
+
+        private async Task<List<VariableValue>> DoReadVariablesSync(JObject req, SessionInfo info, bool ignoreMissing) {
+            JToken tokenVariables = req["variables"];
+            if (tokenVariables == null) throw new Exception("Missing variables");
+            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
+
+            if (ignoreMissing) {
+                variables = variables.Where(VarExists).ToArray();
+            }
+
+            string strTimeout = (string)req["timeout"];
+            Duration? timeout = null;
+            if (strTimeout != null) {
+                timeout = Duration.Parse(strTimeout);
+            }
+            List<string> moduleIDs = variables.Select(x => x.Object.ModuleID).Distinct().ToList();
+
+            if (!ignoreMissing) {
+                foreach (string moduleID in moduleIDs) {
+                    ModuleState module = ModuleFromIdOrThrow(moduleID);
+                    VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
+                    module.ValidateVariableRefsOrThrow(moduleVars);
+                }
+            }
+
+            Task<VTQ[]>[] tasks = moduleIDs.Select(moduleID => {
+                ModuleState module = ModuleFromIdOrThrow(moduleID);
+                VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
+                if (moduleVars.All(v => module.GetVarDescription(v).SyncReadable)) {
+                    return RestartOnExp(module, m => m.ReadVariables(info.Origin, moduleVars, timeout));
+                }
+                else {
+                    VTQ[] vtqRes = new VTQ[moduleVars.Length];
+                    var listIdx = new List<int>(moduleVars.Length - 1);
+                    var syncVars = new List<VariableRef>(moduleVars.Length - 1);
+                    for (int i = 0; i < moduleVars.Length; ++i) {
+                        VariableRef v = moduleVars[i];
+                        if (module.GetVarDescription(v).SyncReadable) {
+                            listIdx.Add(i);
+                            syncVars.Add(v);
+                        }
+                        else {
+                            vtqRes[i] = module.GetVarValue(v);
+                        }
+                    }
+                    if (syncVars.Count > 0) {
+                        Task<VTQ[]> syncValues = RestartOnExp(module, m => m.ReadVariables(info.Origin, syncVars.ToArray(), timeout));
+                        return syncValues.ContinueOnMainThread<VTQ[], VTQ[]>((task) => {
+                            VTQ[] syncValues = task.Result;
+                            for (int i = 0; i < listIdx.Count; ++i) {
+                                vtqRes[listIdx[i]] = syncValues[i];
+                            }
+                            return vtqRes;
+                        });
+                    }
+                    else {
+                        return Task.FromResult(vtqRes);
+                    }
+                }
+            }).ToArray();
+
+
+            VTQ[][] res = await Task.WhenAll(tasks);
+            int[] ii = new int[moduleIDs.Count];
+            var result = new List<VariableValue>(variables.Length);
+            foreach (VariableRef vref in variables) {
+                string mid = vref.Object.ModuleID;
+                int mIdx = moduleIDs.IndexOf(mid);
+                VTQ[] vtqs = res[mIdx];
+                int i = ii[mIdx];
+                result.Add(VariableValue.Make(vref, vtqs[i]));
+                ii[mIdx] = i + 1;
+            }
+
+            return result;
+        }
+
+        private VariableValue[] DoReadVariables(JObject req, bool ignoreMissing) {
+            JToken tokenVariables = req["variables"];
+            if (tokenVariables == null) throw new Exception("Missing variables");
+            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
+            VariableValue[] res = variables.Where(v => !ignoreMissing || VarExists(v)).Select(variable => {
+                string mod = variable.Object.ModuleID;
+                ModuleState module = ModuleFromIdOrThrow(mod);
+                return VariableValue.Make(variable, module.GetVarValue(variable));
+            }).ToArray();
+            return res;
+        }
+
         private Task<T> RestartOnExp<T>(ModuleState ms, Func<SingleThreadModule, Task<T>> f) {
 
             Task<T> res;
@@ -878,6 +962,23 @@ namespace Ifak.Fast.Mediator
             });
 
             return res;
+        }
+
+        private bool VarMissing(VariableRef variable) => !VarExists(variable);
+
+        private bool VarExists(VariableRef variable) {
+            string mod = variable.Object.ModuleID;
+            ModuleState module = ModuleFromIdOrThrow(mod);
+            return module.HasVarValue(variable);
+        }
+
+        private bool VarMissing(VariableValue variableValue) => !VarExists(variableValue);
+
+        private bool VarExists(VariableValue variableValue) {
+            VariableRef variable = variableValue.Variable;
+            string mod = variable.Object.ModuleID;
+            ModuleState module = ModuleFromIdOrThrow(mod);
+            return module.HasVarValue(variable);
         }
 
         private Timestamp timeLastWriteVariablesThrottle = Timestamp.Empty;

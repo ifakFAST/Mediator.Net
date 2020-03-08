@@ -80,6 +80,10 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        public bool HasVarValue(VariableRef varRef) {
+            return map.ContainsKey(varRef);
+        }
+
         public void ValidateVariableValuesOrThrow(IList<VariableValue> values) {
             foreach (VariableValue value in values) {
                 VariableRef varRef = value.Variable;

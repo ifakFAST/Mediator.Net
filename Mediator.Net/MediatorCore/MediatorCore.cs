@@ -544,6 +544,7 @@ namespace Ifak.Fast.Mediator
             variables.Sync(allObjects);
         }
         public VTQ GetVarValue(VariableRef varRef) => variables.GetVarValue(varRef);
+        public bool HasVarValue(VariableRef varRef) => variables.HasVarValue(varRef);
         public Variable GetVarDescription(VariableRef varRef) {
             try {
                 string varName = varRef.Name;

@@ -330,6 +330,13 @@ namespace Ifak.Fast.Mediator
             return await Post<VTQ[]>("ReadVariables", request);
         }
 
+        public override async Task<VariableValue[]> ReadVariablesIgnoreMissing(VariableRef[] variables) {
+            if (variables == null) throw new ArgumentNullException(nameof(variables));
+            JObject request = MakeSessionRequest();
+            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
+            return await Post<VariableValue[]>("ReadVariablesIgnoreMissing", request);
+        }
+
         public override async Task<VTQ[]> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             JObject request = MakeSessionRequest();
@@ -338,6 +345,27 @@ namespace Ifak.Fast.Mediator
                 request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
             }
             Task<VTQ[]> task = Post<VTQ[]>("ReadVariablesSync", request);
+            if (timeout.HasValue) {
+                if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
+                    return await task;
+                }
+                else {
+                    throw new Exception("Timeout");
+                }
+            }
+            else {
+                return await task;
+            }
+        }
+
+        public override async Task<VariableValue[]> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
+            if (variables == null) throw new ArgumentNullException(nameof(variables));
+            JObject request = MakeSessionRequest();
+            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
+            if (timeout.HasValue) {
+                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
+            }
+            Task<VariableValue[]> task = Post<VariableValue[]>("ReadVariablesSyncIgnoreMissing", request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -365,10 +393,16 @@ namespace Ifak.Fast.Mediator
             await PostJObject("UpdateConfig", request);
         }
 
-        public override async Task WriteVariables(VariableValue[] values) {
+        public override Task WriteVariables(VariableValue[] values) {
             JObject request = MakeSessionRequest();
             request["values"] = new JRaw(StdJson.ObjectToString(values));
-            await PostJObject("WriteVariables", request);
+            return PostJObject("WriteVariables", request);
+        }
+
+        public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValue[] values) {
+            JObject request = MakeSessionRequest();
+            request["values"] = new JRaw(StdJson.ObjectToString(values));
+            return Post<WriteResult>("WriteVariablesIgnoreMissing", request);
         }
 
         public override async Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null) {
@@ -378,6 +412,26 @@ namespace Ifak.Fast.Mediator
                 request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
             }
             Task<WriteResult> task = Post<WriteResult>("WriteVariablesSync", request);
+            if (timeout.HasValue) {
+                if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
+                    return await task;
+                }
+                else {
+                    throw new Exception("Timeout");
+                }
+            }
+            else {
+                return await task;
+            }
+        }
+
+        public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null) {
+            JObject request = MakeSessionRequest();
+            request["values"] = new JRaw(StdJson.ObjectToString(values));
+            if (timeout.HasValue) {
+                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
+            }
+            Task<WriteResult> task = Post<WriteResult>("WriteVariablesSyncIgnoreMissing", request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
