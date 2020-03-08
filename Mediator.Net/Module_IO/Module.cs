@@ -573,7 +573,23 @@ namespace Ifak.Fast.Mediator.IO
                 IList<WriteTask> writeTasks = adapter.WriteItems(items, timeout);
                 Task<WriteDataItemsResult>[] tasks = writeTasks.Select(writeTask => writeTask.Task.ContinueOnMainThread(t => {
                     adapter.SetOfPendingWriteItems.ExceptWith(writeTask.IDs);
-                    return t.Result;
+                    WriteDataItemsResult res = t.Result;
+                    if (res.Failed()) {
+                        DataItemErr[] failed = ResolveDataItemErrors(res.FailedDataItems);
+                        if (failed.Length > 0) {
+                            string names = string.Join(", ", failed.Select(it => it.Name + ": " + it.Error));
+                            string msg = $"Write error for {failed.Length} data items: {failed[0].Name}, ...";
+                            if (failed.Length == 1) {
+                                msg = $"Write error for data item {failed[0].Name}: {failed[0].Error}";
+                            }
+                            ObjectRef[] objs = failed.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
+                            var ev = AlarmOrEventInfo.Warning("WriteErr", msg, objs);
+                            ev.Details = names;
+                            notifier.Notify_AlarmOrEvent(ev);
+                        }
+                    }
+                    return res;
+
                 })).ToArray();
 
                 WriteDataItemsResult[] res = await Task.WhenAll(tasks);
@@ -586,6 +602,24 @@ namespace Ifak.Fast.Mediator.IO
                 FailedDataItemWrite[] failures = items.Select(it => new FailedDataItemWrite(it.ID, err)).ToArray();
                 return WriteDataItemsResult.Failure(failures);
             }
+        }
+
+        private DataItemErr[] ResolveDataItemErrors(FailedDataItemWrite[] errors) {
+            return errors.SelectIgnoreException(error => {
+                ItemState info = dataItemsState[error.ID];
+                return new DataItemErr() {
+                    ID = error.ID,
+                    Name = info.Name,
+                    Error = error.Error
+                };
+            }).ToArray();
+        }
+
+        private class DataItemErr
+        {
+            public string ID { get; set; }
+            public string Name { get; set; }
+            public string Error { get; set; }
         }
 
         private void StartScheduledReadTask(AdapterState adapter) {

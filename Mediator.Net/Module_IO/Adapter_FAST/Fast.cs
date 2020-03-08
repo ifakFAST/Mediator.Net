@@ -185,10 +185,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
         private static VTQ[] GetBadVTQs(IList<ReadRequest> items) {
             int N = items.Count;
+            var t = Timestamp.Now;
             VTQ[] res = new VTQ[N];
             for (int i = 0; i < N; ++i) {
                 VTQ vtq = items[i].LastValue;
                 vtq.Q = Quality.Bad;
+                vtq.T = t;
                 res[i] = vtq;
             }
             return res;
