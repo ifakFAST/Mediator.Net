@@ -15,4 +15,29 @@ namespace Ifak.Fast.Mediator.IO
             }
         }
     }
+
+    public static class EnumerableExtension
+    {
+        public static IEnumerable<U> SelectIgnoreException<T, U>(this IEnumerable<T> list, Func<T, U> f) {
+            U u;
+            foreach (var item in list) {
+                try {
+                    u = f(item);
+                }
+                catch (Exception) {
+                    continue;
+                }
+                yield return u;
+            }
+        }
+
+        public static int FindIndexOrThrow<T>(this IEnumerable<T> list, Predicate<T> f) {
+            int i = 0;
+            foreach (var item in list) {
+                if (f(item)) return i;
+                i++;
+            }
+            throw new Exception("Element not found");
+        }
+    }
 }
