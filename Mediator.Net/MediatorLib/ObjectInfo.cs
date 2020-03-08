@@ -339,7 +339,7 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(VariableRef lhs, VariableRef rhs) => !(lhs.Equals(rhs));
 
-        public override string ToString() => Object.ToString() + "." + Name;
+        public override string ToString() => Name == null ? "" : Object.ToString() + "." + Name;
 
         public override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
 

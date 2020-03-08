@@ -752,7 +752,7 @@ namespace Ifak.Fast.Mediator
             if (ignoreMissing) {
                 VariableValue[] filteredValues = values.Where(VarExists).ToArray();
                 if (filteredValues.Length < values.Length) {
-                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, "Variable does not exist.")).ToArray();
+                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, $"Variable {v.Variable.ToString()} does not exist.")).ToArray();
                 }
                 values = filteredValues;
             }
@@ -775,7 +775,13 @@ namespace Ifak.Fast.Mediator
                 VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
                 int count = module.UpdateVariableValues(moduleValues);
                 maxBufferCount = Math.Max(maxBufferCount, count);
-                return RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+                moduleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
+                if (moduleValues.Length > 0) {
+                    return RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+                }
+                else {
+                    return Task.FromResult(WriteResult.OK);
+                }
             }).ToArray();
 
             WriteResult[] res = await Task.WhenAll(tasks);
@@ -812,7 +818,7 @@ namespace Ifak.Fast.Mediator
             if (ignoreMissing) {
                 VariableValue[] filteredValues = values.Where(VarExists).ToArray();
                 if (filteredValues.Length < values.Length) {
-                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, "Variable does not exist.")).ToArray();
+                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, $"Variable {v.Variable.ToString()} does not exist.")).ToArray();
                 }
                 values = filteredValues;
             }
@@ -831,8 +837,11 @@ namespace Ifak.Fast.Mediator
                 ModuleState module = ModuleFromIdOrThrow(moduleID);
                 VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
                 int count = module.UpdateVariableValues(moduleValues);
+                moduleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
                 maxBufferCount = Math.Max(maxBufferCount, count);
-                var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null));
+                if (moduleValues.Length > 0) {
+                    var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null));
+                }
             }
 
             if (maxBufferCount > 1000) {
