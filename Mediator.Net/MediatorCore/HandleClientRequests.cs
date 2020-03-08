@@ -984,10 +984,10 @@ namespace Ifak.Fast.Mediator
         private Timestamp timeLastWriteVariablesThrottle = Timestamp.Empty;
         private Timestamp timeLastWriteVariablesSyncThrottle = Timestamp.Empty;
 
-        internal void OnVariableValuesChanged(IList<VaribleValuePrev> origValues, Func<ObjectRef, ObjectRef?> parentMap) {
+        internal void OnVariableValuesChanged(IList<VariableValuePrev> origValues, Func<ObjectRef, ObjectRef?> parentMap) {
 
             if (terminating) return;
-            IList<VaribleValuePrev> values = Compact(origValues);
+            IList<VariableValuePrev> values = Compact(origValues);
 
             foreach (var session in sessions.Values) {
 
@@ -1023,26 +1023,26 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private static IList<VaribleValuePrev> Compact(IList<VaribleValuePrev> values) {
+        private static IList<VariableValuePrev> Compact(IList<VariableValuePrev> values) {
 
             var groups = values.GroupBy(x => x.Value.Variable).ToArray();
             if (groups.Length == values.Count) {
                 return values;
             }
 
-            VaribleValuePrev[] resValues = new VaribleValuePrev[groups.Length];
+            VariableValuePrev[] resValues = new VariableValuePrev[groups.Length];
 
             for (int i = 0; i < groups.Length; ++i) {
 
-                IGrouping<VariableRef, VaribleValuePrev> group = groups[i];
+                IGrouping<VariableRef, VariableValuePrev> group = groups[i];
 
                 Timestamp minT = Timestamp.Max;
                 Timestamp maxT = Timestamp.Empty;
 
-                VaribleValuePrev minVal = null;
-                VaribleValuePrev maxVal = null;
+                VariableValuePrev minVal = null;
+                VariableValuePrev maxVal = null;
 
-                foreach (VaribleValuePrev v in group) {
+                foreach (VariableValuePrev v in group) {
                     Timestamp time = v.Value.Value.T;
                     if (time > maxT) {
                         maxT = time;
@@ -1053,7 +1053,7 @@ namespace Ifak.Fast.Mediator
                         minVal = v;
                     }
                 }
-                resValues[i] = new VaribleValuePrev(maxVal.Value, minVal.PreviousValue);
+                resValues[i] = new VariableValuePrev(maxVal.Value, minVal.PreviousValue);
             }
             return resValues;
         }

@@ -257,7 +257,7 @@ namespace Ifak.Fast.Mediator
             return history.Mode != HistoryMode.None;
         }
 
-        public int OnVariableValuesChanged(string moduleID, IList<VaribleValuePrev> values) {
+        public int OnVariableValuesChanged(string moduleID, IList<VariableValuePrev> values) {
 
             var valuesToSave = new List<StoreValue>();
 

@@ -99,18 +99,18 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public VaribleValuePrev[] UpdateVariableValues(IList<VariableValue> values) {
+        public VariableValuePrev[] UpdateVariableValues(IList<VariableValue> values) {
 
-            VaribleValuePrev[] previousValues = new VaribleValuePrev[values.Count];
+            VariableValuePrev[] previousValues = new VariableValuePrev[values.Count];
 
             for (int i = 0; i < values.Count; ++i) {
                 VariableValue vv = values[i];
                 var varRef = vv.Variable;
                 try {
-                    previousValues[i] = new VaribleValuePrev(vv, map[varRef]);
+                    previousValues[i] = new VariableValuePrev(vv, map[varRef]);
                 }
                 catch (Exception) {
-                    previousValues[i] = new VaribleValuePrev(vv, new VTQ(Timestamp.Empty, Quality.Bad, DataValue.Empty));
+                    previousValues[i] = new VariableValuePrev(vv, new VTQ(Timestamp.Empty, Quality.Bad, DataValue.Empty));
                     logger.Warn("Update of undeclared variable: " + varRef);
                 }
                 map[varRef] = vv.Value;
@@ -325,12 +325,12 @@ namespace Ifak.Fast.Mediator
         }
     }
 
-    public class VaribleValuePrev
+    public class VariableValuePrev
     {
         public VariableValue Value { get; private set; }
         public VTQ PreviousValue { get; private set; }
 
-        public VaribleValuePrev(VariableValue value, VTQ previousValue) {
+        public VariableValuePrev(VariableValue value, VTQ previousValue) {
             this.Value = value;
             this.PreviousValue = previousValue;
         }

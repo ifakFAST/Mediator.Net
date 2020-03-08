@@ -559,7 +559,7 @@ namespace Ifak.Fast.Mediator
         public void ValidateVariableRefsOrThrow(IList<VariableRef> varRefs) => variables.ValidateVariableRefsOrThrow(varRefs);
         public int UpdateVariableValues(IList<VariableValue> values) {
             if (values.Count > 0) {
-                VaribleValuePrev[] valuesWithPrev = variables.UpdateVariableValues(values);
+                VariableValuePrev[] valuesWithPrev = variables.UpdateVariableValues(values);
 
                 //if (values.Count == 1) {
                 //    logger.Info("UpdateVariable " + values[0].Variable.ToString() + ": " + previousValues[0].ToString() + " => " + values[0].Value.ToString());
