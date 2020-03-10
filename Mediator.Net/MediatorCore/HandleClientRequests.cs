@@ -775,12 +775,30 @@ namespace Ifak.Fast.Mediator
                 VariableValue[] moduleValues = values.Where(v => v.Variable.Object.ModuleID == moduleID).ToArray();
                 int count = module.UpdateVariableValues(moduleValues);
                 maxBufferCount = Math.Max(maxBufferCount, count);
-                moduleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
+                VariableValue[] filtereModuleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
+                VariableError[] writableErrors = null;
+                if (filtereModuleValues.Length < moduleValues.Length) {
+                    VariableValue[] removedModuleValues = moduleValues.Where(vv => !(module.GetVarDescription(vv.Variable)?.Writable ?? false)).ToArray();
+                    moduleValues = filtereModuleValues;
+                    writableErrors = removedModuleValues.Select(vv => new VariableError(vv.Variable, $"Variable {vv.Variable.ToString()} is not writable.")).ToArray();
+                }
                 if (moduleValues.Length > 0) {
-                    return RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+                    Task<WriteResult> t = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+                    if (writableErrors == null) return t;
+                    return t.ContinueOnMainThread((task) => {
+                        WriteResult writeResult = task.Result;
+                        if (writeResult.IsOK()) {
+                            return WriteResult.Failure(writableErrors);
+                        }
+                        else {
+                            var list = writeResult.FailedVariables.ToList();
+                            list.AddRange(writableErrors);
+                            return WriteResult.Failure(list.ToArray());
+                        }
+                    });
                 }
                 else {
-                    return Task.FromResult(WriteResult.OK);
+                    return Task.FromResult(writableErrors == null ? WriteResult.OK : WriteResult.Failure(writableErrors));
                 }
             }).ToArray();
 
@@ -972,8 +990,6 @@ namespace Ifak.Fast.Mediator
 
             return res;
         }
-
-        private bool VarMissing(VariableRef variable) => !VarExists(variable);
 
         private bool VarExists(VariableRef variable) {
             string mod = variable.Object.ModuleID;
