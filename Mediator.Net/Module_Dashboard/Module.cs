@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Rewrite;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -27,6 +28,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     {
         private bool shutdown = false;
         private string absolutBaseDir = "";
+        private string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
         private int clientPort;
         private ViewType[] viewTypes = new ViewType[0];
         private DashboardUI uiModel = new DashboardUI();
@@ -81,7 +83,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 if (!File.Exists(dir)) throw new Exception($"view-assembly does not exist: {dir}");
             }
 
-            viewTypes = ReadAvailableViewTypes(absolutBaseDir, absoluteViewAssemblies);
+            viewTypes = ReadAvailableViewTypes(absolutBaseDir, BundlesPrefix, absoluteViewAssemblies);
             uiModel = MakeUiModel(model, viewTypes);
 
             var builder = new WebHostBuilder();
@@ -95,6 +97,10 @@ namespace Ifak.Fast.Mediator.Dashboard
             });
             builder.UseWebRoot(absolutBaseDir);
             builder.UseStartup<Module>();
+            //builder.ConfigureLogging(logging => {
+            //    logging.AddConsole(); // Microsoft.Extensions.Logging.Console
+            //    logging.SetMinimumLevel(LogLevel.Information);
+            //});
             webHost = builder.Build();
             webHost.Start();
         }
@@ -126,6 +132,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                 ReceiveBufferSize = 4 * 1024
             };
             app.UseWebSockets(webSocketOptions);
+
+            string regex = $"^{theModule.BundlesPrefix}/(.*)";
+            var rewriteOptions = new RewriteOptions().AddRewrite(regex, "/$1", skipRemainingRules: true);
+
+            app.UseRewriter(rewriteOptions);
 
             var options = new DefaultFilesOptions();
             options.DefaultFileNames.Clear();
@@ -371,7 +382,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return (session, viewID);
         }
 
-        private static ViewType[] ReadAvailableViewTypes(string absoluteBaseDir, string[] viewAssemblies) {
+        private static ViewType[] ReadAvailableViewTypes(string absoluteBaseDir, string bundlesPrefx, string[] viewAssemblies) {
 
             var viewTypes = Reflect.GetAllNonAbstractSubclasses(typeof(ViewBase)).ToList();
             viewTypes.AddRange(viewAssemblies.SelectMany(LoadTypesFromAssemblyFile));
@@ -387,7 +398,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     if (url || Directory.Exists(viewBundlePath)) {
                         var vt = new ViewType() {
                             Name = id.ID,
-                            HtmlPath = "/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
+                            HtmlPath = $"/{bundlesPrefx}/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
                             Type = type,
                             Icon = id.Icon ??  ""
                         };
