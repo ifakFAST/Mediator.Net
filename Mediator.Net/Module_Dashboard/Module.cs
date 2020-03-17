@@ -26,7 +26,6 @@ namespace Ifak.Fast.Mediator.Dashboard
 {
     public class Module : ModelObjectModule<DashboardModel>
     {
-        private bool shutdown = false;
         private string absolutBaseDir = "";
         private string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
         private int clientPort;
@@ -38,6 +37,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private static Module theModule = null;
         private static SynchronizationContext theSyncContext = null;
         private IWebHost webHost = null;
+        private bool isRunning = false;
 
         public Module() {
             if (theModule == null) {
@@ -157,9 +157,11 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public override async Task Run(Func<bool> fShutdown) {
 
-            while (!fShutdown()) {
+            await Task.Delay(1000);
 
-                await Task.Delay(1000);
+            isRunning = true;
+
+            while (!fShutdown()) {
 
                 bool needPurge = sessions.Values.Any(session => session.IsAbandoned);
                 if (needPurge) {
@@ -172,9 +174,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
                     }
                 }
+
+                await Task.Delay(1000);
             }
 
-            shutdown = true;
+            isRunning = false;
 
             Task closeTask = Task.WhenAll(sessions.Values.Select(session => session.Close()).ToArray());
             await Task.WhenAny(closeTask, Task.Delay(2000));
@@ -237,7 +241,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             HttpRequest request = context.Request;
             HttpResponse response = context.Response;
 
-            if (shutdown) {
+            if (!isRunning) {
                 response.StatusCode = 400; // BAD Request
                 return;
             }
