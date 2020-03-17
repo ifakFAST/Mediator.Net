@@ -54,7 +54,9 @@ export default {
         .then(function(response) {
           context.$emit("loginSuccess", {
             session: response.data.sessionID,
-            model: response.data.model
+            model: response.data.model,
+            user: context.loginUser,
+            pass: context.loginPass
           });
           context.loginPass = "";
         })

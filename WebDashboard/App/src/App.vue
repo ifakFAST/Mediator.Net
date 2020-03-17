@@ -39,9 +39,10 @@ export default {
   },
   methods: {
     loginSuccess(event) {
+      console.info('Login success')
       this.sessionID = event.session;
       this.model = event.model;
-      this.openWebSocket()
+      this.openWebSocket(event.user, event.pass)
       if (this.model.views.length > 0) {
         this.activateView(this.model.views[0].viewID)
       }
@@ -63,7 +64,7 @@ export default {
          console.log("Error closing websocket: " + error);
       }
     },
-    openWebSocket() {
+    openWebSocket(user, pass) {
       if (window.WebSocket) {
         const context = this;
         const socket = new WebSocket("ws://" + window.location.host + "/websocket/");
@@ -96,15 +97,51 @@ export default {
           }
           if (!ev.wasClean) {
             const reconnect = function() {
-              context.openWebSocket();
+              context.openWebSocket(user, pass);
             };
             setTimeout(reconnect, 3000);
+          }
+          if (ev.wasClean && context.sessionID !== "") {
+            console.info('Will try to relogin in 3 seconds...')
+            const relogin = function() {
+              context.tryReLogin(user, pass);
+            };
+            setTimeout(relogin, 3000);
           }
         }
       }
     },
+    tryReLogin(user, pass) {
+      if (this.sessionID == '') {
+        console.info('Abort relogin because of logout.')
+        return
+      }
+      console.info('Trying to relogin...')
+      const context = this;
+      axios
+        .post("/login", { user, pass })
+        .then(function(response) {
+          console.info('Relogin success.')
+          const viewID = context.currentViewID;
+          context.currentViewID = '';
+          context.sessionID = response.data.sessionID
+          context.model = response.data.model
+          context.openWebSocket(user, pass)
+          context.doActivateView(viewID)
+        })
+        .catch(function(error) {
+          console.info('Relogin failed! Will try again in 2 seconds...')
+          const relogin = function() {
+            context.tryReLogin(user, pass);
+          };
+          setTimeout(relogin, 2000);
+        });
+    },
     activateView(viewID) {
       if (this.currentViewID === viewID) return;
+      this.doActivateView(viewID);
+    },
+    doActivateView(viewID) {
       const context = this;
       const previousEventListener = context.eventListener;
       context.eventListener = function(eventName, eventPayload) {};
