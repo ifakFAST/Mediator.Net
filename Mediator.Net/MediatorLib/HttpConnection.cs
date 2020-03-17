@@ -126,9 +126,11 @@ namespace Ifak.Fast.Mediator
                 eventManager?.Close();
                 eventManager = null;
             }
-            catch (Exception exp) {
-                Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(OnConnectionBroken) + ": " + exp.Message);
+            catch (Exception) {
+                // Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(OnConnectionBroken) + ": " + exp.Message);
             }
+
+            client.Dispose();
         }
 
         #region Methods
@@ -478,7 +480,7 @@ namespace Ifak.Fast.Mediator
             }
             catch (Exception exp) {
                 OnConnectionBroken();
-                throw new ConnectivityException(exp.Message, exp);
+                throw new ConnectivityException(exp.Message);
             }
 
             using (response) {
@@ -488,9 +490,13 @@ namespace Ifak.Fast.Mediator
                         if (string.IsNullOrEmpty(content)) return new JObject();
                         return StdJson.JObjectFromString(content);
                     }
+                    catch (TaskCanceledException) {
+                        OnConnectionBroken();
+                        throw new ConnectivityException("Time out");
+                    }
                     catch (Exception exp) {
                         OnConnectionBroken();
-                        throw new ConnectivityException(exp.Message, exp);
+                        throw new ConnectivityException(exp.Message);
                     }
                 }
                 else {
@@ -519,9 +525,13 @@ namespace Ifak.Fast.Mediator
                 try {
                     response = await client.PostAsync(path, payload);
                 }
+                catch (TaskCanceledException) {
+                    OnConnectionBroken();
+                    throw new ConnectivityException("Time out");
+                }
                 catch (Exception exp) {
                     OnConnectionBroken();
-                    throw new ConnectivityException(exp.Message, exp);
+                    throw new ConnectivityException(exp.Message);
                 }
             }
 
@@ -533,9 +543,13 @@ namespace Ifak.Fast.Mediator
                             return StdJson.ObjectFromReader<T>(reader);
                         }
                     }
+                    catch (TaskCanceledException) {
+                        OnConnectionBroken();
+                        throw new ConnectivityException("Time out");
+                    }
                     catch (Exception exp) {
                         OnConnectionBroken();
-                        throw new ConnectivityException(exp.Message, exp);
+                        throw new ConnectivityException(exp.Message);
                     }
                 }
                 else {

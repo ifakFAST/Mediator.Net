@@ -506,15 +506,11 @@ namespace Ifak.Fast.Mediator
     public class ConnectivityException : Exception
     {
         public ConnectivityException(string message) : base(message) { }
-
-        public ConnectivityException(string message, Exception innerException) : base(message, innerException) { }
     }
 
     public class RequestException : Exception
     {
         public RequestException(string message) : base(message) { }
-
-        public RequestException(string message, Exception innerException) : base(message, innerException) { }
     }
 
     public interface EventListener
