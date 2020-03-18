@@ -12,10 +12,13 @@ namespace Ifak.Fast.Mediator.Dashboard
 {
     public sealed class ReqResult : IDisposable
     {
-        public ReqResult(int statusCode, MemoryStream bytes) {
+        public ReqResult(int statusCode, MemoryStream bytes, string contentType = null) {
             StatusCode = statusCode;
             Bytes = bytes ?? throw new ArgumentNullException("bytes");
+            ContentType = contentType ?? "application/json";
         }
+
+        public string ContentType { get; private set; } = "application/json";
 
         public MemoryStream Bytes { get; private set; }
 
@@ -37,7 +40,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return new ReqResult(200, new MemoryStream(0));
         }
 
-        public static ReqResult OK(object obj, bool ignoreShouldSerializeMembers = false) {
+        public static ReqResult OK(object obj, bool ignoreShouldSerializeMembers = false, string contentType = null) {
 
             if (typeof(Task).IsAssignableFrom(obj.GetType())) {
                 throw new Exception("ReqResult.OK: obj may not be a Task!");
@@ -52,7 +55,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 res.Dispose();
                 throw;
             }
-            return new ReqResult(200, res);
+            return new ReqResult(200, res, contentType: contentType);
         }
     }
 

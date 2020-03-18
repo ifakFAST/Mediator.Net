@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.Globalization;
+using OfficeOpenXml;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -138,7 +139,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                                 writer.Write("{ \"WindowLeft\": " + windowLeft.JavaTicks);
                                 writer.Write(", \"WindowRight\": " + windowRight.JavaTicks);
                                 writer.Write(", \"Data\": ");
-                                WriteUnifiedData(writer, listHistories);
+                                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
                                 writer.Write('}');
                             }
                             res.Seek(0, SeekOrigin.Begin);
@@ -148,6 +149,81 @@ namespace Ifak.Fast.Mediator.Dashboard
                             throw;
                         }
                         return new ReqResult(200, res);
+                    }
+
+                case "DownloadFile": {
+
+                        var para = parameters.Object<DownloadDataFileParams>();
+
+                        Timestamp tStart = para.TimeRange.GetStart();
+                        Timestamp tEnd = para.TimeRange.GetEnd();
+
+                        var listHistories = new List<VTTQ[]>();
+
+                        foreach (var variable in para.Variables) {
+                            try {
+
+                                const int ChunckSize = 5000;
+                                VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN);
+
+                                if (data.Length < ChunckSize) {
+                                    listHistories.Add(data);
+                                }
+                                else {
+                                    var buffer = new List<VTTQ>(data);
+                                    do {
+                                        Timestamp t = data[data.Length - 1].T.AddMillis(1);
+                                        data = await Connection.HistorianReadRaw(variable, t, tEnd, ChunckSize, BoundingMethod.TakeFirstN);
+                                        buffer.AddRange(data);
+                                    }
+                                    while (data.Length == ChunckSize);
+
+                                    listHistories.Add(buffer.ToArray());
+                                }
+                            }
+                            catch (Exception) {
+                                listHistories.Add(new VTTQ[0]);
+                            }
+                        }
+
+                        var columns = new List<string>();
+                        columns.Add("Time");
+                        columns.AddRange(para.VariableNames);
+
+                        var res = MemoryManager.GetMemoryStream("DownloadFile");
+                        try {
+
+                            string contentType;
+                            switch (para.FileType) {
+
+                                case FileType.CSV:
+
+                                    contentType = "text/csv";
+                                    using (var writer = new StreamWriter(res, Encoding.UTF8, 8 * 1024, leaveOpen: true)) {
+                                        WriteUnifiedData(new CsvDataRecordArrayWriter(writer, columns, configuration.DataExport.CSV), listHistories);
+                                    }
+                                    break;
+
+                                case FileType.Spreadsheet:
+
+                                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                                    using (var excel = new ExcelPackage(res)) {
+                                        ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
+                                        WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);
+                                        excel.Save();
+                                    }
+                                    break;
+
+                                default: throw new Exception($"Unknown file type: {para.FileType}");
+                            }
+
+                            res.Seek(0, SeekOrigin.Begin);
+                            return new ReqResult(200, res, contentType);
+                        }
+                        catch (Exception) {
+                            res.Dispose();
+                            throw;
+                        }
                     }
 
                 case "SaveItems": {
@@ -409,7 +485,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     var sb = new StringBuilder();
                     using (var writer = new StringWriter(sb)) {
-                        WriteUnifiedData(writer, listHistories);
+                        WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
                     }
 
                     var evt = new TabDataEvent() {
@@ -432,17 +508,17 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private static bool IsNumericOrBool(Variable v) => v.IsNumeric || v.Type == DataType.Bool;
 
-        private void WriteUnifiedData(TextWriter writer, List<VTTQ[]> variables) {
-
-            writer.Write('[');
+        private void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQ[]> variables) {
 
             HistReader[] vars = variables.Select(v => new HistReader(v)).ToArray();
+
+            writer.WriteArrayStart();
 
             bool hasNext = vars.Any(v => v.HasValue);
 
             while (hasNext) {
 
-                writer.Write('[');
+                writer.WriteRecordStart();
 
                 Timestamp time = Timestamp.Max;
 
@@ -453,38 +529,34 @@ namespace Ifak.Fast.Mediator.Dashboard
                     }
                 }
 
-                writer.Write(time.JavaTicks);
+                writer.WriteValueTimestamp(time);
 
                 foreach (var reader in vars) {
-                    writer.Write(',');
+                    writer.WriteColumSeparator();
                     Timestamp? t = reader.Time;
                     if (t.HasValue && t.Value == time) {
                         DataValue v = reader.Value;
                         if (IsSimpleDouble(v.JSON)) {
-                            writer.Write(v.JSON);
+                            writer.WriteValueJsonDouble(v.JSON);
                         }
                         else {
                             double? value = v.AsDouble();
                             if (value.HasValue)
-                                writer.Write(value.Value.ToString("R", CultureInfo.InvariantCulture));
+                                writer.WriteValueDouble(value.Value);
                             else
-                                writer.Write("null");
+                                writer.WriteValueEmpty();
                         }
                         reader.MoveNext();
                     }
                     else {
-                        writer.Write("null");
+                        writer.WriteValueEmpty();
                     }
                 }
-                writer.Write(']');
                 hasNext = vars.Any(v => v.HasValue);
-                if (hasNext) {
-                    writer.WriteLine(',');
-                }
+                writer.WriteRecordEnd(hasMoreRecords: hasNext);
             }
 
-            writer.Write(']');
-            writer.Flush();
+            writer.WriteArrayEnd();
         }
 
         private static bool IsSimpleDouble(string str) {
@@ -513,12 +585,180 @@ namespace Ifak.Fast.Mediator.Dashboard
             public bool HasValue => idx < data.Length;
         }
 
+        abstract class DataRecordArrayWriter
+        {
+            public abstract void WriteArrayStart();
+            public abstract void WriteArrayEnd();
+            public abstract void WriteRecordStart();
+            public abstract void WriteRecordEnd(bool hasMoreRecords);
+            public abstract void WriteValueTimestamp(Timestamp t);
+            public abstract void WriteValueText(string txt);
+            public abstract void WriteValueJsonDouble(string dbl);
+            public abstract void WriteValueDouble(double dbl);
+            public abstract void WriteValueEmpty();
+            public abstract void WriteColumSeparator();
+        }
+
+        class JsonDataRecordArrayWriter : DataRecordArrayWriter
+        {
+            private readonly TextWriter writer;
+
+            public JsonDataRecordArrayWriter(TextWriter writer) {
+                this.writer = writer;
+            }
+
+            public override void WriteArrayStart() => writer.Write('[');
+
+            public override void WriteArrayEnd() {
+                writer.Write(']');
+                writer.Flush();
+            }
+
+            public override void WriteRecordStart() => writer.Write('[');
+
+            public override void WriteRecordEnd(bool hasMoreRecords) {
+                writer.Write(']');
+                if (hasMoreRecords) {
+                    writer.WriteLine(',');
+                }
+            }
+
+            public override void WriteValueEmpty() => writer.Write("null");
+
+            public override void WriteValueText(string txt) => writer.Write(txt);
+
+            public override void WriteValueTimestamp(Timestamp t) => writer.Write(t.JavaTicks);
+
+            public override void WriteColumSeparator() => writer.Write(",");
+
+            public override void WriteValueJsonDouble(string dbl) => writer.Write(dbl);
+
+            public override void WriteValueDouble(double dbl) => writer.Write(dbl.ToString("R", CultureInfo.InvariantCulture));
+        }
+
+        class CsvDataRecordArrayWriter : DataRecordArrayWriter {
+            private readonly TextWriter writer;
+            private readonly string[] columns;
+            private readonly CsvDataExport format;
+
+            public CsvDataRecordArrayWriter(TextWriter writer, IList<string> columns, CsvDataExport format) {
+                this.writer = writer;
+                this.columns = columns.ToArray();
+                this.format = format;
+            }
+
+            public override void WriteArrayStart() => writer.WriteLine(string.Join(format.ColumnSeparator, columns));
+
+            public override void WriteArrayEnd() {
+                writer.Flush();
+            }
+
+            public override void WriteRecordStart() { }
+
+            public override void WriteRecordEnd(bool hasMoreRecords) {
+                writer.WriteLine();
+            }
+
+            public override void WriteValueEmpty() {}
+
+            public override void WriteValueText(string txt) => writer.Write(txt);
+
+            public override void WriteValueTimestamp(Timestamp t) {
+                DateTime dt = t.ToDateTime().ToLocalTime();
+                string s = dt.ToString(format.TimestampFormat, CultureInfo.InvariantCulture);
+                writer.Write(s);
+            }
+
+            public override void WriteColumSeparator() => writer.Write(format.ColumnSeparator);
+
+            public override void WriteValueJsonDouble(string dbl) => writer.Write(dbl);
+
+            public override void WriteValueDouble(double dbl) => writer.Write(dbl.ToString("R", CultureInfo.InvariantCulture));
+        }
+
+        class ExcelDataRecordArrayWriter : DataRecordArrayWriter
+        {
+            private readonly ExcelWorksheet sheet;
+            private readonly string[] columns;
+            private readonly SpreadsheetDataExport format;
+            private int row = 0;
+            private int col = 0;
+
+            public ExcelDataRecordArrayWriter(ExcelWorksheet sheet, IList<string> columns, SpreadsheetDataExport format) {
+                this.sheet = sheet;
+                this.columns = columns.ToArray();
+                this.format = format;
+            }
+
+            public override void WriteArrayStart() {
+                for (int n = 0; n < columns.Length; n++) {
+                    sheet.Cells[1, n + 1].Value = columns[n];
+                    sheet.Cells[1, n + 1].Style.Font.Bold = true;
+                    sheet.Cells[1, n + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                }
+                row = 2;
+                col = 1;
+            }
+
+            public override void WriteArrayEnd() {
+                sheet.Cells.AutoFitColumns();
+            }
+
+            public override void WriteRecordStart() {
+                col = 1;
+            }
+
+            public override void WriteRecordEnd(bool hasMoreRecords) {
+                row += 1;
+            }
+
+            public override void WriteValueEmpty() { }
+
+            public override void WriteValueText(string txt) {
+                sheet.Cells[row, col].Value = txt;
+            }
+
+            public override void WriteValueTimestamp(Timestamp t) {
+                sheet.Cells[row, col].Value = t.ToDateTime().ToLocalTime();
+                sheet.Cells[row, col].Style.Numberformat.Format = format.TimestampFormat;
+            }
+
+            public override void WriteColumSeparator() {
+                col += 1;
+            }
+
+            public override void WriteValueJsonDouble(string dbl) {
+                WriteValueDouble(DataValue.FromJSON(dbl).GetDouble());
+            }
+
+            public override void WriteValueDouble(double dbl) {
+                sheet.Cells[row, col].Value = dbl;
+            }
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         public class ViewConfig
         {
             public TabConfig[] Tabs { get; set; } = new TabConfig[0];
+            public DataExport DataExport { get; set; } = new DataExport();
+        }
+
+        public class DataExport
+        {
+            public CsvDataExport CSV { get; set; } = new CsvDataExport();
+            public SpreadsheetDataExport Spreadsheet { get; set; } = new SpreadsheetDataExport();
+        }
+
+        public class CsvDataExport
+        {
+            public string TimestampFormat { get; set; } = "yyyy'-'MM'-'dd' 'HH':'mm':'ss";
+            public string ColumnSeparator { get; set; } = ",";
+        }
+
+        public class SpreadsheetDataExport
+        {
+            public string TimestampFormat { get; set; } = "yyyy/mm/dd hh:mm:ss;@";
         }
 
         public class TabConfig
@@ -577,6 +817,21 @@ namespace Ifak.Fast.Mediator.Dashboard
             public TimeRange TimeRange { get; set; } = new TimeRange();
             public VariableRef[] Variables { get; set; } = new VariableRef[0];
             public int MaxDataPoints { get; set; } = 12000;
+        }
+
+        public class DownloadDataFileParams
+        {
+            public string TabName { get; set; } = "";
+            public TimeRange TimeRange { get; set; } = new TimeRange();
+            public VariableRef[] Variables { get; set; } = new VariableRef[0];
+            public string[] VariableNames { get; set; } = new string[0];
+            public FileType FileType { get; set; }
+        }
+
+        public enum FileType
+        {
+            CSV,
+            Spreadsheet
         }
 
         public class SaveItemsParams

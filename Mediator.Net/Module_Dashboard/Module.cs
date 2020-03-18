@@ -261,7 +261,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         using (ReqResult result = await HandlePost(request, response)) {
                             response.StatusCode = result.StatusCode;
                             response.ContentLength = result.Bytes.Length;
-                            response.ContentType = "application/json";
+                            response.ContentType = result.ContentType;
                             try {
                                 await result.Bytes.CopyToAsync(response.Body);
                             }

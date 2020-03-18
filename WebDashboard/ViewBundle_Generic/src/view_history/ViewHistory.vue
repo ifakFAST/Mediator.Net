@@ -34,6 +34,12 @@
               <v-list-item @click="editPlot" v-if="hasTab">
                   <v-list-item-title>Configure Plot</v-list-item-title>
               </v-list-item>
+              <v-list-item @click="downloadCSV" v-if="hasTab">
+                  <v-list-item-title>Download CSV File</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="downloadSpreadsheet" v-if="hasTab">
+                  <v-list-item-title>Download Spreadsheet File</v-list-item-title>
+              </v-list-item>
             </v-list>
           </v-menu>
         </v-toolbar>
@@ -580,6 +586,44 @@ export default class ViewHistory extends Vue {
     const str = JSON.stringify(this.currentTab.Configuration.PlotConfig)
     this.editorPlot.plot = JSON.parse(str)
     this.editorPlot.show = true
+  }
+
+  downloadSpreadsheet() {
+    this.downloadFile('Spreadsheet', '.xlsx')
+  }
+
+  downloadCSV() {
+    this.downloadFile('CSV', '.csv')
+  }
+
+  downloadFile(type: string, extension: string) {
+
+    const gr: any = this.$refs.theGraph
+    const visibilty = gr._data.graph.visibility()
+
+    const context = this
+    const tab = this.currentTab
+    const para = {
+      TabName: tab.Name,
+      TimeRange: this.timeRange,
+      Variables: tab.Variables.filter((x, i) => visibilty[i]),
+      VariableNames: tab.Configuration.Items.filter((x, i) => visibilty[i]).map((it) => it.Name),
+      FileType: type,
+    }
+    window.parent['dashboardApp'].sendViewRequestBlob('DownloadFile', para, (blobResponse) => {
+      context.downloadBlob(blobResponse, tab.Name + extension)
+    })
+  }
+
+  downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename || 'download'
+    a.click()
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 500)
   }
 
   editorItems_AddItem() {

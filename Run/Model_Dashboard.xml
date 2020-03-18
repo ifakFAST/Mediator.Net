@@ -101,7 +101,16 @@
                 }
               ]
             }
-          ]
+          ],
+          "DataExport": {
+            "CSV": {
+              "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+              "ColumnSeparator": ","
+            },
+            "Spreadsheet": {
+              "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+            }
+          }
         }
       </Config>
     </View>

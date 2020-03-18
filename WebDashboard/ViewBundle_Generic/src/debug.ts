@@ -43,6 +43,26 @@ export function setupDashboardEnv(theViewID: string): void {
       })
 
     },
+    sendViewRequestBlob(request: string, payload, successHandler) {
+
+      if (viewReady === false) {
+        console.log('View not yet ready')
+        setTimeout(() => {
+          window['dashboardApp'].sendViewRequestBlob(request, payload, successHandler)
+        }, 750)
+        return
+      }
+
+      const ctx = theSessionID + '_' + theViewID
+      console.log('sendViewRequestBlob: ' + request)
+
+      postRequestBlob(backendURL + '/viewRequest/' + request + '?' + ctx, payload, (blobResponse) => {
+        successHandler(blobResponse)
+      }, (error) => {
+        reportError(error, 'Connect error.')
+      })
+
+    },
     registerViewEventListener(listener) {
       // console.log('registerViewEventListener')
     },
@@ -90,6 +110,39 @@ function postRequest(url: string, content, callback, errHandler) {
     if (this.readyState === 4) {
       if (this.status === 200) {
         callback(this.responseText)
+      }
+      else {
+        let errObj = {}
+        try {
+          errObj = JSON.parse(this.response)
+        }
+        catch {}
+        errHandler(errObj)
+      }
+    }
+  }
+  request.open('POST', url, true)
+  request.send(strContent)
+}
+
+function postRequestBlob(url: string, content, callback, errHandler) {
+
+  let strContent: string = ''
+
+  if (typeof content === 'string') {
+    strContent = content
+  }
+  else {
+    strContent = JSON.stringify(content)
+  }
+
+  const request = new XMLHttpRequest()
+  request.responseType = 'blob'
+  request.onreadystatechange = function() {
+
+    if (this.readyState === 4) {
+      if (this.status === 200) {
+        callback(this.response)
       }
       else {
         let errObj = {}

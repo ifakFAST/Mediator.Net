@@ -15,15 +15,21 @@ window.dashboardApp = new Vue({
   render: h => h(App),
   methods: {
     sendViewRequest(request, payload, successHandler) {
+      this.doSendViewRequest(request, payload, successHandler, 'text')
+    },
+    sendViewRequestBlob(request, payload, successHandler) {
+      this.doSendViewRequest(request, payload, successHandler, 'blob')
+    },
+    doSendViewRequest(request, payload, successHandler, responseType) {
       const config = { // suppress auto conversion of string to JSON, otherwise strange behavior
-         transformResponse: [function (data) { return data; }]
+         transformResponse: [function (data) { return data; }],
+         responseType
       };
       globalState.busy = true;
       axios.post('/viewRequest/' + request + "?" + this.getDashboardViewContext(), payload, config)
         .then(function (response) {
             globalState.busy = false;
-            const strResponse = response.data;
-            successHandler(strResponse);
+            successHandler(response.data);
         })
         .catch(function (error) {
             globalState.busy = false;
