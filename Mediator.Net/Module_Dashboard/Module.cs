@@ -73,7 +73,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 #endif
             }
 
-            string[] viewAssemblies = strViewAssemblies.Split(";", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            string[] viewAssemblies = strViewAssemblies
+                .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .ToArray();
 
             absolutBaseDir = Path.GetFullPath(baseDir);
             if (!Directory.Exists(absolutBaseDir)) throw new Exception($"base-dir does not exist: {absolutBaseDir}");

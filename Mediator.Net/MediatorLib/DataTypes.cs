@@ -856,7 +856,7 @@ namespace Ifak.Fast.Mediator
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public struct NamedValue : IEquatable<NamedValue>
+    public struct NamedValue : IEquatable<NamedValue>, IXmlSerializable
     {
         private string name;
         private string value;
@@ -885,6 +885,32 @@ namespace Ifak.Fast.Mediator
             {
                 if (value == null) throw new ArgumentNullException("value");
                 this.value = value;
+            }
+        }
+
+        public XmlSchema GetSchema() => null;
+
+        public void ReadXml(XmlReader reader) {
+            name = reader["name"];
+            value = reader["value"];
+            bool isEmpty = reader.IsEmptyElement;
+            reader.ReadStartElement();
+            if (!isEmpty) {
+                string v = (reader.ReadContentAsString() ?? "");
+                value = v.Trim();
+                reader.ReadEndElement();
+            }
+        }
+
+        public void WriteXml(XmlWriter writer) {
+            writer.WriteAttributeString("name", Name);
+            string v = Value;
+            bool newLines = v.Contains('\n') || v.Contains('\r');
+            if (newLines) {
+                writer.WriteString(v);
+            }
+            else {
+                writer.WriteAttributeString("value", v);
             }
         }
 

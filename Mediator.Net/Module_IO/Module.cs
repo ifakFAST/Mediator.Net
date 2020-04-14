@@ -42,7 +42,10 @@ namespace Ifak.Fast.Mediator.IO
 #endif
             }
 
-            string[] assemblies = strAssemblies.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] assemblies = strAssemblies
+                .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .ToArray();
 
             string[] absoluteAssemblies = assemblies.Select(d => Path.GetFullPath(d)).ToArray();
             foreach (string assembly in absoluteAssemblies) {
