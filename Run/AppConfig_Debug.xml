@@ -30,7 +30,9 @@
             <Config>
                 <NamedValue name="model-file"  value="Model_Dashboard.xml"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
-                <NamedValue name="view-assemblies" value=""/>
+                <NamedValue name="view-assemblies">
+                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_Calc.dll
+                </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
             </Config>
@@ -47,6 +49,26 @@
             <HistoryDBs>
                 <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=DB_IO.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
+        
+        <Module id="CALC" name="Calc" enabled="false" concurrentInit="false">
+            <VariablesFileName>Var_Calc.xml</VariablesFileName>
+            <ImplAssembly>Module_Calc.dll</ImplAssembly>
+            <ImplClass>Ifak.Fast.Mediator.Calc.Module</ImplClass>
+            <Config>
+                <NamedValue name="model-file" value="Model_Calc.xml"/>
+                <NamedValue name="simba-location" value="D:\Simba\Simba3\Workspace\wSisi\bin\Release\simba.exe"/>
+                <NamedValue name="adapter-assemblies" value=""/>
+            </Config>
+            <HistoryDBs>
+                <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=DB_Calc.db</ConnectionString>
                     <Settings>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>

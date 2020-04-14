@@ -52,6 +52,13 @@ namespace Ifak.Fast.Mediator.IO
                 if (!File.Exists(assembly)) throw new Exception($"adapter-assembly does not exist: {assembly}");
             }
 
+            absoluteAssemblies = absoluteAssemblies.Select(assembly => {
+                if (assembly.ToLowerInvariant().EndsWith(".cs")) {
+                    return CompileAdapter.CSharpFile2Assembly(assembly);
+                }
+                return assembly;
+            }).ToArray();
+
             foreach (VariableValue v in restoreVariableValues) {
                 string dataItemID = v.Variable.Object.LocalObjectID;
                 if (dataItemsState.ContainsKey(dataItemID)) {
