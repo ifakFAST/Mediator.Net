@@ -247,9 +247,9 @@ namespace Ifak.Fast.Mediator.IO
                     .Select(it => {
                         string id = it.ID;
                         bool scheduled = scheduledDataItems.Any(sit => sit.DataItemID == id);
-                        Timestamp t = dataItemsState[id].LastReadValue.T;
-                        Timestamp? tt = t.IsEmpty ? (Timestamp?)null : t;
-                        return new DataItemInfo(id, tt, scheduled);
+                        VTQ vtq = dataItemsState[id].LastReadValue;
+                        VTQ? v = vtq.T.IsEmpty ? (VTQ?)null : vtq;
+                        return new DataItemInfo(id, v, scheduled);
                     }).
                     ToArray();
 

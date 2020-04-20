@@ -28,7 +28,7 @@ namespace Ifak.Fast.Mediator.IO
         /// <param name="config">The configuration for this adapter instance</param>
         /// <param name="callback">Used to notify DataItem changes or other events/alarms</param>
         /// <param name="itemInfos">Provides additional information about all DataItems with Read == true,
-        /// e.g. the timestamp of the latest available value</param>
+        /// e.g. the latest available value</param>
         public abstract Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos);
 
         /// <summary>
@@ -80,14 +80,14 @@ namespace Ifak.Fast.Mediator.IO
 
     public struct DataItemInfo
     {
-        public DataItemInfo(string id, Timestamp? timestamp, bool scheduling) {
+        public DataItemInfo(string id, VTQ? lastValue, bool scheduling) {
             ID = id;
-            LatestTimestamp = timestamp;
+            LatestValue = lastValue;
             ConfiguredForScheduling = scheduling;
         }
 
         public string ID { get; private set; }
-        public Timestamp? LatestTimestamp { get; private set; }
+        public VTQ? LatestValue { get; private set; }
         public bool ConfiguredForScheduling { get; private set; }
     }
 
