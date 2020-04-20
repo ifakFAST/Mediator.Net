@@ -24,7 +24,7 @@ namespace Ifak.Fast.Mediator.EventLog
             };
 
             var module = new Module();
-            Mediator.ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
+            Mediator.ExternalModuleHost.ConnectAndRunModule(port, module);
             Console.WriteLine("Terminated.");
         }
     }

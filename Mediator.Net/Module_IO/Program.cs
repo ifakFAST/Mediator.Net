@@ -24,7 +24,7 @@ namespace Ifak.Fast.Mediator.IO
             };
 
             var module = new Module();
-            ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
+            ExternalModuleHost.ConnectAndRunModule(port, module);
             Console.WriteLine("Terminated.");
         }
     }

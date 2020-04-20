@@ -25,7 +25,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             };
 
             var module = new Module();
-            ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
+            ExternalModuleHost.ConnectAndRunModule(port, module);
             Console.WriteLine("Terminated.");
         }
     }

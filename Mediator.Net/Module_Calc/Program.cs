@@ -27,7 +27,7 @@ namespace Ifak.Fast.Mediator.Calc
             var module = new Module();
             module.fLoadCalcTypesFromAssembly = LoadTypesFromAssemblyFile;
 
-            ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
+            ExternalModuleHost.ConnectAndRunModule(port, module);
             Console.WriteLine("Terminated.");
         }
 

@@ -14,6 +14,11 @@ namespace Ifak.Fast.Mediator
 {
     public class ExternalModuleHost
     {
+        public static void ConnectAndRunModule(int port, ModuleBase module) {
+            string host = System.Net.IPAddress.Loopback.ToString(); // == 127.0.0.1
+            ConnectAndRunModule(host, port, module);
+        }
+
         public static void ConnectAndRunModule(string host, int port, ModuleBase module) {
 
             var connector = new TcpConnectorSlave();
