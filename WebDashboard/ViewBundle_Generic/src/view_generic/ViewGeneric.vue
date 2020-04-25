@@ -22,7 +22,8 @@
           <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse"
               :selection="selectedObject"
               :members="currObjectValues"
-              :child-types="childTypes"></object-editor>
+              :child-types="childTypes"
+              :locations="locations"></object-editor>
 
         </v-col>
       </v-row>
@@ -40,6 +41,7 @@ import { Component, Vue, Watch } from 'vue-property-decorator'
 import ObjectTree from './ObjectTree.vue'
 import ObjectEditor from './ObjectEditor.vue'
 import { TreeNode, TypeMap, ObjMemInfo, ObjectMember, ChildType, ObjectMap, AddObjectParams, SaveMember } from './types'
+import { LocationInfo } from '../fast_types'
 
 @Component({
   components: {
@@ -55,6 +57,7 @@ export default class ViewGeneric extends Vue {
   childTypes: ChildType[] = []
   typeInfo: TypeMap = {}
   objectMap: ObjectMap = {}
+  locations: LocationInfo[] = []
 
   get selectedObject(): TreeNode {
     if (this.selectedObjectID === '') { return null }
@@ -67,6 +70,7 @@ export default class ViewGeneric extends Vue {
       const response = JSON.parse(strResponse)
       context.updateObjects(response.ObjectTree)
       context.typeInfo = response.TypeInfo
+      context.locations = response.Locations
       context.onObjectSelected(response.ObjectTree)
     })
   }

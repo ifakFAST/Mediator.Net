@@ -28,6 +28,13 @@ export interface History {
   Offset: Duration | null
 }
 
+export interface LocationInfo {
+  ID: string
+  Name: string
+  LongName: string
+  Parent: string
+}
+
 export type HistoryMode = 'None' | 'Complete' | 'ValueOrQualityChanged' | 'Interval' | 'IntervalExact'
 
 export const HistoryModeValues: HistoryMode[] = ['None', 'Complete', 'ValueOrQualityChanged', 'Interval', 'IntervalExact']

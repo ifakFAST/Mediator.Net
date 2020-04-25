@@ -304,6 +304,30 @@ namespace Ifak.Fast.Mediator.IO.Config
         [XmlAttribute("address")]
         public string Address { get; set; } = "";
 
+        [XmlAttribute("conversionRead")]
+        public string ConversionRead { get; set; } = "";
+
+        [XmlAttribute("conversionWrite")]
+        public string ConversionWrite { get; set; } = "";
+
+        [Ignore]
+        [XmlAttribute("location")]
+        public string LocationStringFoxXml { get; set; } = "";
+
+        [XmlIgnore]
+        public LocationRef? Location {
+            get {
+                string loc = LocationStringFoxXml;
+                return string.IsNullOrEmpty(loc) ? (LocationRef?)null : LocationRef.FromLocationID(loc);
+            }
+            set {
+                LocationStringFoxXml = value.HasValue ? value.Value.LocationID : "";
+            }
+        }
+
+        [XmlAttribute("comment")]
+        public string Comment { get; set; } = "";
+
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         //public DataValue? InitialValue { get; set; } = null;
@@ -367,10 +391,34 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeAddress() => !string.IsNullOrEmpty(Address);
         public bool ShouldSerializeDimension() => Dimension != 1;
         public bool ShouldSerializeType() => Type != DataType.Float64;
+        public bool ShouldSerializeComment() => !string.IsNullOrEmpty(Comment);
+        public bool ShouldSerializeLocationStringFoxXml() => !string.IsNullOrEmpty(LocationStringFoxXml);
+        public bool ShouldSerializeConversionRead() => !string.IsNullOrEmpty(ConversionRead);
+        public bool ShouldSerializeConversionWrite() => !string.IsNullOrEmpty(ConversionWrite);
 
         public void ValidateOrThrow() {
             if (Scheduling.HasValue) Scheduling.Value.ValidateOrThrow();
             if (History.HasValue) History.Value.ValidateOrThrow();
+
+            if (!string.IsNullOrWhiteSpace(ConversionRead)) {
+                if (!Type.IsFloat()) {
+                    throw new Exception("Read Conversion may only be defined for scalar Float value");
+                }
+
+                if (Dimension != 1) {
+                    throw new Exception("Read Conversion may only be defined for scalar Float value (Dimension = 1)");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(ConversionWrite)) {
+                if (!Type.IsFloat()) {
+                    throw new Exception("Write Conversion may only be defined for scalar Float value");
+                }
+
+                if (Dimension != 1) {
+                    throw new Exception("Write Conversion may only be defined for scalar Float value (Dimension = 1)");
+                }
+            }
         }
 
         public void Normalize() {

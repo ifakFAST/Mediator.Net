@@ -152,6 +152,10 @@ namespace Ifak.Fast.Mediator
 
         public static string ValueToString(Duration[] array) => ArrayToString(array, ValueToString);
 
+        public static string ValueToString(LocationRef value) => JsonConvert.ToString(value.LocationID);
+
+        public static string ValueToString(LocationRef[] array) => ArrayToString(array, ValueToString);
+
         private static string ArrayToString<T>(T[] array, Func<T, string> f) {
             if (array == null || array.Length == 0) return "[]";
             var res = new StringBuilder(256);
@@ -262,7 +266,7 @@ namespace Ifak.Fast.Mediator
 
         public static double[] ToDoubleArray(string s) => ToPrimitiveArray(s, ToDouble);
 
-        public static double ToDoubleAcceptingFloat(string s) {
+        public static double ToDoubleAcceptingBool(string s) {
             try {
                 return double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
             }
@@ -273,7 +277,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public static double[] ToDoubleArrayAcceptingFloats(string s) => ToPrimitiveArray(s, ToDoubleAcceptingFloat);
+        public static double[] ToDoubleArrayAcceptingFloats(string s) => ToPrimitiveArray(s, ToDoubleAcceptingBool);
 
         public static decimal ToDecimal(string s) => decimal.Parse(s, CultureInfo.InvariantCulture);
 

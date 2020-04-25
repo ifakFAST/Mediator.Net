@@ -17,6 +17,12 @@ namespace Ifak.Fast.Mediator
     }
 
     [AttributeUsage(AttributeTargets.Property)]
+    public class Ignore : AttributeBase
+    {
+
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
     public class Category : AttributeBase
     {
         public string Name { get; set; }

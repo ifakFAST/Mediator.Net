@@ -159,7 +159,9 @@ namespace Ifak.Fast.Mediator.IO
                 foreach (Config.DataItem dataItem in adapter.Config.GetAllDataItems()) {
                     string id = dataItem.ID;
                     VTQ value = dataItemsState.ContainsKey(id) ? dataItemsState[id].LastReadValue : new VTQ(Timestamp.Empty, Quality.Bad, dataItem.GetDefaultValue());
-                    newDataItems.Add(new ItemState(id, dataItem.Name, adapter, value, dataItem.Write, adapter.Config.MaxFractionalDigits, dataItem.Type));
+                    var readConv = LinearFunctionParser.MakeConversion(dataItem.ConversionRead);
+                    var writeConv = LinearFunctionParser.MakeConversion(dataItem.ConversionWrite);
+                    newDataItems.Add(new ItemState(id, dataItem.Name, adapter, value, dataItem.Write, adapter.Config.MaxFractionalDigits, dataItem.Type, dataItem.Dimension, readConv, writeConv));
                 }
             }
             dataItemsState.Clear();
@@ -522,10 +524,20 @@ namespace Ifak.Fast.Mediator.IO
                     continue;
                 }
 
+                VTQ normilizedValue;
+
+                try {
+                    normilizedValue = NormalizeWriteValueOrThrow(itemState, vv.Value);
+                }
+                catch (Exception exp) {
+                    failed.Add(new VariableError(vv.Variable, exp.Message));
+                    continue;
+                }
+
                 if (!adapter2Items.ContainsKey(adapter)) {
                     adapter2Items[adapter] = new List<DataItemValue>();
                 }
-                adapter2Items[adapter].Add(new DataItemValue(id, vv.Value));
+                adapter2Items[adapter].Add(new DataItemValue(id, normilizedValue));
                 adapter.SetOfPendingWriteItems.Add(id);
             }
 
@@ -730,13 +742,13 @@ namespace Ifak.Fast.Mediator.IO
                                                         vtq.T = timestamp;
                                                     }
                                                     ItemState istate = dataItemsState[val.ID];
+                                                    vtq = NormalizeReadValue(istate, vtq);
                                                     if (vtq.Q == Quality.Bad && istate.LastReadValue.Q != Quality.Bad) {
                                                         badItems.Add(istate);
                                                     }
                                                     else if (vtq.Q == Quality.Good && istate.LastReadValue.Q != Quality.Good) {
                                                         goodItems.Add(istate);
                                                     }
-                                                    vtq = NormalizeReadValue(istate, vtq);
                                                     istate.LastReadValue = vtq;
                                                     values.Add(VariableValue.Make(moduleID, val.ID, VariableName, vtq));
                                                 }
@@ -759,6 +771,10 @@ namespace Ifak.Fast.Mediator.IO
 
         private VTQ NormalizeReadValue(ItemState istate, VTQ vtq) {
 
+            if (istate.Dimension != 1) {
+                return vtq;
+            }
+
             bool SrcIsBool = vtq.V.IsBool;
             bool DstIsFloat = istate.Type.IsFloat();
 
@@ -770,17 +786,82 @@ namespace Ifak.Fast.Mediator.IO
                     vtq.V = DataValue.FromInt(vtq.V.GetBool() ? 1 : 0);
                 }
             }
-            else {
+
+            if (DstIsFloat) {
+
+                double? vv = vtq.V.AsDouble();
+                if (!vv.HasValue) {
+                    Log_Warn("ValIsNotFloat", $"Value for data item {istate.Name} is not a float value: {vtq.V}");
+                    return VTQ.Make(0.0, vtq.T, Quality.Bad);
+                }
+
+                double v = vv.Value;
+
                 try {
-                    if (DstIsFloat && istate.FractionalDigits.HasValue && !vtq.V.IsArray) {
+                    v = istate.ReadConversion(v);
+                }
+                catch (Exception exp) {
+                    Log_Warn_Details("ReadConversionFailed", $"Read conversion of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                    return vtq.WithQuality(Quality.Bad);
+                }
+
+                try {
+                    if (istate.FractionalDigits.HasValue) {
                         int digits = istate.FractionalDigits.Value;
-                        vtq.V = DataValue.FromDouble(Math.Round(vtq.V.GetDouble(), digits));
+                        v = Math.Round(v, digits);
                     }
                 }
                 catch (Exception exp) {
-                    Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: " + vtq.V.ToString(), exp.Message);
+                    Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                }
+
+                vtq.V = DataValue.FromDouble(v);
+            }
+
+            return vtq;
+        }
+
+        private VTQ NormalizeWriteValueOrThrow(ItemState istate, VTQ vtq) {
+
+            if (istate.Dimension != 1) {
+                return vtq;
+            }
+
+            bool ValueIsBool = vtq.V.IsBool;
+            bool TypeIsFloat = istate.Type.IsFloat();
+
+            if (ValueIsBool) {
+                if (TypeIsFloat) {
+                    vtq.V = DataValue.FromDouble(vtq.V.GetBool() ? 1 : 0);
+                }
+                else if (istate.Type.IsNumeric()) {
+                    vtq.V = DataValue.FromInt(vtq.V.GetBool() ? 1 : 0);
                 }
             }
+
+            if (TypeIsFloat) {
+
+                double? vv = vtq.V.AsDouble();
+                if (!vv.HasValue) {
+                    string msg = $"Write value for data item {istate.Name} is not a float value: {vtq.V}";
+                    Log_Warn("WriteValIsNotFloat", msg);
+                    throw new Exception(msg);
+                }
+
+                double v = vv.Value;
+
+                try {
+                    v = istate.WriteConversion(v);
+                }
+                catch (Exception exp) {
+                    string msg = $"Write conversion of data item {istate.Name} failed. Value: {vtq.V}";
+                    Log_Warn_Details("WriteConversionFailed", msg, exp.Message);
+                    throw new Exception(msg);
+                }
+
+                vtq.V = DataValue.FromDouble(v);
+            }
+
             return vtq;
         }
 
@@ -1149,7 +1230,7 @@ namespace Ifak.Fast.Mediator.IO
 
         class ItemState
         {
-            public ItemState(string id, string name, AdapterState adapter, VTQ value, bool write, int? fractionalDigits, DataType type) {
+            public ItemState(string id, string name, AdapterState adapter, VTQ value, bool write, int? fractionalDigits, DataType type, int dimesnion, Func<double, double> readConv, Func<double, double> writeConv) {
                 ID = id;
                 Name = name;
                 Adapter = adapter;
@@ -1157,17 +1238,23 @@ namespace Ifak.Fast.Mediator.IO
                 Writeable = write;
                 FractionalDigits = fractionalDigits;
                 Type = type;
+                Dimension = dimesnion;
+                ReadConversion = readConv;
+                WriteConversion = writeConv;
             }
 
             public string ID { get; private set; }
             public string Name { get; private set; }
             public bool Writeable { get; private set; }
             public DataType Type { get; private set; }
+            public int Dimension { get; private set; }
             public int? FractionalDigits { get; set; }
             public AdapterState Adapter { get; set; }
             public VTQ LastReadValue { get; set; }
             public Timestamp LastWritten { get; set; } = Timestamp.Empty;
             public VTQ LastWrittenValue { get; set; }
+            public Func<double, double> ReadConversion { get; private set; }
+            public Func<double, double> WriteConversion { get; private set; }
         }
 
         struct ItemSchedule

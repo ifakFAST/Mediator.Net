@@ -104,6 +104,10 @@ namespace Ifak.Fast.Mediator
 
         public static DataValue FromDurationArray(Duration[] v) => new DataValue(StdJson.ValueToString(v));
 
+        public static DataValue FromLocationRef(LocationRef v) => new DataValue(StdJson.ValueToString(v));
+
+        public static DataValue FromLocationRefArray(LocationRef[] v) => new DataValue(StdJson.ValueToString(v));
+
         public static DataValue FromTimestamp(Timestamp v) => new DataValue(StdJson.ValueToString(v));
 
         public static DataValue FromTimestampArray(Timestamp[] v) => new DataValue(StdJson.ValueToString(v));

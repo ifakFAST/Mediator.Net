@@ -32,6 +32,7 @@
                         <v-text-field v-model="row.Value" v-if="row.Type === 'Int64'"    :label="row.Name"></v-text-field>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'Duration'" :label="row.Name"></v-text-field>
                         <v-select     v-model="row.Value" v-if="row.Type === 'Enum'"     :label="row.Name" :items="row.EnumValues"></v-select>
+                        <location     v-model="row.Value" v-if="row.Type === 'LocationRef'" :label="row.Name" :locations="locations"></location>
                         <template                         v-if="row.Type === 'Struct'" >
                             <p class="bold">{{row.Name}}</p>
                             <struct-editor :members="row.StructMembers" :value="row.Value"></struct-editor>
@@ -53,6 +54,7 @@
                         <v-text-field v-model="row.Value" v-if="row.Type === 'Int64'"    :label="row.Name"></v-text-field>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'Duration'" :label="row.Name"></v-text-field>
                         <v-select     v-model="row.Value" v-if="row.Type === 'Enum'"     :label="row.Name" :items="row.EnumValues"></v-select>
+                        <location     v-model="row.Value" v-if="row.Type === 'LocationRef'" :label="row.Name" :locations="locations"></location>
                         <template                         v-if="row.Type === 'Struct'" >
                             <p class="bold">{{row.Name}}</p>
                             <struct-editor :members="row.StructMembers" :value="row.Value"></struct-editor>
@@ -203,13 +205,16 @@ import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import StructEditor from './StructEditor.vue'
 import StructArrayEditor from './StructArrayEditor.vue'
 import Confirm from '../components/Confirm.vue'
+import Location from '../components/Location.vue'
 import { TreeNode, TypeMap, ObjMemInfo, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
+import { LocationInfo } from '../fast_types'
 
 @Component({
   components: {
     StructEditor,
     StructArrayEditor,
     Confirm,
+    Location,
   },
 })
 export default class ObjectEditor extends Vue {
@@ -217,6 +222,7 @@ export default class ObjectEditor extends Vue {
   @Prop(Object) selection: TreeNode
   @Prop(Array) members: ObjectMember[]
   @Prop(Array) childTypes: ChildType[]
+  @Prop(Array) locations: LocationInfo[]
 
   currentTab = ''
   addDialog = {

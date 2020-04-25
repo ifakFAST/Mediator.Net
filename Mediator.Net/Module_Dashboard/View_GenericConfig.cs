@@ -21,6 +21,8 @@ namespace Ifak.Fast.Mediator.Dashboard
         private ObjectInfo[] objects = new ObjectInfo[0];
 
         private readonly Dictionary<VariableRef, VTQ> mapVariables = new Dictionary<VariableRef, VTQ>();
+        private bool hasLocations = false;
+        private LocationRef? rootLocation = null;
 
         public override Task OnActivate() {
 
@@ -85,9 +87,14 @@ namespace Ifak.Fast.Mediator.Dashboard
                             typMap[ci.FullName] = new JRaw(StdJson.ObjectToString(entry));
                         }
 
+                        var locations = await Connection.GetLocations();
+                        hasLocations = locations.Length > 0;
+                        rootLocation = hasLocations ? LocationRef.FromLocationID(locations[0].ID) : (LocationRef?)null;
+
                         return ReqResult.OK(new {
                             ObjectTree = node,
-                            TypeInfo = typMap
+                            TypeInfo = typMap,
+                            Locations = locations,
                         });
                     }
 
@@ -287,6 +294,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             for (int i = 0; i < info.SimpleMember.Count; ++i) {
                 SimpleMember m = info.SimpleMember[i];
+                if (m.Type == DataType.LocationRef && !hasLocations) continue;
+
                 MemberValue v = memValues[i];
                 string defaultValue = "";
                 if (m.DefaultValue.HasValue && m.Dimension != Dimension.Array) {
@@ -295,6 +304,9 @@ namespace Ifak.Fast.Mediator.Dashboard
                 else if (m.Type == DataType.Struct) {
                     defaultValue = StdJson.ObjectToString(GetStructDefaultValue(m), indented: true, ignoreShouldSerializeMembers: false);
                     //Console.WriteLine("=> " + m.Name + ": " + defaultValue);
+                }
+                else if (m.Type == DataType.LocationRef && rootLocation.HasValue) {
+                    defaultValue = DataValue.FromLocationRef(rootLocation.Value).JSON;
                 }
                 else {
                     defaultValue = DataValue.FromDataType(m.Type, 1).JSON;

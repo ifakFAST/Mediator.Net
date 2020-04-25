@@ -86,7 +86,7 @@ namespace Ifak.Fast.Mediator.Util
 
         protected static void InitFromModelImpl(string moduleID, IModelObject root, Stack<IModelObject> parents, MemberRefIdx? parent, List<ObjectInfo> res, Dictionary<ObjectRef, IModelObject> mapObjests) {
             ObjInfo info = root.GetObjectInfo(moduleID, parents);
-            res.Add(new ObjectInfo(info.ID, info.DisplayName, info.ClassName, parent, info.Variables));
+            res.Add(new ObjectInfo(info.ID, info.DisplayName, info.ClassName, parent, info.Variables, info.Location));
             ObjectRef key = info.ID;
             if (mapObjests.ContainsKey(key)) throw new Exception("Object id is not unique: " + key);
             mapObjests[key] = root;
@@ -162,6 +162,9 @@ namespace Ifak.Fast.Mediator.Util
 
             foreach (PropertyInfo p in properties) {
                 Type t = p.PropertyType;
+                bool ignore = p.GetCustomAttribute<Ignore>() != null;
+                if (ignore) continue;
+
                 bool browseable = p.GetCustomAttribute<Browseable>() != null;
                 if (tIModelObject.IsAssignableFrom(t)) {
                     if (!allClasses.ContainsKey(t.FullName)) {
@@ -228,6 +231,8 @@ namespace Ifak.Fast.Mediator.Util
             PropertyInfo[] properties = typeClass.GetProperties(BindingFlags.Instance | BindingFlags.Public);
             foreach (PropertyInfo p in properties) {
                 Type t = p.PropertyType;
+                bool ignore = p.GetCustomAttribute<Ignore>() != null;
+                if (ignore) continue;
                 Dimension dim = GetDimensionFromPropertyType(t);
                 if (t.IsGenericType) { // Nullable or List
                     t = t.GetGenericArguments()[0];
