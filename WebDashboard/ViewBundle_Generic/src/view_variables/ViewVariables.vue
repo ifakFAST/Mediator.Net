@@ -17,7 +17,9 @@
               <v-text-field class="ml-4" append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>
 
-          <v-data-table :no-data-text="noDataText" :headers="headers" :items="items" :search="search"
+          <locations v-if="locations.length > 0" v-model="selectedLocations" :locations="locations"></locations>
+
+          <v-data-table :no-data-text="noDataText" :headers="headers" :items="locFilteredItems" :search="search"
                         :custom-filter="customFilter" class="elevation-4 mt-2" :footer-props="footer"
                         show-expand :expanded.sync="expanded" :single-expand="false" item-key="ID">
 
@@ -77,11 +79,13 @@
 import { Component, Vue } from 'vue-property-decorator'
 import * as fast from '../fast_types'
 import StructView from '../components/StructView.vue'
+import Locations from '../components/Locations.vue'
 
 interface VarEntry {
   ID: string
   ObjID: string
   Obj: string
+  Loc: string
   Var: string
   Type: fast.DataType
   Dimension: number
@@ -95,6 +99,7 @@ interface VarEntry {
 @Component({
   components: {
     StructView,
+    Locations,
   },
 })
 export default class ViewVariables extends Vue {
@@ -112,7 +117,7 @@ export default class ViewVariables extends Vue {
   }
   editTmp = ''
   editDialog = false
-  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Var: '', Type: 'JSON',
+  editItem: VarEntry = { ID: '', ObjID: '', Obj: '', Loc: '', Var: '', Type: 'JSON',
                          Dimension: 1, V: '', T: '', Q: 'Bad', Writable: false, SyncReadable: false }
   headers = [
       { text: 'Object Name', align: 'left',  sortable: false, filterable: true,  value: 'Obj' },
@@ -123,6 +128,10 @@ export default class ViewVariables extends Vue {
       { text: '', value: 'data-table-expand' },
       { text: '', value: 'sync-read' },
   ]
+
+  locations: fast.LocationInfo[] = []
+  mapLocations: Map<string, fast.LocationInfo> = new Map()
+  selectedLocations: string[][] = [ [], [], [], [], [], [] ]
 
   maxValueLen = 60
 
@@ -139,6 +148,43 @@ export default class ViewVariables extends Vue {
 
   itemNeedsExapnd(item: VarEntry): boolean {
     return item.Type === 'Struct' || item.V.length > this.maxValueLen
+  }
+
+  get locFilteredItems(): VarEntry[] {
+    if (this.locations.length === 0) { return this.items }
+    if (this.selectedLocations[1].length === 0) { return this.items }
+    const set = this.setOfSelectedLocationIDs
+    return this.items.filter((it) => set.has(it.Loc))
+  }
+
+  get setOfSelectedLocationIDs(): Set<string> {
+    const locations = this.locations
+    const res = new Set<string>()
+    const addTree = (rootID: string) => {
+      const set = new Set<string>()
+      set.add(rootID)
+      res.add(rootID)
+      while (true) {
+        const newChildren = locations.filter((loc) => set.has(loc.Parent) && !set.has(loc.ID))
+        if (newChildren.length === 0) { break }
+        for (const ch of newChildren) {
+          set.add(ch.ID)
+          res.add(ch.ID)
+        }
+      }
+    }
+    const selectedLocations: string[][] = this.selectedLocations
+    const mapLocations = this.mapLocations
+    for (let level = 0; level < selectedLocations.length; ++level) {
+      const potentialChildrenIDs = (level < selectedLocations.length - 1 ? selectedLocations[level + 1] : [])
+      const potentialChildren = potentialChildrenIDs.filter((id) => mapLocations.has(id)).map((id) => mapLocations.get(id)!)
+      for (const locID of selectedLocations[level]) {
+        if (potentialChildren.every((child) => child.Parent !== locID)) {
+          addTree(locID)
+        }
+      }
+    }
+    return res
   }
 
   customFilter(value: any, search: string | null, item: VarEntry) {
@@ -212,7 +258,16 @@ export default class ViewVariables extends Vue {
         context.modules = response.Modules
         context.selectedModuleID = response.ModuleID
         context.items = response.Variables
+        context.locations = response.Locations
         context.loading = false
+        if (context.selectedLocations[0].length === 0) {
+          const locationRootID = context.locations.find((loc) => loc.Parent === '' || loc.Parent === null)?.ID || ''
+          context.selectedLocations[0].push(locationRootID)
+        }
+        context.mapLocations.clear()
+        context.locations.forEach((loc) => {
+          context.mapLocations.set(loc.ID, loc)
+        })
       })
   }
 

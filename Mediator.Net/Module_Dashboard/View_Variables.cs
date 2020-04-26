@@ -65,11 +65,14 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     activeModuleID = moduleID;
 
+                    var locations = await Connection.GetLocations();
+
                     var result = new ReadModuleVariables_Result() {
                         Modules = modules,
                         ModuleID = moduleID,
                         ModuleName = modules.FirstOrDefault(m => m.ID == moduleID).Name,
-                        Variables = entries
+                        Variables = entries,
+                        Locations = locations,
                     };
 
                     mapIdx.Clear();
@@ -140,11 +143,13 @@ namespace Ifak.Fast.Mediator.Dashboard
             ObjectInfo info = mapObjectToObjectInfo.ContainsKey(obj) ? mapObjectToObjectInfo[obj] : null;
             string varName = vv.Variable.Name;
             Variable variable = info?.Variables.FirstOrDefault(v => v.Name == varName);
+            LocationRef? loc = info?.Location;
 
             return new VarEntry() {
                 ID = obj.ToString() + "___" + vv.Variable.Name,
                 ObjID = obj.ToString(),
                 Obj = info?.Name ?? "???",
+                Loc = loc.HasValue ? loc.Value.LocationID : "",
                 Var = vv.Variable.Name,
                 V = vv.Value.V,
                 T = Timestamp2Str(vv.Value.T),
@@ -183,6 +188,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string ModuleID { get; set; } = "";
             public string ModuleName { get; set; } = "";
             public VarEntry[] Variables { get; set; } = new VarEntry[0];
+            public LocationInfo[] Locations { get; set; } = new LocationInfo[0];
         }
 
         public class ModuleInfo
@@ -196,6 +202,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string ID { get; set; }
             public string ObjID { get; set; }
             public string Obj { get; set; }
+            public string Loc { get; set; }
             public string Var { get; set; }
             public DataType Type { get; set; }
             public int Dimension { get; set; }
