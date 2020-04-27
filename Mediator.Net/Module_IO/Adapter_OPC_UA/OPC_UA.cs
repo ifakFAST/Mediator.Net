@@ -49,7 +49,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             //certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: true, createLocalCertificateIfNotExist: true);
 
-            this.mapId2Info = config.GetAllDataItems().ToDictionary(
+            this.mapId2Info = config.GetAllDataItems().Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                item => /* key */ item.ID,
                item => /* val */ new ItemInfo(item.ID, item.Name, item.Type, item.Dimension, item.Address));
 
@@ -125,7 +125,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                                 PrintLine($"Resolved item '{nodesNeedingResolve[i].Name}' => {id}");
                             }
                             else {
-                                PrintLine($"Could not resolve item '{nodesNeedingResolve[i].Name}'!");
+                                PrintLine($"Could not resolve item '{nodesNeedingResolve[i].Name}': StatusCode: {x.StatusCode.ToString()}");
                             }
                         }
                     }
@@ -176,35 +176,51 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-            int N = items.Count;
-            VTQ[] res = new VTQ[N];
-
             bool connected = await TryConnect();
             if (!connected) {
-                for (int i = 0; i < N; ++i) {
-                    VTQ vtq = items[i].LastValue;
-                    vtq.Q = Quality.Bad;
-                    res[i] = vtq;
-                }
-                return res;
+                return GetBadVTQs(items);
             }
 
-            ReadValueId[] dataItemsToRead = new ReadValueId[N];
-            for (int i = 0; i < N; ++i) {
-                ReadRequest request = items[i];
+            var readHelper = new ReadManager<ReadValueId, Workstation.ServiceModel.Ua.DataValue>(items, request => {
                 NodeId node = mapId2Info[request.ID].Node ?? NodeId.Null;
-                dataItemsToRead[i] = new ReadValueId { AttributeId = AttributeIds.Value, NodeId = node };
+                return new ReadValueId { AttributeId = AttributeIds.Value, NodeId = node };
+            });
+            ReadValueId[] dataItemsToRead = readHelper.GetRefs();
+
+            try {
+
+                if (dataItemsToRead.Length > 0) {
+
+                    var readRequest = new Workstation.ServiceModel.Ua.ReadRequest {
+                        NodesToRead = dataItemsToRead,
+                        TimestampsToReturn = TimestampsToReturn.Source,
+                    };
+
+                    ReadResponse readResponse = await connection.ReadAsync(readRequest);
+                    readHelper.SetAllResults(readResponse.Results, (vv, request) => MakeVTQ(vv, request.LastValue, request.ID));
+                    return readHelper.values;
+                }
+                else {
+                    return readHelper.values;
+                }
             }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                LogWarn("UAReadExcept", $"Read exception: {e.Message}", details: e.ToString());
+                Task ignored = CloseChannel();
+                return GetBadVTQs(items);
+            }
+        }
 
-            var readRequest = new Workstation.ServiceModel.Ua.ReadRequest {
-                NodesToRead = dataItemsToRead,
-                TimestampsToReturn = TimestampsToReturn.Source,
-            };
-
-            ReadResponse readResponse = await connection.ReadAsync(readRequest);
-
+        private static VTQ[] GetBadVTQs(IList<ReadRequest> items) {
+            int N = items.Count;
+            var t = Timestamp.Now;
+            VTQ[] res = new VTQ[N];
             for (int i = 0; i < N; ++i) {
-                res[i] = MakeVTQ(readResponse.Results[i], items[i].LastValue, items[i].ID);
+                VTQ vtq = items[i].LastValue;
+                vtq.Q = Quality.Bad;
+                vtq.T = t;
+                res[i] = vtq;
             }
             return res;
         }
@@ -376,7 +392,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     if (listFailed == null) {
                         listFailed = new List<FailedDataItemWrite>();
                     }
-                    listFailed.Add(new FailedDataItemWrite(id, $"No data item with id '{id}' found."));
+                    listFailed.Add(new FailedDataItemWrite(id, $"No writeable data item with id '{id}' found."));
                 }
             }
 
@@ -385,7 +401,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     NodesToWrite = dataItemsToWrite.ToArray()
                 };
                 WriteResponse resp = await connection.WriteAsync(req);
-                // TODO: Check result?
+                // TODO: Check result!
             }
 
             if (listFailed == null)

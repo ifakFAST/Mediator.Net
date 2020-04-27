@@ -57,7 +57,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
                 this.moduleID = moduleID;
 
-                this.mapId2Info = config.GetAllDataItems().ToDictionary(
+                this.mapId2Info = config.GetAllDataItems().Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                     item => /* key */ item.ID,
                     item => /* val */ new ItemInfo(item, MakeVarRefFromAddress(item.Address, moduleID)));
 
@@ -133,35 +133,31 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-            int N = items.Count;
-
             if (!await TryConnect()) {
                 return GetBadVTQs(items);
             }
 
-            VariableRef[] dataItemsToRead = new VariableRef[N];
-            for (int i = 0; i < N; ++i) {
-                ReadRequest request = items[i];
-                dataItemsToRead[i] = mapId2Info[request.ID].VarRef;
-            }
+            var readHelper = new ReadManager<VariableRef, VariableValue>(items, readRequest => mapId2Info[readRequest.ID].VarRef);
+            VariableRef[] dataItemsToRead = readHelper.GetRefs();
 
             try {
                 VariableValue[] readResponse = await connection.ReadVariablesSyncIgnoreMissing(dataItemsToRead);
-                if (readResponse.Length == N) {
-                    return readResponse.Select(rr => rr.Value).ToArray();
+
+                if (readResponse.Length == dataItemsToRead.Length) {
+                    readHelper.SetAllResults(readResponse, (vv, request) => vv.Value);
+                    return readHelper.values;
                 }
                 else {
-                    VTQ[] vtqs = new VTQ[N];
                     var badDataItems = new List<DataItem>();
-                    for (int i = 0; i < N; ++i) {
+                    for (int i = 0; i < dataItemsToRead.Length; ++i) {
                         VariableRef v = dataItemsToRead[i];
                         try {
                             VariableValue value = readResponse.First(rr => rr.Variable == v);
-                            vtqs[i] = value.Value;
+                            readHelper.SetSingleResult(i, value.Value);
                         }
                         catch (Exception) { // not found
-                            ReadRequest req = items[i];
-                            vtqs[i] = VTQ.Make(req.LastValue.V, Timestamp.Now, Quality.Bad);
+                            ReadRequest req = readHelper.GetReadRequest(i);
+                            readHelper.SetSingleResult(i, VTQ.Make(req.LastValue.V, Timestamp.Now, Quality.Bad));
                             DataItem dataItem = mapId2Info[req.ID].Item;
                             badDataItems.Add(dataItem);
                         }
@@ -172,7 +168,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                     string msg = badDataItems.Count == 1 ? $"Invalid address for data item '{badDataItems[0].Name}': {badDataItems[0].Address}" : $"Invalid address for {badDataItems.Count} data items";
                     LogError("Invalid_Addr", msg, badDataItems.Select(di => di.ID).ToArray(), details);
 
-                    return vtqs;
+                    return readHelper.values;
                 }
             }
             catch (Exception exp) {
@@ -203,18 +199,27 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 return WriteDataItemsResult.Failure(failed);
             }
 
-            int N = values.Count;
+            var writeMan = new WriteManager<VariableValue, VariableError>(values, request => {
+                if (mapId2Info.ContainsKey(request.ID)) {
+                    ItemInfo info = mapId2Info[request.ID];
+                    return VariableValue.Make(info.VarRef, request.Value);
+                }
+                else {
+                    throw new Exception("No Address defined");
+                }
+            });
 
-            VariableValue[] dataItemsToWrite = new VariableValue[N];
-            for (int i = 0; i < N; ++i) {
-                DataItemValue request = values[i];
-                ItemInfo info = mapId2Info[request.ID];
-                dataItemsToWrite[i] = VariableValue.Make(info.VarRef, request.Value);
-            }
-
-            WriteResult res;
             try {
-                res = await connection.WriteVariablesSyncIgnoreMissing(dataItemsToWrite, timeout);
+                var dataItemsToWrite = writeMan.GetRefs();
+                WriteResult res = await connection.WriteVariablesSyncIgnoreMissing(dataItemsToWrite, timeout);
+                if (!res.IsOK()) {
+                    writeMan.AddWriteErrors(res.FailedVariables, failedVar => {
+                        VariableRef v = failedVar.Variable;
+                        int idx = dataItemsToWrite.FindIndexOrThrow(vv => vv.Variable == v);
+                        string id = writeMan.GetWriteRequest(idx).ID;
+                        return new FailedDataItemWrite(id, failedVar.Error);
+                    });
+                }
             }
             catch (Exception exp) {
                 Task ignored = CloseConnection();
@@ -225,18 +230,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 return WriteDataItemsResult.Failure(failed);
             }
 
-            if (res.IsOK()) {
-                return WriteDataItemsResult.OK;
-            }
-            else {
-                FailedDataItemWrite[] failures = res.FailedVariables.SelectIgnoreException(failedVar => {
-                    VariableRef v = failedVar.Variable;
-                    int idx = dataItemsToWrite.FindIndexOrThrow(vv => vv.Variable == v);
-                    string id = values[idx].ID;
-                    return new FailedDataItemWrite(id, failedVar.Error);
-                }).ToArray();
-                return WriteDataItemsResult.Failure(failures);
-            }
+            return writeMan.GetWriteResult();
         }
 
         private void PrintLine(string msg) {
