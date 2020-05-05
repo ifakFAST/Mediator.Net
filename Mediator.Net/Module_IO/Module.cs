@@ -268,13 +268,13 @@ namespace Ifak.Fast.Mediator.IO
                         ReadRequest[] requests = adapter.ScheduledDataItems.Select(di => new ReadRequest(di.DataItemID, empty)).ToArray();
                         Func<VTQ, bool> NonGood = x => x.Q != Quality.Good;
 
-                        VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                        VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality, hideWarnings: true);
                         if (readResults.Any(NonGood)) {
                             var sw = new Stopwatch();
                             sw.Start();
                             do {
                                 await Task.Delay(200);
-                                readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality);
+                                readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality, hideWarnings: true);
                             }
                             while (readResults.Any(NonGood) && sw.Elapsed < maxInitDelayForGoodQuality.ToTimeSpan());
                             sw.Stop();
@@ -449,7 +449,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             try {
-                return await DoAdapterRead(adapter, requests, timeout);
+                return await DoAdapterRead(adapter, requests, timeout, hideWarnings: false);
             }
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException() ?? exception;
@@ -460,7 +460,7 @@ namespace Ifak.Fast.Mediator.IO
             }
         }
 
-        private async Task<VTQ[]> DoAdapterRead(AdapterState adapter, IList<ReadRequest> requests, Duration? timeout) {
+        private async Task<VTQ[]> DoAdapterRead(AdapterState adapter, IList<ReadRequest> requests, Duration? timeout, bool hideWarnings) {
             IList<ReadTask> readTasks = adapter.ReadItems(requests, timeout);
             Task<DataItemValue[]>[] tasks = readTasks.Select(readTask => readTask.Task).ToArray();
             DataItemValue[][] res = await Task.WhenAll(tasks);
@@ -469,16 +469,16 @@ namespace Ifak.Fast.Mediator.IO
             for (int i = 0; i < requests.Count; ++i) {
                 string id = requests[i].ID;
                 DataItemValue dv = dataValues.First(dv => dv.ID == id);
-                vtqs[i] = GetNormalizedDataItemValue(dv);
+                vtqs[i] = GetNormalizedDataItemValue(dv, hideWarnings);
             }
             return vtqs;
         }
 
-        private VTQ GetNormalizedDataItemValue(DataItemValue val) {
+        private VTQ GetNormalizedDataItemValue(DataItemValue val, bool hideWarnings) {
             VTQ vtq = val.Value;
             if (dataItemsState.ContainsKey(val.ID)) {
                 ItemState istate = dataItemsState[val.ID];
-                vtq = NormalizeReadValue(istate, vtq);
+                vtq = NormalizeReadValue(istate, vtq, hideWarnings);
                 istate.LastReadValue = vtq;
             }
             return vtq;
@@ -769,7 +769,7 @@ namespace Ifak.Fast.Mediator.IO
             } // while running
         }
 
-        private VTQ NormalizeReadValue(ItemState istate, VTQ vtq) {
+        private VTQ NormalizeReadValue(ItemState istate, VTQ vtq, bool noWarnings = false) {
 
             if (istate.Dimension != 1) {
                 return vtq;
@@ -791,7 +791,9 @@ namespace Ifak.Fast.Mediator.IO
 
                 double? vv = vtq.V.AsDouble();
                 if (!vv.HasValue) {
-                    Log_Warn("ValIsNotFloat", $"Value for data item {istate.Name} is not a float value: {vtq.V}");
+                    if (!noWarnings) {
+                        Log_Warn("ValIsNotFloat", $"Value for data item {istate.Name} is not a float value: {vtq.V}");
+                    }
                     return VTQ.Make(0.0, vtq.T, Quality.Bad);
                 }
 
@@ -801,7 +803,9 @@ namespace Ifak.Fast.Mediator.IO
                     v = istate.ReadConversion(v);
                 }
                 catch (Exception exp) {
-                    Log_Warn_Details("ReadConversionFailed", $"Read conversion of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                    if (!noWarnings) {
+                        Log_Warn_Details("ReadConversionFailed", $"Read conversion of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                    }
                     return vtq.WithQuality(Quality.Bad);
                 }
 
@@ -812,7 +816,9 @@ namespace Ifak.Fast.Mediator.IO
                     }
                 }
                 catch (Exception exp) {
-                    Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                    if (!noWarnings) {
+                        Log_Warn_Details("RoundingFailed", $"Rounding of data item {istate.Name} failed. Value: {vtq.V}", exp.Message);
+                    }
                 }
 
                 vtq.V = DataValue.FromDouble(v);
