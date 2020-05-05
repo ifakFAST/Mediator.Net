@@ -314,6 +314,7 @@ namespace Ifak.Fast.Mediator
             catch (Exception) {
                 if (json == "true") return 1;
                 if (json == "false") return 0;
+                if (json == null) return null;
                 try {
                     return StdJson.ToDoubleArrayAcceptingFloats(json)[0];
                 }
