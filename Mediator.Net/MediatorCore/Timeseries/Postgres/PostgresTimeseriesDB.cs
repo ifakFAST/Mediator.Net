@@ -46,15 +46,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         }
 
         private void CheckDbChannelInfoOrCreate() {
-
-            using (var command = Factory.MakeCommand("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'channel_defs');", connection)) {
-                bool exists = (bool)command.ExecuteScalar();
-                if (exists) {
-                    return;
-                }
-            }
-
-            using (var command = Factory.MakeCommand("CREATE TABLE channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection)) {
+            using (var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection)) {
                 command.ExecuteNonQuery();
             }
         }
