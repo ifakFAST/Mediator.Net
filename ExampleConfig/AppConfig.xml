@@ -30,6 +30,7 @@
                 <NamedValue name="base-dir"    value="./Bin/WebRoot_Dashboard"/>
                 <NamedValue name="view-assemblies">
                     ./Bin/Module_EventLog/Module_EventLog.dll
+                    ./Bin/Module_Calc/Module_Calc.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
@@ -47,6 +48,27 @@
             <HistoryDBs>
                 <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
+        
+        <Module id="CALC" name="Calc" enabled="true" concurrentInit="false">
+            <VariablesFileName>Var_Calc.xml</VariablesFileName>
+            <ExternalCommand>dotnet</ExternalCommand>
+            <ExternalArgs>./Bin/Module_Calc/Module_Calc.dll {PORT}</ExternalArgs>
+            <Config>
+                <NamedValue name="model-file" value="./Config/Model_Calc.xml"/>                
+                <NamedValue name="adapter-assemblies" value=""/>
+                <NamedValue name="simba-location" value=""/>
+                <NamedValue name="csharp-libraries" value="./Config/CSharpLib.cs"/>
+            </Config>
+            <HistoryDBs>
+                <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=./Data/DB_Calc.db</ConnectionString>
                     <Settings>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>

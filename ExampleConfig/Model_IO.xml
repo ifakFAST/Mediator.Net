@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <IO_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_IO">
-  <Scheduling mode="Interval" interval="5 s" />
+  <Scheduling mode="Interval" interval="1 s" />
   <History mode="Interval" interval="5 s" />
   <Adapters>
     <Adapter id="Adapter_001" name="SimulatingAdapter" type="Dummy" address="">
       <MaxFractionalDigits>3</MaxFractionalDigits>
       <DataItems>
-        <DataItem id="Data_001" name="Measurement_SO" unit="mg/L" read="true"  address="Sin(period=8 min, amplitude=6, offset=13)" />
-        <DataItem id="Data_002" name="Measurement_NH" unit="mg/L" read="true"  address="Sin(period=9 min, amplitude=3, offset=12)" />
-        <DataItem id="Data_003" name="Measurement_TSS" unit="mg/L" read="true" address="Sin(period=3 min, amplitude=5, offset=11)" />
-        <DataItem id="Data_004" name="Setpoint_Air_N1" unit="m³/d" read="true" address="Sin(period=10 min, amplitude=4, offset=9)" />
-        <DataItem id="Data_005" name="Setpoint_Air_N2" unit="m³/d" read="true" address="Sin(period=9 min, amplitude=6, offset=14)" />
-        <DataItem id="Data_006" name="Setpoint_Air_N3" unit="m³/d" read="true" address="Sin(period=4 min, amplitude=10, offset=21)" />
+        <DataItem id="Data_001" name="Measurement_SO" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
+        <DataItem id="Data_002" name="Measurement_NH" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
+        <DataItem id="Data_003" name="Measurement_TSS" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
+        <DataItem id="Data_004" name="Setpoint_Air_N1" unit="m³/d" write="true" address="" />
+        <DataItem id="Data_005" name="Setpoint_Air_N2" unit="m³/d" write="true" address="" />
+        <DataItem id="Data_006" name="Setpoint_Air_N3" unit="m³/d" write="true" address="" />
       </DataItems>
     </Adapter>
   </Adapters>

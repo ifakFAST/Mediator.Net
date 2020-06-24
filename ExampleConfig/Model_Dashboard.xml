@@ -15,6 +15,13 @@
         }
       </Config>
     </View>
+    <View id="calc" name="Calc" type="Calc" group="">
+      <Config>
+        { 
+          "ModuleID": "CALC" 
+        }
+      </Config>
+    </View>
     <View id="eventLog" name="EventLog" type="EventLog" group="">
       <Config />
     </View>
@@ -94,7 +101,16 @@
                 }
               ]
             }
-          ]
+          ],
+          "DataExport": {
+            "CSV": {
+              "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+              "ColumnSeparator": ","
+            },
+            "Spreadsheet": {
+              "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+            }
+          }
         }
       </Config>
     </View>
