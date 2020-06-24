@@ -25,8 +25,8 @@
 
     <div v-if="selectedTab === 'Code'">
 
-      <editor style="font-size: 18px!important;" v-if="hasCode" v-model="value.Definition"
-        @init="editorInit" lang="csharp" theme="TextMate" :options="codeEditorOptions" width="100%" height="760"></editor>
+      <editor style="font-size: 18px!important;margin-top:8px;" v-if="hasCode" v-model="value.Definition"
+        @init="editorInit" lang="csharp" theme="TextMate" :options="codeEditorOptions" width="100%" height="680"></editor>
 
     </div>
 
