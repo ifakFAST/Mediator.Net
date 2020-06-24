@@ -11,7 +11,7 @@ using Ifak.Fast.Mediator.Calc;
 
 namespace Ifak.Fast.Mediator.Calc
 {
-    [Identify("Test")]
+    // [Identify("Test")]
     public class TestCalc : CalculationBase
     {
 

@@ -57,7 +57,7 @@
         </Module>
         
         <Module id="CALC" name="Calc" enabled="true" concurrentInit="false">
-            <VariablesFileName>Var_Calc.xml</VariablesFileName>
+            <VariablesFileName>./Data/Var_Calc.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
             <ExternalArgs>./Bin/Module_Calc/Module_Calc.dll {PORT}</ExternalArgs>
             <Config>
@@ -82,6 +82,11 @@
     <UserManagement>
         <Users>
             <User id="ifak" login="ifak" name="Demo User" encryptedPassword="cH8j7vythfU=" inactive="false">
+                <Roles>
+                    <string>Admin</string>
+                </Roles>
+            </User>
+            <User id="simba" login="simba" name="Simba" encryptedPassword="u2jKVVkFiaX0dorJtbWtBQ==" inactive="false">
                 <Roles>
                     <string>Admin</string>
                 </Roles>

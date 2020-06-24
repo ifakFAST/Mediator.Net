@@ -1,81 +1,56 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Calc_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Calc">
-  <RootFolder id="root" name="RootFolder">
-    <History mode="Interval" interval="10 s" />
+  <RootFolder id="root" name="Calc_Model">
+    <History mode="Interval" interval="1 s" />
     <Folders>
       <Folder id="subF" name="Signals">
         <Signals>
-          <Signal id="signal_001" name="DO" unit="mg/L" dimension="3" />
-          <Signal id="signal_003" name="TSS_2" unit="mg/L">
-            <History mode="Interval" interval="10 s" />
-          </Signal>
-          <Signal id="signal_004" name="TSS_3" unit="mg/L" />
-          <Signal id="signal_005" name="TSS_4" unit="mg/L" />
-          <Signal id="signal_002" name="TSS_1" unit="mg/L" />
-          <Signal id="signal_006" name="TSS_5" unit="mg/L" />
-          <Signal id="signal_007" name="TSS_6" unit="mg/L" />
-          <Signal id="signal_008" name="TSS_7" unit="mg/L" />
-          <Signal id="signal_009" name="TSS_8" unit="mg/L" />
+          <Signal id="Signal_d50db4" name="SO_Smooth" unit="mg/L" />
+          <Signal id="Signal_a91175" name="NH_Smooth" unit="mg/L" />
         </Signals>
       </Folder>
     </Folders>
     <Calculations>
-      <Calculation id="cs" name="Script" type="CSharp" enabled="false">
+      <Calculation id="cs" name="Script_Smooth" type="CSharp" enabled="true">
         <Cycle>1 s</Cycle>
         <Definition>using Std;
 
 class Script {
     
-    Input  W = new Input(name: "W", unit: "mg/L", defaultValue: 5);
-    Input  X = new Input("X", "mg/L", 0.5);
+    Input  X1 = new Input(name: "X1", unit: "mg/L", defaultValue: 0);
+    Input  X2 = new Input(name: "X2", unit: "mg/L", defaultValue: 0);
     
-    Output Y = new Output("Y", "m³/d", roundDigits: 3);
-    State counter = new State("Counter", "", 0);
+    Output Y1 = new Output("Y1", "mg/L", roundDigits: 4);
+    Output Y2 = new Output("Y2", "mg/L", roundDigits: 4);
     
-    Alarm alarm1 = new Alarm("Alarm 1");
-    EventLog log = new EventLog();
+    PT1 pt_1 = new PT1(K: 1, T: Duration.FromSeconds(30));
+    PT1 pt_2 = new PT1(K: 1, T: Duration.FromSeconds(30));
     
-    PI controller_DO = new PI(
-        invert: false, 
-        K: 1, 
-        Tn: Duration.FromMinutes(2), 
-        outMin: 0.5, 
-        outMax: 100.0);
-        
-    PT1 pt1 = new PT1(K: 1, T: Duration.FromMinutes(1));
-                
     public void Step(Timestamp t, Duration dt) {
-        Y.Value = controller_DO.Step(setpoint: W, measurement: X, dt: dt);
-        counter.Value = counter + 1;        
-        double smoothX = pt1.Step(u: X, dt: dt);
-        // Console.WriteLine($"{t} X: {X.Value} smoothX: {smoothX}");
-        if (X &gt; 10.0) {
-            alarm1.Set(Level.Warn, $"X is above 10: {X.Value}");
-        } else {
-            alarm1.Clear();
-        }
-        // log.Info("Time", $"Time {t} {dt}");
+        Y1.Value = pt_1.Step(u: X1, dt: dt);
+        Y2.Value = pt_2.Step(u: X2, dt: dt);
     }
 }
 </Definition>
         <Inputs>
-          <Input id="W" name="W" unit="mg/L">
-            <Variable object="IO:Data_001" name="Value" />
+          <Input id="X1" name="X1" unit="mg/L">
+            <Variable object="IO:Measurement_SO" name="Value" />
           </Input>
-          <Input id="X" name="X" unit="mg/L">
-            <Variable object="IO:Data_002" name="Value" />
+          <Input id="X2" name="X2" unit="mg/L">
+            <Variable object="IO:Measurement_NH" name="Value" />
           </Input>
         </Inputs>
         <Outputs>
-          <Output id="Y" name="Y" unit="m³/d">
-            <Variable object="IO:Data_005" name="Value" />
+          <Output id="Y1" name="Y1" unit="mg/L">
+            <Variable object="CALC:Signal_d50db4" name="Value" />
+          </Output>
+          <Output id="Y2" name="Y2" unit="mg/L">
+            <Variable object="CALC:Signal_a91175" name="Value" />
           </Output>
         </Outputs>
         <States>
-          <State id="counter" name="Counter" />
-          <State id="alarm1" name="Alarm 1" type="Byte" />
-          <State id="controller_DO.integral" name="controller_DO.Integral" />
-          <State id="pt1.yLast" name="pt1.yLast" />
+          <State id="pt_1.yLast" name="pt_1.yLast" />
+          <State id="pt_2.yLast" name="pt_2.yLast" />
         </States>
       </Calculation>
     </Calculations>

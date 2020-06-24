@@ -1,17 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <IO_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_IO">
   <Scheduling mode="Interval" interval="1 s" />
-  <History mode="Interval" interval="5 s" />
+  <History mode="Interval" interval="1 s" />
   <Adapters>
     <Adapter id="Adapter_001" name="SimulatingAdapter" type="Dummy" address="">
       <MaxFractionalDigits>3</MaxFractionalDigits>
       <DataItems>
-        <DataItem id="Data_001" name="Measurement_SO" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
-        <DataItem id="Data_002" name="Measurement_NH" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
-        <DataItem id="Data_003" name="Measurement_TSS" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
-        <DataItem id="Data_004" name="Setpoint_Air_N1" unit="m³/d" write="true" address="" />
-        <DataItem id="Data_005" name="Setpoint_Air_N2" unit="m³/d" write="true" address="" />
-        <DataItem id="Data_006" name="Setpoint_Air_N3" unit="m³/d" write="true" address="" />
+        <DataItem id="Measurement_SO" name="Measurement_SO" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
+        <DataItem id="Measurement_NH" name="Measurement_NH" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
+        <DataItem id="Measurement_TSS" name="Measurement_TSS" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
+        <DataItem id="Setpoint_Air" name="Setpoint_Air" unit="m³/d" write="true" />
       </DataItems>
     </Adapter>
   </Adapters>

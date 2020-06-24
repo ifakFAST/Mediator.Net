@@ -30,12 +30,12 @@
         {
           "Tabs": [
             {
-              "Name": "Control",
+              "Name": "Measurements",
               "PlotConfig": {
                 "MaxDataPoints": 9000,
                 "LeftAxisName": "Measurements",
                 "LeftAxisStartFromZero": true,
-                "RightAxisName": "Control Output",
+                "RightAxisName": "",
                 "RightAxisStartFromZero": true
               },
               "Items": [
@@ -47,7 +47,7 @@
                   "Axis": "Left",
                   "Checked": true,
                   "Variable": {
-                    "Object": "IO:Data_001",
+                    "Object": "IO:Measurement_SO",
                     "Name": "Value"
                   }
                 },
@@ -59,43 +59,31 @@
                   "Axis": "Left",
                   "Checked": true,
                   "Variable": {
-                    "Object": "IO:Data_002",
+                    "Object": "IO:Measurement_NH",
                     "Name": "Value"
                   }
                 },
                 {
-                  "Name": "Setpoint",
-                  "Color": "#339933",
+                  "Name": "SO_Smooth",
+                  "Color": "#A200FF",
                   "Size": 3.0,
                   "SeriesType": "Scatter",
-                  "Axis": "Right",
-                  "Checked": true,
-                  "Variable": {
-                    "Object": "IO:Data_004",
-                    "Name": "Value"
-                  }
-                }
-              ]
-            },
-            {
-              "Name": "Sinus",
-              "PlotConfig": {
-                "MaxDataPoints": 12000,
-                "LeftAxisName": "",
-                "LeftAxisStartFromZero": false,
-                "RightAxisName": "",
-                "RightAxisStartFromZero": false
-              },
-              "Items": [
-                {
-                  "Name": "Sine",
-                  "Color": "#1BA1E2",
-                  "Size": 3.0,
-                  "SeriesType": "Line",
                   "Axis": "Left",
                   "Checked": true,
                   "Variable": {
-                    "Object": "IO:Data_006",
+                    "Object": "CALC:Signal_d50db4",
+                    "Name": "Value"
+                  }
+                },
+                {
+                  "Name": "NH_Smooth",
+                  "Color": "#051400",
+                  "Size": 3.0,
+                  "SeriesType": "Scatter",
+                  "Axis": "Left",
+                  "Checked": true,
+                  "Variable": {
+                    "Object": "CALC:Signal_a91175",
                     "Name": "Value"
                   }
                 }
