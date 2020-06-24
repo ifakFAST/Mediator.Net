@@ -28,7 +28,7 @@ namespace Ifak.Fast.Mediator
         private static Logger logger = LogManager.GetLogger("Mediator.Core");
 
         internal readonly HandleClientRequests reqHandler;
-        public ModuleState[] modules = new ModuleState[0];
+        internal ModuleState[] modules = new ModuleState[0];
         internal UserManagement userManagement = new UserManagement();
         internal List<Location> locations = new List<Location>();
 
@@ -514,7 +514,7 @@ namespace Ifak.Fast.Mediator
         }
     }
 
-    public class ModuleState : Notifier
+    internal class ModuleState : Notifier
     {
         public Logger logger;
         public Module Config { get; private set; }
@@ -630,7 +630,7 @@ namespace Ifak.Fast.Mediator
         }
     }
 
-    public enum State
+    internal enum State
     {
         Created,
         InitError,

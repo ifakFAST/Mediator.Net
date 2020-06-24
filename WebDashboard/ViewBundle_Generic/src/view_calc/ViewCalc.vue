@@ -20,7 +20,8 @@
                 {{ 'mdi-square-medium' }}
               </v-icon>
               <v-icon v-if="item.objectType === 'Calculation'">
-                {{ 'mdi-file-settings-variant-outline' }}
+                {{ 'mdi-file-cog-outline' }}
+
               </v-icon>
             </template>
 
@@ -48,7 +49,7 @@
 
           <folder-editor      v-if="isFolderObject"      v-model="editObject"></folder-editor>
           <signal-editor      v-if="isSignalObject"      v-model="editObject"></signal-editor>
-          <calculation-editor v-if="isCalculationObject" v-model="editObject" :variables="editObjectVariables"></calculation-editor>
+          <calculation-editor v-if="isCalculationObject" v-model="editObject" :variables="editObjectVariables" :adapterTypesInfo="adapterTypesInfo"></calculation-editor>
 
         </v-col>
       </v-row>
@@ -125,6 +126,8 @@ export default class ViewCalc extends Vue {
     newID: '',
     newName: '',
   }
+
+  adapterTypesInfo: global.AdapterInfo[] = []
 
   mapVariables = new Map<string, fast.VTQ>()
 
@@ -287,6 +290,7 @@ export default class ViewCalc extends Vue {
     const objectInfos: global.ObjInfo[] = res.objectInfos
     const moduleInfos: global.ModuleInfo[] = res.moduleInfos
     const varValues: EventEntry[] = res.variableValues
+    this.adapterTypesInfo = res.adapterTypesInfo
 
     global.mapObjects.clear()
     objectInfos.forEach((obj) => {

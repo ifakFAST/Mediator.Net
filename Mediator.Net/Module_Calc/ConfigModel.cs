@@ -168,7 +168,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public string Type { get; set; } = ""; // e.g. C#, SIMBA, ...
 
         [XmlAttribute("enabled")]
-        public bool Enabled { get; set; } = true;
+        public bool Enabled { get; set; } = false;
 
         public History? History { get; set; } = null;
 
@@ -184,6 +184,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public List<Output> Outputs { get; set; } = new List<Output>();
 
+        public List<State> States { get; set; } = new List<State>();
+
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {
                 ID = ID,
@@ -194,6 +196,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 WindowVisible = WindowVisible,
             };
         }
+
+        public bool ShouldSerializeStates() => States.Count > 0;
 
         public bool ShouldSerializeHistory() => History.HasValue;
 
@@ -353,4 +357,69 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeType() => Type != DataType.Float64;
     }
 
+    public class State : ModelObject
+    {
+        [XmlAttribute("id")]
+        public string ID { get; set; } = Guid.NewGuid().ToString();
+
+        internal const string ID_Separator = ".State.";
+
+        protected override string GetID(IEnumerable<IModelObject> parents) {
+            var calculation = parents.First() as Calculation;
+            return calculation.ID + ID_Separator + ID;
+        }
+
+        [XmlAttribute("name")]
+        public string Name { get; set; } = "";
+
+        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+            var calculation = parents.First() as Calculation;
+            return calculation.Name + ".State." + Name;
+        }
+
+        [XmlAttribute("type")]
+        public DataType Type { get; set; } = DataType.Float64;
+
+        [XmlAttribute("dimension")]
+        public int Dimension { get; set; } = 1;
+
+        [XmlAttribute("unit")]
+        public string Unit { get; set; } = "";
+
+        public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
+
+        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+
+            History history = new History(HistoryMode.None);
+            foreach (IModelObject obj in parents) {
+                if (obj is Folder && (obj as Folder).History.HasValue) {
+                    history = (obj as Folder).History.Value;
+                    break;
+                }
+                else if (obj is Calculation && (obj as Calculation).History.HasValue) {
+                    history = (obj as Calculation).History.Value;
+                    break;
+                }
+            }
+
+            var variable = new Variable() {
+                Name = "Value",
+                Type = Type,
+                Dimension = Dimension,
+                DefaultValue = GetDefaultValue(),
+                Remember = true,
+                History = history
+            };
+
+            return new Variable[] {
+                variable
+            };
+        }
+
+        public bool ShouldSerializeUnit() => !string.IsNullOrEmpty(Unit);
+
+        public bool ShouldSerializeDimension() => Dimension != 1;
+
+        public bool ShouldSerializeType() => Type != DataType.Float64;
+    }
 }

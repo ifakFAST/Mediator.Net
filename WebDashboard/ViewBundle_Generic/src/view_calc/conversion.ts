@@ -23,6 +23,7 @@ export interface SignalVariables {
 export interface CalculationVariables {
   Inputs: IoVar[]
   Outputs: IoVar[]
+  States: IoVar[]
 }
 
 export interface IoVar {
@@ -47,6 +48,11 @@ function folder2TreeItem(folder: calcmodel.Folder, parentID: string | null, isFi
       map.set(calculation.ID + '.Out.' + output.ID, valueVTQ)
       return { Key: output.ID, Value: valueVTQ }
     })
+    const states: IoVar[] = calculation.States.map((state) => {
+      const valueVTQ: fast.VTQ = { V: '', T: '', Q: 'Bad' }
+      map.set(calculation.ID + '.State.' + state.ID, valueVTQ)
+      return { Key: state.ID, Value: valueVTQ }
+    })
     const calcItem: TreeItem = {
       id: calculation.ID,
       name: calculation.Name,
@@ -55,7 +61,7 @@ function folder2TreeItem(folder: calcmodel.Folder, parentID: string | null, isFi
       last,
       children: [],
       object: calculation,
-      objectVariables: { Inputs: inputs, Outputs: outputs },
+      objectVariables: { Inputs: inputs, Outputs: outputs, States: states },
       objectType: 'Calculation',
     }
     return calcItem

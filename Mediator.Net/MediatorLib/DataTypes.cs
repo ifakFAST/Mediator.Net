@@ -163,6 +163,14 @@ namespace Ifak.Fast.Mediator
 
         public long TotalMilliseconds => millis;
 
+        public double TotalSeconds => ToTimeSpan().TotalSeconds;
+
+        public double TotalMinutes => ToTimeSpan().TotalMinutes;
+
+        public double TotalHours => ToTimeSpan().TotalHours;
+
+        public double TotalDays => ToTimeSpan().TotalDays;
+
         public bool Equals(Duration other) => millis == other.millis;
 
         public override int GetHashCode() => (int)millis;
@@ -292,6 +300,8 @@ namespace Ifak.Fast.Mediator
         }
 
         public XmlSchema GetSchema() => null;
+
+        public static implicit operator TimeSpan(Duration d) => d.ToTimeSpan();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

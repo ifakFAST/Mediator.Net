@@ -379,6 +379,8 @@ namespace Ifak.Fast.Mediator
 
         public T[] GetEnumArray<T>() => StdJson.ObjectFromString<T[]>(json);
 
+        public Timestamp GetTimestamp() => Timestamp.FromISO8601(GetString());
+
         private static char FirstNonWhitespace(string str) {
             for (int i = 0; i < str.Length; ++i) {
                 char c = str[i];

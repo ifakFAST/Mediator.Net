@@ -8,14 +8,14 @@
 
     <template v-if="!optional">
       <td>
-        <type-control :type="type" :value="value" @input="update($event)" ></type-control>
+        <type-control :type="type" :value="value" @input="update($event)" :enumValues="enumValues"></type-control>
       </td>
       <td>&nbsp;</td>
     </template>
 
     <template v-if="optional && value !== null">
       <td>
-        <type-control :type="type" :value="value" @input="update($event)" ></type-control>
+        <type-control :type="type" :value="value" @input="update($event)" :enumValues="enumValues"></type-control>
       </td>
       <td><v-btn style="margin-top:16px;" class="small" @click="update(null)"><v-icon>delete_forever</v-icon></v-btn></td>
     </template>
@@ -46,6 +46,7 @@ export default class MemberRow extends Vue {
   @Prop() value: object
   @Prop(String) type: MemberTypeEnum
   @Prop(Boolean) optional: boolean
+  @Prop(Array) enumValues: string[]
 
   update(newValue: any): void {
     this.$emit('input', newValue)

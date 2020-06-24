@@ -10,8 +10,8 @@ export default {
   showTimeRangeSelector: false,
   timeRange: {
     type: 'Last',
-    lastCount: 7,
-    lastUnit: 'Days',
+    lastCount: 6,
+    lastUnit: 'Hours',
     rangeStart: '',
     rangeEnd: ''
   },

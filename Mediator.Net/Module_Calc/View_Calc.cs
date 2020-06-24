@@ -185,6 +185,9 @@ namespace Ifak.Fast.Mediator.Calc
             VariableValue[] variables = await Connection.ReadAllVariablesOfObjectTree(RootID);
             var changes = VarValsToEventEntries(variables);
 
+            DataValue resGetAdapterInfo = await Connection.CallMethod(moduleID, "GetAdapterInfo");
+            AdapterInfo[] adapterTypesInfo = resGetAdapterInfo.Object<AdapterInfo[]>();
+
             var res = new {
                 model = model,
                 objectInfos = objectInfos,
@@ -192,7 +195,8 @@ namespace Ifak.Fast.Mediator.Calc
                     ID = m.ID,
                     Name = m.Name
                 }).ToArray(),
-                variableValues = changes
+                variableValues = changes,
+                adapterTypesInfo = adapterTypesInfo,
             };
 
             return ReqResult.OK(res, ignoreShouldSerializeMembers: true);
@@ -295,6 +299,15 @@ namespace Ifak.Fast.Mediator.Calc
             public DataValue V { get; set; }
             public string T { get; set; }
             public Quality Q { get; set; }
+        }
+
+        public class AdapterInfo
+        {
+            public string Type { get; set; }
+            public bool Show_WindowVisible { get; set; }
+            public bool Show_Definition { get; set; }
+            public string DefinitionLabel { get; set; }
+            public bool DefinitionIsCode { get; set; }
         }
     }
 }

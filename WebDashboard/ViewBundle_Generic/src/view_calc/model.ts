@@ -40,6 +40,7 @@ export interface Calculation {
   Definition: string // e.g. C# code, SIMBA project file name
   Inputs: Input[]
   Outputs: Output[]
+  States: State[]
 }
 
 export interface Input {
@@ -61,3 +62,10 @@ export interface Output {
   Variable: fast.VariableRef | null
 }
 
+export interface State {
+  ID: string
+  Name: string
+  Type: fast.DataType
+  Dimension: number
+  Unit: string
+}

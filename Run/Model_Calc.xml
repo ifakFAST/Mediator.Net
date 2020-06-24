@@ -21,29 +21,63 @@
       </Folder>
     </Folders>
     <Calculations>
-      <Calculation id="cs" name="CSharp" type="CSharp" enabled="false">
+      <Calculation id="cs" name="CSharp" type="CSharp" enabled="true">
         <Cycle>1 s</Cycle>
-        <Definition>        
-            public Input  W = new Input("W", "mg/L", 5);
-            public Input  X = new Input("X", "mg/L", 0.5);
-            public Output Y = new Output("Y", "m³/d");
-            
-            public void Run() {
-                Y.Value = W.Value * X.Value;
-               // System.Console.WriteLine("Huh!!!");
-            }
-        </Definition>
+        <Definition>using Std;
+
+class Script {
+    
+    Input  W = new Input(name: "W", unit: "mg/L", defaultValue: 5);
+    Input  X = new Input("X", "mg/L", 0.5);
+    
+    Output Y = new Output("Y", "m³/d", roundDigits: 3);
+    State counter = new State("Counter", "", 0);
+    
+    Alarm alarm1 = new Alarm("Alarm 1");
+    EventLog log = new EventLog();
+    
+    PI controller_DO = new PI(
+        invert: false, 
+        K: 1, 
+        Tn: Duration.FromMinutes(2), 
+        outMin: 0.5, 
+        outMax: 100.0);
+        
+    PT1 pt1 = new PT1(K: 1, T: Duration.FromMinutes(1));
+                
+    public void Step(Timestamp t, Duration dt) {
+        Y.Value = controller_DO.Step(setpoint: W, measurement: X, dt: dt);
+        counter.Value = counter + 1;        
+        double smoothX = pt1.Step(u: X, dt: dt);
+        // Console.WriteLine($"{t} X: {X.Value} smoothX: {smoothX}");
+        if (X &gt; 10.0) {
+            alarm1.Set(Level.Warn, $"X is above 10: {X.Value}");
+        } else {
+            alarm1.Clear();
+        }
+        // log.Info("Time", $"Time {t} {dt}");
+    }
+}
+</Definition>
         <Inputs>
-          <Input id="W" name="W">
+          <Input id="W" name="W" unit="mg/L">
             <Variable object="IO:Data_001" name="Value" />
           </Input>
-          <Input id="X" name="X">
+          <Input id="X" name="X" unit="mg/L">
             <Variable object="IO:Data_002" name="Value" />
           </Input>
         </Inputs>
         <Outputs>
-          <Output id="Y" name="Y" />
+          <Output id="Y" name="Y" unit="m³/d">
+            <Variable object="IO:Data_005" name="Value" />
+          </Output>
         </Outputs>
+        <States>
+          <State id="counter" name="Counter" />
+          <State id="alarm1" name="Alarm 1" type="Byte" />
+          <State id="controller_DO.integral" name="controller_DO.Integral" />
+          <State id="pt1.yLast" name="pt1.yLast" />
+        </States>
       </Calculation>
       <Calculation id="simba" name="Control" type="Simba" enabled="false">
         <WindowVisible>true</WindowVisible>

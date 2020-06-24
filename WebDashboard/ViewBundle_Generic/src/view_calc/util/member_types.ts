@@ -1,7 +1,8 @@
 
 import * as fast from '../../fast_types'
 
-export type MemberTypeEnum = 'History' | 'String' | 'Text' | 'DataType' | 'Number' | 'Duration' | 'Boolean'
+export type MemberTypeEnum =
+  'History' | 'String' | 'Text' | 'DataType' | 'Number' | 'Duration' | 'Boolean' | 'Enum' | 'Code'
 
 export function defaultValueFromMemberType(t: MemberTypeEnum): any {
 
@@ -11,6 +12,8 @@ export function defaultValueFromMemberType(t: MemberTypeEnum): any {
       return h
     }
     case 'String':   return ''
+    case 'Code':     return ''
+    case 'Enum':     return ''
     case 'Text':     return ''
     case 'Boolean':  return 'false'
     case 'Duration': return '10 s'

@@ -1,27 +1,36 @@
 <template>
+  <div>
 
-  <v-tabs v-model="selectedTab" style="margin-top: 8px;">
+    <v-tabs v-model="selectedTab" style="margin-top: 8px;">
+      <v-tab href="#Properties">Properties</v-tab>
+      <v-tab href="#Code" v-if="hasCode">{{definitionName}}</v-tab>
+      <v-tab href="#Inputs">Inputs</v-tab>
+      <v-tab href="#Outputs">Outputs</v-tab>
+      <v-tab href="#States" v-if="hasStates">States</v-tab>
+    </v-tabs>
 
-    <v-tab>Properties</v-tab>
-
-    <v-tab-item>
+    <div v-if="selectedTab === 'Properties'">
 
       <table cellspacing="10">
-        <member-row name="Name"          v-model="value.Name"          type="String"   :optional="false"></member-row>
-        <member-row name="Type"          v-model="value.Type"          type="String"   :optional="false"></member-row>
-        <member-row name="History"       v-model="value.History"       type="History"  :optional="true"></member-row>
-        <member-row name="Definition"    v-model="value.Definition"    type="String"   :optional="false"></member-row>
-        <member-row name="Cycle"         v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
-        <member-row name="WindowVisible" v-model="value.WindowVisible" type="Boolean"  :optional="false"></member-row>
-
+        <member-row name="Name"            v-model="value.Name"          type="String"   :optional="false"></member-row>
+        <member-row name="Type"            v-model="value.Type"          type="Enum"     :optional="false" :enumValues="adapterTypes"></member-row>
+        <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
+        <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
+        <member-row name="Enabled"         v-model="value.Enabled"       type="Boolean"  :optional="false"></member-row>
+        <member-row name="WindowVisible"   v-model="value.WindowVisible" type="Boolean"  :optional="false" v-if="showWindowVisible"></member-row>
+        <member-row :name="definitionName" v-model="value.Definition"    :type="definitionType" :optional="false" v-if="showDefinition && definitionType !== 'Code'"></member-row>
       </table>
 
-    </v-tab-item>
+    </div>
 
+    <div v-if="selectedTab === 'Code'">
 
-    <v-tab>Inputs</v-tab>
+      <editor style="font-size: 18px!important;" v-if="hasCode" v-model="value.Definition"
+        @init="editorInit" lang="csharp" theme="TextMate" :options="codeEditorOptions" width="100%" height="760"></editor>
 
-    <v-tab-item>
+    </div>
+
+    <div v-if="selectedTab === 'Inputs'">
 
       <table cellspacing="16">
 
@@ -62,12 +71,9 @@
 
       </table>
 
-    </v-tab-item>
+    </div>
 
-
-    <v-tab>Outputs</v-tab>
-
-    <v-tab-item>
+    <div v-if="selectedTab === 'Outputs'">
 
       <table cellspacing="16">
 
@@ -102,17 +108,41 @@
 
       </table>
 
+    </div>
 
-    </v-tab-item>
+    <div v-if="selectedTab === 'States'">
+
+      <table cellspacing="16">
+
+        <thead>
+          <tr>
+            <th align="left">Name</th>
+            <th align="left">Unit</th>
+            <th align="left">Type</th>
+            <th align="left">Value</th>
+            <th align="left">Value Time</th>
+          </tr>
+        </thead>
+
+        <tr v-for="{ state, VarVal } in stateList" :key="state.ID">
+          <td class="IOName">{{ state.Name }}</td>
+          <td>{{ state.Unit }}</td>
+          <td>{{ state.Type }}</td>
+          <td v-bind:style="{ color: qualityColor(VarVal.Q) }">{{ VarVal.V }}</td>
+          <td>{{ VarVal.T }}</td>
+        </tr>
+
+      </table>
+
+    </div>
 
     <dlg-object-select v-model="selectObject.show"
-            :object-id="selectObject.selectedObjectID"
-            :module-id="selectObject.selectedModuleID"
-            :modules="selectObject.modules"
-            @onselected="selectObject_OK"></dlg-object-select>
+      :object-id="selectObject.selectedObjectID"
+      :module-id="selectObject.selectedModuleID"
+      :modules="selectObject.modules"
+      @onselected="selectObject_OK"></dlg-object-select>
 
-  </v-tabs>
-
+  </div>
 </template>
 
 <script lang="ts">
@@ -124,6 +154,7 @@ import * as global from './global'
 import * as fast from '../fast_types'
 import DlgObjectSelect from '../components/DlgObjectSelect.vue'
 import { CalculationVariables, IoVar } from './conversion'
+import { MemberTypeEnum } from './util/member_types'
 
 type AssignState = 'Unassigned' | 'Constant' | 'Variable'
 
@@ -146,16 +177,18 @@ interface Obj {
   components: {
     MemberRow,
     DlgObjectSelect,
+    editor: require('vue2-ace-editor'),
   },
 })
 export default class CalculationEditor extends Vue {
 
   @Prop(Object) value: calcmodel.Calculation
   @Prop(Object) variables: CalculationVariables
+  @Prop(Array) adapterTypesInfo: global.AdapterInfo[]
 
   assignStateValuesIn: AssignState[]  = [ 'Unassigned', 'Variable', 'Constant' ]
   assignStateValuesOut: AssignState[] = [ 'Unassigned', 'Variable' ]
-  selectedTab: number = 0
+  selectedTab: string = ''
 
   selectObject: SelectObject = {
     show: false,
@@ -163,6 +196,60 @@ export default class CalculationEditor extends Vue {
     selectedModuleID: '',
     selectedObjectID: '',
     variable: { Object: '', Name: '' },
+  }
+
+  codeEditorOptions = {
+    enableBasicAutocompletion: true,
+  }
+
+  get adapterTypes(): string[] {
+    return this.adapterTypesInfo.map((info) => info.Type)
+  }
+
+  get hasCode(): boolean {
+    return this.showDefinition && this.definitionType === 'Code'
+  }
+
+  get hasStates(): boolean {
+    return this.value.States.length > 0
+  }
+
+  get definitionName(): string {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return 'Definition' }
+    return info.DefinitionLabel
+  }
+
+  get showWindowVisible(): boolean {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return false }
+    return info.Show_WindowVisible
+  }
+
+  get showDefinition(): boolean {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return false }
+    return info.Show_Definition
+  }
+
+  get definitionType(): MemberTypeEnum {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return 'String' }
+    if (info.DefinitionIsCode) {
+      return 'Code'
+    }
+    return 'String'
+  }
+
+  editorInit(): void {
+    require('brace/ext/language_tools')
+    require('brace/mode/csharp')
+    require('brace/theme/textmate')
+    require('brace/snippets/csharp')
   }
 
   get inputList() {
@@ -176,8 +263,16 @@ export default class CalculationEditor extends Vue {
   get outputList() {
     const map: IoVar[] = this.variables.Outputs
     return this.value.Outputs.map((output) => {
-      const vtq: fast.VTQ = map.find((it) => it.Key === output.ID)?.Value || { V: 'Nix', Q: 'Bad', T: ''}
+      const vtq: fast.VTQ = map.find((it) => it.Key === output.ID)?.Value || { V: '', Q: 'Bad', T: ''}
       return { output, VarVal: vtq }
+    })
+  }
+
+  get stateList() {
+    const map: IoVar[] = this.variables.States
+    return this.value.States.map((state) => {
+      const vtq: fast.VTQ = map.find((it) => it.Key === state.ID)?.Value || { V: '', Q: 'Bad', T: ''}
+      return { state, VarVal: vtq }
     })
   }
 

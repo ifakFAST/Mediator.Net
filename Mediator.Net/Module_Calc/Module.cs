@@ -19,6 +19,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private readonly List<CalcInstance> adapters = new List<CalcInstance>();
         private readonly Dictionary<string, Type> mapAdapterTypes = new Dictionary<string, Type>();
+        private readonly List<Identify> adapterTypesAttribute = new List<Identify>();
         private ModuleInitInfo initInfo;
         private ModuleThread moduleThread = null;
         private Connection connection = null;
@@ -57,11 +58,13 @@ namespace Ifak.Fast.Mediator.Calc
             var adapterTypes = Reflect.GetAllNonAbstractSubclasses(typeof(CalculationBase)).ToList();
             adapterTypes.AddRange(absoluteAssemblies.SelectMany(fLoadCalcTypesFromAssembly));
 
+            adapterTypesAttribute.Clear();
             mapAdapterTypes.Clear();
-            foreach (var type in adapterTypes) {
+            foreach (Type type in adapterTypes) {
                 Identify id = type.GetCustomAttribute<Identify>();
                 if (id != null) {
                     mapAdapterTypes[id.ID] = type;
+                    adapterTypesAttribute.Add(id);
                 }
             }
 
@@ -72,6 +75,7 @@ namespace Ifak.Fast.Mediator.Calc
             Dictionary<VariableRef, VTQ> varMap = restoreVariableValues.ToDictionary(v => v.Variable, v => v.Value);
             foreach (CalcInstance adapter in adapters) {
                 adapter.SetInitialOutputValues(varMap);
+                adapter.SetInitialStateValues(varMap);
             }
 
             try {
@@ -160,6 +164,7 @@ namespace Ifak.Fast.Mediator.Calc
                 var initParams = new InitParameter() {
                     Calculation = info,
                     LastOutput = adapter.LastOutputValues,
+                    LastState = adapter.LastStateValues,
                     ConfigFolder = Path.GetDirectoryName(base.modelFileName),
                     DataFolder = initInfo.DataFolder,
                     ModuleConfig = moduleConfig.ToNamedValues()
@@ -170,9 +175,11 @@ namespace Ifak.Fast.Mediator.Calc
 
                     Config.Input[] newInputs = res.Inputs.Select(ip => MakeInput(ip, adapter.CalcConfig)).ToArray();
                     Config.Output[] newOutputs = res.Outputs.Select(ip => MakeOutput(ip, adapter.CalcConfig)).ToArray();
+                    Config.State[] newStates = res.States.Select(MakeState).ToArray();
 
                     bool inputsChanged = !StdJson.ObjectsDeepEqual(adapter.CalcConfig.Inputs, newInputs);
                     bool outputsChanged = !StdJson.ObjectsDeepEqual(adapter.CalcConfig.Outputs, newOutputs);
+                    bool statesChanged = !StdJson.ObjectsDeepEqual(adapter.CalcConfig.States, newStates);
 
                     var changedMembers = new List<MemberValue>(2);
 
@@ -182,6 +189,10 @@ namespace Ifak.Fast.Mediator.Calc
 
                     if (outputsChanged) {
                         changedMembers.Add(MemberValue.Make(moduleID, adapter.CalcConfig.ID, "Outputs", DataValue.FromObject(newOutputs)));
+                    }
+
+                    if (statesChanged) {
+                        changedMembers.Add(MemberValue.Make(moduleID, adapter.CalcConfig.ID, "States", DataValue.FromObject(newStates)));
                     }
 
                     if (changedMembers.Count > 0) {
@@ -224,6 +235,16 @@ namespace Ifak.Fast.Mediator.Calc
                 Dimension = output.Dimension,
                 Type = output.Type,
                 Variable = old != null ? old.Variable : null,
+            };
+        }
+
+        private static Config.State MakeState(StateDef output) {
+            return new Config.State() {
+                ID = output.ID,
+                Name = output.Name,
+                Unit = output.Unit,
+                Dimension = output.Dimension,
+                Type = output.Type,
             };
         }
 
@@ -317,6 +338,27 @@ namespace Ifak.Fast.Mediator.Calc
             await Shutdown();
         }
 
+        public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
+
+            if (methodName == "GetAdapterInfo") {
+
+                var result = adapterTypesAttribute.Select(att => new {
+                    Type = att.ID,
+                    Show_WindowVisible = att.Show_WindowVisible,
+                    Show_Definition = att.Show_Definition,
+                    DefinitionLabel = att.DefinitionLabel,
+                    DefinitionIsCode = att.DefinitionIsCode,
+                }).ToArray();
+
+                DataValue dv = DataValue.FromObject(result);
+                return Task.FromResult(Result<DataValue>.OK(dv));
+
+            }
+            else {
+                return base.OnMethodCall(origin, methodName, parameters);
+            }
+        }
+
         private void StartRunLoopTask(CalcInstance adapter) {
             Task readTask = AdapterRunLoopTask(adapter);
             adapter.RunLoopTask = readTask;
@@ -382,11 +424,19 @@ namespace Ifak.Fast.Mediator.Calc
 
                 StepResult result = await adapter.Instance.Step(t, inputValues);
                 OutputValue[] outValues = result.Output;
-                // TODO Store result.State
+                StateValue[] stateValues = result.State;
 
-                //Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
+                // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
 
-                List<VariableValue> outVarValues = outValues.Select(v => VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value.WithTime(t))).ToList();
+                var listVarValues = new List<VariableValue>(outValues.Length + stateValues.Length);
+                foreach (OutputValue v in outValues) {
+                    var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value.WithTime(t));
+                    listVarValues.Add(vv);
+                }
+                foreach (StateValue v in stateValues) {
+                    var vv = VariableValue.Make(adapter.GetStateVarRef(v.StateID), VTQ.Make(v.Value, t, Quality.Good));
+                    listVarValues.Add(vv);
+                }
 
                 List<VariableValue> outputDest = new List<VariableValue>();
                 foreach (Config.Output ot in adapter.CalcConfig.Outputs) {
@@ -397,11 +447,12 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     }
                 }
-                notifier.Notify_VariableValuesChanged(outVarValues);
+                notifier.Notify_VariableValuesChanged(listVarValues);
 
-                await connection.WriteVariables(outputDest.ToArray()); // TODO Error handling!
+                await connection.WriteVariablesIgnoreMissing(outputDest.ToArray()); // TODO Report invalid var refs
 
                 adapter.SetLastOutputValues(outValues);
+                adapter.SetLastStateValues(stateValues);
 
                 t = GetNextNormalizedTimestamp(t, cycle, adapter);
 

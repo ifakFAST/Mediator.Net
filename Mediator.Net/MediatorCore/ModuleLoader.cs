@@ -13,6 +13,14 @@ namespace Ifak.Fast.Mediator
     {
         internal static ModuleBase CreateModuleInstanceOrThrow(string typeName, string assemblyName) {
 
+            // Load known module types, so that they can be found by GetNonAbstractSubclassInDomainBaseDirectory
+            Type[] preload = new Type[] {
+                typeof(Ifak.Fast.Mediator.Calc.Module),
+                typeof(Ifak.Fast.Mediator.IO.Module),
+                typeof(Ifak.Fast.Mediator.Dashboard.Module),
+                typeof(Ifak.Fast.Mediator.EventLog.Module),
+            };
+
             Type t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
 
             if (t != null) {

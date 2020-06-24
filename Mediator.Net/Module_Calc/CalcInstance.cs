@@ -58,11 +58,15 @@ namespace Ifak.Fast.Mediator.Calc
             var outputs = newConfig.Outputs.ToArray();
             newConfig.Outputs.Clear();
 
+            var states = newConfig.States.ToArray();
+            newConfig.States.Clear();
+
             string newOriginalConfigWithoutIO = Xml.ToXml(newConfig);
             bool changed = (newOriginalConfigWithoutIO != originalConfigWithoutIO);
 
             newConfig.Inputs.AddRange(inputs);
             newConfig.Outputs.AddRange(outputs);
+            newConfig.States.AddRange(states);
 
             CalcConfig = newConfig;
             originalConfigWithoutIO = newOriginalConfigWithoutIO;
@@ -141,9 +145,25 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
+        public void SetInitialStateValues(Dictionary<VariableRef, VTQ> mapVarValues) {
+            lastStateValues.Clear();
+            foreach (Config.State state in CalcConfig.States) {
+                VariableRef v = GetStateVarRef(state.ID);
+                if (mapVarValues.ContainsKey(v)) {
+                    VTQ value = mapVarValues[v];
+                    lastStateValues.Add(new StateValue() {
+                        StateID = state.ID,
+                        Value = value.V
+                    });
+                }
+            }
+        }
+
         private List<OutputValue> lastOutputValues = new List<OutputValue>();
+        private List<StateValue> lastStateValues = new List<StateValue>();
 
         public OutputValue[] LastOutputValues => lastOutputValues.ToArray();
+        public StateValue[] LastStateValues => lastStateValues.ToArray();
 
         public Task RunLoopTask { get; internal set; }
 
@@ -152,6 +172,11 @@ namespace Ifak.Fast.Mediator.Calc
         public void SetLastOutputValues(OutputValue[] outValues) {
             lastOutputValues.Clear();
             lastOutputValues.AddRange(outValues);
+        }
+
+        public void SetLastStateValues(StateValue[] stateValues) {
+            lastStateValues.Clear();
+            lastStateValues.AddRange(stateValues);
         }
 
         public VariableRef GetInputVarRef(string inputID) {
@@ -164,6 +189,12 @@ namespace Ifak.Fast.Mediator.Calc
             string calcID = this.CalcConfig.ID;
             string fullOutputID = calcID + Config.Output.ID_Separator + outputID;
             return VariableRef.Make(moduleID, fullOutputID, "Value");
+        }
+
+        public VariableRef GetStateVarRef(string stateID) {
+            string calcID = this.CalcConfig.ID;
+            string fullStateID = calcID + Config.State.ID_Separator + stateID;
+            return VariableRef.Make(moduleID, fullStateID, "Value");
         }
     }
 

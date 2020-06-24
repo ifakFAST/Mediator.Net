@@ -4,57 +4,126 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
-    [Identify("CSharp")]
-    public class CSharp : CalculationBase
+    [Identify(id: "CSharp", showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true)]
+    public class CSharp : CalculationBase, EventSink
     {
         private Input[] inputs = new Input[0];
         private Output[] outputs = new Output[0];
-        private Action runAction = () => { };
+        private AbstractState[] states = new AbstractState[0];
+        private Alarm[] alarms = new Alarm[0];
+        private Action<Timestamp, Duration> stepAction = (t, dt) => { };
+        private Duration dt = Duration.FromSeconds(1);
+        private AdapterCallback callback;
 
         public override async Task<InitResult> Initialize(InitParameter parameter, AdapterCallback callback) {
 
+            this.callback = callback;
             string code = parameter.Calculation.Definition;
+            dt = parameter.Calculation.Cycle;
 
             if (!string.IsNullOrWhiteSpace(code)) {
 
-                var options = ScriptOptions.Default
-                    .WithImports("Ifak.Fast.Mediator.Calc.Adapter_CSharp")
-                    .WithReferences(typeof(Input).Assembly);
+                // var sw = System.Diagnostics.Stopwatch.StartNew();
 
-                const string className = "ScriptContainer";
-                string codeClass = WrapCodeInClass(code, className);
+                var config = new Mediator.Config(parameter.ModuleConfig);
+                string libs = config.GetOptionalString("csharp-libraries", "");
+
+                string[] assemblies = libs
+                    .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .ToArray();
+
+                string[] absoluteAssemblies = assemblies.Select(d => Path.GetFullPath(d)).ToArray();
+                foreach (string assembly in absoluteAssemblies) {
+                    if (!File.Exists(assembly)) throw new Exception($"csharp-library does not exist: {assembly}");
+                }
+
+                absoluteAssemblies = absoluteAssemblies.Select(assembly => {
+                    if (assembly.ToLowerInvariant().EndsWith(".cs")) {
+                        return CompileLib.CSharpFile2Assembly(assembly);
+                    }
+                    return assembly;
+                }).ToArray();
+
+                var referencedAssemblies = new List<Assembly>();
+                referencedAssemblies.Add(typeof(System.Collections.Generic.IList<int>).Assembly);
+                referencedAssemblies.Add(typeof(System.Linq.Enumerable).Assembly);
+                referencedAssemblies.Add(typeof(Ifak.Fast.Mediator.Timestamp).Assembly);
+                referencedAssemblies.Add(typeof(Input).Assembly);
+
+                foreach (string assembly in absoluteAssemblies) {
+                    try {
+                        Assembly ass = Assembly.LoadFrom(assembly);
+                        referencedAssemblies.Add(ass);
+                    }
+                    catch (Exception exp) {
+                        throw new Exception($"Failed to load csharp-library {assembly}: {exp.Message}");
+                    }
+                }
+
+                var options = ScriptOptions.Default
+                    .WithImports(
+                        "System",
+                        "System.Collections.Generic",
+                        "System.Linq",
+                        "Ifak.Fast.Mediator.Calc.Adapter_CSharp",
+                        "Ifak.Fast.Mediator")
+                    .WithReferences(referencedAssemblies.ToArray());
+
+                const string className = "Script";
 
                 var script = CSharpScript.
-                    Create<object>(codeClass, options).
+                    Create<object>(code, options).
                     ContinueWith($"new {className}()");
 
-                ScriptState<Object> state = await script.RunAsync();
-                object obj = state.ReturnValue;
+                // var diag = script.Compile();
+
+                ScriptState<object> scriptState = await script.RunAsync();
+                object obj = scriptState.ReturnValue;
+
+                // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
+
+                inputs  = GetIdentifiableMembers<Input> (obj, "", recursive: false).ToArray();
+                outputs = GetIdentifiableMembers<Output>(obj, "", recursive: false).ToArray();
+                states  = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
+
+                var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
+                foreach (EventProvider provider in eventProviders) {
+                    provider.EventSinkRef = this;
+                }
 
                 Type type = obj.GetType();
-                FieldInfo[] fields = type.GetFields();
 
-                inputs = GetMembers<Input>(obj, fields);
-                outputs = GetMembers<Output>(obj, fields);
+                MethodInfo[] methods =
+                    type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                    .Where(m => m.Name == "Step" && IsStepSignature(m))
+                    .ToArray();
 
-                MethodInfo run = type.GetMethod("Run");
-                if (run == null) throw new Exception("No Run() method found.");
+                if (methods.Length == 0) throw new Exception("No Step(Timestamp t, TimeSpan dt) method found.");
+                MethodInfo step = methods[0];
 
-                runAction = (Action)run.CreateDelegate(typeof(Action), obj);
+                stepAction = (Action<Timestamp, Duration>)step.CreateDelegate(typeof(Action<Timestamp, Duration>), obj);
+
+                foreach (StateValue v in parameter.LastState) {
+                    AbstractState state = states.FirstOrDefault(s => s.ID == v.StateID);
+                    if (state != null) {
+                        state.SetValueFromDataValue(v.Value);
+                    }
+                }
 
                 return new InitResult() {
                     Inputs = inputs.Select(MakeInputDef).ToArray(),
                     Outputs = outputs.Select(MakeOutputDef).ToArray(),
-                    States = new StateDef[0],
+                    States = states.Select(MakeStateDef).ToArray(),
                     ExternalStatePersistence = true
                 };
 
@@ -63,11 +132,26 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
                 return new InitResult() {
                     Inputs = new InputDef[0],
-                    Outputs= new OutputDef[0],
+                    Outputs = new OutputDef[0],
                     States = new StateDef[0],
                     ExternalStatePersistence = true
                 };
             }
+        }
+
+        public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {
+            callback.Notify_AlarmOrEvent(eventInfo);
+        }
+
+        private static bool IsStepSignature(MethodInfo m) {
+            ParameterInfo[] parameters = m.GetParameters();
+            if (parameters.Length != 2) return false;
+            ParameterInfo p1 = parameters[0];
+            ParameterInfo p2 = parameters[1];
+            if (p1.ParameterType != typeof(Timestamp)) return false;
+            if (p2.ParameterType != typeof(Duration)) return false;
+            if (m.ReturnType != typeof(void)) return false;
+            return true;
         }
 
         public override Task Shutdown() {
@@ -77,92 +161,98 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
 
             foreach (InputValue v in inputValues) {
-                Input input = inputs.FirstOrDefault(inn => inn.Name == v.InputID);
+                Input input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
                 if (input != null) {
-                    double? value = v.Value.V.AsDouble();
-                    input.Value = value.HasValue ? value.Value : 0;
+                    input.VTQ = v.Value;
                 }
             }
 
-            runAction();
+            stepAction(t, dt);
+
+            StateValue[] resStates = states.Select(kv => new StateValue() {
+                StateID = kv.ID,
+                Value = kv.GetValue()
+            }).ToArray();
 
             OutputValue[] result = outputs.Select(kv => new OutputValue() {
-                OutputID = kv.Name,
-                Value = VTQ.Make(kv.Value, t, Quality.Good)
+                OutputID = kv.ID,
+                Value = kv.VTQ
             }).ToArray();
 
             var stepRes = new StepResult() {
-                Output = result
+                Output = result,
+                State = resStates,
             };
 
             return Task.FromResult(stepRes);
         }
 
-        private static string WrapCodeInClass(string code, string className) {
-            var sb = new StringBuilder();
-            sb.Append("public class ");
-            sb.Append(className);
-            sb.AppendLine(" {");
-            sb.AppendLine(code);
-            sb.AppendLine("}");
-            return sb.ToString();
+        private static List<T> GetIdentifiableMembers<T>(object obj, string idChain, bool recursive) where T : class, Identifiable {
+            List<T> result = new List<T>();
+            FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            foreach (FieldInfo f in fields) {
+                string id = f.Name;
+                object fieldValue = f.GetValue(obj);
+                if (fieldValue is T x) {
+                    x.ID = idChain + id;
+                    x.Name = idChain + x.Name;
+                    result.Add(x);
+                }
+                else if (recursive && f.FieldType.IsClass) {
+                    result.AddRange(GetIdentifiableMembers<T>(fieldValue, idChain + id + ".", recursive));
+                }
+            }
+            return result;
         }
 
-        private static T[] GetMembers<T>(object obj, FieldInfo[] fields) where T : class {
-            Type t = typeof(T);
-            return fields.Where(f => f.FieldType == t)
-                .Select(f => f.GetValue(obj) as T)
-                .ToArray();
+        private static List<T> GetMembers<T>(object obj, bool recursive) where T : class {
+            List<T> result = new List<T>();
+            FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            foreach (FieldInfo f in fields) {
+                object fieldValue = f.GetValue(obj);
+                if (fieldValue is T x) {
+                    result.Add(x);
+                }
+                else if (recursive && f.FieldType.IsClass) {
+                    result.AddRange(GetMembers<T>(fieldValue, recursive));
+                }
+            }
+            return result;
         }
 
         private static InputDef MakeInputDef(Input m) {
             return new InputDef() {
-                ID = m.Name,
+                ID = m.ID,
                 Name = m.Name,
                 Description = m.Name,
                 Unit = m.Unit,
                 Dimension = 1,
                 Type = DataType.Float64,
-                DefaultValue = DataValue.FromDouble(m.DefaultValue)
+                DefaultValue = m.GetDefaultValue()
+            };
+        }
+
+        private static StateDef MakeStateDef(AbstractState m) {
+            return new StateDef() {
+                ID = m.ID,
+                Name = m.Name,
+                Description = m.Name,
+                Unit = m.Unit,
+                Dimension = m.GetDimension(),
+                Type = m.GetDataType(),
+                DefaultValue = m.GetDefaultValue()
             };
         }
 
         private static OutputDef MakeOutputDef(Output m) {
             return new OutputDef() {
-                ID = m.Name,
+                ID = m.ID,
                 Name = m.Name,
                 Description = m.Name,
                 Unit = m.Unit,
                 Dimension = 1,
                 Type = DataType.Float64,
             };
-        }
-    }
-
-    public class Input
-    {
-        public string Name { get; private set; }
-        public string Unit { get; private set; }
-        public double DefaultValue { get; private set; }
-        public double Value { get; internal set; }
-
-        public Input(string name, string unit, double defaultValue) {
-            Name = name;
-            Unit = unit;
-            DefaultValue = defaultValue;
-            Value = 12;
-        }
-    }
-
-    public class Output
-    {
-        public string Name { get; private set; }
-        public string Unit { get; private set; }
-        public double Value { get; set; }
-
-        public Output(string name, string unit) {
-            Name = name;
-            Unit = unit;
         }
     }
 }

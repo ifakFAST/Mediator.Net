@@ -14,3 +14,11 @@ export interface ModuleInfo {
 export const mapObjects = new Map<string, ObjInfo>()
 
 export const modules: ModuleInfo[] = []
+
+export interface AdapterInfo {
+  Type: string
+  Show_WindowVisible: boolean
+  Show_Definition: boolean
+  DefinitionLabel: string
+  DefinitionIsCode: boolean
+}

@@ -7,6 +7,8 @@
     <v-select       v-if="type === 'DataType'" :value="value" @input="$emit('input', $event)" :items="dataTypes" hide-details></v-select>
     <v-text-field   v-if="type === 'Duration'" :value="value" @input="$emit('input', $event)" hide-details></v-text-field>
     <v-switch       v-if="type === 'Boolean'"  :input-value="value" @change="$emit('input', $event)" hide-details></v-switch>
+    <v-select       v-if="type === 'Enum'"     :value="value" @input="$emit('input', $event)" :items="enumValues" hide-details></v-select>
+    <v-textarea     v-if="type === 'Code'"     :value="value" @input="$emit('input', $event)" :rows="10" outlined hide-details></v-textarea>
   </div>
 </template>
 
@@ -26,6 +28,7 @@ export default class TypeControl extends Vue {
 
   @Prop() value: any
   @Prop(String) type: MemberTypeEnum
+  @Prop(Array) enumValues: string[]
 
   dataTypes: fast.DataType[]  = fast.DataTypeValues
 
