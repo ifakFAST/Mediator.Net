@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator;
@@ -119,14 +120,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
             }
 
             private static Regex rgxSinus = new Regex(@"\s*Sin\s*\(\s*period\s*=\s*(\d+\s*(s|min|m|h|d))\s*\,\s*amplitude\s*=\s*(\d+\.?\d*)\s*\,\s*offset\s*=\s*(-?\d+\.?\d*)\)\s*", RegexOptions.IgnoreCase);
+            private static Regex rgxSinusNoise = new Regex(@"\s*SinNoise\s*\(\s*period\s*=\s*(\d+\s*(s|min|m|h|d))\s*\,\s*amplitude\s*=\s*(\d+\.?\d*)\s*\,\s*offset\s*=\s*(-?\d+\.?\d*)\,\s*noise\s*=\s*(-?\d+\.?\d*)\)\s*", RegexOptions.IgnoreCase);
             private static long BaseDate = Timestamp.FromDateTime(new DateTime(2015, 1, 1, 0, 0, 0, DateTimeKind.Utc)).JavaTicks;
+            private Random random = new Random();
 
             public override VTQ Get() {
-                Match match = rgxSinus.Match(func);
-                if (match.Success) {
-                    Duration period = Duration.Parse(match.Groups[1].Value);
-                    double amplitude = double.Parse(match.Groups[3].Value);
-                    double offset = double.Parse(match.Groups[4].Value);
+                Match matchSinus = rgxSinus.Match(func);
+                Match matchSinusNoise = rgxSinusNoise.Match(func);
+                if (matchSinus.Success) {
+                    Duration period = Duration.Parse(matchSinus.Groups[1].Value);
+                    double amplitude = double.Parse(matchSinus.Groups[3].Value, CultureInfo.InvariantCulture);
+                    double offset = double.Parse(matchSinus.Groups[4].Value, CultureInfo.InvariantCulture);
                     double periodMS = period.TotalMilliseconds;
                     long now = Timestamp.Now.JavaTicks;
                     double x = (now - BaseDate) % periodMS;
@@ -134,9 +138,36 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
                     double v = amplitude * Math.Sin(radian) + offset;
                     return new VTQ(Timestamp.Now.TruncateMilliseconds(), Quality.Good, DataValue.FromFloat((float)v));
                 }
+                else if (matchSinusNoise.Success) {
+                    Duration period = Duration.Parse(matchSinusNoise.Groups[1].Value);
+                    double amplitude = double.Parse(matchSinusNoise.Groups[3].Value, CultureInfo.InvariantCulture);
+                    double offset = double.Parse(matchSinusNoise.Groups[4].Value, CultureInfo.InvariantCulture);
+                    double noiseStd = double.Parse(matchSinusNoise.Groups[5].Value, CultureInfo.InvariantCulture);
+                    double periodMS = period.TotalMilliseconds;
+                    long now = Timestamp.Now.JavaTicks;
+                    double x = (now - BaseDate) % periodMS;
+                    double radian = (x / periodMS) * 2.0 * Math.PI;
+                    double signal = amplitude * Math.Sin(radian) + offset;
+                    double noise = NextGaussian(random, 0.0, noiseStd);
+                    double v = signal + noise;
+                    return new VTQ(Timestamp.Now.TruncateMilliseconds(), Quality.Good, DataValue.FromFloat((float)v));
+                }
                 else {
                     return new VTQ(Timestamp.Now.TruncateMilliseconds(), Quality.Bad, DataValue.FromFloat(0));
                 }
+            }
+
+            public static double NextGaussian(Random r, double mu = 0, double sigma = 1) {
+
+                var u1 = 1.0 - r.NextDouble();
+                var u2 = 1.0 - r.NextDouble();
+
+                var rand_std_normal = Math.Sqrt(-2.0 * Math.Log(u1)) *
+                                    Math.Sin(2.0 * Math.PI * u2);
+
+                var rand_normal = mu + sigma * rand_std_normal;
+
+                return rand_normal;
             }
 
             public override void Put(VTQ v) {
