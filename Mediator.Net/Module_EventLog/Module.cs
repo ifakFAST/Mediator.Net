@@ -7,6 +7,9 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using MimeKit;
+using MailKit.Security;
+using System.Text;
 
 namespace Ifak.Fast.Mediator.EventLog
 {
@@ -32,7 +35,9 @@ namespace Ifak.Fast.Mediator.EventLog
         private VariableRef GetVar() => VariableRef.Make(moduleID, "Root", "LastEvent");
 
         public async override Task InitAbort() {
-            await connection.Close();
+            if (connection != null) {
+                await connection.Close();
+            }
         }
 
         public override async Task Run(Func<bool> shutdown) {
@@ -139,7 +144,74 @@ namespace Ifak.Fast.Mediator.EventLog
                 DataValue data = DataValue.FromObject(aggEvent);
                 VTQ vtq = new VTQ(aggEvent.TimeFirst, Quality.Good, data);
                 await connection.HistorianModify(GetVar(), ModifyMode.Insert, vtq);
+
+                if (alarmOrEvent.Severity == Severity.Warning || alarmOrEvent.Severity == Severity.Alarm) {
+                    NotifyAlarm(alarmOrEvent);
+                }
             }
+        }
+
+        private void NotifyAlarm(AlarmOrEvent alarm) {
+            foreach(var no in model.MailNotificationSettings.Notifications) {
+                if (no.Enabled && SourceMatch(no.Sources, alarm)) {
+                    Task ignored = SendMail(alarm, no, model.MailNotificationSettings.SmtpSettings);
+                }
+            }
+        }
+
+        private async Task SendMail(AlarmOrEvent alarm, MailNotification no, SmtpSettings settings) {
+
+            try {
+
+                string source = alarm.IsSystem ? "System" : alarm.ModuleName;
+
+                var msg = new StringBuilder();
+                msg.AppendLine($"Severity: {alarm.Severity}");
+                msg.AppendLine($"Message:  {alarm.Message}");
+                msg.AppendLine($"Source:   {source}");
+                msg.AppendLine($"Time UTC: {alarm.Time}");
+                msg.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
+                if (!string.IsNullOrEmpty(alarm.Details)) {
+                    msg.AppendLine($"Details:  {alarm.Details}");
+                }
+
+                string subject = no.Subject
+                    .Replace("{severity}", alarm.Severity.ToString())
+                    .Replace("{message}", alarm.Message)
+                    .Replace("{source}", source);
+
+                var messageToSend = new MimeMessage(
+                    from: new InternetAddress[] { InternetAddress.Parse(settings.From) },
+                    to: InternetAddressList.Parse(no.To),
+                    subject: subject,
+                    body: new TextPart(MimeKit.Text.TextFormat.Plain) {
+                        Text = msg.ToString()
+                    }
+                );
+
+                using (var smtp = new MailKit.Net.Smtp.SmtpClient()) {
+                    smtp.MessageSent += (sender, args) => { /* args.Response */ };
+                    smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                    await smtp.ConnectAsync(settings.Server, settings.Port, (SecureSocketOptions)settings.SslOptions);
+                    await smtp.AuthenticateAsync(settings.AuthUser, settings.AuthPass);
+                    await smtp.SendAsync(messageToSend);
+                    await smtp.DisconnectAsync(quit: true);
+                    Console.Out.WriteLine($"Sent notification mail (to: {no.To}, subject: {subject})");
+                }
+            }
+            catch (Exception exp) {
+                Console.Error.WriteLine("Failed to send notification mail: " + exp.Message);
+            }
+        }
+
+        private bool SourceMatch(string sources, AlarmOrEvent alarm) {
+            if (string.IsNullOrEmpty(sources)) { return false; }
+            if (sources == "*") { return true; }
+            string[] ss = sources.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.ToLowerInvariant().Trim()).ToArray();
+            if (alarm.IsSystem && ss.Contains("system")) { return true; }
+            if (ss.Contains(alarm.ModuleID.ToLowerInvariant())) { return true; }
+            if (ss.Contains(alarm.ModuleName.ToLowerInvariant())) { return true; }
+            return false;
         }
 
         public Task OnConnectionClosed() { return Task.FromResult(true); }

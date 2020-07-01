@@ -17,6 +17,8 @@ namespace Ifak.Fast.Mediator.EventLog
         [XmlIgnore]
         public string Name { get; set; } = "EventLog_Model";
 
+        public MailNotificationSettings MailNotificationSettings { get; set; } = new MailNotificationSettings();
+
         protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
 
             var variable = new Variable(
@@ -32,5 +34,56 @@ namespace Ifak.Fast.Mediator.EventLog
                variable
             };
         }
+    }
+
+    public class MailNotificationSettings
+    {
+        public SmtpSettings SmtpSettings { get; set; } = new SmtpSettings();
+        public List<MailNotification> Notifications { get; set; } = new List<MailNotification>();
+    }
+
+    public class SmtpSettings
+    {
+        [XmlAttribute("server")]
+        public string Server { get; set; } = "";
+
+        [XmlAttribute("port")]
+        public int Port { get; set; } = 25;
+
+        [XmlAttribute("user")]
+        public string AuthUser { get; set; } = "";
+
+        [XmlAttribute("pass")]
+        public string AuthPass { get; set; } = "";
+
+        [XmlAttribute("ssl")]
+        public SslOptions SslOptions { get; set; } = SslOptions.Auto;
+
+        [XmlAttribute("from")]
+        public string From { get; set; } = "";
+    }
+
+    public class MailNotification
+    {
+        [XmlAttribute("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        [XmlAttribute("sources")]
+        public string Sources { get; set; } = "*";
+
+        [XmlAttribute("to")]
+        public string To { get; set; } = "";
+
+        [XmlAttribute("subject")]
+        public string Subject { get; set; } = "";
+    }
+
+    public enum SslOptions
+    {
+        None = 0,
+        Auto = 1,
+        SslOnConnect = 2,
+        StartTls = 3,
+        StartTlsWhenAvailable = 4
     }
 }
