@@ -423,8 +423,8 @@ namespace Ifak.Fast.Mediator.Calc
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 StepResult result = await adapter.Instance.Step(t, inputValues);
-                OutputValue[] outValues = result.Output;
-                StateValue[] stateValues = result.State;
+                OutputValue[] outValues = result.Output ?? new OutputValue[0];
+                StateValue[] stateValues = result.State ?? new StateValue[0];
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
 
