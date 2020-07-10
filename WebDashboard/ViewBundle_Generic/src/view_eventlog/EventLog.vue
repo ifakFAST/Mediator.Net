@@ -25,7 +25,7 @@
         </template>
     </v-data-table>
 
-    <v-dialog v-model="details" max-width="800px" @keydown="editKeydown">
+    <v-dialog v-model="details" v-if="detailItem" max-width="800px" @keydown="editKeydown">
         <v-card>
           <v-card-title>
             <span class="headline">{{ detailItem.Severity }} Details</span>
@@ -98,17 +98,17 @@ export default class EventLog extends Vue {
     { text: 'Details',      align: 'center', sortable: false, filterable: false                     },
   ]
   details = false
-  detailItem: any = {}
+  detailItem: Alarm | null = null
 
   classObject(item: Alarm) {
     return {
       bold:       item.State === 'New' && (item.Severity === 'Warning' || item.Severity === 'Alarm'),
-      ErrWarning: item.Severity === 'Warning' && item.State !== 'Reset',
-      ErrAlarm:   item.Severity === 'Alarm' && item.State !== 'Reset',
+      ErrWarning: item.Severity === 'Warning' && item.State !== 'Reset' && item.RTN === false,
+      ErrAlarm:   item.Severity === 'Alarm' && item.State !== 'Reset' && item.RTN === false,
     }
   }
 
-  showDetails(item) {
+  showDetails(item: Alarm) {
     this.detailItem = item
     this.details = true
   }
@@ -162,7 +162,7 @@ export default class EventLog extends Vue {
   }
 
   get initiator() {
-    const ini = this.detailItem.Inititator
+    const ini = this.detailItem.Initiator
     if (ini === undefined || ini === null) { return '' }
     return ini.Type + ' ' + ini.Name
   }
@@ -177,22 +177,37 @@ export default class EventLog extends Vue {
     const s = this.detailItem.State
     const ack = this.detailItem.InfoACK
     const reset = this.detailItem.InfoReset
+    const rtn = this.detailItem.RTN
     if (s === undefined) { return '' }
-    if (s === 'Ack' && ack !== undefined && ack !== null) {
-        let res = 'Acknowledged by ' + ack.UserName + ' at ' + this.detailItem.TimeAckLocal
-        if (ack.Comment.length > 0) {
-          res = res + '\r\nComment: ' + ack.Comment
-        }
-        return res
+
+    let res = ''
+
+    if (rtn) {
+      res = 'Returned to normal at ' + this.detailItem.TimeRTNLocal
     }
-    if (s === 'Reset' && reset !== undefined && reset !== null) {
-        let res = 'Reset by ' + reset.UserName + ' at ' + this.detailItem.TimeResetLocal
-        if (reset.Comment.length > 0) {
-          res = res + '\r\nComment: ' + reset.Comment
-        }
-        return res
+
+    if (ack) {
+      if (res.length > 0) {
+        res = res + '\r\n'
+      }
+      res = res + 'Acknowledged by ' + ack.UserName + ' at ' + this.detailItem.TimeAckLocal
+      if (ack.Comment.length > 0) {
+        res = res + '\r\nACK Comment: ' + ack.Comment
+      }
     }
-    return s
+
+    if (reset) {
+      if (res.length > 0) {
+        res = res + '\r\n'
+      }
+      res = res + 'Reset by ' + reset.UserName + ' at ' + this.detailItem.TimeResetLocal
+      if (reset.Comment.length > 0) {
+        res = res + '\r\nReset Comment: ' + reset.Comment
+      }
+    }
+
+    if (res.length === 0) { return s }
+    return res
   }
 
   get hasObjects() {

@@ -222,7 +222,7 @@ namespace Ifak.Fast.Mediator.Calc
         private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken> entry) {
             JToken value = entry.Value;
             DataValue dataValue = DataValue.FromObject(value);
-            Console.WriteLine($"{id}.{entry.Key}: {dataValue.ToString()}");
+            // Console.WriteLine($"{id}.{entry.Key}: {dataValue.ToString()}");
             return MemberValue.Make(moduleID, id, entry.Key, dataValue);
         }
 

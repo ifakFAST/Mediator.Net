@@ -112,20 +112,23 @@ namespace Ifak.Fast.Mediator.EventLog
                 return !StdJson.ObjectsDeepEqual(a, oldVersion);
             }).ToArray();
 
+            long[] removedAlarms = lastAlarms.Where(la => alarms.All(a => a.T != la.T)).Select(x => x.T).ToArray();
+
             var newOrChangedEvents = events.Where(a => {
                 var oldVersion = lastEvents.FirstOrDefault(x => x.T == a.T);
                 if (oldVersion == null) return true;
                 return !StdJson.ObjectsDeepEqual(a, oldVersion);
             }).ToArray();
 
-            if (newOrChangedAlarms.Length > 0 || newOrChangedEvents.Length > 0) {
+            if (newOrChangedAlarms.Length > 0 || newOrChangedEvents.Length > 0 || removedAlarms.Length > 0) {
 
                 lastAlarms = alarms;
                 lastEvents = events;
 
                 await Context.SendEventToUI("Event", new {
                     Alarms = newOrChangedAlarms,
-                    Events = newOrChangedEvents
+                    Events = newOrChangedEvents,
+                    RemovedAlarms = removedAlarms,
                 });
             }
         }
@@ -137,6 +140,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 TimeLastLocal = MakeLocal(ev.TimeLast),
                 TimeAckLocal = ev.InfoACK.HasValue ? MakeLocal(ev.InfoACK.Value.Time) : "",
                 TimeResetLocal = ev.InfoReset.HasValue ? MakeLocal(ev.InfoReset.Value.Time) : "",
+                TimeRTNLocal = ev.InfoRTN.HasValue ? MakeLocal(ev.InfoRTN.Value.Time) : "",
                 Source = ev.System ? "System" : ev.ModuleName,
                 TimeFirst = ev.TimeFirst,
                 TimeLast = ev.TimeLast,
@@ -151,6 +155,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 Type = ev.Type,
                 Objects = ev.Objects,
                 Initiator = ev.Initiator,
+                RTN = ev.ReturnedToNormal,
                 Msg = MakeShortString(ev.Message),
                 Message = ev.Message,
                 Details = ev.Details,
@@ -175,6 +180,7 @@ namespace Ifak.Fast.Mediator.EventLog
         public string TimeLastLocal { get; set; }
         public string TimeAckLocal { get; set; } = "";
         public string TimeResetLocal { get; set; } = "";
+        public string TimeRTNLocal { get; set; } = "";
 
         public string Source { get; set; } = "";
 
@@ -192,7 +198,8 @@ namespace Ifak.Fast.Mediator.EventLog
         public string Type { get; set; } = ""; // module specific category e.g. "SensorFailure", "ModuleRestart", "CommunicationLoss"
         public ObjectRef[] Objects { get; set; } = new ObjectRef[0]; // optional, specifies which objects are affected
         public Origin? Initiator { get; set; } = null;
-
+        public bool RTN { get; set; } = false; // ReturnToNormal
+        public InfoRTN? InfoRTN { get; set; } = null;
         public string Msg { get; set; } = "";
         public string Message { get; set; } = ""; // one line of text
         public string Details { get; set; } = ""; // optional, potentially multiple lines of text

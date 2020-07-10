@@ -109,6 +109,11 @@ namespace Ifak.Fast.Mediator.IO
         public string Type { get; set; } = "";
 
         /// <summary>
+        /// If true, indicates that a previous alarm of this type returned to normal (is not active anymore)
+        /// </summary>
+        public bool ReturnToNormal { get; set; } = false;
+
+        /// <summary>
         /// Should contain all relevant information in one line of text
         /// </summary>
         public string Message { get; set; } = "";

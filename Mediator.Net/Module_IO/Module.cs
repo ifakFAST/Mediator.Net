@@ -1066,6 +1066,7 @@ namespace Ifak.Fast.Mediator.IO
                 Time = eventInfo.Time,
                 Severity = eventInfo.Severity,
                 Type = eventInfo.Type,
+                ReturnToNormal = eventInfo.ReturnToNormal,
                 Message = adapter.Name + ": " + eventInfo.Message,
                 Details = eventInfo.Details,
                 AffectedObjects = eventInfo.AffectedDataItems.Select(di => ObjectRef.Make(moduleID, di)).ToArray(),

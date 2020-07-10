@@ -111,6 +111,15 @@ export default class ViewAlarms extends Vue {
 
         fUpdate(context.alarms, eventPayload.Alarms)
         fUpdate(context.events, eventPayload.Events)
+
+        for (const removedAlarm of eventPayload.RemovedAlarms) {
+          const idx = context.alarms.findIndex((it) => it.T === removedAlarm)
+          if (idx >= 0) {
+            console.info('Removed alarm >>' + context.alarms[idx].Message + '<< at index ' + idx)
+            context.alarms.splice(idx, 1)
+          }
+        }
+
       }
     })
   }

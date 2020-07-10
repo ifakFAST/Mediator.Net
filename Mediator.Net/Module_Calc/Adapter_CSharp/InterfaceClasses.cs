@@ -203,8 +203,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (Value != 0) {
                 Value = 0;
                 string msg = string.IsNullOrEmpty(message) ? "Cleared" : message;
-                var info = AdapterAlarmOrEvent.Info(ID, MakeMsg(msg));
-                EventSinkRef.Notify_AlarmOrEvent(info);
+                var rtn = AdapterAlarmOrEvent.ReturnToNormalEvent(ID, MakeMsg(msg));
+                EventSinkRef.Notify_AlarmOrEvent(rtn);
             }
         }
 
@@ -237,13 +237,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         Alarm = 2
     }
 
-    public enum Priority
-    {
-        Low = 1,      // = Warning
-        Medium = 2,   // = Alarm
-        High = 3,
-        Critical = 4,
-    }
+    //public enum Priority // http://www.igss.com/Files/Doc-Help/Webhelp/V14/Alm/Content/Alarm_Severity.htm
+    //{
+    //    Low = 1,      // = Warning
+    //    Medium = 2,   // = Alarm
+    //    High = 3,
+    //    Critical = 4,
+    //}
 
     public class EventLog : EventProvider
     {

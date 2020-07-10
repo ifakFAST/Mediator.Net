@@ -69,7 +69,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 VTTQ[] data = await connection.HistorianReadRaw(varRef, Timestamp.Empty, t, 1000, BoundingMethod.TakeLastN);
 
                 var events = data.Select(VTTQ2AggregatedEvent)
-                    .Where(ev => ev.IsWarningOrAlarm() && ev.State != EventState.Reset)
+                    .Where(ev => ev.IsWarningOrAlarm() && ev.State != EventState.Reset && !(ev.State == EventState.Ack && ev.ReturnedToNormal))
                     .ToList();
 
                 if (events.Count == 0) break;
@@ -122,13 +122,17 @@ namespace Ifak.Fast.Mediator.EventLog
 
             if (aggEvent != null) {
 
-                aggEvent.AggreagteWith(alarmOrEvent);
+                aggEvent.AggregateWith(alarmOrEvent);
+
+                if (aggEvent.ReturnedToNormal && aggEvent.State == EventState.Ack) {
+                    aggregatedWarningsAndAlarms.Remove(aggEvent);
+                }
 
                 DataValue data = DataValue.FromObject(aggEvent);
                 VTQ vtq = new VTQ(aggEvent.TimeFirst, Quality.Good, data);
                 await connection.HistorianModify(GetVar(), ModifyMode.Update, vtq);
             }
-            else {
+            else if (!alarmOrEvent.ReturnToNormal) {
 
                 aggEvent = AggregatedEvent.FromEvent(alarmOrEvent);
                 if (aggEvent.TimeFirst <= latestUsedTimestamp) {
@@ -268,6 +272,10 @@ namespace Ifak.Fast.Mediator.EventLog
 
                 DataValue data = DataValue.FromObject(evt);
                 vtqs.Add(new VTQ(evt.TimeFirst, Quality.Good, data));
+
+                if (evt.ReturnedToNormal) {
+                    aggregatedWarningsAndAlarms.Remove(evt);
+                }
             }
 
             connection.HistorianModify(GetVar(), ModifyMode.Update, vtqs.ToArray());
@@ -305,6 +313,8 @@ namespace Ifak.Fast.Mediator.EventLog
         public Timestamp TimeLast { get; set; }
         public int Count { get; set; } = 1;
         public EventState State { get; set; } = EventState.New;
+        public bool ReturnedToNormal { get; set; } = false;
+        public InfoRTN? InfoRTN { get; set; } = null;
         public UserAction? InfoACK { get; set; } = null;
         public UserAction? InfoReset { get; set; } = null;
 
@@ -319,6 +329,18 @@ namespace Ifak.Fast.Mediator.EventLog
         public string Message { get; set; } = ""; // one line of text
         public string Details { get; set; } = ""; // optional, potentially multiple lines of text
 
+        public bool ShouldSerializeCount() => Count != 1;
+        public bool ShouldSerializeModuleID() => !string.IsNullOrEmpty(ModuleID);
+        public bool ShouldSerializeModuleName() => !string.IsNullOrEmpty(ModuleName);
+        public bool ShouldSerializeSystem() => System;
+        public bool ShouldSerializeReturnedToNormal() => ReturnedToNormal;
+        public bool ShouldSerializeInfoRTN() => InfoRTN.HasValue;
+        public bool ShouldSerializeInfoACK() => InfoACK.HasValue;
+        public bool ShouldSerializeInfoReset() => InfoReset.HasValue;
+        public bool ShouldSerializeObjects() => Objects != null && Objects.Length > 0;
+        public bool ShouldSerializeInitiator() => Initiator.HasValue;
+        public bool ShouldSerializeDetails() => !string.IsNullOrEmpty(Details);
+
         public bool IsWarningOrAlarm() => Severity == Severity.Warning || Severity == Severity.Alarm;
 
         public static AggregatedEvent FromEvent(AlarmOrEvent e) => new AggregatedEvent() {
@@ -326,6 +348,7 @@ namespace Ifak.Fast.Mediator.EventLog
             TimeLast = e.Time,
             Count = 1,
             State = EventState.New,
+            ReturnedToNormal = e.ReturnToNormal,
             Severity = e.Severity,
             ModuleID = e.ModuleID,
             ModuleName = e.ModuleName,
@@ -339,17 +362,29 @@ namespace Ifak.Fast.Mediator.EventLog
 
         public bool CanAggregateWith(AlarmOrEvent e) =>
             Type == e.Type &&
-                Severity == e.Severity &&
+            /*  Severity == e.Severity && */
                 ModuleID == e.ModuleID &&
                 System == e.IsSystem &&
                 Arrays.Equals(Objects, e.AffectedObjects);
 
-        public void AggreagteWith(AlarmOrEvent e) {
-            TimeLast = e.Time;
-            Count += 1;
-            Initiator = e.Initiator;
-            Message = e.Message;
-            Details = e.Details;
+        public void AggregateWith(AlarmOrEvent e) {
+            if (e.ReturnToNormal) {
+                ReturnedToNormal = true;
+                InfoRTN = new InfoRTN() {
+                    Time = e.Time,
+                    Message = e.Message,
+                };
+            }
+            else {
+                ReturnedToNormal = false;
+                // InfoRTN = null;
+                Severity = e.Severity;
+                TimeLast = e.Time;
+                Count += 1;
+                Initiator = e.Initiator;
+                Message = e.Message;
+                Details = e.Details;
+            }
         }
     }
 
@@ -359,6 +394,12 @@ namespace Ifak.Fast.Mediator.EventLog
         public string UserID { get; set; }
         public string UserName { get; set; }
         public string Comment { get; set; }
+    }
+
+    public struct InfoRTN
+    {
+        public Timestamp Time { get; set; }
+        public string Message { get; set; }
     }
 
     public enum EventState

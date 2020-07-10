@@ -532,6 +532,7 @@ namespace Ifak.Fast.Mediator
         public string ModuleName { get; set; } = "";
         public Timestamp Time { get; set; }
         public bool IsSystem { get; set; } = false; // if true, then this notification originates from the Meditor core instead of a module
+        public bool ReturnToNormal { get; set; } = false; // if true, indicates that a previous alarm of this type returned to normal (is not active anymore)
         public Severity Severity { get; set; } = Severity.Info;
         public string Type { get; set; } = ""; // module specific category e.g. "SensorFailure", "ModuleRestart", "CommunicationLoss"
         public string Message { get; set; } = ""; // one line of text
@@ -539,6 +540,8 @@ namespace Ifak.Fast.Mediator
         public ObjectRef[] AffectedObjects { get; set; } = new ObjectRef[0]; // optional, specifies which objects are affected
         public Origin? Initiator { get; set; } = null; // the user or module that triggered the event
         public override string ToString() => Severity + ": " + Message;
+
+        public bool IsWarningOrAlarm() => Severity == Severity.Warning || Severity == Severity.Alarm;
     }
 
     public struct HistoryChange

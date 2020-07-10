@@ -111,6 +111,11 @@ namespace Ifak.Fast.Mediator.Calc
         public string Type { get; set; } = "";
 
         /// <summary>
+        /// If true, indicates that a previous alarm of this type returned to normal (is not active anymore)
+        /// </summary>
+        public bool ReturnToNormal { get; set; } = false;
+
+        /// <summary>
         /// Should contain all relevant information in one line of text
         /// </summary>
         public string Message { get; set; } = "";
@@ -123,34 +128,45 @@ namespace Ifak.Fast.Mediator.Calc
         /// <summary>
         /// Optional specification of the affected data item(s)
         /// </summary>
-        public string[] AffectedDataItems { get; set; } = new string[0]; // optional, specifies which data items are affected
+        public string[] AffectedObjects { get; set; } = new string[0]; // optional, specifies which objects are affected
 
         public override string ToString() => Message;
 
-        public static AdapterAlarmOrEvent Info(string type, string message, params string[] affectedDataItems) {
+
+        public static AdapterAlarmOrEvent ReturnToNormalEvent(string type, string message, params string[] affectedObjects) {
+            return new AdapterAlarmOrEvent() {
+                Severity = Severity.Info,
+                ReturnToNormal = true,
+                Type = type,
+                Message = message,
+                AffectedObjects = affectedObjects
+            };
+        }
+
+        public static AdapterAlarmOrEvent Info(string type, string message, params string[] affectedObjects) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Info,
                 Type = type,
                 Message = message,
-                AffectedDataItems = affectedDataItems
+                AffectedObjects = affectedObjects
             };
         }
 
-        public static AdapterAlarmOrEvent Warning(string type, string message, params string[] affectedDataItems) {
+        public static AdapterAlarmOrEvent Warning(string type, string message, params string[] affectedObjects) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Warning,
                 Type = type,
                 Message = message,
-                AffectedDataItems = affectedDataItems
+                AffectedObjects = affectedObjects
             };
         }
 
-        public static AdapterAlarmOrEvent Alarm(string type, string message, params string[] affectedDataItems) {
+        public static AdapterAlarmOrEvent Alarm(string type, string message, params string[] affectedObjects) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Alarm,
                 Type = type,
                 Message = message,
-                AffectedDataItems = affectedDataItems
+                AffectedObjects = affectedObjects
             };
         }
     }
