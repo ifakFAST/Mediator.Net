@@ -13,6 +13,7 @@ namespace Ifak.Fast.Mediator.Calc
     public class CalcInstance
     {
         private readonly string moduleID;
+        internal readonly Trigger_M_outof_N triggerDurationWarning = new Trigger_M_outof_N(m: 4, n: 60);
 
         public CalcInstance(Config.Calculation a, string moduleID) {
             SetConfig(a);
@@ -195,6 +196,11 @@ namespace Ifak.Fast.Mediator.Calc
             string calcID = this.CalcConfig.ID;
             string fullStateID = calcID + Config.State.ID_Separator + stateID;
             return VariableRef.Make(moduleID, fullStateID, "Value");
+        }
+
+        public VariableRef GetLastRunDurationVarRef() {
+            string calcID = this.CalcConfig.ID;
+            return VariableRef.Make(moduleID, calcID, "Duration");
         }
     }
 

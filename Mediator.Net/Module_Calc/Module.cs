@@ -384,8 +384,13 @@ namespace Ifak.Fast.Mediator.Calc
             Config.Input[] inputs = new Config.Input[0];
             VariableRef[] inputVars = new VariableRef[0];
 
-            // var sw = new System.Diagnostics.Stopwatch();
+            var listVarValues = new List<VariableValue>(32);
+            //var listVarValueTimer = new List<VariableValue>(1);
+
+            //var sw = System.Diagnostics.Stopwatch.StartNew();
             while (adapter.State == State.Running) {
+
+                //sw.Restart();
 
                 int N_In = adapter.CalcConfig.Inputs.Count(inp => inp.Variable.HasValue);
 
@@ -406,7 +411,6 @@ namespace Ifak.Fast.Mediator.Calc
                 // Config.Input[] inputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToArray();
                 // VariableRef[] inputVars = inputs.Select(inp => inp.Variable.Value).ToArray();
 
-                // sw.Restart();
                 VTQ[] values = await ReadInputVars(adapter, inputs, inputVars, t);
 
                 // sw.Stop();
@@ -423,12 +427,13 @@ namespace Ifak.Fast.Mediator.Calc
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 StepResult result = await adapter.Instance.Step(t, inputValues);
+
                 OutputValue[] outValues = result.Output ?? new OutputValue[0];
                 StateValue[] stateValues = result.State ?? new StateValue[0];
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
 
-                var listVarValues = new List<VariableValue>(outValues.Length + stateValues.Length);
+                listVarValues.Clear();
                 foreach (OutputValue v in outValues) {
                     var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value.WithTime(t));
                     listVarValues.Add(vv);
@@ -453,6 +458,12 @@ namespace Ifak.Fast.Mediator.Calc
 
                 adapter.SetLastOutputValues(outValues);
                 adapter.SetLastStateValues(stateValues);
+
+                //sw.Stop();
+                //var vvv1 = VariableValue.Make(adapter.GetLastRunDurationVarRef(), VTQ.Make(sw.ElapsedMilliseconds, t, Quality.Good));
+                //listVarValueTimer.Clear();
+                //listVarValueTimer.Add(vvv1);
+                //notifier.Notify_VariableValuesChanged(listVarValueTimer);
 
                 t = GetNextNormalizedTimestamp(t, cycle, adapter);
 
@@ -526,8 +537,13 @@ namespace Ifak.Fast.Mediator.Calc
                 tNext += c;
             }
 
-            if (tNext > tCurrent + cycle) {
+            Trigger trigger = adapter.triggerDurationWarning.GetTrigger(isOK: tNext == tCurrent + cycle);
+
+            if (trigger == Trigger.On) {
                 Log_Warn("Cycle", $"Cycle length of {cycle} not long enough for calculation {adapter.Name}!", null, new ObjectRef[] { adapter.ID });
+            }
+            else if (trigger == Trigger.Off) {
+                Log_ReturnToNormal("Cycle", $"Cycle length of {cycle} is long enough for calculation {adapter.Name}.", new ObjectRef[] { adapter.ID });
             }
 
             return tNext;
@@ -544,6 +560,10 @@ namespace Ifak.Fast.Mediator.Calc
             Log_Event(Severity.Info, type, msg);
         }
 
+        private void Log_ReturnToNormal(string type, string msg, ObjectRef[] affectedObjects = null) {
+            Log_Event(Severity.Info, type, msg, affectedObjects: affectedObjects, returnToNormal: true);
+        }
+
         private void Log_Error(string type, string msg, Origin? initiator = null) {
             Log_Event(Severity.Alarm, type, msg, initiator);
         }
@@ -556,12 +576,13 @@ namespace Ifak.Fast.Mediator.Calc
             Log_Event(Severity.Warning, type, msg, initiator, "", affectedObjects);
         }
 
-        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "", ObjectRef[] affectedObjects = null) {
+        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "", ObjectRef[] affectedObjects = null, bool returnToNormal = false) {
 
             var ae = new AlarmOrEventInfo() {
                 Time = Timestamp.Now,
                 Severity = severity,
                 Type = type,
+                ReturnToNormal = returnToNormal,
                 Message = msg,
                 Details = details ?? "",
                 AffectedObjects = affectedObjects ?? new ObjectRef[0],
@@ -621,4 +642,5 @@ namespace Ifak.Fast.Mediator.Calc
             m.Notify_NeedRestart(reason, a);
         }
     }
+
 }

@@ -197,6 +197,36 @@ namespace Ifak.Fast.Mediator.Calc.Config
             };
         }
 
+        //protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+
+        //    History history = new History(HistoryMode.None);
+
+        //    if (History.HasValue) {
+        //        history = History.Value;
+        //    }
+        //    else {
+        //        foreach (IModelObject obj in parents) {
+        //            if (obj is Folder && (obj as Folder).History.HasValue) {
+        //                history = (obj as Folder).History.Value;
+        //                break;
+        //            }
+        //        }
+        //    }
+
+        //    var varLastRunDuration = new Variable() {
+        //        Name = "Duration",
+        //        Type = DataType.Float64,
+        //        Dimension = 1,
+        //        DefaultValue = DataValue.FromDouble(0),
+        //        Remember = true,
+        //        History = history
+        //    };
+
+        //    return new Variable[] {
+        //        varLastRunDuration,
+        //    };
+        //}
+
         public bool ShouldSerializeStates() => States.Count > 0;
 
         public bool ShouldSerializeHistory() => History.HasValue;
