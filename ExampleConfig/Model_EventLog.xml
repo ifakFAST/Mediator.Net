@@ -1,3 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <EventLog_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_EventLog">
+    <MailNotificationSettings>
+        <SmtpSettings server="" port="25" user="" pass="" ssl="Auto" from="" />
+        <Notifications>
+            <MailNotification enabled="false" sources="*" to="" subject="[FAST] {severity}: {message}" />
+        </Notifications>
+    </MailNotificationSettings>
 </EventLog_Model>
