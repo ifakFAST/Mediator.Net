@@ -98,7 +98,8 @@
             "Spreadsheet": {
               "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
             }
-          }
+          },
+          "ExcludeModules": [ "EventLog", "Dashboard" ]
         }
       </Config>
     </View>

@@ -18,7 +18,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class View_HistoryPlots : ViewBase
     {
         private ViewConfig configuration = new ViewConfig();
-
+        private ModuleInfo[] modules = new ModuleInfo[0];
         private List<TabState> tabStates = new List<TabState>();
 
         class TabState
@@ -29,7 +29,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public TimeRange LastTimeRange = new TimeRange();
         }
 
-        public override Task OnActivate() {
+        public override async Task OnActivate() {
 
             if (Config.NonEmpty) {
                 configuration = Config.Object<ViewConfig>();
@@ -37,7 +37,14 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             tabStates = GetInitialTabStates(configuration);
 
-            return Task.FromResult(true);
+            string[] exclude = configuration.ExcludeModules;
+            var mods = await Connection.GetModules();
+            modules = mods
+                .Where(m => !exclude.Contains(m.ID))
+                .Select(m => new ModuleInfo() {
+                    ID = m.ID,
+                    Name = m.Name
+                }).ToArray();
         }
 
         private static List<TabState> GetInitialTabStates(ViewConfig configuration) {
@@ -96,11 +103,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                             };
                         }
 
-                        var mods = await Connection.GetModules();
-                        res.Modules = mods.Select(m => new ModuleInfo() {
-                            ID = m.ID,
-                            Name = m.Name
-                        }).ToArray();
+                        res.Modules = modules;
 
                         await EnableEvents(configuration);
 
@@ -742,6 +745,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         {
             public TabConfig[] Tabs { get; set; } = new TabConfig[0];
             public DataExport DataExport { get; set; } = new DataExport();
+            public string[] ExcludeModules { get; set; } = new string[0];
         }
 
         public class DataExport
