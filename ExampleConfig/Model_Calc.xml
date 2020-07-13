@@ -53,6 +53,71 @@ class Script {
           <State id="pt_2.yLast" name="pt_2.yLast" />
         </States>
       </Calculation>
+      <Calculation id="Calc_Alarms" name="Script_Alarms" type="CSharp" enabled="false">
+        <Cycle>5 s</Cycle>
+        <Definition>using Std;
+
+class Script {
+    
+    Input  X = new Input(name: "X", unit: "mg/L", defaultValue: 0);
+    
+    Alarm alarm1 = new Alarm(name: "My Alarm");
+    
+    public void Step(Timestamp t, Duration dt) {
+        
+        if (X.Value &gt; 10) {
+            alarm1.Set(Level.Warn, "X is above limit: " + X.Value);
+        }
+        else {
+            alarm1.Clear();
+        }
+    }
+}
+</Definition>
+        <Inputs>
+          <Input id="X" name="X" unit="mg/L">
+            <Constant>5</Constant>
+          </Input>
+        </Inputs>
+        <Outputs />
+        <States>
+          <State id="alarm1" name="My Alarm" type="Byte" />
+        </States>
+      </Calculation>
+      <Calculation id="Calc_EventLog" name="Script_EventLog" type="CSharp" enabled="false">
+        <Cycle>5 s</Cycle>
+        <Definition>using Std;
+
+class Script {
+    
+    Input X = new Input(name: "X", unit: "mg/L", defaultValue: 0);
+    
+    EventLog log = new EventLog(messagePrefix: "");
+    
+    public void Step(Timestamp t, Duration dt) {
+
+        try {
+            
+            // do some calculations here that may throw an exception
+            
+            if (X.Value &gt; 100) {
+                throw new Exception("Invalid argument!");
+            }
+        }
+        catch (Exception exp) {
+            // log.Warn(id: "AlarmExp", message: "Exception: " + exp.Message);
+            log.Alarm(id: "AlarmExp", message: "Exception: " + exp.Message);
+        }
+    }
+}
+</Definition>
+        <Inputs>
+          <Input id="X" name="X" unit="mg/L">
+            <Constant>1</Constant>
+          </Input>
+        </Inputs>
+        <Outputs />
+      </Calculation>
     </Calculations>
   </RootFolder>
 </Calc_Model>

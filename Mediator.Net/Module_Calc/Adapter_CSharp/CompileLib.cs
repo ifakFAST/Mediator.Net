@@ -26,10 +26,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             string assemblyName = hash + ".dll";
             string assemblyFullName = Path.Combine(tempDir, assemblyName);
             if (File.Exists(assemblyFullName)) {
-                Console.WriteLine($"Using cached C# lib assembly:");
-                Console.WriteLine($"\tSource:   {fullFileName}");
-                Console.WriteLine($"\tAssembly: {assemblyFullName}");
-                Console.WriteLine($"\tCreated:  {File.GetCreationTime(assemblyFullName)}");
+                var buffer = new StringBuilder();
+                buffer.AppendLine($"Using cached C# lib assembly:");
+                buffer.AppendLine($"\tSource:   {fullFileName}");
+                buffer.AppendLine($"\tAssembly: {assemblyFullName}");
+                buffer.AppendLine($"\tCreated:  {File.GetCreationTime(assemblyFullName)}");
+                Console.Out.WriteLine(buffer.ToString());
+                Console.Out.Flush();
                 return assemblyFullName;
             }
 
