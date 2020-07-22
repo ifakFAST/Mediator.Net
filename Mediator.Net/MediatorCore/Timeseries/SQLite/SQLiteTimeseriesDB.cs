@@ -15,6 +15,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private static Logger logger = LogManager.GetLogger("SQLiteTimeseriesDB");
 
         protected DbConnection connection = null;
+        private string tableSeparator = "$";
 
         public override bool IsOpen => connection != null;
 
@@ -70,10 +71,19 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
 
             if (settings != null && settings.Length > 0) {
+
                 foreach (string setting in settings) {
-                    string sql = "PRAGMA " + setting + ";";
-                    using (var command = Factory.MakeCommand(sql, connection)) {
-                        command.ExecuteNonQuery();
+                    var (settingName, value) = SplitSetting(setting);
+                    switch (settingName.ToLowerInvariant()) {
+                        case "table-name-separator":
+                            tableSeparator = value;
+                            break;
+                        default:
+                            string sql = "PRAGMA " + setting + ";";
+                            using (var command = Factory.MakeCommand(sql, connection)) {
+                                command.ExecuteNonQuery();
+                            }
+                            break;
                     }
                 }
             }
@@ -262,10 +272,10 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         protected string MakeValidTableName(string obj, string varName, HashSet<string> existingNamesLowerCase) {
             obj = obj.Replace('\"', '\'');
             varName = varName.Replace('\"', '\'');
-            string res = obj + "$" + varName;
+            string res = obj + tableSeparator + varName;
             int i = 1;
             while (existingNamesLowerCase.Contains(res.ToLowerInvariant())) {
-                res = obj + "$" + varName + "_" + string.Format("{0:000}", i);
+                res = obj + tableSeparator + varName + "_" + string.Format("{0:000}", i);
                 i += 1;
             }
             return res;

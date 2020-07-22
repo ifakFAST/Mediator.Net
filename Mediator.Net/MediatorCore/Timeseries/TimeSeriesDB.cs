@@ -22,6 +22,14 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public abstract bool RemoveChannel(string objectID, string variable);
 
+        protected (string name, string value) SplitSetting(string setting) {
+            int i = setting.IndexOf("=");
+            if (i < 0) throw new Exception("Missing = in setting: " + setting);
+            string name = setting[0..i];
+            string value = setting[(i + 1)..];
+            return (name, value);
+        }
+
         public virtual void ClearDatabase(string name, string connectionString, string[] dbSettings) {
             if (IsOpen) {
                 RemoveAllChannels();

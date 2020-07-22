@@ -14,6 +14,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         private static Logger logger = LogManager.GetLogger("PostgresTimeseriesDB");
 
         protected DbConnection connection = null;
+        private string tableSeparator = "$";
 
         public PostgresTimeseriesDB() {
             // Npgsql.Logging.NpgsqlLogManager.Provider = new Npgsql.Logging.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel.Debug, true);
@@ -38,8 +39,18 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
                 throw new Application​Exception($"Opening Postgres database {name} failed: " + exp.Message);
             }
 
-            if (settings != null && settings.Length > 0) {
-                logger.Warn($"Settings are not used for Postgres implementation of HistoryDB {name}");
+            if (settings != null) {
+                foreach (string setting in settings) {
+                    var (settingName, value) = SplitSetting(setting);
+                    switch (settingName.ToLowerInvariant()) {
+                        case "table-name-separator":
+                            tableSeparator = value;
+                            break;
+                        default:
+                            logger.Info($"Invalid setting '{settingName}' for Postgres timeseries DB {name}");
+                            break;
+                    }
+                }
             }
 
             CheckDbChannelInfoOrCreate();
@@ -230,10 +241,10 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         protected string MakeValidTableName(string obj, string varName, HashSet<string> existingNamesLowerCase) {
             obj = obj.Replace('\"', '\'');
             varName = varName.Replace('\"', '\'');
-            string res = obj + "$" + varName;
+            string res = obj + tableSeparator + varName;
             int i = 1;
             while (existingNamesLowerCase.Contains(res.ToLowerInvariant())) {
-                res = obj + "$" + varName + "_" + string.Format("{0:000}", i);
+                res = obj + tableSeparator + varName + "_" + string.Format("{0:000}", i);
                 i += 1;
             }
             return res;
