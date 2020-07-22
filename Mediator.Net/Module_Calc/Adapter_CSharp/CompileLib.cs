@@ -81,7 +81,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             var references = new List<PortableExecutableReference>();
 
             if (trustedAssemblies != null) {
-                string[] assemblies = trustedAssemblies.Split(";", StringSplitOptions.RemoveEmptyEntries);
+                string[] assemblies = trustedAssemblies.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
                 references.AddRange(assemblies.Select(ass => MetadataReference.CreateFromFile(ass)));
             }
             else {
