@@ -21,7 +21,7 @@ namespace Ifak.Fast.Mediator.Util
 
         protected ObjectInfo[] allObjectInfos = new ObjectInfo[0];
         protected Dictionary<ObjectRef, ObjectInfo> mapObjectInfos = new Dictionary<ObjectRef, ObjectInfo>();
-        protected Dictionary<ObjectRef, IModelObject> mapObjests = new Dictionary<ObjectRef, IModelObject>();
+        protected Dictionary<ObjectRef, IModelObject> mapObjects = new Dictionary<ObjectRef, IModelObject>();
 
         protected string moduleID = null;
         protected string moduleName = "";
@@ -65,6 +65,40 @@ namespace Ifak.Fast.Mediator.Util
             return Xml.ToXml(model);
         }
 
+        protected X GetModelObjectFromIdOrNull<X>(ObjectRef id) where X : class, IModelObject {
+            if (mapObjects.ContainsKey(id)) {
+                IModelObject m = mapObjects[id];
+                if (m is X t) {
+                    return t;
+                }
+            }
+            return null;
+        }
+
+        protected X GetModelObjectFromIdOrThrow<X>(ObjectRef id) where X : class, IModelObject {
+            X res = GetModelObjectFromIdOrNull<X>(id);
+            if (res != null) return res;
+            throw new Exception($"Unable to find object for id: {id}");
+        }
+
+        protected ObjectRef? GetIdFromModelObjectOrNull<X>(X obj) where X : class, IModelObject {
+            if (obj == null) return null;
+            foreach (KeyValuePair<ObjectRef, IModelObject> entry in mapObjects) {
+                IModelObject value = entry.Value;
+                if (ReferenceEquals(value, obj)) {
+                    return entry.Key;
+                }
+            }
+            return null;
+        }
+
+        protected ObjectRef GetIdFromModelObjectOrThrow<X>(X obj) where X : class, IModelObject {
+            if (obj == null) throw new ArgumentException("GetIdFromModelObjectOrThrow: obj argument is null");
+            ObjectRef? res = GetIdFromModelObjectOrNull(obj);
+            if (res.HasValue) return res.Value;
+            throw new Exception("Unable to find ObjectRef for object");
+        }
+
         protected virtual Task OnConfigModelChanged(bool init) {
 
             var res = new List<ObjectInfo>();
@@ -80,7 +114,7 @@ namespace Ifak.Fast.Mediator.Util
 
             this.allObjectInfos = res.ToArray();
             this.mapObjectInfos = mapObjectInfos;
-            this.mapObjests = mapObjects;
+            this.mapObjects = mapObjects;
             return Task.FromResult(true);
         }
 
@@ -106,8 +140,8 @@ namespace Ifak.Fast.Mediator.Util
         public override Task<ObjectInfo[]> GetAllObjects() => Task.FromResult(allObjectInfos);
 
         public override Task<MemberValue[]> GetMemberValues(MemberRef[] member) =>
-            Task.FromResult(member.Where(m => mapObjests.ContainsKey(m.Object)).SelectMany(m => {
-                var obj = mapObjests[m.Object];
+            Task.FromResult(member.Where(m => mapObjects.ContainsKey(m.Object)).SelectMany(m => {
+                var obj = mapObjects[m.Object];
                 DataValue dv;
                 try {
                     dv = obj.GetMemberValueByName(m.Name);
@@ -293,8 +327,8 @@ namespace Ifak.Fast.Mediator.Util
 
         public override Task<ObjectInfo[]> GetObjectsByID(ObjectRef[] ids) => Task.FromResult(ids.Where(id => mapObjectInfos.ContainsKey(id)).Select(id => mapObjectInfos[id]).ToArray());
 
-        public override Task<ObjectValue[]> GetObjectValuesByID(ObjectRef[] objectIDs) => Task.FromResult(objectIDs.Where(id => mapObjests.ContainsKey(id)).Select(id => {
-            var obj = mapObjests[id];
+        public override Task<ObjectValue[]> GetObjectValuesByID(ObjectRef[] objectIDs) => Task.FromResult(objectIDs.Where(id => mapObjects.ContainsKey(id)).Select(id => {
+            var obj = mapObjects[id];
             var dv = DataValue.FromObject(obj);
             return new ObjectValue(id, dv);
         }).ToArray());
@@ -305,13 +339,13 @@ namespace Ifak.Fast.Mediator.Util
                 var changedObjects = new HashSet<ObjectRef>();
 
                 foreach (ObjectValue ov in updateOrDeleteObjects) {
-                    if (!mapObjests.ContainsKey(ov.Object)) throw new Exception("Failed to update object " + ov.Object + " because no object found with this id.");
-                    IModelObject obj = mapObjests[ov.Object];
+                    if (!mapObjects.ContainsKey(ov.Object)) throw new Exception("Failed to update object " + ov.Object + " because no object found with this id.");
+                    IModelObject obj = mapObjects[ov.Object];
                     if (ov.Value.IsEmpty) {
                         var objInfo = mapObjectInfos[ov.Object];
                         MemberRefIdx? parent = objInfo.Parent;
                         if (!parent.HasValue) throw new Exception("Failed to delete object " + ov.Object + " because there is no parent object.");
-                        var objParent = mapObjests[parent.Value.Object];
+                        var objParent = mapObjects[parent.Value.Object];
                         objParent.RemoveChildObject(parent.Value.Name, obj);
                         changedObjects.Add(parent.Value.Object);
                     }
@@ -322,15 +356,15 @@ namespace Ifak.Fast.Mediator.Util
                 }
 
                 foreach (MemberValue m in updateOrDeleteMembers) {
-                    if (!mapObjests.ContainsKey(m.Member.Object)) throw new Exception("Failed to update member " + m.Member.Name + " because no object found with id: " + m.Member.Object);
-                    IModelObject obj = mapObjests[m.Member.Object];
+                    if (!mapObjects.ContainsKey(m.Member.Object)) throw new Exception("Failed to update member " + m.Member.Name + " because no object found with id: " + m.Member.Object);
+                    IModelObject obj = mapObjects[m.Member.Object];
                     obj.SetMemberValue(m.Member.Name, m.Value);
                     changedObjects.Add(m.Member.Object);
                 }
 
                 foreach (AddArrayElement element in addArrayElements) {
-                    if (!mapObjests.ContainsKey(element.ArrayMember.Object)) throw new Exception("Failed to add item to member " + element.ArrayMember.Name + " because no object found with id: " + element.ArrayMember.Object);
-                    IModelObject obj = mapObjests[element.ArrayMember.Object];
+                    if (!mapObjects.ContainsKey(element.ArrayMember.Object)) throw new Exception("Failed to add item to member " + element.ArrayMember.Name + " because no object found with id: " + element.ArrayMember.Object);
+                    IModelObject obj = mapObjects[element.ArrayMember.Object];
                     obj.AddChildObject(element.ArrayMember.Name, element.ValueToAdd);
                     changedObjects.Add(element.ArrayMember.Object);
                 }
