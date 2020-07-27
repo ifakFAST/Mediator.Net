@@ -47,6 +47,33 @@ window.dashboardApp = new Vue({
             }
         });
     },
+    sendViewRequestAsync(request, payload) {
+      const config = { // suppress auto conversion of string to JSON, otherwise strange behavior
+          transformResponse: [function (data) { return data; }],
+          responseType: 'text'
+      };
+      globalState.busy = true;
+      return axios.post('/viewRequest/' + request + "?" + this.getDashboardViewContext(), payload, config)
+        .then(function (response) {
+          globalState.busy = false;
+          return JSON.parse(response.data);
+        })
+        .catch(function (error) {
+           globalState.busy = false;
+           if (error.response && error.response.data) {
+              const data = JSON.parse(error.response.data);
+              if (data.error) {
+                 throw new Error(data.error);
+              }
+              else {
+                throw new Error(error.response.data);
+              }
+           }
+           else {
+             throw error;
+           }
+       });
+    },
     getDashboardViewContext() {
       return globalState.sessionID + '_' + globalState.currentViewID;
     },
