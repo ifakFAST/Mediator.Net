@@ -56,7 +56,9 @@ window.dashboardApp = new Vue({
       return axios.post('/viewRequest/' + request + "?" + this.getDashboardViewContext(), payload, config)
         .then(function (response) {
           globalState.busy = false;
-          return JSON.parse(response.data);
+          if (response.data && response.data !== '') {
+            return JSON.parse(response.data);
+          }
         })
         .catch(function (error) {
            globalState.busy = false;
