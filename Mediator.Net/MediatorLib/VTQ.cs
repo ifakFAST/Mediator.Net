@@ -25,6 +25,8 @@ namespace Ifak.Fast.Mediator
             V = value;
         }
 
+        public static VTQ Make(VTTQ vttq) => new VTQ(vttq.T, vttq.Q, vttq.V);
+
         public static VTQ Make(DataValue value, Timestamp time, Quality quality) => new VTQ(time, quality, value);
 
         public static VTQ Make(double value, Timestamp time, Quality quality) => new VTQ(time, quality, DataValue.FromDouble(value));
@@ -104,6 +106,8 @@ namespace Ifak.Fast.Mediator
             }
             return false;
         }
+
+        public VTQ ToVTQ() => VTQ.Make(this);
 
         public bool Equals(VTTQ other) => T == other.T && T_DB == other.T_DB && V == other.V && Q == other.Q;
 
