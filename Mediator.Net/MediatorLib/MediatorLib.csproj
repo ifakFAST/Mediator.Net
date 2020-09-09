@@ -13,7 +13,7 @@
   <PropertyGroup>
     <NoWarn>1701;1702;1705;1591;3021</NoWarn>
     <PackageId>Ifak.Fast.Mediator</PackageId>
-    <Version>1.3.3</Version>
+    <Version>1.3.4</Version>
     <Company>ifak e.V.</Company>
     <Copyright></Copyright>
     <PackageProjectUrl>https://fast.ifak.eu/</PackageProjectUrl>
