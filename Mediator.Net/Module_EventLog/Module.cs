@@ -197,7 +197,9 @@ namespace Ifak.Fast.Mediator.EventLog
                     smtp.MessageSent += (sender, args) => { /* args.Response */ };
                     smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
                     await smtp.ConnectAsync(settings.Server, settings.Port, (SecureSocketOptions)settings.SslOptions);
-                    await smtp.AuthenticateAsync(settings.AuthUser, settings.AuthPass);
+                    if (!string.IsNullOrEmpty(settings.AuthUser) || !string.IsNullOrEmpty(settings.AuthPass)) {
+                        await smtp.AuthenticateAsync(settings.AuthUser, settings.AuthPass);
+                    }
                     await smtp.SendAsync(messageToSend);
                     await smtp.DisconnectAsync(quit: true);
                     Console.Out.WriteLine($"Sent notification mail (to: {no.To}, subject: {subject})");
