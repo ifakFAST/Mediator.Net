@@ -439,6 +439,32 @@ namespace Ifak.Fast.Mediator
 
         internal void Notify_AlarmOrEvent(ModuleState module, AlarmOrEventInfo e) {
 
+            Origin? initiator = e.Initiator;
+
+            if (initiator.HasValue) {
+                Origin origin = initiator.Value;
+                string id = origin.ID;
+                if (origin.Type == OriginType.User) {
+                    User user = userManagement.Users.FirstOrDefault(u => u.ID == id);
+                    if (user != null) {
+                        origin.Name = user.Name;
+                    }
+                    else if (origin.Name == null) {
+                        origin.Name = "";
+                    }
+                }
+                else if (origin.Type == OriginType.Module) {
+                    var theModule = modules.FirstOrDefault(m => m.ID == id);
+                    if (theModule != null) {
+                        origin.Name = theModule.Name;
+                    }
+                    else if (origin.Name == null) {
+                        origin.Name = "";
+                    }
+                }
+                initiator = origin;
+            }
+
             var ae = new AlarmOrEvent() {
                 ModuleID = module.ID,
                 ModuleName = module.Name,
@@ -450,8 +476,9 @@ namespace Ifak.Fast.Mediator
                 Message = e.Message,
                 Details = e.Details,
                 AffectedObjects = e.AffectedObjects,
-                Initiator = e.Initiator
+                Initiator = initiator
             };
+
             reqHandler.OnAlarmOrEvent(ae);
 
             string msg = e.Message;
