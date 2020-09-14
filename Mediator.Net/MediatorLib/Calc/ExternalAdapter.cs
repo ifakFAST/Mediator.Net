@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,10 @@ namespace Ifak.Fast.Mediator.Calc
 
             string cmd = GetCommand(config);
             string args = GetArgs(config);
+
+            if (!File.Exists(cmd)) {
+                throw new Exception($"External adapter command '{cmd}' not found.");
+            }
 
             const string portPlaceHolder = "{PORT}";
             if (!args.Contains(portPlaceHolder)) throw new Exception("Missing port placeholder in args parameter: {PORT}");

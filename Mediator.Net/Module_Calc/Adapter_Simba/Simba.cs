@@ -12,7 +12,22 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_Simba
     public class Simba : ExternalAdapter
     {
         protected override string GetCommand(Mediator.Config config) {
-            return Path.GetFullPath(config.GetString("simba-location"));
+
+            const string SIMBA_LOCATION = "simba-location";
+
+            string simbaLoc = config.GetString(SIMBA_LOCATION).Trim();
+
+            if (simbaLoc == "") {
+                throw new Exception($"No SIMBA executable specified (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
+            }
+
+            string fullLoc = Path.GetFullPath(simbaLoc);
+
+            if (!File.Exists(fullLoc)) {
+                throw new Exception($"SIMBA executable not found at {fullLoc} (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
+            }
+
+            return fullLoc;
         }
 
         protected override string GetArgs(Mediator.Config config) {
