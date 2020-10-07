@@ -159,9 +159,7 @@ namespace Ifak.Fast.Mediator.IO
                 foreach (Config.DataItem dataItem in adapter.Config.GetAllDataItems()) {
                     string id = dataItem.ID;
                     VTQ value = dataItemsState.ContainsKey(id) ? dataItemsState[id].LastReadValue : new VTQ(Timestamp.Empty, Quality.Bad, dataItem.GetDefaultValue());
-                    var readConv = LinearFunctionParser.MakeConversion(dataItem.ConversionRead);
-                    var writeConv = LinearFunctionParser.MakeConversion(dataItem.ConversionWrite);
-                    newDataItems.Add(new ItemState(id, dataItem.Name, adapter, value, dataItem.Write, adapter.Config.MaxFractionalDigits, dataItem.Type, dataItem.Dimension, readConv, writeConv));
+                    newDataItems.Add(new ItemState(dataItem, adapter, value, adapter.Config.MaxFractionalDigits));
                 }
             }
             dataItemsState.Clear();
@@ -771,7 +769,18 @@ namespace Ifak.Fast.Mediator.IO
 
         private VTQ NormalizeReadValue(ItemState istate, VTQ vtq, bool noWarnings = false) {
 
+            if (istate.ReplacementValue.HasValue) {
+                vtq.V = istate.ReplacementValue.Value;
+                if (istate.ReplacementQuality.HasValue) {
+                    vtq.Q = istate.ReplacementQuality.Value;
+                }
+                return vtq;
+            }
+
             if (istate.Dimension != 1) {
+                if (istate.ReplacementQuality.HasValue) {
+                    vtq.Q = istate.ReplacementQuality.Value;
+                }
                 return vtq;
             }
 
@@ -822,6 +831,10 @@ namespace Ifak.Fast.Mediator.IO
                 }
 
                 vtq.V = DataValue.FromDouble(v);
+            }
+
+            if (istate.ReplacementQuality.HasValue) {
+                vtq.Q = istate.ReplacementQuality.Value;
             }
 
             return vtq;
@@ -1237,17 +1250,19 @@ namespace Ifak.Fast.Mediator.IO
 
         class ItemState
         {
-            public ItemState(string id, string name, AdapterState adapter, VTQ value, bool write, int? fractionalDigits, DataType type, int dimesnion, Func<double, double> readConv, Func<double, double> writeConv) {
-                ID = id;
-                Name = name;
+            public ItemState(Config.DataItem item, AdapterState adapter, VTQ value, int? fractionalDigits) {
+                ID = item.ID;
+                Name = item.Name;
                 Adapter = adapter;
                 LastReadValue = value;
-                Writeable = write;
+                Writeable = item.Write;
                 FractionalDigits = fractionalDigits;
-                Type = type;
-                Dimension = dimesnion;
-                ReadConversion = readConv;
-                WriteConversion = writeConv;
+                Type = item.Type;
+                Dimension = item.Dimension;
+                ReadConversion = LinearFunctionParser.MakeConversion(item.ConversionRead);
+                WriteConversion = LinearFunctionParser.MakeConversion(item.ConversionWrite);
+                ReplacementValue = item.ReplacementValue;
+                ReplacementQuality = item.ReplacementQuality;
             }
 
             public string ID { get; private set; }
@@ -1262,6 +1277,8 @@ namespace Ifak.Fast.Mediator.IO
             public VTQ LastWrittenValue { get; set; }
             public Func<double, double> ReadConversion { get; private set; }
             public Func<double, double> WriteConversion { get; private set; }
+            public DataValue? ReplacementValue { get; private set; }
+            public Quality? ReplacementQuality { get; private set; }
         }
 
         struct ItemSchedule

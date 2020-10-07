@@ -331,7 +331,8 @@ namespace Ifak.Fast.Mediator.IO.Config
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         //public DataValue? InitialValue { get; set; } = null;
-        //public DataValue? ReplacementValue { get; set; } = null;
+        public DataValue? ReplacementValue { get; set; } = null;
+        public Quality? ReplacementQuality { get; set; } = null;
 
         [Category("Advanced")]
         public List<NamedValue> Config { get; set; } = new List<NamedValue>();
@@ -383,7 +384,8 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeScheduling() => Scheduling.HasValue;
         public bool ShouldSerializeHistory() => History.HasValue;
         //public bool ShouldSerializeInitialValue() => InitialValue.HasValue;
-        //public bool ShouldSerializeReplacementValue() => ReplacementValue.HasValue;
+        public bool ShouldSerializeReplacementValue() => ReplacementValue.HasValue;
+        public bool ShouldSerializeReplacementQuality() => ReplacementQuality.HasValue;
         public bool ShouldSerializeConfig() => Config.Count > 0;
         public bool ShouldSerializeRead() => Read;
         public bool ShouldSerializeWrite() => Write;
