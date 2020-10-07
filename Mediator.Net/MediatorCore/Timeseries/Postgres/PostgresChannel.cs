@@ -154,6 +154,26 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             });
         }
 
+        public override void ReplaceAll(VTQ[] data) {
+
+            Timestamp timeDB = Timestamp.Now;
+
+            stmtInsert.RunTransaction(stmt => {
+
+                using (var command = Factory.MakeCommand($"DELETE FROM {table}", connection)) {
+                    command.Transaction = stmt.GetCommand().Transaction;
+                    command.ExecuteNonQuery();
+                }
+
+                for (int i = 0; i < data.Length; ++i) {
+                    VTQ x = data[i];
+                    WriteVTQ(stmt, x, timeDB);
+                    stmt.ExecuteNonQuery();
+                }
+                return true;
+            });
+        }
+
         public override void Append(VTQ[] data, bool ignoreOldDataSets = false) {
 
             if (data.Length == 0) return;
@@ -411,7 +431,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             this.types = types;
         }
 
-        DbCommand GetCommand() {
+        public DbCommand GetCommand() {
             if (command != null) {
                 return command;
             }

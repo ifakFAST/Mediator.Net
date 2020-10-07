@@ -34,6 +34,12 @@ namespace Ifak.Fast.Mediator.Timeseries
         public abstract void Upsert(VTQ[] data);
 
         /// <summary>
+        /// Replace all channel data.
+        /// </summary>
+        /// <param name="data"></param>
+        public abstract void ReplaceAll(VTQ[] data);
+
+        /// <summary>
         /// An Exception is thrown, if any DataSet has timestamps before the last saved data set or
         /// if the timestamps do not monotonically increase.
         /// </summary>

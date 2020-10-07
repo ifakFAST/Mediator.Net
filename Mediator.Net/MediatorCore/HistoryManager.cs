@@ -179,6 +179,7 @@ namespace Ifak.Fast.Mediator
                 case ModifyMode.Insert: return HistoryChangeType.Insert;
                 case ModifyMode.Update: return HistoryChangeType.Update;
                 case ModifyMode.Upsert: return HistoryChangeType.Upsert;
+                case ModifyMode.ReplaceAll: return HistoryChangeType.Mixed;
                 default: throw new Exception("Unknown modify mode: " + mode);
             }
         }

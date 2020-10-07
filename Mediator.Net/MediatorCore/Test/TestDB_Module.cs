@@ -95,6 +95,10 @@ namespace Ifak.Fast.Mediator.Test
             await ExpectCount(varA, 0);
 
             await con.HistorianModify(varA, ModifyMode.Delete, vtq4); // no exception when not found
+
+            await con.HistorianModify(varA, ModifyMode.Insert, vtq1);
+            await con.HistorianModify(varA, ModifyMode.ReplaceAll, vtq3, vtq4);
+            await TestHistoryRaw(varA, Timestamp.Empty, Timestamp.Max, 100, vtq3, vtq4);
         }
 
         private async Task TestHistorianManyVariables() {

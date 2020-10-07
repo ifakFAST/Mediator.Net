@@ -405,6 +405,10 @@ namespace Ifak.Fast.Mediator
                         ch.Upsert(req.Data);
                         break;
 
+                    case ModifyMode.ReplaceAll:
+                        ch.ReplaceAll(req.Data);
+                        break;
+
                     case ModifyMode.Delete:
                         ch.DeleteData(req.Data.Select(x => x.T).ToArray());
                         break;

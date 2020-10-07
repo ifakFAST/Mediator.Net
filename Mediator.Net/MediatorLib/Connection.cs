@@ -574,7 +574,8 @@ namespace Ifak.Fast.Mediator
         Insert,
         Update,
         Upsert,
-        Delete
+        Delete,
+        ReplaceAll
     }
 
     public enum BoundingMethod
