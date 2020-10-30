@@ -32,6 +32,7 @@
 
 <script>
 import axios from "axios";
+import globalState from "./Global.js";
 
 export default {
   data() {
@@ -39,8 +40,17 @@ export default {
       alertText: '',
       hasAlert: false,
       loginUser: '',
-      loginPass: ''
+      loginPass: '',
+      viewID: ''
     };
+  },
+  mounted() {
+    if (globalState.loggedOut === false && window.location.search.startsWith("?view=")) {
+      this.loginUser = "ifak";
+      this.loginPass = "fast";
+      this.login();
+      this.viewID = window.location.search.substring(6)
+    }
   },
   methods: {
     login() {
@@ -56,7 +66,8 @@ export default {
             session: response.data.sessionID,
             model: response.data.model,
             user: context.loginUser,
-            pass: context.loginPass
+            pass: context.loginPass,
+            viewID: context.viewID
           });
           context.loginPass = "";
         })

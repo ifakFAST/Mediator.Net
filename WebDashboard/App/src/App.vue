@@ -43,7 +43,11 @@ export default {
       this.sessionID = event.session;
       this.model = event.model;
       this.openWebSocket(event.user, event.pass)
-      if (this.model.views.length > 0) {
+      const viewIdx = this.model.views.findIndex((v) => v.viewID === event.viewID)
+      if (viewIdx >= 0) {
+        this.activateView(event.viewID)
+      }
+      else if (this.model.views.length > 0) {
         this.activateView(this.model.views[0].viewID)
       }
     },
@@ -56,6 +60,7 @@ export default {
       this.sessionID = "";
       this.model = {};
       this.currentViewID = "";
+      this.loggedOut = true;
       this.eventListener = function(eventName, eventPayload) {};
       try {
          this.eventSocket.close();
