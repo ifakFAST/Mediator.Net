@@ -285,7 +285,15 @@ namespace Ifak.Fast.Mediator
 
         internal async Task RestartModule(ModuleState module, string reason, int tryCounter = 0) {
 
-            Log_Warn("ModuleRestart", $"Restarting module '{module.Name}'. Reason: {reason}", module.ID);
+            if (shutdown) { return; }
+
+            if (module.IsRestarting && tryCounter == 0) { return; }
+            module.IsRestarting = true;
+
+            if (tryCounter == 0)
+                Log_Warn("ModuleRestart", $"Restarting module '{module.Name}'. Reason: {reason}", module.ID);
+            else
+                Log_Warn("ModuleRestart", $"Restarting module '{module.Name}' (retry {tryCounter}). Reason: {reason}", module.ID);
 
             const int TimeoutSeconds = 10;
             try {
@@ -296,16 +304,18 @@ namespace Ifak.Fast.Mediator
                     Log_Warn("ShutdownTimeout", msg, module.ID);
                     // go ahead and hope for the best...
                 }
-                if (shutdown) return;
+                if (shutdown) { return; }
                 module.CreateInstance();
                 await InitModule(module);
                 StartRunningModule(module);
+                module.IsRestarting = false;
             }
-            catch (Exception exp) {
+            catch (Exception exception) {
+                Exception exp = exception.GetBaseException();
                 Log_Exception(Severity.Alarm, exp, "ModuleRestartError", $"Restart of module '{module.Name}' failed: {exp.Message}", module.ID);
                 int delayMS = Math.Min(10*1000, (tryCounter + 1) * 1000);
                 await Task.Delay(delayMS);
-                Task ignored = RestartModule(module, reason, tryCounter + 1);
+                Task ignored = RestartModule(module, exp.Message, tryCounter + 1);
             }
         }
 
@@ -549,6 +559,8 @@ namespace Ifak.Fast.Mediator
         public Module Config { get; private set; }
         private readonly MediatorCore core;
         private readonly ModuleVariables variables;
+
+        public bool IsRestarting = false;
 
         public ModuleState(Module config, MediatorCore core) {
             this.logger = LogManager.GetLogger(config.Name);
