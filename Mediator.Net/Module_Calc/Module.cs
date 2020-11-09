@@ -149,7 +149,7 @@ namespace Ifak.Fast.Mediator.Calc
                 }
 
                 if (restartAdapters.Count > 0) {
-                    Task[] restartTasks = restartAdapters.Select(a => RestartAdapterOrCrash(a, "Config changed", critical: false)).ToArray();
+                    Task[] restartTasks = restartAdapters.Select(a => RestartAdapter(a, "Config changed", critical: false)).ToArray();
                     await Task.WhenAll(restartTasks);
                 }
             }
@@ -248,14 +248,19 @@ namespace Ifak.Fast.Mediator.Calc
             };
         }
 
-        private async Task RestartAdapterOrCrash(CalcInstance adapter, string reason, bool critical = true) {
+        private async Task RestartAdapter(CalcInstance adapter, string reason, bool critical = true, int tryCounter = 0) {
 
-            string msg = "Restarting calculation " + adapter.Name + ". Reason: " + reason;
+            if (adapter.IsRestarting && tryCounter == 0) { return; }
+            adapter.IsRestarting = true;
+
             if (critical) {
-                Log_Warn("CalcRestart", msg);
+                if (tryCounter == 0)
+                    Log_Warn("CalcRestart", $"Restarting calculation {adapter.Name}. Reason: {reason}");
+                else
+                    Log_Warn("CalcRestart", $"Restarting calculation {adapter.Name} (retry {tryCounter}). Reason: {reason}");
             }
             else {
-                Log_Info("CalcRestart", msg);
+                Log_Info("CalcRestart", $"Restarting calculation {adapter.Name}. Reason: {reason}");
             }
 
             const int TimeoutSeconds = 10;
@@ -271,15 +276,21 @@ namespace Ifak.Fast.Mediator.Calc
                 if (adapter.State == State.InitComplete) {
                     StartRunLoopTask(adapter);
                 }
+                adapter.IsRestarting = false;
             }
-            catch (Exception exp) {
-                string errMsg = "Restart of calculation " + adapter.Name + " failed: " + exp.Message;
+            catch (Exception exception) {
+                Exception exp = exception.GetBaseException();
+                string errMsg = $"Restart of calculation {adapter.Name} failed: {exp.Message}";
                 Log_Error("CalcRestartError", errMsg);
                 if (critical) {
-                    Thread.Sleep(1000);
-                    Environment.Exit(1); // will result in restart of entire module by Mediator
+                    // Thread.Sleep(500);
+                    // Environment.Exit(1); // will result in restart of entire module by Mediator
+                    int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
+                    await Task.Delay(delayMS);
+                    Task ignored = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
                 }
                 else {
+                    adapter.IsRestarting = false;
                     throw new Exception(errMsg);
                 }
             }
@@ -366,7 +377,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 if (t.IsFaulted && !moduleShutdown && adapter.State == State.Running) {
                     Exception exp = t.Exception.GetBaseException() ?? t.Exception;
-                    Task ignored2 = RestartAdapterOrCrash(adapter, "Run loop exception: " + exp.Message, critical: true);
+                    Task ignored2 = RestartAdapter(adapter, "Run loop exception: " + exp.Message, critical: true);
                 }
             });
         }
@@ -599,7 +610,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private void Do_Notify_NeedRestart(string reason, Calculation adapter) {
             CalcInstance ast = adapters.FirstOrDefault(a => a.CalcConfig.ID == adapter.ID);
-            Task ignored = RestartAdapterOrCrash(ast, reason);
+            Task ignored = RestartAdapter(ast, reason);
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!

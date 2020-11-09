@@ -36,6 +36,8 @@ namespace Ifak.Fast.Mediator.Calc
 
         public string LastError { get; set; }
 
+        public bool IsRestarting = false;
+
         public string Name => CalcConfig == null ? "?" : CalcConfig.Name;
 
         public ObjectRef ID => ObjectRef.Make(moduleID, CalcConfig.ID);
