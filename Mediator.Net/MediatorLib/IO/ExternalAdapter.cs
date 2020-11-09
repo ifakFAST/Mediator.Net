@@ -150,7 +150,7 @@ namespace Ifak.Fast.Mediator.IO
             try {
 
                 Timestamp tStart = Timestamp.Now;
-                const int timeout = 12;
+                const int timeout = 8;
 
                 while (!taskAbort.IsCompleted) {
 
