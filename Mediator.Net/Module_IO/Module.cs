@@ -734,12 +734,23 @@ namespace Ifak.Fast.Mediator.IO
                                         adapter.SetOfPendingReadItems.ExceptWith(rt.IDs);
                                         if (adapter.State == State.Running) {
 
+                                            DataItemValue[] result;
+
                                             if (completedReadTask.IsFaulted) {
                                                 Exception exp = completedReadTask.Exception.GetBaseException() ?? completedReadTask.Exception;
                                                 Task ignored = RestartAdapter(adapter, "Scheduled read exception: " + exp.Message);
+
+                                                Timestamp now = Timestamp.Now;
+                                                result = rt.IDs.Select(s => {
+                                                    VTQ lastVal = dataItemsState[s].LastReadValue;
+                                                    VTQ v = VTQ.Make(lastVal.V, now, Quality.Bad);
+                                                    return new DataItemValue(s, v);
+                                                }).ToArray();
+                                            }
+                                            else {
+                                                result = completedReadTask.Result;
                                             }
 
-                                            DataItemValue[] result = completedReadTask.Result;
                                             var values = new List<VariableValue>(result.Length);
                                             var badItems = new List<ItemState>();
                                             var goodItems = new List<ItemState>();
