@@ -397,10 +397,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public void WriteXml(XmlWriter writer) {
-            string w = json;
-            if (w != null) {
-                writer.WriteString(w);
-            }
+            writer.WriteString(JSON);
         }
     }
 }
