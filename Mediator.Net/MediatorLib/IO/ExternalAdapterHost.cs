@@ -128,6 +128,7 @@ namespace Ifak.Fast.Mediator.IO
                         if (t.IsFaulted) {
                             Console.Error.WriteLine(MakeStr(t.Exception));
                             Console.Error.Flush();
+                            Thread.Sleep(100);
                             connector.SendResponseError(reqID, t.Exception.InnerMost());
                         }
                         else {
@@ -139,6 +140,7 @@ namespace Ifak.Fast.Mediator.IO
                 catch (Exception exp) {
                     Console.Error.WriteLine(MakeStr(exp));
                     Console.Error.Flush();
+                    Thread.Sleep(100);
                     connector.SendResponseError(reqID, exp.InnerMost());
                 }
             }
@@ -150,6 +152,7 @@ namespace Ifak.Fast.Mediator.IO
                         if (t.IsFaulted) {
                             Console.Error.WriteLine(MakeStr(t.Exception));
                             Console.Error.Flush();
+                            Thread.Sleep(100);
                             connector.SendResponseError(reqID, t.Exception.InnerMost());
                         }
                         else {
@@ -160,6 +163,7 @@ namespace Ifak.Fast.Mediator.IO
                 catch (Exception exp) {
                     Console.Error.WriteLine(MakeStr(exp));
                     Console.Error.Flush();
+                    Thread.Sleep(100);
                     connector.SendResponseError(reqID, exp.InnerMost());
                 }
             }
