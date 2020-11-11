@@ -7,7 +7,9 @@
         <template v-else>
             <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
                        :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector"
-                        @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"></dashboard>
+                        @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
+                        @duplicateView="duplicateView" @renameView="renameView"
+                        @moveUp="moveUpView" @moveDown="moveDownView" @delete="deleteView"></dashboard>
         </template>
     </div>
 </template>
@@ -34,7 +36,7 @@ export default {
     currentViewSource() {
       if (this.currentViewID === "") return "";
       const view = this.model.views.find(v => v.viewID == this.currentViewID);
-      return view.viewURL;
+      return view.viewURL + "?viewID=" + this.currentViewID;
     }
   },
   methods: {
@@ -172,6 +174,76 @@ export default {
     timeSelectChanged(timeRange) {
        this.timeRange = Object.assign({}, timeRange);
        this.timeRangeListener(Object.assign({}, timeRange));
+    },
+    duplicateView(viewID) {
+      const context = this;
+      axios
+        .post("/duplicateView?" + this.sessionID + "_" + viewID)
+        .then(function(response) {
+          console.info('duplicateView success.');
+          const viewID = response.data.newViewID;
+          context.model = response.data.model;
+          context.doActivateView(viewID);
+        })
+        .catch(function(error) {
+          console.info('Duplicate View failed!');
+          alert(error);
+        });
+    },
+    renameView(viewID, newName) {
+      const context = this;
+      axios
+        .post("/renameView?" + this.sessionID + "_" + viewID, { newViewName: newName })
+        .then(function(response) {
+          console.info('renameView success.');
+          context.model = response.data.model;
+        })
+        .catch(function(error) {
+          console.info('renameView failed!');
+          alert(error);
+        });
+    },
+    moveUpView(viewID) {
+      const context = this;
+      axios
+        .post("/moveView?" + this.sessionID + "_" + viewID, { up: true })
+        .then(function(response) {
+          console.info('moveUpView success.');
+          context.model = response.data.model;
+        })
+        .catch(function(error) {
+          console.info('moveUpView failed!');
+          alert(error);
+        });
+    },
+    moveDownView(viewID) {
+      const context = this;
+      axios
+        .post("/moveView?" + this.sessionID + "_" + viewID, { up: false })
+        .then(function(response) {
+          console.info('moveDownView success.');
+          context.model = response.data.model;
+        })
+        .catch(function(error) {
+          console.info('moveDownView failed!');
+          alert(error);
+        });
+    },
+    deleteView(viewID) {
+      const context = this;
+      axios
+        .post("/deleteView?" + this.sessionID + "_" + viewID)
+        .then(function(response) {
+          console.info('deleteView success.');
+          context.model = response.data.model;
+          if (context.currentViewID === viewID) {
+            context.currentViewID = '';
+          }
+        })
+        .catch(function(error) {
+          console.info('deleteView failed!');
+          alert(error);
+        });
     }
   }
 };

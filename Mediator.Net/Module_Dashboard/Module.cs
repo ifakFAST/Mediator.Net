@@ -288,6 +288,10 @@ namespace Ifak.Fast.Mediator.Dashboard
         private const string Path_Logout = "/logout";
         private const string Path_ViewReq = "/viewRequest/";
         private const string Path_ActivateView = "/activateView";
+        private const string Path_DuplicateView = "/duplicateView";
+        private const string Path_RenameView = "/renameView";
+        private const string Path_MoveView = "/moveView";
+        private const string Path_DeleteView = "/deleteView";
 
         private async Task<ReqResult> HandlePost(HttpRequest request, HttpResponse response) {
 
@@ -344,6 +348,68 @@ namespace Ifak.Fast.Mediator.Dashboard
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
                     await session.OnActivateView(viewID);
                     return ReqResult.OK();
+                }
+                else if (path == Path_DuplicateView) {
+
+                    (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                    string newViewID = await session.OnDuplicateView(viewID);
+
+                    uiModel = MakeUiModel(model, viewTypes);
+
+                    return ReqResult.OK(new {
+                        newViewID,
+                        model = uiModel
+                    });
+                }
+                else if (path == Path_RenameView) {
+
+                    (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+
+                    string newViewName = "";
+                    using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
+                        var obj = await StdJson.JObjectFromReaderAsync(reader);
+                        newViewName = (string)obj["newViewName"];
+                        if (newViewName == null) {
+                            return ReqResult.Bad("Missing newViewName");
+                        }
+                    }
+
+                    await session.OnRenameView(viewID, newViewName);
+
+                    uiModel = MakeUiModel(model, viewTypes);
+
+                    return ReqResult.OK(new {
+                        model = uiModel
+                    });
+                }
+                else if (path == Path_MoveView) {
+
+                    (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+
+                    bool up = false;
+                    using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
+                        var obj = await StdJson.JObjectFromReaderAsync(reader);
+                        up = (bool)obj["up"];
+                    }
+
+                    await session.OnMoveView(viewID, up);
+
+                    uiModel = MakeUiModel(model, viewTypes);
+
+                    return ReqResult.OK(new {
+                        model = uiModel
+                    });
+                }
+                else if (path == Path_DeleteView) {
+
+                    (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                    await session.OnDeleteView(viewID);
+
+                    uiModel = MakeUiModel(model, viewTypes);
+
+                    return ReqResult.OK(new {
+                        model = uiModel
+                    });
                 }
                 else if (path == Path_Logout) {
 

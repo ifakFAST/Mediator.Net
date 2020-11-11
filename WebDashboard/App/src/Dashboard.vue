@@ -5,7 +5,9 @@
 
       <v-list nav dense class="mt-4">
         <v-list-item-group :value="currViewID" >
-          <v-list-item v-for="(view, i) in views" :value="view.viewID" :key="i" @click="activateView(view.viewID)">
+          <v-list-item v-for="(view, i) in views" :value="view.viewID" :key="view.viewID"
+            @click="activateView(view.viewID)"
+            @contextmenu="(e) => onContextMenuViewEntry(e, view, i)">
             <v-list-item-icon>
               <v-icon light>{{iconFromView(view)}}</v-icon>
             </v-list-item-icon>
@@ -15,6 +17,57 @@
           </v-list-item>
         </v-list-item-group>
       </v-list>
+
+      <v-menu v-model="contextMenuViewEntry.show" :position-x="contextMenuViewEntry.clientX" :position-y="contextMenuViewEntry.clientY" absolute offset-y>
+        <v-list>
+          <v-list-item @click="onContextViewRename">
+            <v-list-item-title>Rename</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="onContextViewDuplicate">
+            <v-list-item-title>Duplicate</v-list-item-title>
+          </v-list-item>
+          <v-list-item v-if="contextMenuViewEntry.canMoveUp" @click="onContextViewMoveUp">
+            <v-list-item-title>Move Up</v-list-item-title>
+          </v-list-item>
+          <v-list-item v-if="contextMenuViewEntry.canMoveDown" @click="onContextViewMoveDown">
+            <v-list-item-title>Move Down</v-list-item-title>
+          </v-list-item>
+           <v-list-item @click="onContextViewDelete">
+            <v-list-item-title>Delete</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <v-dialog v-model="renameDlg.show" max-width="350" @keydown.esc="renameDlgCancel">
+        <v-card>
+          <v-card-title>
+            <span class="headline">Rename View</span>
+          </v-card-title>
+          <v-card-text>
+            Enter the new name for the view.
+            <v-text-field v-model="renameDlg.text" ref="editText"></v-text-field>
+          </v-card-text>
+          <v-card-actions class="pt-0">
+            <v-spacer></v-spacer>
+            <v-btn color="grey darken-1" text @click.native="renameDlgCancel">Cancel</v-btn>
+            <v-btn color="primary darken-1" :disabled="renameDlg.text.length === 0" text @click.native="renameDlgOK">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="confirmDlg.show" :max-width="250" @keydown.esc="() => { confirmDlg.show = false }">
+        <v-card>
+          <v-toolbar dark color="red" dense flat>
+            <v-toolbar-title class="white--text">{{ confirmDlg.title }}</v-toolbar-title>
+          </v-toolbar>
+          <v-card-text class="mt-3">{{ confirmDlg.message }}</v-card-text>
+          <v-card-actions class="pt-0">
+            <v-spacer></v-spacer>
+            <v-btn color="grey darken-1" text @click.native="() => { confirmDlg.show = false }">Cancel</v-btn>
+            <v-btn color="primary darken-1" text @click.native="confirmDlg.onOK">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
     </v-navigation-drawer>
 
@@ -111,27 +164,45 @@
     },
     data() {
       return {
-         drawer: true,
-         miniVariant: false,
-         title: 'Dashboard',
-         showTimeEdit: false,
-         timeRangeEdit: {
-            type: 'Last',
-            lastCount: 7,
-            lastUnit: 'Days',
-            rangeStart: '',
-            rangeEnd: ''
-         },
-         predefinedTimeRanges: [
-            { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
-            { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
-            { title: 'Last 24 hours',   count: 24, unit: 'Hours'   },
-            { title: 'Last 7 days',     count:  7, unit: 'Days'    },
-            { title: 'Last 30 days',    count: 30, unit: 'Days'    },
-            { title: 'Last 12 months',  count: 12, unit: 'Months'  },
-         ],
-         showCustomTimeRangeSelector: false,
-         today: ''
+        drawer: true,
+        miniVariant: false,
+        title: 'Dashboard',
+        showTimeEdit: false,
+        timeRangeEdit: {
+          type: 'Last',
+          lastCount: 7,
+          lastUnit: 'Days',
+          rangeStart: '',
+          rangeEnd: ''
+        },
+        predefinedTimeRanges: [
+          { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
+          { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
+          { title: 'Last 24 hours',   count: 24, unit: 'Hours'   },
+          { title: 'Last 7 days',     count:  7, unit: 'Days'    },
+          { title: 'Last 30 days',    count: 30, unit: 'Days'    },
+          { title: 'Last 12 months',  count: 12, unit: 'Months'  },
+        ],
+        showCustomTimeRangeSelector: false,
+        today: '',
+        contextMenuViewEntry: {
+          show: false,
+          clientX: 0,
+          clientY: 0,
+          view: {},
+          canMoveUp: false,
+          canMoveDown: false,
+        },
+        renameDlg: {
+          show: false,
+          text: ''
+        },
+        confirmDlg: {
+          show: false,
+          title: '',
+          message: '',
+          onOK: () => {}
+        }
       }
     },
     methods: {
@@ -185,6 +256,46 @@
         const icon = view.viewIcon;
         if (icon === undefined || icon === '') return 'bubble_chart'
         return icon
+      },
+      onContextMenuViewEntry(e, view, viewIdx) {
+        e.preventDefault()
+        e.stopPropagation()
+        this.contextMenuViewEntry.show = true
+        this.contextMenuViewEntry.clientX = e.clientX
+        this.contextMenuViewEntry.clientY = e.clientY
+        this.contextMenuViewEntry.view = view
+        this.contextMenuViewEntry.canMoveUp = viewIdx > 0
+        this.contextMenuViewEntry.canMoveDown = viewIdx < this.views.length - 1
+      },
+      onContextViewRename() {
+        this.renameDlg.show = true
+        this.renameDlg.text = this.contextMenuViewEntry.view.viewName
+      },
+      renameDlgOK() {
+        this.renameDlg.show = false
+        this.$emit('renameView', this.contextMenuViewEntry.view.viewID, this.renameDlg.text);
+      },
+      renameDlgCancel() {
+        this.renameDlg.show = false
+      },
+      onContextViewDuplicate() {
+        this.$emit('duplicateView', this.contextMenuViewEntry.view.viewID)
+      },
+      onContextViewMoveUp() {
+        this.$emit('moveUp', this.contextMenuViewEntry.view.viewID)
+      },
+      onContextViewMoveDown() {
+        this.$emit('moveDown', this.contextMenuViewEntry.view.viewID)
+      },
+      onContextViewDelete() {
+        this.confirmDlg.show = true
+        this.confirmDlg.title = 'Delete view?'
+        this.confirmDlg.message = `Do you really want to delete view '${this.contextMenuViewEntry.view.viewName}'?`
+        this.confirmDlg.onOK = this.onViewDeleteOK
+      },
+      onViewDeleteOK() {
+        this.confirmDlg.show = false
+        this.$emit('delete', this.contextMenuViewEntry.view.viewID)
       }
     },
     watch: {

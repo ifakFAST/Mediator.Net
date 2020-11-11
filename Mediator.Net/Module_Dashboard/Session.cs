@@ -28,19 +28,36 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public Timestamp lastActivity = Timestamp.Now;
 
+        private DashboardModel model;
+        private ViewType[] viewTypes;
+
         public Session() {
             ID = Guid.NewGuid().ToString().Replace("-", "");
         }
 
         public async Task SetConnection(Connection connection, DashboardModel model, string moduleID, ViewType[] viewTypes) {
 
+            this.model = model;
+            this.viewTypes = viewTypes;
             this.connection = connection;
             this.moduleID = moduleID;
 
             foreach (View view in model.Views) {
-                ViewBase viewImpl = CreateViewInstance(view, viewTypes);
-                views[view.ID] = viewImpl;
-                await viewImpl.OnInit(connection, this, view.Config);
+                await CreateView(view);
+            }
+        }
+
+        private async Task CreateView(View view) {
+            ViewBase viewImpl = CreateViewInstance(view, viewTypes);
+            views[view.ID] = viewImpl;
+            await viewImpl.OnInit(connection, this, view.Config);
+        }
+
+        private async Task DeactivateCurrentView() {
+            if (currentView != null) {
+                await currentView.OnDeactivate();
+                await connection.DisableChangeEvents(true, true, true);
+                currentView = null;
             }
         }
 
@@ -51,17 +68,108 @@ namespace Ifak.Fast.Mediator.Dashboard
             if (!views.ContainsKey(viewID))
                 throw new Exception("Unknown viewID " + viewID);
 
-            if (currentView != null) {
-                await currentView.OnDeactivate();
-                await connection.DisableChangeEvents(true, true, true);
-                currentView = null;
-            }
+            await DeactivateCurrentView();
 
             lastActivity = Timestamp.Now;
 
             ViewBase view = views[viewID];
             await view.OnActivate();
             currentView = view;
+        }
+
+        public async Task<string> OnDuplicateView(string viewID) {
+
+            lastActivity = Timestamp.Now;
+
+            View view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            View newView = new View() {
+                ID = GernerateID(6),
+                Name = view.Name,
+                Group = view.Group,
+                Config = view.Config,
+                Type = view.Type,
+            };
+
+            model.Views.Add(newView);
+            DataValue dv = DataValue.FromObject(model.Views);
+            MemberValue member = MemberValue.Make(moduleID, model.ID, nameof(DashboardModel.Views), dv);
+            await connection.UpdateConfig(member);
+
+            await CreateView(newView);
+
+            return newView.ID;
+        }
+
+        public async Task OnDeleteView(string viewID) {
+
+            lastActivity = Timestamp.Now;
+
+            View view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            if (views[viewID] == currentView) {
+                await DeactivateCurrentView();
+            }
+
+            model.Views.Remove(view);
+
+            ObjectValue objDelete = ObjectValue.Make(moduleID, view.ID, DataValue.Empty);
+            await connection.UpdateConfig(objDelete);
+        }
+
+        public async Task OnRenameView(string viewID, string newName) {
+
+            lastActivity = Timestamp.Now;
+
+            View view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            view.Name = newName;
+
+            DataValue dv = DataValue.FromObject(view.Name);
+            MemberValue member = MemberValue.Make(moduleID, view.ID, nameof(View.Name), dv);
+            await connection.UpdateConfig(member);
+        }
+
+        public async Task OnMoveView(string viewID, bool up) {
+
+            lastActivity = Timestamp.Now;
+
+            View view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            int i = model.Views.IndexOf(view);
+            if (up && i > 0) {
+                model.Views[i] = model.Views[i - 1];
+                model.Views[i - 1] = view;
+            }
+            else if (!up && i < model.Views.Count - 1) {
+                model.Views[i] = model.Views[i + 1];
+                model.Views[i + 1] = view;
+            }
+
+            DataValue dv = DataValue.FromObject(model.Views);
+            MemberValue member = MemberValue.Make(moduleID, model.ID, nameof(DashboardModel.Views), dv);
+            await connection.UpdateConfig(member);
+        }
+
+        private static string GernerateID(int len) {
+            var builder = new StringBuilder();
+            Enumerable
+               .Range(65, 26)
+                .Select(e => ((char)e).ToString())
+                .Concat(Enumerable.Range(97, 26).Select(e => ((char)e).ToString()))
+                .Concat(Enumerable.Range(0, 10).Select(e => e.ToString()))
+                .OrderBy(e => Guid.NewGuid())
+                .Take(len)
+                .ToList().ForEach(e => builder.Append(e));
+            return builder.ToString();
         }
 
         public Task<ReqResult> OnViewCommand(string viewID, string command, DataValue parameters) {
