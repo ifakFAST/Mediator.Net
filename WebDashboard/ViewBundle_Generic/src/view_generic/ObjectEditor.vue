@@ -321,8 +321,9 @@ export default class ObjectEditor extends Vue {
     this.browseDialog.selection = ''
     this.search = ''
     this.browseDialog.show = true
-    const txt = this.$refs.txtSearch as HTMLElement
+    const context = this
     const doFocus = () => {
+      const txt = context.$refs.txtSearch as HTMLElement
       txt.focus()
     }
     setTimeout(doFocus, 100)
@@ -443,8 +444,8 @@ export default class ObjectEditor extends Vue {
     this.addDialog.newID = ''
     this.addDialog.newName = ''
     this.addDialog.show = true
-    const txtName = this.$refs.txtName as HTMLElement
     const doFocus = () => {
+      const txtName = context.$refs.txtName as HTMLElement
       txtName.focus()
     }
     setTimeout(doFocus, 100)
