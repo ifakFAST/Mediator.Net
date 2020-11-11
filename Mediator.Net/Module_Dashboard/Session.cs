@@ -51,9 +51,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private async Task DoRegularGetNaviAugmentation() {
 
-            while (!closed) {
+            await Task.Delay(5000);
 
-                await Task.Delay(2000);
+            while (!closed) {
 
                 foreach(var entry in views) {
                     string viewID = entry.Key;
@@ -68,12 +68,17 @@ namespace Ifak.Fast.Mediator.Dashboard
                             await SendEventToUI("NaviAugmentation", para);
                         }
                     }
-                    catch(Exception exception) {
+                    catch (Exception exception) {
+                        if (closed) {
+                            return;
+                        }
                         Exception exp = exception.GetBaseException();
-                        Console.Error.WriteLine($"Exception in GetNaviAugmentation of view {viewID}: {exp.Message}");
+                        Console.Out.WriteLine($"Exception in GetNaviAugmentation of view {viewID}: {exp.Message}");
                         await Task.Delay(10000);
                     }
                 }
+
+                await Task.Delay(2000);
             }
         }
 
