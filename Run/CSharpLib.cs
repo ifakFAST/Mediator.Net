@@ -61,6 +61,15 @@ namespace Std {
             yLast.Value = Tstar * (K * u - yLast) + yLast;
             return yLast;
         }
+        
+        public double Step(double? u, Duration dt) {
+            if (u.HasValue) {
+                return Step(u.Value, dt: dt);
+            }
+            else {
+                return yLast;
+            }
+        }
     }
     
     public class Util {
