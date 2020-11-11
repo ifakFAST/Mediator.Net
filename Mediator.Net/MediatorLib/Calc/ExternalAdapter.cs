@@ -199,24 +199,32 @@ namespace Ifak.Fast.Mediator.Calc
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
-            process.OutputDataReceived += OnReceivedOutput;
-            process.ErrorDataReceived += OnReceivedError;
             process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+
+            StartStreamReadThread(process.StandardOutput, (line) => {
+                Console.Out.WriteLine(line);
+            });
+            StartStreamReadThread(process.StandardError, (line) => {
+                Console.Error.WriteLine(line);
+            });
+
             return process;
         }
 
-        private void OnReceivedOutput(object sender, DataReceivedEventArgs e) {
-            if (!string.IsNullOrEmpty(e.Data)) {
-                Console.Out.WriteLine(e.Data);
-            }
-        }
-
-        private void OnReceivedError(object sender, DataReceivedEventArgs e) {
-            if (!string.IsNullOrEmpty(e.Data)) {
-                Console.Error.WriteLine(e.Data);
-            }
+        private static void StartStreamReadThread(StreamReader reader, Action<string> onGotLine) {
+            var thread = new Thread(() => {
+                while (true) {
+                    string line = reader.ReadLine();
+                    if (line == null) {
+                        return;
+                    }
+                    if (line != "") {
+                        onGotLine(line);
+                    }
+                }
+            });
+            thread.IsBackground = true;
+            thread.Start();
         }
 
         private void StopProcess(Process p) {
