@@ -26,6 +26,23 @@ namespace Ifak.Fast.Mediator.EventLog
             return Task.FromResult(true);
         }
 
+        public override async Task<NaviAugmentation?> GetNaviAugmentation() {
+            DataValue res = await Connection.CallMethod(Module, "GetActiveAlarms");
+            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>();
+            bool anyAlarm = errors.Any(err => err.Severity == Severity.Alarm);
+            bool anyWarn = errors.Any(err => err.Severity == Severity.Warning);
+            if (anyWarn || anyAlarm) {
+                return new NaviAugmentation() {
+                    IconColor = (anyAlarm ? "red" : "orange")
+                };
+            }
+            else {
+                return new NaviAugmentation() {
+                    IconColor = ""
+                };
+            }
+        }
+
         public override async Task<ReqResult> OnUiRequestAsync(string command, DataValue parameters) {
 
             switch (command) {

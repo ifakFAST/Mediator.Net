@@ -35,7 +35,7 @@ export default {
     },
     currentViewSource() {
       if (this.currentViewID === "") return "";
-      const view = this.model.views.find(v => v.viewID == this.currentViewID);
+      const view = this.model.views.find(v => v.viewID === this.currentViewID);
       return view.viewURL + "?viewID=" + this.currentViewID;
     }
   },
@@ -89,7 +89,12 @@ export default {
         socket.onmessage = function(wsEvent) {
           context.connectionState = 0;
           const parsedData = JSON.parse(wsEvent.data);
-          context.eventListener(parsedData.event, parsedData.payload);
+          if (parsedData.event === "NaviAugmentation") {
+            context.handleViewAugmentation(parsedData.payload);
+          }
+          else {
+            context.eventListener(parsedData.event, parsedData.payload);
+          }
           const doACK = function() {
             socket.send("OK");
           };
@@ -116,6 +121,13 @@ export default {
             setTimeout(relogin, 3000);
           }
         }
+      }
+    },
+    handleViewAugmentation(eventPayload) {
+      const viewID = eventPayload.viewID;
+      const view = this.model.views.find(v => v.viewID === viewID);
+      if (view) {
+        this.$set(view, 'viewIconColor', eventPayload.iconColor);
       }
     },
     tryReLogin(user, pass) {

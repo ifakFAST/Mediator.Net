@@ -9,7 +9,7 @@
             @click="activateView(view.viewID)"
             @contextmenu="(e) => onContextMenuViewEntry(e, view, i)">
             <v-list-item-icon>
-              <v-icon light>{{iconFromView(view)}}</v-icon>
+              <v-icon :color="iconColorFromView(view)" light>{{iconFromView(view)}}</v-icon>
             </v-list-item-icon>
             <v-list-item-content>
               <v-list-item-title style="font-size: 15px" v-text="view.viewName"></v-list-item-title>
@@ -256,6 +256,11 @@
         const icon = view.viewIcon;
         if (icon === undefined || icon === '') return 'bubble_chart'
         return icon
+      },
+      iconColorFromView(view) {
+        const color = view.viewIconColor;
+        if (color === undefined || color === '') return ''
+        return color
       },
       onContextMenuViewEntry(e, view, viewIdx) {
         e.preventDefault()

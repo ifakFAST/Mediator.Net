@@ -45,6 +45,36 @@ namespace Ifak.Fast.Mediator.Dashboard
             foreach (View view in model.Views) {
                 await CreateView(view);
             }
+
+            Task igored = DoRegularGetNaviAugmentation();
+        }
+
+        private async Task DoRegularGetNaviAugmentation() {
+
+            while (!closed) {
+
+                await Task.Delay(2000);
+
+                foreach(var entry in views) {
+                    string viewID = entry.Key;
+                    ViewBase view = entry.Value;
+                    try {
+                        NaviAugmentation? aug = await view.GetNaviAugmentation();
+                        if (aug.HasValue) {
+                            var para = new {
+                                viewID,
+                                iconColor = aug.Value.IconColor
+                            };
+                            await SendEventToUI("NaviAugmentation", para);
+                        }
+                    }
+                    catch(Exception exception) {
+                        Exception exp = exception.GetBaseException();
+                        Console.Error.WriteLine($"Exception in GetNaviAugmentation of view {viewID}: {exp.Message}");
+                        await Task.Delay(10000);
+                    }
+                }
+            }
         }
 
         private async Task CreateView(View view) {
@@ -260,7 +290,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        Task ViewContext.SendEventToUI(string eventName, object payload) {
+        public Task SendEventToUI(string eventName, object payload) {
             if (WebSocket == null || WebSocket.State != WebSocketState.Open) return Task.FromResult(true);
             return SendWebSocket(WebSocket, "{ \"event\": \"" + eventName + "\", \"payload\": ", payload);
         }

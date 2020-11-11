@@ -68,6 +68,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             };
         }
 
+        public virtual Task<NaviAugmentation?> GetNaviAugmentation() => Task.FromResult((NaviAugmentation?)null);
+
         public abstract Task OnActivate();
 
         public virtual Task OnDeactivate() => Task.FromResult(true);
@@ -133,5 +135,10 @@ namespace Ifak.Fast.Mediator.Dashboard
             public object DefaultValue { get; set; }
             public object Value { get; set; }
         }
+    }
+
+    public struct NaviAugmentation
+    {
+        public string IconColor { get; set; }
     }
 }
