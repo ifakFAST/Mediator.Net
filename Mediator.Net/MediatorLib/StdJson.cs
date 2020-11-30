@@ -64,7 +64,7 @@ namespace Ifak.Fast.Mediator
 
         public static string ValueToString(char[] array) => ArrayToString(array, ValueToString);
 
-        public static string ValueToString(Enum value) => ValueToString(value.ToString());
+        public static string ValueToString(Enum value) => value == null ? "null" : ValueToString(value.ToString());
 
         public static string ValueToString(Enum[] array) => ArrayToString(array, ValueToString);
 
@@ -124,7 +124,7 @@ namespace Ifak.Fast.Mediator
 
         public static string ValueToString(Uri[] array) => ArrayToString(array, ValueToString);
 
-        public static string ValueToString(string value) => JsonConvert.ToString(value);
+        public static string ValueToString(string value) => value == null ? "null" : JsonConvert.ToString(value);
 
         public static string ValueToString(string[] array) => ArrayToString(array, ValueToString);
 
@@ -157,7 +157,8 @@ namespace Ifak.Fast.Mediator
         public static string ValueToString(LocationRef[] array) => ArrayToString(array, ValueToString);
 
         private static string ArrayToString<T>(T[] array, Func<T, string> f) {
-            if (array == null || array.Length == 0) return "[]";
+            if (array == null) return "null";
+            if (array.Length == 0) return "[]";
             var res = new StringBuilder(256);
             res.Append('[');
             int Last = array.Length - 1;
@@ -277,7 +278,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public static double[] ToDoubleArrayAcceptingFloats(string s) => ToPrimitiveArray(s, ToDoubleAcceptingBool);
+        public static double[] ToDoubleArrayAcceptingBools(string s) => ToPrimitiveArray(s, ToDoubleAcceptingBool);
 
         public static decimal ToDecimal(string s) => decimal.Parse(s, CultureInfo.InvariantCulture);
 
@@ -285,6 +286,8 @@ namespace Ifak.Fast.Mediator
 
 
         private static T[] ToPrimitiveArray<T>(string str, Func<string,T> parseNumber) where T : struct {
+
+            if (str == null || str == "null") return null;
 
             int countSeparators = 0;
             for (int i = 0; i < str.Length; ++i) {
@@ -362,10 +365,12 @@ namespace Ifak.Fast.Mediator
         }
 
         public static T ObjectFromString<T>(string json) {
+            json = json ?? "null";
             return JsonConvert.DeserializeObject<T>(json, settings_NoIndent_UseShouldSerializeMembers);
         }
 
         public static object ObjectFromString(Type t, string json) {
+            json = json ?? "null";
             return JsonConvert.DeserializeObject(json, t, settings_NoIndent_UseShouldSerializeMembers);
         }
 
@@ -399,6 +404,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public static JToken JTokenFromString(string json) {
+            json = json ?? "null";
             return JTokenFromReader(new StringReader(json));
         }
 
@@ -411,10 +417,12 @@ namespace Ifak.Fast.Mediator
         }
 
         public static JObject JObjectFromString(string json) {
+            json = json ?? "null";
             return JObjectFromReader(new StringReader(json));
         }
 
         public static void PopulateObject(string json, object obj) {
+            json = json ?? "null";
             JsonConvert.PopulateObject(json, obj, settings_NoIndent_UseShouldSerializeMembers);
         }
     }
