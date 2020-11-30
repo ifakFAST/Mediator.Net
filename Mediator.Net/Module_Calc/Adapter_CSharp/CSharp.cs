@@ -16,8 +16,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
     [Identify(id: "CSharp", showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true)]
     public class CSharp : CalculationBase, EventSink
     {
-        private Input[] inputs = new Input[0];
-        private Output[] outputs = new Output[0];
+        private InputBase[] inputs = new Input[0];
+        private OutputBase[] outputs = new Output[0];
         private AbstractState[] states = new AbstractState[0];
         private Alarm[] alarms = new Alarm[0];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
@@ -92,8 +92,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
                 // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
 
-                inputs  = GetIdentifiableMembers<Input> (obj, "", recursive: false).ToArray();
-                outputs = GetIdentifiableMembers<Output>(obj, "", recursive: false).ToArray();
+                inputs  = GetIdentifiableMembers<InputBase> (obj, "", recursive: false).ToArray();
+                outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
                 states  = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
 
                 var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
@@ -161,7 +161,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
 
             foreach (InputValue v in inputValues) {
-                Input input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
+                InputBase input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
                 if (input != null) {
                     input.VTQ = v.Value;
                 }
@@ -220,14 +220,14 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return result;
         }
 
-        private static InputDef MakeInputDef(Input m) {
+        private static InputDef MakeInputDef(InputBase m) {
             return new InputDef() {
                 ID = m.ID,
                 Name = m.Name,
                 Description = m.Name,
                 Unit = m.Unit,
-                Dimension = 1,
-                Type = DataType.Float64,
+                Dimension = m.Dimension,
+                Type = m.Type,
                 DefaultValue = m.GetDefaultValue()
             };
         }
@@ -244,14 +244,14 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             };
         }
 
-        private static OutputDef MakeOutputDef(Output m) {
+        private static OutputDef MakeOutputDef(OutputBase m) {
             return new OutputDef() {
                 ID = m.ID,
                 Name = m.Name,
                 Description = m.Name,
                 Unit = m.Unit,
-                Dimension = 1,
-                Type = DataType.Float64,
+                Dimension = m.Dimension,
+                Type = m.Type,
             };
         }
     }

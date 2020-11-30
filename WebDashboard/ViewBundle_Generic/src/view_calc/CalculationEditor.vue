@@ -50,22 +50,23 @@
           </tr>
         </thead>
 
-        <tr v-for="{ input, VarVal } in inputList" :key="input.ID">
-          <td class="IOName">{{ input.Name }}</td>
-          <td>{{ input.Unit }}</td>
-          <td>{{ input.Type }}</td>
+        <tr v-for="{ input, VarVal } in inputList" :key="input.ID" style="vertical-align:top;">
+          <td style="padding-top:4px;" class="IOName">{{ input.Name }}</td>
+          <td style="padding-top:4px;">{{ input.Unit }}</td>
+          <td style="padding-top:4px;">{{ input.Type }}</td>
 
-          <td v-bind:style="{ color: qualityColor(VarVal.Q) }">{{ VarVal.V }}</td>
-          <td>{{ VarVal.T }}</td>
+          <td style="padding-top:4px;"><value-display :vtq="VarVal" :type="input.Type" :dimension="input.Dimension" ></value-display></td>
+
+          <td style="padding-top:4px;">{{ VarVal.T }}</td>
 
           <td><v-select :value="inputAssignState(input)" @input="onValueTypeChanged(input, $event)" :items="assignStateValuesIn" hide-details class="tabcontent" style="width: 125px;"></v-select></td>
 
-          <td>             {{ isVar(input) ? getObjectName(input.Variable.Object) : ''  }}</td>
+          <td style="padding-top:4px;"> {{ isVar(input) ? getObjectName(input.Variable.Object) : ''  }}</td>
           <td><v-btn    v-if="isVar(input)" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(input.Variable)"><v-icon>edit</v-icon></v-btn></td>
           <td><v-select v-if="isVar(input)" :items="getObjectVariables(input.Variable.Object)" v-model="input.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
 
           <td>
-            <v-text-field class="ml-4" v-if="isConst(input)" v-model="input.Constant" hide-details  style="width: 100px;"></v-text-field>
+            <v-text-field class="ml-4 tabcontent" v-if="isConst(input)" v-model="input.Constant" hide-details style="width: 100px;"></v-text-field>
           </td>
         </tr>
 
@@ -83,7 +84,7 @@
             <th align="left">Unit</th>
             <th align="left">Type</th>
             <th align="left">Value</th>
-            <th align="left">Value Time</th>
+            <th align="left">Time</th>
             <th align="left">Value Destination</th>
             <th align="left">Object</th>
             <th align="left">&nbsp;</th>
@@ -92,16 +93,16 @@
           </tr>
         </thead>
 
-        <tr v-for="{ output, VarVal } in outputList" :key="output.ID">
-          <td class="IOName">{{ output.Name }}</td>
-          <td>{{ output.Unit }}</td>
-          <td>{{ output.Type }}</td>
-          <td v-bind:style="{ color: qualityColor(VarVal.Q) }">{{ VarVal.V }}</td>
-          <td>{{ VarVal.T }}</td>
+        <tr v-for="{ output, VarVal } in outputList" :key="output.ID" style="vertical-align:top;">
+          <td style="padding-top:4px;" class="IOName">{{ output.Name }}</td>
+          <td style="padding-top:4px;">{{ output.Unit }}</td>
+          <td style="padding-top:4px;">{{ output.Type }}</td>
+          <td style="padding-top:4px;"><value-display :vtq="VarVal" :type="output.Type" :dimension="output.Dimension" ></value-display></td>
+          <td style="padding-top:4px;">{{ VarVal.T }}</td>
 
           <td><v-select :value="outputAssignState(output)" @input="onOutputValueTypeChanged(output, $event)" :items="assignStateValuesOut" hide-details class="tabcontent" style="width: 130px;"></v-select></td>
 
-          <td>             {{ output.Variable !== null ? getObjectName(output.Variable.Object) : ''  }}</td>
+          <td style="padding-top:4px;">             {{ output.Variable !== null ? getObjectName(output.Variable.Object) : ''  }}</td>
           <td><v-btn v-if="outputAssignState(output) === 'Variable'" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectOutputObj(output)"><v-icon>edit</v-icon></v-btn></td>
           <td><v-select v-if="output.Variable !== null" :items="getObjectVariables(output.Variable.Object)" v-model="output.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
         </tr>
@@ -124,12 +125,12 @@
           </tr>
         </thead>
 
-        <tr v-for="{ state, VarVal } in stateList" :key="state.ID">
-          <td class="IOName">{{ state.Name }}</td>
-          <td>{{ state.Unit }}</td>
-          <td>{{ state.Type }}</td>
-          <td v-bind:style="{ color: qualityColor(VarVal.Q) }">{{ VarVal.V }}</td>
-          <td>{{ VarVal.T }}</td>
+        <tr v-for="{ state, VarVal } in stateList" :key="state.ID" style="vertical-align:top;">
+          <td style="padding-top:4px;" class="IOName">{{ state.Name }}</td>
+          <td style="padding-top:4px;" >{{ state.Unit }}</td>
+          <td style="padding-top:4px;" >{{ state.Type }}</td>
+          <td style="padding-top:4px;"><value-display :vtq="VarVal" :type="state.Type" :dimension="state.Dimension" ></value-display></td>
+          <td style="padding-top:4px;" >{{ VarVal.T }}</td>
         </tr>
 
       </table>
@@ -150,6 +151,7 @@
 import { Component, Prop, Vue } from 'vue-property-decorator'
 import * as calcmodel from './model'
 import MemberRow from './util/MemberRow.vue'
+import ValueDisplay from './util/ValueDisplay.vue'
 import * as global from './global'
 import * as fast from '../fast_types'
 import DlgObjectSelect from '../components/DlgObjectSelect.vue'
@@ -177,6 +179,7 @@ interface Obj {
   components: {
     MemberRow,
     DlgObjectSelect,
+    ValueDisplay,
     editor: require('vue2-ace-editor'),
   },
 })

@@ -297,6 +297,14 @@ namespace Ifak.Fast.Mediator
 
         public bool IsArray => !string.IsNullOrEmpty(jsonOrNull) && (jsonOrNull[0] == '[' || FirstNonWhitespace(jsonOrNull) == '[');
 
+        public int ArrayLength {
+            get {
+                var array = StdJson.JTokenFromString(jsonOrNull) as Json.Linq.JArray;
+                if (array == null) throw new SerializationException("DataValue.ArrayLength: value is not an array");
+                return array.Count;
+            }
+        }
+
         public bool IsBool => jsonOrNull == "true" || jsonOrNull == "false";
 
         public T Object<T>() => StdJson.ObjectFromString<T>(jsonOrNull);

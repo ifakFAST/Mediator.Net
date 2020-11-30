@@ -3,8 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
@@ -13,21 +11,26 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public string Name { get; set; }
     }
 
-    public class Input : Identifiable {
+    public abstract class InputBase : Identifiable {
+
         public string ID { get; set; } = "";
         public string Name { get; set; }
-        public string Unit { get; private set; }
-        public double DefaultValue { get; private set; }
+        public string Unit { get; protected set; }
         public VTQ VTQ { get; internal set; }
 
-        public Input(string name, string unit = "", double defaultValue = 0.0) {
+        public DataType Type { get; private set; }
+        public int Dimension { get; private set; }
+        private DataValue dvDefaultValue { get; set; }
+
+        protected InputBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
             Name = name;
             Unit = unit;
-            DefaultValue = defaultValue;
+            Type = type;
+            Dimension = dimension;
+            dvDefaultValue = defaultValue;
             VTQ = VTQ.Make(defaultValue, Timestamp.Now, Quality.Good);
         }
 
-        public double Value => VTQ.V.GetDouble();
         public Timestamp Time => VTQ.T;
         public Quality Quality => VTQ.Q;
 
@@ -38,41 +41,29 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public bool IsNotBad => VTQ.Q != Quality.Bad;
         public bool IsNotGood => VTQ.Q != Quality.Good;
 
-        public static implicit operator VTQ(Input d) => d.VTQ;
-        public static implicit operator double(Input d) => d.Value;
+        public static implicit operator VTQ(InputBase d) => d.VTQ;
 
-        public DataValue GetDefaultValue() => DataValue.FromDouble(DefaultValue);
+        public DataValue GetDefaultValue() => dvDefaultValue;
     }
 
-    public class Output : Identifiable
-    {
+    public abstract class OutputBase : Identifiable {
+
         public string ID { get; set; } = "";
         public string Name { get; set; }
-        public string Unit { get; private set; }
-        public double DefaultValue { get; private set; }
-        public VTQ VTQ { get; set; }
-        public int? RoundDigits { get; set; }
+        public string Unit { get; protected set; }
+        public VTQ VTQ { get; internal set; }
 
-        public Output(string name, string unit = "", double defaultValue = 0.0, int? roundDigits = 6) {
+        public DataType Type { get; private set; }
+        public int Dimension { get; private set; }
+        protected DataValue dvDefaultValue { get; set; }
+
+        protected OutputBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
             Name = name;
             Unit = unit;
-            DefaultValue = defaultValue;
+            Type = type;
+            Dimension = dimension;
+            dvDefaultValue = defaultValue;
             VTQ = VTQ.Make(defaultValue, Timestamp.Now, Quality.Good);
-            RoundDigits = roundDigits;
-        }
-
-        public double Value {
-            get => VTQ.V.GetDouble();
-            set {
-                double v = value;
-                if (RoundDigits.HasValue) {
-                    try {
-                        v = Math.Round(v, RoundDigits.Value);
-                    }
-                    catch (Exception) { }
-                }
-                VTQ = VTQ.WithValue(DataValue.FromDouble(v));
-            }
         }
 
         public Timestamp Time {
@@ -92,8 +83,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public bool IsNotBad => VTQ.Q != Quality.Bad;
         public bool IsNotGood => VTQ.Q != Quality.Good;
 
-        public static implicit operator VTQ(Output d) => d.VTQ;
-        public static implicit operator double(Output d) => d.Value;
+        public static implicit operator VTQ(OutputBase d) => d.VTQ;
     }
 
     public abstract class AbstractState : Identifiable
@@ -109,52 +99,25 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         internal abstract DataType GetDataType();
     }
 
-    public class State : AbstractState
-    {
-        public double DefaultValue { get; private set; }
-        public double Value { get; set; }
-        public bool NeedHighPrecision { get; set; }
+    public abstract class StateBase: AbstractState {
 
-        public State(string name, string unit, double defaultValue, bool needHighPrecision = false) {
+        protected DataType Type { get; private set; }
+        protected int Dimension { get; private set; }
+        protected DataValue theDefaultValue { get; private set; }
+
+        protected StateBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
             Name = name;
             Unit = unit;
-            DefaultValue = defaultValue;
-            Value = defaultValue;
-            NeedHighPrecision = needHighPrecision;
+            Type = type;
+            Dimension = dimension;
+            theDefaultValue = defaultValue;
         }
 
-        public static implicit operator double(State d) => d.Value;
+        internal override DataValue GetDefaultValue() => theDefaultValue;
 
-        internal override DataValue GetValue() {
-            double v = Value;
-            if (NeedHighPrecision) {
-                return DataValue.FromDouble(v);
-            }
-            try {
-                float f = (float)v;
-                return DataValue.FromFloat(f);
-            }
-            catch(Exception) {
-                return DataValue.FromDouble(v);
-            }
-        }
+        internal override int GetDimension() => Dimension;
 
-        internal override DataValue GetDefaultValue() => DataValue.FromDouble(DefaultValue);
-
-        internal override void SetValueFromDataValue(DataValue v) {
-            double? vv = v.AsDouble();
-            if (vv.HasValue) {
-                Value = vv.Value;
-            }
-            else {
-                Value = DefaultValue;
-            }
-        }
-
-        internal override int GetDimension() => 1;
-
-        internal override DataType GetDataType() => DataType.Float64;
-
+        internal override DataType GetDataType() => Type;
     }
 
     public interface EventSink

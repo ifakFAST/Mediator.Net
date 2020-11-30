@@ -42,7 +42,7 @@ export default class ObjectTree extends Vue {
   @Prop(Boolean)initialOpen: boolean
   @Prop(Object) typeInfo: TypeMap
 
-  open: boolean = this.initialOpen
+  open: boolean = false
   showStruct: boolean = false
 
   get firstVar(): VariableVal {
