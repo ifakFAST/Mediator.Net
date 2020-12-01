@@ -377,7 +377,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 if (t.IsFaulted && !moduleShutdown && adapter.State == State.Running) {
                     Exception exp = t.Exception.GetBaseException() ?? t.Exception;
-                    Task ignored2 = RestartAdapter(adapter, "Run loop exception: " + exp.Message, critical: true);
+                    Task ignored2 = RestartAdapter(adapter, "Run loop exception: " + exp.Message + "\n" + exp.StackTrace, critical: true);
                 }
             });
         }

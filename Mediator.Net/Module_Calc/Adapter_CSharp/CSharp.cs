@@ -75,9 +75,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                         "System",
                         "System.Collections.Generic",
                         "System.Linq",
+                        "System.Globalization",
+                        "System.Text",
                         "Ifak.Fast.Mediator.Calc.Adapter_CSharp",
                         "Ifak.Fast.Mediator")
-                    .WithReferences(referencedAssemblies.ToArray());
+                    .WithReferences(referencedAssemblies.ToArray())
+                    .WithEmitDebugInformation(true);
 
                 const string className = "Script";
 
@@ -92,9 +95,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
                 // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
 
-                inputs  = GetIdentifiableMembers<InputBase> (obj, "", recursive: false).ToArray();
+                inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: false).ToArray();
                 outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
-                states  = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
+                states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
 
                 var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
                 foreach (EventProvider provider in eventProviders) {
@@ -198,7 +201,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     x.Name = idChain + x.Name;
                     result.Add(x);
                 }
-                else if (recursive && f.FieldType.IsClass) {
+                else if (recursive && f.FieldType.IsClass && fieldValue != null) {
                     result.AddRange(GetIdentifiableMembers<T>(fieldValue, idChain + id + ".", recursive));
                 }
             }
@@ -213,7 +216,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 if (fieldValue is T x) {
                     result.Add(x);
                 }
-                else if (recursive && f.FieldType.IsClass) {
+                else if (recursive && f.FieldType.IsClass && fieldValue != null) {
                     result.AddRange(GetMembers<T>(fieldValue, recursive));
                 }
             }
