@@ -22,6 +22,22 @@ namespace Ifak.Fast.Mediator
                 return;
             }
 
+            if (args.Length > 4 && args[0] == "copydb") {
+                string srcType = args[1];
+                string srcConnection = args[2];
+                string dstType = args[3];
+                string dstConnection = args[4];
+                Console.WriteLine($"Copy data from \"{srcConnection}\" to \"{dstConnection}\"...");
+
+                Timeseries.Migrate.CopyData(
+                    srcType: srcType,
+                    srcConnectionString: srcConnection,
+                    dstType: dstType,
+                    dstConnectionString: dstConnection);
+
+                return;
+            }
+
             string configFileName = "";
             string title = "";
             string logDir = "";
