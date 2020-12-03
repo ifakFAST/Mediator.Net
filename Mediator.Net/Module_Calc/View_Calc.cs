@@ -132,12 +132,14 @@ namespace Ifak.Fast.Mediator.Calc
                             objects = new ObjectInfo[0];
                         }
 
+                        Func<Variable, bool> isMatch = GetMatchPredicate(pars.ForType);
+
                         return ReqResult.OK(new {
-                            Items = objects.Where(o => o.Variables.Any(IsNumeric)).Select(o => new {
+                            Items = objects.Where(o => o.Variables.Any(isMatch)).Select(o => new {
                                 Type = o.ClassName,
                                 ID = o.ID.ToEncodedString(),
                                 Name = o.Name,
-                                Variables = o.Variables.Where(IsNumeric).Select(v => v.Name).ToArray()
+                                Variables = o.Variables.Where(isMatch).Select(v => v.Name).ToArray()
                             })
                         });
                     }
@@ -172,7 +174,7 @@ namespace Ifak.Fast.Mediator.Calc
 
             var objectInfos = new List<ObjInfo>();
             foreach (ObjectInfo info in infos) {
-                var numericVariables = info.Variables.Where(IsNumeric).Select(v => v.Name).ToArray();
+                var numericVariables = info.Variables.Where(IsNumericBoolOrStruct).Select(v => v.Name).ToArray();
                 objectInfos.Add(new ObjInfo() {
                     ID = info.ID.ToEncodedString(),
                     Name = info.Name,
@@ -217,7 +219,14 @@ namespace Ifak.Fast.Mediator.Calc
             return res.ToArray();
         }
 
-        private static bool IsNumeric(Variable v) => v.IsNumeric;
+        private static Func<Variable, bool> GetMatchPredicate(DataType type) {
+            if (type.IsNumeric() || type == DataType.Bool) {
+                return (v) => v.IsNumeric || v.Type == DataType.Bool;
+            }
+            return (v) => v.Type == type;
+        }
+
+        private static bool IsNumericBoolOrStruct(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Struct;
 
         private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken> entry) {
             JToken value = entry.Value;
@@ -291,6 +300,7 @@ namespace Ifak.Fast.Mediator.Calc
         public class ReadModuleObjectsParams
         {
             public string ModuleID { get; set; } = "";
+            public DataType ForType { get; set; } = DataType.Float64;
         }
 
         public class EventEntry

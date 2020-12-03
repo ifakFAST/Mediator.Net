@@ -62,7 +62,7 @@
           <td><v-select :value="inputAssignState(input)" @input="onValueTypeChanged(input, $event)" :items="assignStateValuesIn" hide-details class="tabcontent" style="width: 125px;"></v-select></td>
 
           <td style="padding-top:4px;"> {{ isVar(input) ? getObjectName(input.Variable.Object) : ''  }}</td>
-          <td><v-btn    v-if="isVar(input)" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(input.Variable)"><v-icon>edit</v-icon></v-btn></td>
+          <td><v-btn    v-if="isVar(input)" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(input.Variable, input.Type)"><v-icon>edit</v-icon></v-btn></td>
           <td><v-select v-if="isVar(input)" :items="getObjectVariables(input.Variable.Object)" v-model="input.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
 
           <td>
@@ -103,7 +103,7 @@
           <td><v-select :value="outputAssignState(output)" @input="onOutputValueTypeChanged(output, $event)" :items="assignStateValuesOut" hide-details class="tabcontent" style="width: 130px;"></v-select></td>
 
           <td style="padding-top:4px;">             {{ output.Variable !== null ? getObjectName(output.Variable.Object) : ''  }}</td>
-          <td><v-btn v-if="outputAssignState(output) === 'Variable'" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectOutputObj(output)"><v-icon>edit</v-icon></v-btn></td>
+          <td><v-btn v-if="outputAssignState(output) === 'Variable'" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(output.Variable, output.Type)"><v-icon>edit</v-icon></v-btn></td>
           <td><v-select v-if="output.Variable !== null" :items="getObjectVariables(output.Variable.Object)" v-model="output.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
         </tr>
 
@@ -141,6 +141,7 @@
       :object-id="selectObject.selectedObjectID"
       :module-id="selectObject.selectedModuleID"
       :modules="selectObject.modules"
+      :type="selectObject.type"
       @onselected="selectObject_OK"></dlg-object-select>
 
   </div>
@@ -165,6 +166,7 @@ interface SelectObject {
   modules: global.ModuleInfo[]
   selectedModuleID: string
   selectedObjectID: string
+  type: fast.DataType
   variable: fast.VariableRef
 }
 
@@ -198,6 +200,7 @@ export default class CalculationEditor extends Vue {
     modules: [],
     selectedModuleID: '',
     selectedObjectID: '',
+    type: 'Float64',
     variable: { Object: '', Name: '' },
   }
 
@@ -353,14 +356,7 @@ export default class CalculationEditor extends Vue {
     return obj === undefined ? [] : obj.Variables
   }
 
-  onSelectOutputObj(out: calcmodel.Output): void {
-    if (out.Variable === null) {
-      out.Variable = { Object: '', Name: '' }
-    }
-    this.onSelectObj(out.Variable)
-  }
-
-  onSelectObj(v: fast.VariableRef | null): void {
+  onSelectObj(v: fast.VariableRef, type: fast.DataType): void {
 
     const currObj: string = v.Object
     let objForModuleID: string = currObj
@@ -381,6 +377,7 @@ export default class CalculationEditor extends Vue {
     this.selectObject.selectedObjectID = currObj
     this.selectObject.variable = v
     this.selectObject.modules = global.modules
+    this.selectObject.type = type
     this.selectObject.show = true
   }
 

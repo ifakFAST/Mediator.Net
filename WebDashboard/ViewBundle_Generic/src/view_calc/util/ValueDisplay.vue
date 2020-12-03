@@ -29,7 +29,7 @@ export default class ValueDisplay extends Vue {
   showStruct = false
 
   get valueString(): string {
-    const MaxLen = 33
+    const MaxLen = 20
     const str = this.vtq.V
     if (str.length > MaxLen) {
       return str.substring(0, MaxLen) + '\u00A0...'

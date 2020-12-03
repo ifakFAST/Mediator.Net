@@ -65,8 +65,9 @@ export default class DlgObjectSelect extends Vue {
   @Prop(String)  objectId: string
   @Prop(String)  moduleId: string
   @Prop(Array)   modules: ModuleInfo[]
+  @Prop({ type: String, default() { return 'Float64' } }) type: string
 
-  currModuleID: string = this.moduleId
+  currModuleID: string = ''
   selected: Obj[] = []
   search = ''
   items: Obj[] = []
@@ -119,7 +120,11 @@ export default class DlgObjectSelect extends Vue {
 
   refreshObjectsWithSelection(modID: string, selectID: string) {
     const context = this
-    window.parent['dashboardApp'].sendViewRequest('ReadModuleObjects', { ModuleID: modID }, (strResponse) => {
+    const para = {
+      ModuleID: modID,
+      ForType: this.type,
+    }
+    window.parent['dashboardApp'].sendViewRequest('ReadModuleObjects', para, (strResponse) => {
       const response = JSON.parse(strResponse)
       context.items = response.Items
       context.selected = response.Items.filter((it: Obj) => it.ID === selectID)
