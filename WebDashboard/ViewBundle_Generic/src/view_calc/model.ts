@@ -36,6 +36,7 @@ export interface Calculation {
   History: fast.History | null
   WindowVisible: boolean
   Cycle: fast.Duration
+  Offset: fast.Duration
   RealTimeScale: number
   Definition: string // e.g. C# code, SIMBA project file name
   Inputs: Input[]

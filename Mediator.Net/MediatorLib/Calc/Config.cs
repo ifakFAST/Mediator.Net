@@ -10,6 +10,8 @@ namespace Ifak.Fast.Mediator.Calc
 
         public Duration Cycle { get; set; }
 
+        public Duration Offset { get; set; }
+
         public string Definition { get; set; } // e.g. C# code, SIMBA project file name
 
         public bool WindowVisible { get; set; } = false;

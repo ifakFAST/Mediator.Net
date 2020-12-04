@@ -53,6 +53,11 @@ namespace Ifak.Fast.Mediator.Calc
             return Duration.FromMilliseconds(cycleTimeScaledMS);
         }
 
+        public Duration ScaledOffset() {
+            long offsetTimeScaledMS = (long)(CalcConfig.Offset.TotalMilliseconds / CalcConfig.RealTimeScale);
+            return Duration.FromMilliseconds(offsetTimeScaledMS);
+        }
+
         public bool SetConfig(Config.Calculation newConfig) {
 
             var inputs = newConfig.Inputs.ToArray();

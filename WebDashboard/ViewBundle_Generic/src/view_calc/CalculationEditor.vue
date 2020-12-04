@@ -16,6 +16,7 @@
         <member-row name="Type"            v-model="value.Type"          type="Enum"     :optional="false" :enumValues="adapterTypes"></member-row>
         <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
+        <member-row name="Cycle Offset"    v-model="value.Offset"        type="Duration" :optional="false"></member-row>
         <member-row name="Enabled"         v-model="value.Enabled"       type="Boolean"  :optional="false"></member-row>
         <member-row name="WindowVisible"   v-model="value.WindowVisible" type="Boolean"  :optional="false" v-if="showWindowVisible"></member-row>
         <member-row :name="definitionName" v-model="value.Definition"    :type="definitionType" :optional="false" v-if="showDefinition && definitionType !== 'Code'"></member-row>

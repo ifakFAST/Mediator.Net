@@ -3,8 +3,22 @@
   <table cellspacing="10">
     <tr>
       <td><v-select     hide-details v-bind:value="value.Mode"     @input="update('Mode',     $event)" label="Mode"     :style="{ width: modeWidth + 'px' }" :items="historyItems"></v-select></td>
-      <td><v-text-field hide-details v-bind:value="value.Interval" @input="update('Interval', $event)" label="Interval" style="width: 90px;" v-show="showInterval"></v-text-field></td>
-      <td><v-text-field hide-details v-bind:value="value.Offset"   @input="update('Offset',   $event)" label="Offset"   style="width: 90px;" v-show="showInterval"></v-text-field></td>
+      <td>
+        <v-tooltip right>
+          <template v-slot:activator="{ on, attrs }">
+            <v-text-field v-on="on" v-bind="attrs" hide-details v-bind:value="value.Interval" @input="update('Interval', $event)" label="Interval" style="width: 90px;" v-show="showInterval"></v-text-field>
+          </template>
+          <span>Available time units: ms, s, min, h, d</span>
+        </v-tooltip>
+      </td>
+      <td>
+        <v-tooltip right>
+          <template v-slot:activator="{ on, attrs }">
+            <v-text-field v-on="on" v-bind="attrs" hide-details v-bind:value="value.Offset"   @input="update('Offset',   $event)" label="Offset"   style="width: 90px;" v-show="showInterval"></v-text-field>
+          </template>
+          <span>Available time units: ms, s, min, h, d</span>
+        </v-tooltip>
+      </td>
     </tr>
   </table>
 

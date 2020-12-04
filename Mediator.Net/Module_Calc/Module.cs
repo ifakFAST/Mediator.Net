@@ -387,7 +387,8 @@ namespace Ifak.Fast.Mediator.Calc
             adapter.State = State.Running;
 
             Duration cycle = adapter.ScaledCycle();
-            Timestamp t = GetNextNormalizedTimestamp(cycle);
+            Duration offset = adapter.ScaledOffset();
+            Timestamp t = GetNextNormalizedTimestamp(cycle, offset);
             string moduleID = base.moduleID;
 
             await adapter.WaitUntil(t);
@@ -476,7 +477,7 @@ namespace Ifak.Fast.Mediator.Calc
                 //listVarValueTimer.Add(vvv1);
                 //notifier.Notify_VariableValuesChanged(listVarValueTimer);
 
-                t = GetNextNormalizedTimestamp(t, cycle, adapter);
+                t = GetNextNormalizedTimestamp(t, cycle, offset, adapter);
 
                 await adapter.WaitUntil(t);
             }
@@ -537,9 +538,9 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
-        private Timestamp GetNextNormalizedTimestamp(Timestamp tCurrent, Duration cycle, CalcInstance adapter) {
+        private Timestamp GetNextNormalizedTimestamp(Timestamp tCurrent, Duration cycle, Duration offset, CalcInstance adapter) {
 
-            Timestamp tNext = GetNextNormalizedTimestamp(cycle);
+            Timestamp tNext = GetNextNormalizedTimestamp(cycle, offset);
 
             Duration minDuration = Duration.FromMilliseconds(1);
             Duration c = cycle < minDuration ? minDuration : cycle;
@@ -560,10 +561,12 @@ namespace Ifak.Fast.Mediator.Calc
             return tNext;
         }
 
-        private static Timestamp GetNextNormalizedTimestamp(Duration cycle) {
-            long nowTicks = Timestamp.Now.JavaTicks;
+        private static Timestamp GetNextNormalizedTimestamp(Duration cycle, Duration offset) {
             long cycleTicks = cycle.TotalMilliseconds;
-            long tNext = nowTicks - (nowTicks % cycleTicks) + cycleTicks;
+            long offsetTicks = offset.TotalMilliseconds;
+            long nowTicks = Timestamp.Now.JavaTicks - offsetTicks;
+            long tLast = nowTicks - (nowTicks % cycleTicks);
+            long tNext = tLast + cycleTicks + offsetTicks;
             return Timestamp.FromJavaTicks(tNext);
         }
 

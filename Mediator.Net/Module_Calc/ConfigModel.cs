@@ -176,6 +176,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public Duration Cycle { get; set; } = Duration.FromSeconds(10);
 
+        public Duration Offset { get; set; } = Duration.FromSeconds(0);
+
         public double RealTimeScale { get; set; } = 1;
 
         public string Definition { get; set; } = ""; // e.g. C# code, SIMBA project file name
@@ -191,6 +193,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 ID = ID,
                 Name = Name,
                 Cycle = Cycle,
+                Offset = Offset,
                 Definition = Definition,
                 RealTimeScale = RealTimeScale,
                 WindowVisible = WindowVisible,
