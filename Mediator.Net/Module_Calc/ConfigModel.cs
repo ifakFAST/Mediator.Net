@@ -188,6 +188,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public List<State> States { get; set; } = new List<State>();
 
+        public bool ShouldSerializeOffset() => Offset.TotalMilliseconds != 0;
+
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {
                 ID = ID,
