@@ -447,7 +447,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 listVarValues.Clear();
                 foreach (OutputValue v in outValues) {
-                    var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value.WithTime(t));
+                    var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value);
                     listVarValues.Add(vv);
                 }
                 foreach (StateValue v in stateValues) {
@@ -460,7 +460,7 @@ namespace Ifak.Fast.Mediator.Calc
                     if (ot.Variable.HasValue) {
                         int idx = outValues.FindIndex(o => o.OutputID == ot.ID);
                         if (idx > -1) {
-                            outputDest.Add(VariableValue.Make(ot.Variable.Value, outValues[idx].Value.WithTime(t)));
+                            outputDest.Add(VariableValue.Make(ot.Variable.Value, outValues[idx].Value));
                         }
                     }
                 }
