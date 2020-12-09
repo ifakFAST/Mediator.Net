@@ -184,6 +184,8 @@ namespace Ifak.Fast.Mediator
 
         public Duration Negate() => Duration.FromMilliseconds(-1 * millis);
 
+        public Duration Abs() => Duration.FromMilliseconds(Math.Abs(millis));
+
         public static bool operator ==(Duration a, Duration b) => a.Equals(b);
 
         public static bool operator !=(Duration a, Duration b) => !a.Equals(b);
