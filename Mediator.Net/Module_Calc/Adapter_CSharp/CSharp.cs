@@ -170,6 +170,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
 
+            foreach (var output in outputs) {
+                output.VTQ = VTQ.Make(DataValue.Empty, t, Quality.Good);
+                output.ValueHasBeenAssigned = false;
+            }
+
             stepAction(t, dt);
 
             StateValue[] resStates = states.Select(kv => new StateValue() {
@@ -177,13 +182,18 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 Value = kv.GetValue()
             }).ToArray();
 
-            OutputValue[] result = outputs.Select(kv => new OutputValue() {
-                OutputID = kv.ID,
-                Value = kv.VTQ
-            }).ToArray();
+            var outputValues = new List<OutputValue>(outputs.Length);
+            foreach (OutputBase output in outputs) {
+                if (output.ValueHasBeenAssigned) {
+                    outputValues.Add(new OutputValue() {
+                        OutputID = output.ID,
+                        Value = output.VTQ
+                    });
+                }
+            }
 
             var stepRes = new StepResult() {
-                Output = result,
+                Output = outputValues.ToArray(),
                 State = resStates,
             };
 

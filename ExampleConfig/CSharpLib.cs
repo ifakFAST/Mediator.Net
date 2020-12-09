@@ -4,9 +4,9 @@ using Ifak.Fast.Mediator;
 using Ifak.Fast.Mediator.Calc.Adapter_CSharp; // for State
 
 namespace Std {
-    
+
     public class PI {
-        
+
         public bool Invert = false;
         public double K;    // controller gain
         public Duration Tn; // integral time constant

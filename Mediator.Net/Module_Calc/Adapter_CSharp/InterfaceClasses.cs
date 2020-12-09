@@ -22,6 +22,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public int Dimension { get; private set; }
         private DataValue dvDefaultValue { get; set; }
 
+        public bool IsNull => VTQ.V.IsEmpty;
+        public bool NonNull => VTQ.V.NonEmpty;
+
         protected InputBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
             Name = name;
             Unit = unit;
@@ -51,39 +54,38 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public string ID { get; set; } = "";
         public string Name { get; set; }
         public string Unit { get; protected set; }
-        public VTQ VTQ { get; internal set; }
+
+        private VTQ theVTQ;
+
+        public VTQ VTQ {
+            internal get {
+                return theVTQ;
+            }
+            set {
+                ValueHasBeenAssigned = true;
+                theVTQ = value;
+            }
+        }
 
         public DataType Type { get; private set; }
         public int Dimension { get; private set; }
-        protected DataValue dvDefaultValue { get; set; }
+        internal bool ValueHasBeenAssigned = false;
 
-        protected OutputBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
+        protected OutputBase(string name, string unit, DataType type, int dimension) {
             Name = name;
             Unit = unit;
             Type = type;
             Dimension = dimension;
-            dvDefaultValue = defaultValue;
-            VTQ = VTQ.Make(defaultValue, Timestamp.Now, Quality.Good);
+            theVTQ = VTQ.Make(DataValue.Empty, Timestamp.Now, Quality.Good);
         }
 
         public Timestamp Time {
-            get => VTQ.T;
-            set => VTQ = VTQ.WithTime(value);
+            set => VTQ = theVTQ.WithTime(value);
         }
 
         public Quality Quality {
-            get => VTQ.Q;
-            set => VTQ = VTQ.WithQuality(value);
+            set => VTQ = theVTQ.WithQuality(value);
         }
-
-        public bool IsGood => VTQ.Q == Quality.Good;
-        public bool IsUncertain => VTQ.Q == Quality.Uncertain;
-        public bool IsGoodOrUncertain => VTQ.Q == Quality.Good || VTQ.Q == Quality.Uncertain;
-        public bool IsBad => VTQ.Q == Quality.Bad;
-        public bool IsNotBad => VTQ.Q != Quality.Bad;
-        public bool IsNotGood => VTQ.Q != Quality.Good;
-
-        public static implicit operator VTQ(OutputBase d) => d.VTQ;
     }
 
     public abstract class AbstractState : Identifiable
@@ -104,6 +106,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         protected DataType Type { get; private set; }
         protected int Dimension { get; private set; }
         protected DataValue theDefaultValue { get; private set; }
+
+        public bool IsNull => GetValue().IsEmpty;
+        public bool NonNull => GetValue().NonEmpty;
 
         protected StateBase(string name, string unit, DataType type, int dimension, DataValue defaultValue) {
             Name = name;
