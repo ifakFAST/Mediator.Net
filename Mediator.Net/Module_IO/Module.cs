@@ -884,6 +884,11 @@ namespace Ifak.Fast.Mediator.IO
 
                 double? vv = vtq.V.AsDouble();
                 if (!vv.HasValue) {
+
+                    if (vtq.V.IsEmpty) {
+                        return vtq;
+                    }
+
                     string msg = $"Write value for data item {istate.Name} is not a float value: {vtq.V}";
                     Log_Warn("WriteValIsNotFloat", msg);
                     throw new Exception(msg);
