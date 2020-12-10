@@ -39,7 +39,7 @@ namespace Ifak.Fast.Mediator
                 foreach (HistoryDB db in m.HistoryDBs) {
 
                     string dbt = db.Type.ToLowerInvariant();
-                    if (dbt != "sqlite" && dbt != "postgres") {
+                    if (dbt != "sqlite" && dbt != "postgres" && dbt != "postgresflat") {
                         throw new Exception($"Unknown DB type '{db.Type}' in configuration of module " + m.ID);
                     }
 
@@ -49,6 +49,9 @@ namespace Ifak.Fast.Mediator
                     }
                     else if (dbt == "postgres") {
                         fCreateDB = () => new Timeseries.Postgres.PostgresTimeseriesDB();
+                    }
+                    else if (dbt == "postgresflat") {
+                        fCreateDB = () => new Timeseries.PostgresFlat.PostgresFlatTimeseriesDB();
                     }
 
                     if (emptyDBs) {
