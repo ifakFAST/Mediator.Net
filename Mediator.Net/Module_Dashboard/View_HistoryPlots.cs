@@ -114,7 +114,11 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         var para = parameters.Object<LoadHistoryParams>();
 
-                        TabState tabState = tabStates.First(ts => ts.TabName == para.TabName);
+                        TabState tabState = tabStates.FirstOrDefault(ts => ts.TabName == para.TabName);
+                        if (tabState == null) {
+                            throw new Exception($"Failed to load history data: tab '{para.TabName}' not found");
+                        }
+
                         tabState.LastTimeRange = para.TimeRange;
 
                         Timestamp tStart = para.TimeRange.GetStart();
