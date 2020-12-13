@@ -17,11 +17,12 @@ export default class DyGraph extends Vue {
   uid = dgUUID.toString()
   graph = null
   needFullUpdate = false
+  id = ''
 
   render(h) {
     return h('div', {
       attrs: {
-          id: 'vue-dygraphs-' + this.uid,
+          id: 'vue_dygraphs_' + this.uid,
       },
       style: this.graphStyle,
     })
@@ -32,7 +33,8 @@ export default class DyGraph extends Vue {
   }
 
   mounted() {
-    const id = 'vue-dygraphs-' + this.uid
+    const id = 'vue_dygraphs_' + this.uid
+    this.id = id
     this.graph = new Dygraph(id, this.graphData, this.deepCopy(this.graphOptions))
   }
 
@@ -40,6 +42,16 @@ export default class DyGraph extends Vue {
     if (this.graph !== null) {
       const obj = Object.assign({}, this.deepCopy(this.graphOptions), {file: this.graphData})
       this.graph.updateOptions(obj)
+    }
+  }
+
+  @Watch('graphStyle')
+  watch_graphStyle(val, oldVal) {
+    if (this.graph !== null) {
+      const gr = this.graph
+      Vue.nextTick(() => {
+        gr.resize()
+      })
     }
   }
 

@@ -58,7 +58,7 @@ export default {
         clearInterval(this.intervalVar);
         this.intervalVar = 0;
       }
-      axios.post("/logout", this.sessionID);
+      axios.post("/logout", this.sessionID).catch(function (error) { } );
       this.sessionID = "";
       this.model = {};
       this.currentViewID = "";

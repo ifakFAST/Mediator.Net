@@ -8,6 +8,7 @@ export default {
   loggedOut: false,
   connectionState: 0, // 0 = ok, 1 = trying to reconnect, 2 = connection lost
   eventListener: function(eventName, eventPayload) {},
+  resizeListener: function() {},
   showTimeRangeSelector: false,
   timeRange: {
     type: 'Last',

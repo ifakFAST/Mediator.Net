@@ -152,6 +152,9 @@
 </template>
 
 <script>
+  import globalState from "./Global.js";
+  import Vue from 'vue'
+
   export default {
     props: {
       currViewID: String,
@@ -307,6 +310,16 @@
        showCustomTimeRangeSelector(v) {
          const d = new Date();
          this.today = d.toISOString().substr(0, 10);
+       },
+       miniVariant(v) {
+         Vue.nextTick(() => {
+           globalState.resizeListener();
+         });
+       },
+       drawer(v) {
+         Vue.nextTick(() => {
+           globalState.resizeListener();
+         });
        }
     },
     computed: {

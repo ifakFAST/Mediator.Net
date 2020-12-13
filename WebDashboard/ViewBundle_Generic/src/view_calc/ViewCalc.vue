@@ -256,7 +256,7 @@ export default class ViewCalc extends Vue {
   prepareAddObject(typeName: string, member: string): void {
     this.addDialog.typeName = typeName
     this.addDialog.parentMemberName = member
-    this.addDialog.newID = utils.findUniqueID(typeName, this.getAllIDs())
+    this.addDialog.newID = utils.findUniqueID(typeName, 6, this.getAllIDs())
     this.addDialog.newName = ''
     this.addDialog.show = true
     const context = this

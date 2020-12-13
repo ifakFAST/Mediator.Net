@@ -47,22 +47,27 @@ window.dashboardApp = new Vue({
             }
         });
     },
-    sendViewRequestAsync(request, payload) {
+    sendViewRequestAsync(request, payload, responseType) {
+      const rspType = responseType || 'text'
       const config = { // suppress auto conversion of string to JSON, otherwise strange behavior
           transformResponse: [function (data) { return data; }],
-          responseType: 'text'
+          responseType: rspType
       };
       globalState.busy = true;
       return axios.post('/viewRequest/' + request + "?" + this.getDashboardViewContext(), payload, config)
         .then(function (response) {
           globalState.busy = false;
-          if (response.data && response.data !== '') {
+          if (response.data && response.data !== '' && rspType === 'text') {
             return JSON.parse(response.data);
           }
+          return response.data;
         })
         .catch(function (error) {
            globalState.busy = false;
            if (error.response && error.response.data) {
+              if ((typeof error.response.data) !== 'string') {
+                throw new Error(error.response.statusText);
+              }
               const data = JSON.parse(error.response.data);
               if (data.error) {
                  throw new Error(data.error);
@@ -81,6 +86,9 @@ window.dashboardApp = new Vue({
     },
     registerViewEventListener(listener) {
       globalState.eventListener = listener;
+    },
+    registerResizeListener(listener) {
+      globalState.resizeListener = listener;
     },
     showTimeRangeSelector(show) {
        if (show) {
