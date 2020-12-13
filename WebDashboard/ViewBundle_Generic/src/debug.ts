@@ -1,24 +1,41 @@
 
 let theSessionID = ''
 let viewReady = false
+let eventSocket: WebSocket | null = null
+let connectionState = 0
+let intervalVar: any = null
+let eventListener = (eventName, eventPayload) => { }
+const backendServer = 'localhost:8082'
 
-export function setupDashboardEnv(theViewID: string): void {
+export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void {
 
-  const backendURL = 'http://localhost:8082'
+  const backendURL = 'http://' + backendServer
+  const user = 'ifak'
+  const pass = 'fast'
+  postRequest('text', backendURL + '/login', { user, pass }, (strResponse) => {
 
-  postRequest(backendURL + '/login', { user: 'ifak', pass: 'fast' }, (strResponse) => {
+    if (isRelogin === true) {
+      console.info('Relogin success.')
+    }
 
     const response = JSON.parse(strResponse)
     theSessionID = response.sessionID
-
-    postRequest(backendURL + '/activateView?' + theSessionID + '_' + theViewID, '', (resp) => {
+    openWebSocket(theViewID)
+    postRequest('text', backendURL + '/activateView?' + theSessionID + '_' + theViewID, '', (resp) => {
       viewReady = true
     }, (error) => {
-      reportError(error, 'Failed to activate view.')
+      reportErrorConsole(error, 'Failed to activate view.')
     })
 
   }, (error) => {
-    reportError(error, 'Connect error.')
+    reportErrorConsole(error, 'Connect error.')
+    if (isRelogin === true) {
+      console.info('Relogin failed! Will try again in 2 seconds...')
+      const relogin = () => {
+        setupDashboardEnv(theViewID, true)
+      }
+      setTimeout(relogin, 2000)
+    }
   })
 
   window['dashboardApp'] = {
@@ -34,9 +51,9 @@ export function setupDashboardEnv(theViewID: string): void {
       }
 
       const ctx = theSessionID + '_' + theViewID
-      console.log('sendViewRequest: ' + request)
+      // console.log('sendViewRequest: ' + request)
 
-      postRequest(backendURL + '/viewRequest/' + request + '?' + ctx, payload, (strResponse) => {
+      postRequest('text', backendURL + '/viewRequest/' + request + '?' + ctx, payload, (strResponse) => {
         successHandler(strResponse)
       }, (error) => {
         reportError(error, 'Connect error.')
@@ -54,17 +71,67 @@ export function setupDashboardEnv(theViewID: string): void {
       }
 
       const ctx = theSessionID + '_' + theViewID
-      console.log('sendViewRequestBlob: ' + request)
+      // console.log('sendViewRequestBlob: ' + request)
 
-      postRequestBlob(backendURL + '/viewRequest/' + request + '?' + ctx, payload, (blobResponse) => {
+      postRequest('blob', backendURL + '/viewRequest/' + request + '?' + ctx, payload, (blobResponse) => {
         successHandler(blobResponse)
       }, (error) => {
         reportError(error, 'Connect error.')
       })
 
     },
+    sendViewRequestAsync(request: string, payload: object | string, responseType?: 'text' | 'blob') {
+
+      const rspType = responseType || 'text'
+      if (viewReady === false) {
+        console.error('View not yet ready')
+     /*    setTimeout(() => {
+          window['dashboardApp'].sendViewRequestAsync(request, payload)
+        }, 750)
+        return */
+      }
+
+      const ctx = theSessionID + '_' + theViewID
+      // console.log('sendViewRequestAsync: ' + request)
+
+      const promise = new Promise((resolve, reject) => {
+
+        postRequest(rspType, backendURL + '/viewRequest/' + request + '?' + ctx, payload, (strResponse) => {
+          if (strResponse && strResponse !== '') {
+            try {
+              if (rspType === 'text') {
+                resolve(JSON.parse(strResponse))
+              }
+              else {
+                resolve(strResponse)
+              }
+            }
+            catch (e) {
+              reject(e)
+            }
+          }
+          else {
+            resolve()
+          }
+        }, (error) => {
+          if (error && error.error) {
+            reject(error.error)
+          }
+          else {
+            reject('Connect error.')
+          }
+        })
+
+      })
+
+      return promise
+    },
     registerViewEventListener(listener) {
+      eventListener = listener
       // console.log('registerViewEventListener')
+    },
+    registerResizeListener(listener) {
+
     },
     showTimeRangeSelector(show: boolean) {
       // console.log('showTimeRangeSelector: ' + show)
@@ -72,8 +139,8 @@ export function setupDashboardEnv(theViewID: string): void {
     getCurrentTimeRange() {
       return {
         type: 'Last',
-        lastCount: 30,
-        lastUnit: 'Days',
+        lastCount: 1,
+        lastUnit: 'Hours',
         rangeStart: '',
         rangeEnd: '',
       }
@@ -81,6 +148,15 @@ export function setupDashboardEnv(theViewID: string): void {
     registerTimeRangeListener(listener) {
       // console.log('registerTimeRangeListener')
     },
+  }
+}
+
+function reportErrorConsole(error, fallBack: string): void {
+  if (error && error.error) {
+    console.error(error.error)
+  }
+  else {
+    console.error(fallBack)
   }
 }
 
@@ -93,7 +169,7 @@ function reportError(error, fallBack: string): void {
   }
 }
 
-function postRequest(url: string, content, callback, errHandler) {
+function postRequest(responseType: 'text' | 'blob', url: string, content, callback, errHandler) {
 
   let strContent: string = ''
 
@@ -105,11 +181,17 @@ function postRequest(url: string, content, callback, errHandler) {
   }
 
   const request = new XMLHttpRequest()
+  request.responseType = responseType
   request.onreadystatechange = function() {
 
     if (this.readyState === 4) {
       if (this.status === 200) {
-        callback(this.responseText)
+        if (responseType === 'text') {
+          callback(this.responseText)
+        }
+        else {
+          callback(this.response)
+        }
       }
       else {
         let errObj = {}
@@ -125,35 +207,56 @@ function postRequest(url: string, content, callback, errHandler) {
   request.send(strContent)
 }
 
-function postRequestBlob(url: string, content, callback, errHandler) {
+function openWebSocket(theViewID: string) {
 
-  let strContent: string = ''
+  if (window.WebSocket) {
 
-  if (typeof content === 'string') {
-    strContent = content
-  }
-  else {
-    strContent = JSON.stringify(content)
-  }
+    const socket = new WebSocket('ws://' + backendServer + '/websocket/')
+    eventSocket = socket
 
-  const request = new XMLHttpRequest()
-  request.responseType = 'blob'
-  request.onreadystatechange = function() {
-
-    if (this.readyState === 4) {
-      if (this.status === 200) {
-        callback(this.response)
+    socket.onopen = (openEvent) => {
+      connectionState = 0
+      socket.send(theSessionID)
+      const doKeepAlive = () => {
+        socket.send('KA')
       }
-      else {
-        let errObj = {}
-        try {
-          errObj = JSON.parse(this.response)
+      intervalVar = setInterval(doKeepAlive, 5000)
+    }
+
+    socket.onmessage = (wsEvent) => {
+      connectionState = 0
+      const parsedData = JSON.parse(wsEvent.data)
+      eventListener(parsedData.event, parsedData.payload)
+      const doACK = () => {
+        socket.send('OK')
+      }
+      setTimeout(doACK, 500)
+    }
+
+    socket.onclose = (ev) => {
+
+      connectionState = (ev.wasClean ? 2 : 1)
+
+      if (intervalVar !== null) {
+        clearInterval(intervalVar)
+        intervalVar = null
+      }
+
+      if (!ev.wasClean) {
+        const reconnect = () => {
+          openWebSocket(theViewID)
         }
-        catch {}
-        errHandler(errObj)
+        setTimeout(reconnect, 3000)
       }
+
+      if (ev.wasClean && theSessionID !== '') {
+        console.info('Will try to relogin in 3 seconds...')
+        const relogin = () => {
+          setupDashboardEnv(theViewID, true)
+        }
+        setTimeout(relogin, 3000)
+      }
+
     }
   }
-  request.open('POST', url, true)
-  request.send(strContent)
 }
