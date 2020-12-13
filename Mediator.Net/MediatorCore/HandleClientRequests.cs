@@ -257,11 +257,18 @@ namespace Ifak.Fast.Mediator
                 switch (path) {
 
                     case Req_GetModules: {
+
+                            Func<ModuleState, bool> hasNumericVariables = (m) => {
+                                return m.AllObjects.Any(obj => obj.Variables != null && obj.Variables.Any(v => v.IsNumeric || v.Type == DataType.Bool));
+                            };
+
                             ModuleInfo[] res = core.modules.Select(m => new ModuleInfo() {
                                 ID = m.ID,
                                 Name = m.Name,
-                                Enabled = m.Enabled
+                                Enabled = m.Enabled,
+                                HasNumericVariables = hasNumericVariables(m),
                             }).ToArray();
+
                             return Result_OK(res);
                         }
 

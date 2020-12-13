@@ -616,7 +616,10 @@ namespace Ifak.Fast.Mediator
         public string ID { get; set; }
         public string Name { get; set; }
         public bool Enabled { get; set; }
-
+        /// <summary>
+        /// Return true if the module contains any object with at least one variable that is numeric or boolean
+        /// </summary>
+        public bool HasNumericVariables { get; set; }
         public override string ToString() => Name;
     }
 
