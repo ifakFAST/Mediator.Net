@@ -56,6 +56,11 @@ namespace Ifak.Fast.Mediator
             return JsonConvert.SerializeObject(value, GetSettings(indented, ignoreShouldSerializeMembers));
         }
 
+        public static JObject ObjectToJObject(object value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
+            var serializer = JsonSerializer.CreateDefault(GetSettings(indented, ignoreShouldSerializeMembers));
+            return JObject.FromObject(value, serializer);
+        }
+
         public static string ValueToString(bool value) => JsonConvert.ToString(value);
 
         public static string ValueToString(bool[] array) => ArrayToString(array, ValueToString);
