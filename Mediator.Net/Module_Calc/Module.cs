@@ -466,7 +466,7 @@ namespace Ifak.Fast.Mediator.Calc
                 }
                 notifier.Notify_VariableValuesChanged(listVarValues);
 
-                await connection.WriteVariablesIgnoreMissing(outputDest.ToArray()); // TODO Report invalid var refs
+                await WriteOutputVars(outputDest);
 
                 adapter.SetLastOutputValues(outValues);
                 adapter.SetLastStateValues(stateValues);
@@ -480,6 +480,29 @@ namespace Ifak.Fast.Mediator.Calc
                 t = GetNextNormalizedTimestamp(t, cycle, offset, adapter);
 
                 await adapter.WaitUntil(t);
+            }
+        }
+
+        private async Task WriteOutputVars(List<VariableValue> outputDest) {
+            try {
+                await connection.WriteVariablesIgnoreMissing(outputDest.ToArray()); // TODO Report invalid var refs
+            }
+            catch (Exception exp) {
+
+                Exception e = exp.GetBaseException() ?? exp;
+
+                if (e is ConnectivityException) {
+                    var sw = new System.Diagnostics.Stopwatch();
+                    sw.Start();
+                    while (!moduleShutdown && sw.ElapsedMilliseconds < 5 * 1000) {
+                        await Task.Delay(10);
+                    }
+                    sw.Stop();
+                    throw;
+                }
+                else {
+                    throw e;
+                }
             }
         }
 
