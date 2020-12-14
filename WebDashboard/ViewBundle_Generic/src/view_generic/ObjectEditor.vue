@@ -507,12 +507,12 @@ export default class ObjectEditor extends Vue {
 
 <style>
 
-  .v-data-table-header th {
+  .v-data-table > .v-data-table__wrapper > table > thead > tr > th {
     font-size: 16px;
     font-weight: bold;
   }
 
-  .v-data-table tbody td {
+  .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
     font-size: 16px;
     height: auto;
     padding-top: 9px !important;

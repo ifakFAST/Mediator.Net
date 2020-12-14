@@ -1,32 +1,32 @@
 <template>
     <v-app light>
-      <v-content>
+      <v-main>
 
         <v-container>
           <v-row justify="center" align="center">
-            <v-col cols="12" sm="6">
+            <v-col cols="12" sm="6" md="6" lg="5" xl="4">
 
-            <v-card raised class="mt-4">
-              <v-card-title class="headline">
-                Dashboard Login
-              </v-card-title>
-              <v-card-text>
-                <v-text-field label="User Name" v-model="loginUser" autofocus></v-text-field>
-                <v-text-field label="Password" v-model="loginPass" type="password" v-on:keyup.enter="login"></v-text-field>
-              </v-card-text>
-              <v-card-actions>
-                <v-btn class="mx-2 mb-2 px-4" @click="login">LogIn</v-btn>
-              </v-card-actions>
-            </v-card>
-            <v-alert color="error" icon="warning" dismissible v-model="hasAlert">
-              {{alertText}}
-            </v-alert>
+              <v-card raised class="mt-4" elevation="5">
+                <v-card-title class="headline">
+                  Dashboard Login
+                </v-card-title>
+                <v-card-text>
+                  <v-text-field label="User Name" v-model="loginUser" autofocus></v-text-field>
+                  <v-text-field label="Password" v-model="loginPass" type="password" v-on:keyup.enter="login"></v-text-field>
+                </v-card-text>
+                <v-card-actions>
+                  <v-btn class="mx-2 mb-2 px-4" @click="login">LogIn</v-btn>
+                </v-card-actions>
+              </v-card>
+              <v-alert color="error" icon="warning" dismissible v-model="hasAlert">
+                {{alertText}}
+              </v-alert>
 
             </v-col>
           </v-row>
         </v-container>
 
-      </v-content>
+      </v-main>
     </v-app>
 </template>
 

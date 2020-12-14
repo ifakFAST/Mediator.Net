@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-content>
+    <v-main>
       <v-container>
 
         <v-tabs v-model="currentTab">
@@ -18,7 +18,7 @@
         </v-tabs>
 
       </v-container>
-    </v-content>
+    </v-main>
   </v-app>
 </template>
 
@@ -142,11 +142,11 @@ export default class ViewAlarms extends Vue {
       max-width: 1600px;
     }
   }
-  .v-data-table-header th {
+  .v-data-table > .v-data-table__wrapper > table > thead > tr > th {
     font-size: 16px;
     font-weight: bold;
   }
-  .v-data-table tbody td {
+  .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
     font-size: 16px;
     height: auto;
     padding-top: 8px !important;

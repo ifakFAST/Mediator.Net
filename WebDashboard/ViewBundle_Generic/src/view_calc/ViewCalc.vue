@@ -1,6 +1,6 @@
 <template>
  <v-app>
-  <v-content>
+  <v-main>
 
     <v-container fluid>
       <v-row>
@@ -74,7 +74,7 @@
 
     <confirm ref="confirm"></confirm>
 
-  </v-content>
+  </v-main>
 </v-app>
 </template>
 

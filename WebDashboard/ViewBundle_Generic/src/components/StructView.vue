@@ -82,7 +82,8 @@ export default class StructView extends Vue {
   objMember(obj: any, member: string): string {
     const v = obj[member]
     if (v === undefined) { return '' }
-    if (v && v.constructor === String) { return v }
+    if (v && typeof v === 'string') { return v }
+    if (v && v instanceof String) { return v.toString() }
     return JSON.stringify(v)
   }
 }

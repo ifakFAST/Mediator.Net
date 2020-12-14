@@ -111,7 +111,7 @@ export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void 
             }
           }
           else {
-            resolve()
+            resolve('')
           }
         }, (error) => {
           if (error && error.error) {

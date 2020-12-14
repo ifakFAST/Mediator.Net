@@ -462,8 +462,9 @@ namespace Ifak.Fast.Mediator.Dashboard
         public override async Task OnVariableHistoryChanged(HistoryChange[] changes) {
 
             var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
+            var tabs = tabStates.ToArray();
 
-            foreach (TabState tabState in tabStates) {
+            foreach (TabState tabState in tabs) {
 
                 if (tabState.IsLoaded && tabState.Variables.Any(v => setOfChangedVariables.Contains(v))) {
 

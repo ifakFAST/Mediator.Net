@@ -142,11 +142,11 @@
       <v-btn text @click.stop="logout">Logout</v-btn>
     </v-app-bar>
 
-    <v-content>
+    <v-main>
       <v-container fluid fill-height>
         <iframe :src="currViewSrc" style="border: 0; width: 100%; height: 100%;"></iframe>
       </v-container>
-    </v-content>
+    </v-main>
 
   </v-app>
 </template>

@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-content>
+    <v-main>
       <v-container>
 
         <v-toolbar flat dense color="white" style="margin-top: 0px; margin-bottom: 14px;">
@@ -204,7 +204,7 @@
             @onselected="selectObject_OK"></dlg-object-select>
 
       </v-container>
-    </v-content>
+    </v-main>
   </v-app>
 </template>
 
