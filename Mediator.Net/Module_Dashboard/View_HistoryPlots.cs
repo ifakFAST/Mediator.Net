@@ -124,11 +124,14 @@ namespace Ifak.Fast.Mediator.Dashboard
                         Timestamp tStart = para.TimeRange.GetStart();
                         Timestamp tEnd = para.TimeRange.GetEnd();
 
+                        TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
+                        QualityFilter filter = tabConfig.PlotConfig.FilterByQuality;
+
                         var listHistories = new List<VTTQ[]>();
 
                         foreach (var variable in para.Variables) {
                             try {
-                                VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, para.MaxDataPoints, BoundingMethod.CompressToN);
+                                VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, para.MaxDataPoints, BoundingMethod.CompressToN, filter);
                                 listHistories.Add(data);
                             }
                             catch (Exception) {
@@ -161,6 +164,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                 case "DownloadFile": {
 
                         var para = parameters.Object<DownloadDataFileParams>();
+                        TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
+                        QualityFilter filter = tabConfig.PlotConfig.FilterByQuality;
 
                         Timestamp tStart = para.TimeRange.GetStart();
                         Timestamp tEnd = para.TimeRange.GetEnd();
@@ -171,7 +176,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                             try {
 
                                 const int ChunckSize = 5000;
-                                VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN);
+                                VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
 
                                 if (data.Length < ChunckSize) {
                                     listHistories.Add(data);
@@ -180,7 +185,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                                     var buffer = new List<VTTQ>(data);
                                     do {
                                         Timestamp t = data[data.Length - 1].T.AddMillis(1);
-                                        data = await Connection.HistorianReadRaw(variable, t, tEnd, ChunckSize, BoundingMethod.TakeFirstN);
+                                        data = await Connection.HistorianReadRaw(variable, t, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
                                         buffer.AddRange(data);
                                     }
                                     while (data.Length == ChunckSize);
@@ -269,7 +274,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
 
-                        bool reloadData = tabConfig.PlotConfig.MaxDataPoints != para.Plot.MaxDataPoints;
+                        bool reloadData = tabConfig.PlotConfig.MaxDataPoints != para.Plot.MaxDataPoints ||
+                            tabConfig.PlotConfig.FilterByQuality != para.Plot.FilterByQuality;
 
                         tabConfig.PlotConfig = para.Plot;
 
@@ -780,6 +786,8 @@ namespace Ifak.Fast.Mediator.Dashboard
         public class PlotConfig
         {
             public int MaxDataPoints { get; set; } = 12000;
+
+            public QualityFilter FilterByQuality { get; set; } = QualityFilter.ExcludeBad;
 
             public string LeftAxisName { get; set; } = "";
             public bool LeftAxisStartFromZero { get; set; } = true;

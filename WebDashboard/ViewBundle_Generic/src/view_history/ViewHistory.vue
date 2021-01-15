@@ -187,6 +187,9 @@
                 <tr>
                   <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
                 </tr>
+                <tr>
+                  <td><v-select label="QualityFilter" v-model="editorPlot.plot.FilterByQuality" :items="qualityFilterValues"></v-select></td>
+                </tr>
               </table>
             </v-card-text>
             <v-card-actions>
@@ -226,11 +229,16 @@ interface Variable {
 
 interface PlotConfig {
   MaxDataPoints: number
+  FilterByQuality: QualityFilter
   LeftAxisName: string
   LeftAxisStartFromZero: boolean
   RightAxisName: string
   RightAxisStartFromZero: boolean
 }
+
+type QualityFilter = 'ExcludeNone' | 'ExcludeBad' | 'ExcludeNonGood'
+
+const QualityFilterValues: QualityFilter[] = ['ExcludeNone', 'ExcludeBad', 'ExcludeNonGood']
 
 interface TabConfig {
   Name: string
@@ -329,12 +337,14 @@ export default class ViewHistory extends Vue {
     show: false,
     plot: {
       MaxDataPoints: 100,
+      FilterByQuality: 'ExcludeBad',
       LeftAxisName: '',
       LeftAxisStartFromZero: true,
       RightAxisName: '',
       RightAxisStartFromZero: true,
     },
   }
+  qualityFilterValues = QualityFilterValues
   showConfirmDeleteTab = false
   selectedModuleID = ''
   showRenameTab = false

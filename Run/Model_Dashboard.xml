@@ -23,7 +23,7 @@
       </Config>
     </View>
     <View id="eventLog" name="EventLog" type="EventLog" group="">
-      <Config />
+      <Config>null</Config>
     </View>
     <View id="history" name="History" type="HistoryPlots" group="">
       <Config>
@@ -33,6 +33,7 @@
               "Name": "Control",
               "PlotConfig": {
                 "MaxDataPoints": 9000,
+                "FilterByQuality": "ExcludeBad",
                 "LeftAxisName": "Measurements",
                 "LeftAxisStartFromZero": true,
                 "RightAxisName": "Control Output",
@@ -81,6 +82,7 @@
               "Name": "Sinus",
               "PlotConfig": {
                 "MaxDataPoints": 12000,
+                "FilterByQuality": "ExcludeBad",
                 "LeftAxisName": "",
                 "LeftAxisStartFromZero": false,
                 "RightAxisName": "",
@@ -111,7 +113,10 @@
               "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
             }
           },
-          "ExcludeModules": [ "EventLog", "Dashboard" ]
+          "ExcludeModules": [
+            "EventLog",
+            "Dashboard"
+          ]
         }
       </Config>
     </View>
