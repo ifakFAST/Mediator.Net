@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Data;
 using NLog;
 
 namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
@@ -13,7 +14,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
     {
         private static Logger logger = LogManager.GetLogger("PostgresFlatTimeseriesDB");
 
-        protected DbConnection connection = null;
+        protected Npgsql.NpgsqlConnection connection = null;
 
         public PostgresFlatTimeseriesDB() {
             // Npgsql.Logging.NpgsqlLogManager.Provider = new Npgsql.Logging.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel.Debug, true);
@@ -204,7 +205,27 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         protected void CheckDbOpen() {
+
             if (!IsOpen) throw new Exception("Invalid operation on closed database");
+
+            ConnectionState state;
+            try {
+                state = connection.FullState;
+            }
+            catch (Exception exp) {
+                state = ConnectionState.Broken;
+                logger.Warn($"CheckDbOpen: Exception when reading FullState of PostgresDB connection: {exp.Message}");
+            }
+
+            if (state.HasFlag(ConnectionState.Broken) || state == ConnectionState.Closed) {
+                logger.Warn($"CheckDbOpen: Connection to PostgresDB is {state}. Trying to reopen...");
+                try {
+                    connection.Close();
+                }
+                catch (Exception) { }
+                connection.Open();
+                logger.Info("CheckDbOpen: Reopening connection to PostgresDB succeeded. ");
+            }
         }
 
         protected ChannelEntry? GetChannelDescription(string objectID, string variable) {
@@ -246,7 +267,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
     static class Factory
     {
-        internal static DbConnection MakeConnection(string connectionString) {
+        internal static Npgsql.NpgsqlConnection MakeConnection(string connectionString) {
             return new Npgsql.NpgsqlConnection(connectionString);
         }
 
