@@ -65,7 +65,7 @@ namespace Ifak.Fast.Mediator.Timeseries
             long count = 0;
             Timestamp t = Timestamp.Empty;
             while (true) {
-                var vttqs = srcChannel.ReadData(t, Timestamp.Max, 6000, BoundingMethod.TakeFirstN);
+                var vttqs = srcChannel.ReadData(t, Timestamp.Max, 6000, BoundingMethod.TakeFirstN, QualityFilter.ExcludeNone);
                 if (vttqs.Count == 0) return count;
                 count += vttqs.Count;
                 var vtqs = vttqs.Select(VTQ.Make).ToArray();

@@ -265,11 +265,12 @@ namespace Ifak.Fast.Mediator
             return await Post<ObjectInfo>("GetRootObject", request);
         }
 
-        public override async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+        public override async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter = QualityFilter.ExcludeNone) {
             JObject request = MakeSessionRequest();
             request["variable"] = new JRaw(StdJson.ObjectToString(variable));
             request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
             request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
+            request["filter"] = new JRaw(StdJson.ValueToString(filter));
             return await Post<long>("HistorianCount", request);
         }
 
@@ -309,13 +310,14 @@ namespace Ifak.Fast.Mediator
             await PostJObject("HistorianModify", request);
         }
 
-        public override async Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding) {
+        public override async Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
             JObject request = MakeSessionRequest();
             request["variable"] = new JRaw(StdJson.ObjectToString(variable));
             request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
             request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
             request["maxValues"] = new JRaw(StdJson.ValueToString(maxValues));
             request["bounding"] = new JRaw(StdJson.ValueToString(bounding));
+            request["filter"] = new JRaw(StdJson.ValueToString(filter));
             return await Post<VTTQ[]>("HistorianReadRaw", request);
         }
 

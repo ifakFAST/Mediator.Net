@@ -425,7 +425,8 @@ namespace Ifak.Fast.Mediator
         /// <param name="endInclusive">The end of the time interval (inclusive)</param>
         /// <param name="maxValues">The maximum number of data points to return</param>
         /// <param name="bounding">Defines which data points to return when there are more data points in the time interval than maxValues</param>
-        public abstract Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding);
+        /// <param name="filter">Allows to filter the result based on the Quality property of the VTTQs</param>
+        public abstract Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone);
 
         /// <summary>
         /// Counts the number of data points in the history of a variable within a certain time interval.
@@ -433,8 +434,9 @@ namespace Ifak.Fast.Mediator
         /// <param name="variable">The variable</param>
         /// <param name="startInclusive">The start of the time interval (inclusive)</param>
         /// <param name="endInclusive">The end of the time interval (inclusive)</param>
+        /// <param name="filter">Allows to filter the result based on the Quality of the data points</param>
         /// <returns>The number of data points</returns>
-        public abstract Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive);
+        public abstract Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter = QualityFilter.ExcludeNone);
 
         /// <summary>
         /// Deletes all data points in the history of a variable within a certain time interval and returns
@@ -583,6 +585,13 @@ namespace Ifak.Fast.Mediator
         TakeFirstN,
         TakeLastN,
         CompressToN
+    }
+
+    public enum QualityFilter
+    {
+        ExcludeNone,
+        ExcludeBad,
+        ExcludeNonGood,
     }
 
     public struct SubOptions

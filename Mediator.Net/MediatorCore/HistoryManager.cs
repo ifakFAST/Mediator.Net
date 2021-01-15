@@ -108,7 +108,7 @@ namespace Ifak.Fast.Mediator
             return Task.WhenAll(terminateTasks);
         }
 
-        public async Task<IList<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding) {
+        public async Task<IList<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
             HistoryDBWorker worker = WorkerByVarRef(variable);
 
@@ -116,10 +116,10 @@ namespace Ifak.Fast.Mediator
                 throw new Exception("Failed to find DB worker for variable " + variable);
             }
             CheckExistingVariable(variable);
-            return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding);
+            return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
         }
 
-        public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+        public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
 
             HistoryDBWorker worker = WorkerByVarRef(variable);
 
@@ -127,7 +127,7 @@ namespace Ifak.Fast.Mediator
                 throw new Exception("Failed to find DB worker for variable " + variable);
             }
             CheckExistingVariable(variable);
-            return await worker.Count(variable, startInclusive, endInclusive);
+            return await worker.Count(variable, startInclusive, endInclusive, filter);
         }
 
         public async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {

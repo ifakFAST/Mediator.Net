@@ -37,9 +37,14 @@ namespace Ifak.Fast.Mediator.Test
 
         public override async Task Run(Func<bool> shutdown) {
 
+            TimeCode timer = new TimeCode(log);
+
             try {
+                timer.Print("Completed Init");
                 await TestHistorianModify();
+                timer.Print("Completed TestHistorianModify");
                 await TestHistorianManyVariables();
+                timer.Print("Completed TestHistorianManyVariables");
                 log.Info("Tests completed successfully");
             }
             catch (Exception exp) {
@@ -52,6 +57,8 @@ namespace Ifak.Fast.Mediator.Test
         }
 
         private async Task TestHistorianModify() {
+
+            log.Info($"TestHistorianModify");
 
             var varA = GetVarRef("Variable_0");
 
@@ -103,6 +110,8 @@ namespace Ifak.Fast.Mediator.Test
 
         private async Task TestHistorianManyVariables() {
 
+            TimeCode timer = new TimeCode(log);
+
             Timestamp tStart = Timestamp.Now;
             Timestamp last = tStart;
             const int N = 10;
@@ -124,18 +133,41 @@ namespace Ifak.Fast.Mediator.Test
                 last = t;
             }
 
+            timer.Print("First Loop");
+
             for (int i = 0; i < 60; ++i) {
                 long c = await con.HistorianCount(GetVarRef("Variable_0"), tStart, Timestamp.Max);
                 if (c < N) {
+                    log.Info($"Delay {c} < {N}");
                     await Task.Delay(1000);
                 }
             }
+
+            timer.Print("Second Loop");
 
             for (int i = 0; i < VariablesCount; ++i) {
                 var v = GetVarRef("Variable_" + i.ToString());
                 long c = await con.HistorianCount(v, tStart, Timestamp.Max);
                 assert(c == N, $"{v} count = {c} != {N}");
             }
+
+            timer.Print("Third Loop");
+
+            var vi = GetVarRef("Variable_0");
+
+            VTQ vtq1 = new VTQ(Timestamp.Now, Quality.Bad, DataValue.FromDouble(103.14));
+            await con.HistorianModify(vi, ModifyMode.Insert, vtq1);
+
+            long countNoBad = await con.HistorianCount(vi, Timestamp.Empty, Timestamp.Max, QualityFilter.ExcludeBad);
+            long countNonGood = await con.HistorianCount(vi, Timestamp.Empty, Timestamp.Max, QualityFilter.ExcludeNonGood);
+            long countNone = await con.HistorianCount(vi, Timestamp.Empty, Timestamp.Max, QualityFilter.ExcludeNone);
+
+            assert(countNoBad == 12, $"countNoBad = {countNoBad} != 12");
+            assert(countNonGood == 11, $"countNonGood = {countNonGood} != 11");
+            assert(countNone == 13, $"countNone = {countNone} != 13");
+
+            timer.Print("Count test");
+            // log.Info($"Not Bad: {cNoBad} Only Good: {cNonGood} All: {cNone}");
         }
 
         private async Task ExpectCount(VariableRef v, long c) {
@@ -174,6 +206,23 @@ namespace Ifak.Fast.Mediator.Test
                 return;
             }
             assert(false, "No exception!");
+        }
+    }
+
+
+    class TimeCode
+    {
+        private readonly Logger log;
+        private readonly System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
+
+        public TimeCode(Logger log) {
+            this.log = log;
+        }
+
+        public void Print(string txt) {
+            long ms = watch.ElapsedMilliseconds;
+            log.Info($"{txt}: {ms} ms");
+            watch.Restart();
         }
     }
 }

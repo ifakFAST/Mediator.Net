@@ -60,7 +60,7 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public abstract VTTQ? GetLatestTimestampDB(Timestamp startInclusive, Timestamp endInclusive);
 
-        public abstract IList<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding);
+        public abstract IList<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter);
 
         public abstract long DeleteData(Timestamp startInclusive, Timestamp endInclusive);
 
@@ -75,7 +75,7 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public abstract long CountAll();
 
-        public abstract long CountData(Timestamp startInclusive, Timestamp endInclusive);
+        public abstract long CountData(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter);
 
     }
 
@@ -93,5 +93,31 @@ namespace Ifak.Fast.Mediator.Timeseries
         TakeFirstN,
         TakeLastN,
         CompressToN
+    }
+
+    public enum QualityFilter
+    {
+        ExcludeNone,
+        ExcludeBad,
+        ExcludeNonGood,
+    }
+
+    internal class QualityFilterHelper
+    {
+        private readonly bool IncludeAll;
+        private readonly bool IncludeUncertain;
+
+        private QualityFilterHelper(QualityFilter filter) {
+            IncludeAll = filter == QualityFilter.ExcludeNone;
+            IncludeUncertain = filter != QualityFilter.ExcludeNonGood;
+        }
+
+        internal static QualityFilterHelper Make(QualityFilter filter) {
+            return new QualityFilterHelper(filter);
+        }
+
+        internal bool Include(Quality q) {
+            return q == Quality.Good || IncludeAll || (IncludeUncertain && q == Quality.Uncertain);
+        }
     }
 }

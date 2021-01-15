@@ -105,7 +105,7 @@ namespace Ifak.Fast.Mediator
             public override bool IsReadRequest => false;
         }
 
-        public Task<IList<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding) {
+        public Task<IList<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
             var promise = new TaskCompletionSource<IList<VTTQ>>();
             if (CheckPrecondition(promise)) {
                 queue.Post(new WI_ReadRaw() {
@@ -114,6 +114,7 @@ namespace Ifak.Fast.Mediator
                     EndInclusive = endInclusive,
                     MaxValues = maxValues,
                     Bounding = bounding,
+                    Filter = filter,
                     Promise = promise
                 });
             }
@@ -127,18 +128,20 @@ namespace Ifak.Fast.Mediator
             public Timestamp EndInclusive;
             public int MaxValues;
             public BoundingMethod Bounding;
+            public QualityFilter Filter;
 
             public TaskCompletionSource<IList<VTTQ>> Promise { get; set; }
             public override bool IsReadRequest => true;
         }
 
-        public Task<long> Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+        public Task<long> Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
             var promise = new TaskCompletionSource<long>();
             if (CheckPrecondition(promise)) {
                 queue.Post(new WI_Count() {
                     Variable = variable,
                     StartInclusive = startInclusive,
                     EndInclusive = endInclusive,
+                    Filter = filter,
                     Promise = promise
                 });
             }
@@ -150,6 +153,7 @@ namespace Ifak.Fast.Mediator
             public VariableRef Variable;
             public Timestamp StartInclusive;
             public Timestamp EndInclusive;
+            public QualityFilter Filter;
 
             public TaskCompletionSource<long> Promise { get; set; }
             public override bool IsReadRequest => true;
@@ -322,7 +326,7 @@ namespace Ifak.Fast.Mediator
                     promise.SetResult(new VTTQ[0]);
                 }
                 else {
-                    IList<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding));
+                    IList<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding), Map(read.Filter));
                     promise.SetResult(res);
                 }
             }
@@ -342,13 +346,14 @@ namespace Ifak.Fast.Mediator
 
                     Timestamp start = req.StartInclusive;
                     Timestamp end = req.EndInclusive;
+                    QualityFilter filter = req.Filter;
 
                     long res;
-                    if (start == Timestamp.Empty && end == Timestamp.Max) {
+                    if (start == Timestamp.Empty && end == Timestamp.Max && filter == QualityFilter.ExcludeNone) {
                         res = ch.CountAll();
                     }
                     else {
-                        res = ch.CountData(start, end);
+                        res = ch.CountData(start, end, Map(filter));
                     }
 
                     promise.SetResult(res);
@@ -459,6 +464,15 @@ namespace Ifak.Fast.Mediator
                 case BoundingMethod.TakeLastN: return Timeseries.BoundingMethod.TakeLastN;
             }
             throw new Exception("Unknown bounding");
+        }
+
+        private Timeseries.QualityFilter Map(QualityFilter f) {
+            switch (f) {
+                case QualityFilter.ExcludeNone: return Timeseries.QualityFilter.ExcludeNone;
+                case QualityFilter.ExcludeBad: return Timeseries.QualityFilter.ExcludeBad;
+                case QualityFilter.ExcludeNonGood: return Timeseries.QualityFilter.ExcludeNonGood;
+            }
+            throw new Exception("Unknown quality filter");
         }
 
         private void Append(WI_BatchAppend append) {

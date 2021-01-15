@@ -26,25 +26,29 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private readonly PreparedStatement stmtRawLastN;
         private readonly PreparedStatement stmtRawFirst;
         private readonly PreparedStatement stmtCount;
-        private readonly PreparedStatement stmtCountInterval;
+        private readonly PreparedStatement stmtCountAllQuality;
+        private readonly PreparedStatement stmtCountNonBad;
+        private readonly PreparedStatement stmtCountGood;
 
         public SQLiteChannel(DbConnection connection, ChannelInfo info, string tableName) {
             this.connection = connection;
             this.info = info;
             this.table = "\"" + tableName + "\"";
 
-            stmtUpdate        = new PreparedStatement(connection, $"UPDATE {table} SET diffDB = @1, quality = @2, data = @3 WHERE time = @4", 4);
-            stmtInsert        = new PreparedStatement(connection, $"INSERT INTO {table} VALUES (@1, @2, @3, @4)", 4);
-            stmtUpsert        = new PreparedStatement(connection, $"INSERT OR REPLACE INTO {table} VALUES (@1, @2, @3, @4)", 4);
-            stmtDelete        = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time BETWEEN @1 AND @2", 2);
-            stmtDeleteOne     = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = @1", 1);
-            stmtLast          = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1", 0);
-            stmtLatestTimeDb  = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2);
-            stmtRawFirstN     = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC LIMIT @3", 3);
-            stmtRawLastN      = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time DESC LIMIT @3", 3);
-            stmtRawFirst      = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC", 2);
-            stmtCount         = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table}", 0);
-            stmtCountInterval = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2", 2);
+            stmtUpdate          = new PreparedStatement(connection, $"UPDATE {table} SET diffDB = @1, quality = @2, data = @3 WHERE time = @4", 4);
+            stmtInsert          = new PreparedStatement(connection, $"INSERT INTO {table} VALUES (@1, @2, @3, @4)", 4);
+            stmtUpsert          = new PreparedStatement(connection, $"INSERT OR REPLACE INTO {table} VALUES (@1, @2, @3, @4)", 4);
+            stmtDelete          = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time BETWEEN @1 AND @2", 2);
+            stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = @1", 1);
+            stmtLast            = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1", 0);
+            stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2);
+            stmtRawFirstN       = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC LIMIT @3", 3);
+            stmtRawLastN        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time DESC LIMIT @3", 3);
+            stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC", 2);
+            stmtCount           = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table}", 0);
+            stmtCountAllQuality = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2", 2);
+            stmtCountNonBad     = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0", 2);
+            stmtCountGood       = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2 AND quality = 1", 2);
         }
 
         public override ChannelInfo Info => info;
@@ -53,10 +57,17 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             return (long)stmtCount.ExecuteScalar();
         }
 
-        public override long CountData(Timestamp startInclusive, Timestamp endInclusive) {
-            stmtCountInterval[0] = startInclusive.JavaTicks;
-            stmtCountInterval[1] = endInclusive.JavaTicks;
-            return (long)stmtCountInterval.ExecuteScalar();
+        public override long CountData(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
+            PreparedStatement stmt = stmtCountAllQuality;
+            if (filter == QualityFilter.ExcludeBad) {
+                stmt = stmtCountNonBad;
+            }
+            else if (filter == QualityFilter.ExcludeNonGood) {
+                stmt = stmtCountGood;
+            }
+            stmt[0] = startInclusive.JavaTicks;
+            stmt[1] = endInclusive.JavaTicks;
+            return (long)stmt.ExecuteScalar();
         }
 
         public override long DeleteAll() {
@@ -244,9 +255,9 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             };
         }
 
-        public override IList<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding) {
+        public override IList<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
-            long N = CountData(startInclusive, endInclusive);
+            long N = CountData(startInclusive, endInclusive, filter);
 
             PreparedStatement statement = null;
 
@@ -261,20 +272,25 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
                 case BoundingMethod.CompressToN:
                     if (N <= maxValues)
-                        return ReadData(startInclusive, endInclusive, maxValues, BoundingMethod.TakeFirstN);
+                        return ReadData(startInclusive, endInclusive, maxValues, BoundingMethod.TakeFirstN, filter);
                     else
-                        return ReadDataCompressed(startInclusive, endInclusive, maxValues, N);
+                        return ReadDataCompressed(startInclusive, endInclusive, maxValues, N, filter);
             }
 
             statement[0] = startInclusive.JavaTicks;
             statement[1] = endInclusive.JavaTicks;
             statement[2] = maxValues;
 
+            var filterHelper = QualityFilterHelper.Make(filter);
+
             int initSize = N < maxValues ? (int)N : maxValues;
             var res = new List<VTTQ>(initSize);
             using (var reader = statement.ExecuteReader()) {
                 while (reader.Read()) {
-                    res.Add(ReadVTTQ(reader));
+                    VTTQ vttq = ReadVTTQ(reader);
+                    if (filterHelper.Include(vttq.Q)) {
+                        res.Add(vttq);
+                    }
                 }
             }
 
@@ -285,7 +301,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             return res;
         }
 
-        private IList<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count) {
+        private IList<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count, QualityFilter filter) {
 
             PreparedStatement statement = stmtRawFirst;
             statement[0] = startInclusive.JavaTicks;
@@ -297,12 +313,14 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             int itemsPerInterval = (maxValues < 6) ? (int)count : (int)Math.Ceiling(((double)count) / maxIntervals);
             var buffer = new List<VTTQ_D>(itemsPerInterval);
 
+            var filterHelper = QualityFilterHelper.Make(filter);
+
             using (var reader = statement.ExecuteReader()) {
                 while (reader.Read()) {
                     VTTQ x = ReadVTTQ(reader);
                     if (!x.V.IsEmpty) {
                         double? value = x.V.AsDouble();
-                        if (value.HasValue) {
+                        if (value.HasValue && filterHelper.Include(x.Q)) {
                             buffer.Add(new VTTQ_D(x, value.Value));
                         }
                     }

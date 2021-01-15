@@ -623,8 +623,12 @@ namespace Ifak.Fast.Mediator
                             Timestamp tEnd   = Timestamp.FromISO8601((string)req["endInclusive"]);
                             int maxValues = (int)req["maxValues"];
                             BoundingMethod bounding = (BoundingMethod)Enum.Parse(typeof(BoundingMethod), (string)req["bounding"]);
-
-                            IList<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding);
+                            QualityFilter filter = QualityFilter.ExcludeNone;
+                            string strFilter = (string)req["filter"];
+                            if (strFilter != null) {
+                                filter = (QualityFilter)Enum.Parse(typeof(QualityFilter), strFilter);
+                            }
+                            IList<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
                             return Result_OK(vttqs);
                         }
 
@@ -633,8 +637,13 @@ namespace Ifak.Fast.Mediator
                             VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
                             Timestamp tStart = Timestamp.FromISO8601((string)req["startInclusive"]);
                             Timestamp tEnd = Timestamp.FromISO8601((string)req["endInclusive"]);
+                            QualityFilter filter = QualityFilter.ExcludeNone;
+                            string strFilter = (string)req["filter"];
+                            if (strFilter != null) {
+                                filter = (QualityFilter)Enum.Parse(typeof(QualityFilter), strFilter);
+                            }
 
-                            long count = await core.history.HistorianCount(variable, tStart, tEnd);
+                            long count = await core.history.HistorianCount(variable, tStart, tEnd, filter);
                             return Result_OK(count);
                         }
                     case Req_HistorianDeleteInterval: {
