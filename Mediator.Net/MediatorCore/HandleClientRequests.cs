@@ -744,6 +744,7 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case Req_Logout: {
+                            info.LogoutCompleted = true;
                             sessions.Remove(session);
                             if (info.EventSocket != null) {
                                 info.EventSocketTCS.TrySetResult(null);
@@ -1289,6 +1290,8 @@ namespace Ifak.Fast.Mediator
             public string Password { get; set; } = "";
             public bool Valid { get; set; } = false;
 
+            public bool LogoutCompleted { get; set; } = false;
+
             public WebSocket EventSocket { get; set; }
             public TaskCompletionSource<object> EventSocketTCS { get; set; }
 
@@ -1490,35 +1493,67 @@ namespace Ifak.Fast.Mediator
 
             private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
-            private ArraySegment<byte> ackByteBuffer = new ArraySegment<byte>(new byte[32]);
+            private readonly ArraySegment<byte> ackByteBuffer = new ArraySegment<byte>(new byte[32]);
+            private readonly MemoryStream streamSend = new MemoryStream(4*1024);
 
             private async Task SendWebSocket(string msgStart, object content) {
 
+                if (LogoutCompleted) {
+                    return;
+                }
+
+                WebSocket socket = EventSocket;
+                if (socket == null) { return; }
+
+                if (socket.State != WebSocketState.Open) {
+                    logger.Info($"SendWebSocket: Will not send event because socket.State = {socket.State}");
+                    // TODO: Close session
+                    return;
+                }
+
                 try {
 
-                    using (var stream = MemoryManager.GetMemoryStream("HandleClientRequests.SendWebSocket")) {
-                        using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
-                            writer.Write(msgStart);
-                            StdJson.ObjectToWriter(content, writer);
-                            writer.Write("}");
-                        }
-                        byte[] bytes = stream.GetBuffer();
-                        int count = (int)stream.Length;
-                        var segment = new ArraySegment<byte>(bytes, 0, count);
-                        try {
-                            await EventSocket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                        catch (Exception) { }
+                    var stream = streamSend;
+
+                    stream.Position = 0;
+                    stream.SetLength(0);
+
+                    using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
+                        writer.Write(msgStart);
+                        StdJson.ObjectToWriter(content, writer);
+                        writer.Write("}");
+                    }
+
+                    ArraySegment<byte> segment;
+                    stream.TryGetBuffer(out segment);
+
+                    try {
+                        await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    catch (Exception exp) {
+                        if (LogoutCompleted) return;
+                        Exception e = exp.GetBaseException() ?? exp;
+                        var state = socket.State;
+                        logger.Warn(e, $"SendWebSocket: EventSocket.SendAsync, State = {state}");
+                        // TODO: Close session
                     }
                 }
                 catch (Exception exp) {
-                    logger.Warn("Exception in SendWebSocket: " + exp.Message);
+                    if (LogoutCompleted) return;
+                    Exception e = exp.GetBaseException() ?? exp;
+                    logger.Warn(e, "Exception in SendWebSocket");
                 }
 
                 try {
-                    await EventSocket.ReceiveAsync(ackByteBuffer, CancellationToken.None);
+                    await socket.ReceiveAsync(ackByteBuffer, CancellationToken.None);
                 }
-                catch (Exception) { }
+                catch (Exception exp) {
+                    if (LogoutCompleted) return;
+                    Exception e = exp.GetBaseException() ?? exp;
+                    var state = socket.State;
+                    logger.Warn(e, $"SendWebSocket: EventSocket.ReceiveAsync ACK, State = {state}");
+                    // TODO: Close session
+                }
             }
         }
     }
