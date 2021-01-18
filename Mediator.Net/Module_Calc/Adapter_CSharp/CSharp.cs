@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using McMaster.NETCore.Plugins;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
@@ -62,7 +63,14 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
                 foreach (string assembly in absoluteAssemblies) {
                     try {
-                        Assembly ass = Assembly.LoadFrom(assembly);
+
+                        // Assembly ass= Assembly.LoadFrom(assembly);
+
+                        PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
+                            assemblyFile: assembly,
+                            sharedTypes: new Type[] { typeof(InputBase), typeof(OutputBase), typeof(AbstractState) });
+
+                        Assembly ass = loader.LoadDefaultAssembly();
                         referencedAssemblies.Add(ass);
                     }
                     catch (Exception exp) {
