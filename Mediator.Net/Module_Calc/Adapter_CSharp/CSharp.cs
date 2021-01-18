@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using McMaster.NETCore.Plugins;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
@@ -20,10 +21,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private InputBase[] inputs = new Input[0];
         private OutputBase[] outputs = new Output[0];
         private AbstractState[] states = new AbstractState[0];
-        private Alarm[] alarms = new Alarm[0];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
         private Duration dt = Duration.FromSeconds(1);
         private AdapterCallback callback;
+
+        private static readonly object handleInitLock = new object();
 
         public override async Task<InitResult> Initialize(InitParameter parameter, AdapterCallback callback) {
 
@@ -33,111 +35,16 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             if (!string.IsNullOrWhiteSpace(code)) {
 
-                // var sw = System.Diagnostics.Stopwatch.StartNew();
-
-                var config = new Mediator.Config(parameter.ModuleConfig);
-                string libs = config.GetOptionalString("csharp-libraries", "");
-
-                string[] assemblies = libs
-                    .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(s => s.Trim())
-                    .ToArray();
-
-                string[] absoluteAssemblies = assemblies.Select(d => Path.GetFullPath(d)).ToArray();
-                foreach (string assembly in absoluteAssemblies) {
-                    if (!File.Exists(assembly)) throw new Exception($"csharp-library does not exist: {assembly}");
+                // We need to lock the init code in order to prevent concurrent compilation of csharp-libraries!
+                bool lockWasTaken = false;
+                object lockObj = handleInitLock;
+                try {
+                    Monitor.Enter(lockObj, ref lockWasTaken);
+                    return await DoInit(parameter, code);
                 }
-
-                absoluteAssemblies = absoluteAssemblies.Select(assembly => {
-                    if (assembly.ToLowerInvariant().EndsWith(".cs")) {
-                        return CompileLib.CSharpFile2Assembly(assembly);
-                    }
-                    return assembly;
-                }).ToArray();
-
-                var referencedAssemblies = new List<Assembly>();
-                referencedAssemblies.Add(typeof(System.Collections.Generic.IList<int>).Assembly);
-                referencedAssemblies.Add(typeof(System.Linq.Enumerable).Assembly);
-                referencedAssemblies.Add(typeof(Ifak.Fast.Mediator.Timestamp).Assembly);
-                referencedAssemblies.Add(typeof(Input).Assembly);
-
-                foreach (string assembly in absoluteAssemblies) {
-                    try {
-
-                        // Assembly ass= Assembly.LoadFrom(assembly);
-
-                        PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
-                            assemblyFile: assembly,
-                            sharedTypes: new Type[] { typeof(InputBase), typeof(OutputBase), typeof(AbstractState) });
-
-                        Assembly ass = loader.LoadDefaultAssembly();
-                        referencedAssemblies.Add(ass);
-                    }
-                    catch (Exception exp) {
-                        throw new Exception($"Failed to load csharp-library {assembly}: {exp.Message}");
-                    }
+                finally {
+                    if (lockWasTaken) { Monitor.Exit(lockObj); }
                 }
-
-                var options = ScriptOptions.Default
-                    .WithImports(
-                        "System",
-                        "System.Collections.Generic",
-                        "System.Linq",
-                        "System.Globalization",
-                        "System.Text",
-                        "Ifak.Fast.Mediator.Calc.Adapter_CSharp",
-                        "Ifak.Fast.Mediator")
-                    .WithReferences(referencedAssemblies.ToArray())
-                    .WithEmitDebugInformation(true);
-
-                const string className = "Script";
-
-                var script = CSharpScript.
-                    Create<object>(code, options).
-                    ContinueWith($"new {className}()");
-
-                // var diag = script.Compile();
-
-                ScriptState<object> scriptState = await script.RunAsync();
-                object obj = scriptState.ReturnValue;
-
-                // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
-
-                inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: false).ToArray();
-                outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
-                states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
-
-                var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
-                foreach (EventProvider provider in eventProviders) {
-                    provider.EventSinkRef = this;
-                }
-
-                Type type = obj.GetType();
-
-                MethodInfo[] methods =
-                    type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                    .Where(m => m.Name == "Step" && IsStepSignature(m))
-                    .ToArray();
-
-                if (methods.Length == 0) throw new Exception("No Step(Timestamp t, TimeSpan dt) method found.");
-                MethodInfo step = methods[0];
-
-                stepAction = (Action<Timestamp, Duration>)step.CreateDelegate(typeof(Action<Timestamp, Duration>), obj);
-
-                foreach (StateValue v in parameter.LastState) {
-                    AbstractState state = states.FirstOrDefault(s => s.ID == v.StateID);
-                    if (state != null) {
-                        state.SetValueFromDataValue(v.Value);
-                    }
-                }
-
-                return new InitResult() {
-                    Inputs = inputs.Select(MakeInputDef).ToArray(),
-                    Outputs = outputs.Select(MakeOutputDef).ToArray(),
-                    States = states.Select(MakeStateDef).ToArray(),
-                    ExternalStatePersistence = true
-                };
-
             }
             else {
 
@@ -148,6 +55,112 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     ExternalStatePersistence = true
                 };
             }
+        }
+
+        private async Task<InitResult> DoInit(InitParameter parameter, string code) {
+
+            var config = new Mediator.Config(parameter.ModuleConfig);
+            string libs = config.GetOptionalString("csharp-libraries", "");
+
+            string[] assemblies = libs
+                .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .ToArray();
+
+            string[] absoluteAssemblies = assemblies.Select(d => Path.GetFullPath(d)).ToArray();
+            foreach (string assembly in absoluteAssemblies) {
+                if (!File.Exists(assembly)) throw new Exception($"csharp-library does not exist: {assembly}");
+            }
+
+            absoluteAssemblies = absoluteAssemblies.Select(assembly => {
+                if (assembly.ToLowerInvariant().EndsWith(".cs")) {
+                    return CompileLib.CSharpFile2Assembly(assembly);
+                }
+                return assembly;
+            }).ToArray();
+
+            var referencedAssemblies = new List<Assembly>();
+            referencedAssemblies.Add(typeof(System.Collections.Generic.IList<int>).Assembly);
+            referencedAssemblies.Add(typeof(System.Linq.Enumerable).Assembly);
+            referencedAssemblies.Add(typeof(Ifak.Fast.Mediator.Timestamp).Assembly);
+            referencedAssemblies.Add(typeof(Input).Assembly);
+
+            foreach (string assembly in absoluteAssemblies) {
+                try {
+
+                    // Assembly ass= Assembly.LoadFrom(assembly);
+
+                    PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
+                        assemblyFile: assembly,
+                        sharedTypes: new Type[] { typeof(InputBase), typeof(OutputBase), typeof(AbstractState) });
+
+                    Assembly ass = loader.LoadDefaultAssembly();
+                    referencedAssemblies.Add(ass);
+                }
+                catch (Exception exp) {
+                    throw new Exception($"Failed to load csharp-library {assembly}: {exp.Message}");
+                }
+            }
+
+            var options = ScriptOptions.Default
+                .WithImports(
+                    "System",
+                    "System.Collections.Generic",
+                    "System.Linq",
+                    "System.Globalization",
+                    "System.Text",
+                    "Ifak.Fast.Mediator.Calc.Adapter_CSharp",
+                    "Ifak.Fast.Mediator")
+                .WithReferences(referencedAssemblies.ToArray())
+                .WithEmitDebugInformation(true);
+
+            const string className = "Script";
+
+            var script = CSharpScript.
+                Create<object>(code, options).
+                ContinueWith($"new {className}()");
+
+            // var diag = script.Compile();
+
+            ScriptState<object> scriptState = await script.RunAsync();
+            object obj = scriptState.ReturnValue;
+
+            // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
+
+            inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: false).ToArray();
+            outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
+            states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
+
+            var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
+            foreach (EventProvider provider in eventProviders) {
+                provider.EventSinkRef = this;
+            }
+
+            Type type = obj.GetType();
+
+            MethodInfo[] methods =
+                type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.Name == "Step" && IsStepSignature(m))
+                .ToArray();
+
+            if (methods.Length == 0) throw new Exception("No Step(Timestamp t, TimeSpan dt) method found.");
+            MethodInfo step = methods[0];
+
+            stepAction = (Action<Timestamp, Duration>)step.CreateDelegate(typeof(Action<Timestamp, Duration>), obj);
+
+            foreach (StateValue v in parameter.LastState) {
+                AbstractState state = states.FirstOrDefault(s => s.ID == v.StateID);
+                if (state != null) {
+                    state.SetValueFromDataValue(v.Value);
+                }
+            }
+
+            return new InitResult() {
+                Inputs = inputs.Select(MakeInputDef).ToArray(),
+                Outputs = outputs.Select(MakeOutputDef).ToArray(),
+                States = states.Select(MakeStateDef).ToArray(),
+                ExternalStatePersistence = true
+            };
         }
 
         public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {
