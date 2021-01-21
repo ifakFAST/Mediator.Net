@@ -209,11 +209,8 @@ namespace Ifak.Fast.Mediator
                         var obj = new JObject();
                         obj["session"] = session;
                         obj["challenge"] = challenge;
-                        sessions[session] = new SessionInfo() {
-                            Challenge = challenge,
-                            Origin = origin,
-                            Password = password
-                        };
+
+                        sessions[session] = new SessionInfo(session, challenge, origin, password, TerminateSession);
                         return Result_OK(obj);
                     }
 
@@ -744,11 +741,7 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case Req_Logout: {
-                            info.LogoutCompleted = true;
-                            sessions.Remove(session);
-                            if (info.EventSocket != null) {
-                                info.EventSocketTCS.TrySetResult(null);
-                            }
+                            LogoutSession(info);
                             return Result_OK();
                         }
 
@@ -759,6 +752,31 @@ namespace Ifak.Fast.Mediator
             catch (Exception exp) {
                 return Result_BAD(exp.Message);
             }
+        }
+
+        private void LogoutSession(SessionInfo session) {
+            session.LogoutCompleted = true;
+            sessions.Remove(session.ID);
+            if (session.EventSocket != null) {
+                session.EventSocketTCS.TrySetResult(null);
+                session.EventSocket = null;
+                session.EventSocketTCS = null;
+            }
+        }
+
+        private void TerminateSession(SessionInfo session) {
+            session.LogoutCompleted = true;
+            if (session.EventSocket != null) {
+                session.EventSocketTCS.TrySetResult(null);
+                session.EventSocket = null;
+                session.EventSocketTCS = null;
+            }
+            Task ignored = RemoveSessionDelayed(session.ID);
+        }
+
+        private async Task RemoveSessionDelayed(string sessionID) {
+            await Task.Delay(5000);
+            sessions.Remove(sessionID);
         }
 
         private async Task<ReqResult> DoWriteVariablesSync(JObject req, SessionInfo info, bool ignoreMissing) {
@@ -1033,7 +1051,7 @@ namespace Ifak.Fast.Mediator
 
             foreach (var session in sessions.Values) {
 
-                if (session.EventSocket != null && session.EventSocket.State == WebSocketState.Open) {
+                if (session.HasEventSocket) {
 
                     var filtered = new List<VariableValue>(values.Count);
 
@@ -1109,7 +1127,7 @@ namespace Ifak.Fast.Mediator
 
             foreach (var session in sessions.Values) {
 
-                if (session.EventSocket != null && session.EventSocket.State == WebSocketState.Open) {
+                if (session.HasEventSocket) {
 
                     var filtered = new List<HistoryChange>(changes.Count);
 
@@ -1147,7 +1165,7 @@ namespace Ifak.Fast.Mediator
 
             if (terminating) return;
 
-            SessionInfo[] relevantSessions = sessions.Values.Where(s => s.EventSocket != null && s.EventSocket.State == WebSocketState.Open && s.ConfigChangeObjects.Count > 0).ToArray();
+            SessionInfo[] relevantSessions = sessions.Values.Where(s => s.HasEventSocket && s.ConfigChangeObjects.Count > 0).ToArray();
 
             if (relevantSessions.Length == 0) return;
 
@@ -1173,7 +1191,7 @@ namespace Ifak.Fast.Mediator
 
             if (terminating) return;
 
-            SessionInfo[] relevantSessions = sessions.Values.Where(s => s.AlarmsAndEventsEnabled && s.EventSocket != null && s.EventSocket.State == WebSocketState.Open && (int)s.MinSeverity <= (int)ae.Severity).ToArray();
+            SessionInfo[] relevantSessions = sessions.Values.Where(s => s.AlarmsAndEventsEnabled && s.HasEventSocket && (int)s.MinSeverity <= (int)ae.Severity).ToArray();
 
             foreach (var session in relevantSessions) {
                 session.SendEvent_AlarmOrEvents(ae);
@@ -1283,17 +1301,36 @@ namespace Ifak.Fast.Mediator
 
         public class SessionInfo
         {
+            public string ID { get; set; }
             public bool terminating = false;
 
-            public Origin Origin { get; set; }
-            public string Challenge { get; set; } = "";
-            public string Password { get; set; } = "";
+            public Origin Origin { get; private set; }
+            public string Challenge { get; private set; }
+            public string Password { get; private set; }
             public bool Valid { get; set; } = false;
 
             public bool LogoutCompleted { get; set; } = false;
 
             public WebSocket EventSocket { get; set; }
             public TaskCompletionSource<object> EventSocketTCS { get; set; }
+
+            private Action<SessionInfo> terminate;
+
+            public SessionInfo(string id, string challenge, Origin origin, string password, Action<SessionInfo> terminate) {
+                ID = id;
+                Challenge = challenge;
+                Origin = origin;
+                Password = password;
+                this.terminate = terminate;
+            }
+
+            private void Terminate() {
+                if (!LogoutCompleted) {
+                    terminate(this);
+                }
+            }
+
+            public bool HasEventSocket => EventSocket != null;
 
             public Dictionary<ObjectRef, SubOptions> VariablesChangedEventTrees { get; private set; } = new Dictionary<ObjectRef, SubOptions>();
             public Dictionary<VariableRef, SubOptions> VariableRefs { get; private set; } = new Dictionary<VariableRef, SubOptions>();
@@ -1429,7 +1466,7 @@ namespace Ifak.Fast.Mediator
 
             private void CheckPendingEvents() {
 
-                if (terminating) return;
+                if (terminating || LogoutCompleted) return;
 
                 int idx = MinIndexNotEmpty(lastTimeVarValues, lastTimeVarHistory, lastTimeConfigChanged, lastTimeEvents);
                 if (idx < 0) return;
@@ -1506,8 +1543,10 @@ namespace Ifak.Fast.Mediator
                 if (socket == null) { return; }
 
                 if (socket.State != WebSocketState.Open) {
-                    logger.Info($"SendWebSocket: Will not send event because socket.State = {socket.State}");
-                    // TODO: Close session
+                    await Task.Delay(500);
+                    if (LogoutCompleted) return;
+                    logger.Warn($"SendWebSocket: Will not send event because socket.State = {socket.State}. Terminating session...");
+                    Terminate();
                     return;
                 }
 
@@ -1534,14 +1573,19 @@ namespace Ifak.Fast.Mediator
                         if (LogoutCompleted) return;
                         Exception e = exp.GetBaseException() ?? exp;
                         var state = socket.State;
-                        logger.Warn(e, $"SendWebSocket: EventSocket.SendAsync, State = {state}");
-                        // TODO: Close session
+                        await Task.Delay(500);
+                        if (LogoutCompleted) return;
+                        logger.Warn(e, $"SendWebSocket: EventSocket.SendAsync, State = {state}. Terminating session...");
+                        Terminate();
+                        return;
                     }
                 }
                 catch (Exception exp) {
                     if (LogoutCompleted) return;
                     Exception e = exp.GetBaseException() ?? exp;
-                    logger.Warn(e, "Exception in SendWebSocket");
+                    logger.Warn(e, "Exception in SendWebSocket. Terminating session...");
+                    Terminate();
+                    return;
                 }
 
                 try {
@@ -1551,8 +1595,11 @@ namespace Ifak.Fast.Mediator
                     if (LogoutCompleted) return;
                     Exception e = exp.GetBaseException() ?? exp;
                     var state = socket.State;
-                    logger.Warn(e, $"SendWebSocket: EventSocket.ReceiveAsync ACK, State = {state}");
-                    // TODO: Close session
+                    await Task.Delay(500);
+                    if (LogoutCompleted) return;
+                    logger.Warn(e, $"SendWebSocket: EventSocket.ReceiveAsync ACK, State = {state}. Terminating session...");
+                    Terminate();
+                    return;
                 }
             }
         }
