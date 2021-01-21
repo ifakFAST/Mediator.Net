@@ -20,14 +20,21 @@ namespace Ifak.Fast.Mediator.EventLog
         private Timestamp latestUsedTimestamp = Timestamp.Now.AddHours(-1);
         private bool running = false;
         private List<AlarmOrEvent> initBuffer = new List<AlarmOrEvent>();
+        private ModuleInitInfo info;
 
         public override async Task Init(ModuleInitInfo info,
                                         VariableValue[] restoreVariableValues,
                                         Notifier notifier,
                                         ModuleThread moduleThread) {
 
+            this.info = info;
+
             await base.Init(info, restoreVariableValues, notifier, moduleThread);
 
+            await ConnectAndEnableEvents();
+        }
+
+        private async Task ConnectAndEnableEvents() {
             connection = await HttpConnection.ConnectWithModuleLogin(info, this);
             await connection.EnableAlarmsAndEvents(Severity.Info);
         }
@@ -55,6 +62,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 await Task.Delay(500);
             }
 
+            running = false;
             var ignored = connection.Close();
         }
 
@@ -220,7 +228,33 @@ namespace Ifak.Fast.Mediator.EventLog
             return false;
         }
 
-        public Task OnConnectionClosed() { return Task.FromResult(true); }
+        public Task OnConnectionClosed() {
+            Task ignored = CheckNeedConnectionRestart();
+            return Task.FromResult(true);
+        }
+
+        private async Task CheckNeedConnectionRestart() {
+
+            await Task.Delay(1000);
+
+            if (running) {
+
+                Console.Error.WriteLine($"{Timestamp.Now}: EventListener.OnConnectionClosed. Restarting connection...");
+                Console.Error.Flush();
+
+                try {
+                    await ConnectAndEnableEvents();
+                }
+                catch (Exception exp) {
+                    Exception e = exp.GetBaseException() ?? exp;
+                    Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}");
+                    Console.Error.WriteLine($"{Timestamp.Now}: Terminating in 5 seconds...");
+                    Console.Error.Flush();
+                    await Task.Delay(5000);
+                    Environment.Exit(1);
+                }
+            }
+        }
 
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 
