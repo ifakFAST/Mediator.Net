@@ -106,7 +106,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public virtual Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) { return Task.FromResult(true); }
 
-        public virtual Task OnConnectionClosed() { return Task.FromResult(true); }
+        Task EventListener.OnConnectionClosed() { return Task.FromResult(true); }
 
         public class UiReqMethod
         {

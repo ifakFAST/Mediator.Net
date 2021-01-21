@@ -287,12 +287,8 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnConnectionClosed() {
-            if (currentView != null) {
-                return currentView.OnConnectionClosed();
-            }
-            else {
-                return Task.FromResult(true);
-            }
+            Task ignored = Close();
+            return Task.FromResult(true);
         }
 
         public Task SendEventToUI(string eventName, object payload) {
