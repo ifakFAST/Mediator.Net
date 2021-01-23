@@ -126,6 +126,7 @@ export default class DyGraph extends Vue {
     const str = JSON.stringify(obj)
     const copy = JSON.parse(str)
     copy.legendFormatter = obj.legendFormatter
+    copy.zoomCallback = obj.zoomCallback
     return copy
   }
 
