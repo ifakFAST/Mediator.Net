@@ -173,22 +173,28 @@
             <v-card-text>
               <table style="width:100%;">
                 <tr>
-                  <td><v-text-field v-model="editorPlot.plot.LeftAxisName"  label="Left Axis Caption" ></v-text-field></td>
+                  <td><v-text-field v-model="editorPlot.plot.LeftAxisName" hide-details label="Left Axis Caption" ></v-text-field></td>
                 </tr>
                 <tr>
-                  <td><v-checkbox v-model="editorPlot.plot.LeftAxisStartFromZero" label="Left Y Axis: Start From Zero"></v-checkbox></td>
+                  <td><v-checkbox v-model="editorPlot.plot.LeftAxisStartFromZero" hide-details label="Left Y Axis: Start From Zero"></v-checkbox></td>
                 </tr>
                 <tr>
-                  <td><v-text-field v-model="editorPlot.plot.RightAxisName" label="Right Axis Caption" ></v-text-field></td>
+                  <td><text-field-nullable-number v-model="editorPlot.plot.LeftAxisLimitY" label="Left Y Axis: Limit Y Value" ></text-field-nullable-number></td>
                 </tr>
                 <tr>
-                  <td><v-checkbox v-model="editorPlot.plot.RightAxisStartFromZero" label="Right Y Axis: Start From Zero"></v-checkbox></td>
+                  <td><v-text-field v-model="editorPlot.plot.RightAxisName" hide-details label="Right Axis Caption" ></v-text-field></td>
                 </tr>
                 <tr>
-                  <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
+                  <td><v-checkbox v-model="editorPlot.plot.RightAxisStartFromZero" hide-details label="Right Y Axis: Start From Zero"></v-checkbox></td>
                 </tr>
                 <tr>
-                  <td><v-select label="QualityFilter" v-model="editorPlot.plot.FilterByQuality" :items="qualityFilterValues"></v-select></td>
+                  <td><text-field-nullable-number v-model="editorPlot.plot.RightAxisLimitY" label="Right Y Axis: Limit Y Value" ></text-field-nullable-number></td>
+                </tr>
+                <tr>
+                  <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" hide-details label="Max DataPoints"    ></v-text-field></td>
+                </tr>
+                <tr>
+                  <td><v-select label="QualityFilter" v-model="editorPlot.plot.FilterByQuality" hide-details :items="qualityFilterValues"></v-select></td>
                 </tr>
               </table>
             </v-card-text>
@@ -216,6 +222,7 @@
 import DyGraph from '../components/DyGraph.vue'
 import DlgObjectSelect from '../components/DlgObjectSelect.vue'
 import { Component, Vue, Watch } from 'vue-property-decorator'
+import TextFieldNullableNumber from '../components/TextFieldNullableNumber.vue'
 
 interface ModuleInfo {
   ID: string
@@ -232,8 +239,10 @@ interface PlotConfig {
   FilterByQuality: QualityFilter
   LeftAxisName: string
   LeftAxisStartFromZero: boolean
+  LeftAxisLimitY: number | null | undefined
   RightAxisName: string
   RightAxisStartFromZero: boolean
+  RightAxisLimitY: number | null | undefined
 }
 
 type QualityFilter = 'ExcludeNone' | 'ExcludeBad' | 'ExcludeNonGood'
@@ -308,6 +317,7 @@ interface EditorPlot {
   components: {
     DyGraph,
     DlgObjectSelect,
+    TextFieldNullableNumber,
   },
 })
 export default class ViewHistory extends Vue {
@@ -340,8 +350,10 @@ export default class ViewHistory extends Vue {
       FilterByQuality: 'ExcludeBad',
       LeftAxisName: '',
       LeftAxisStartFromZero: true,
+      LeftAxisLimitY: null,
       RightAxisName: '',
       RightAxisStartFromZero: true,
+      RightAxisLimitY: null,
     },
   }
   qualityFilterValues = QualityFilterValues
@@ -420,6 +432,9 @@ export default class ViewHistory extends Vue {
       context.convertTimestamps(data)
       context.sliceDataToDateWindow(data, tab.Variables.length, response.WindowLeft, response.WindowRight)
       tab.HistoryData = data
+
+      // console.info('Laad data -> enforceYAxisLimits ' + resetZoom)
+      this.enforceYAxisLimits()
 
       if (resetZoom) {
         context.zoomResetTime = new Date().getTime()
@@ -750,6 +765,7 @@ export default class ViewHistory extends Vue {
   }
 
   augmentOptions(options) {
+
     options.legendFormatter = (data) => {
       const HasData = data.x != null
       const theSeries = data.series.map((series, i) => {
@@ -764,7 +780,82 @@ export default class ViewHistory extends Vue {
       })
       return (HasData ? data.xHTML : '') + '<br>' + theSeries.join('<br>')
     }
+
+    const context = this
+
+    options.zoomCallback = (minDate, maxDate, yRanges: number[][]) => {
+      context.enforceYAxisLimitsWithCurrentRanges(yRanges)
+    }
+
     return options
+  }
+
+  @Watch('currentTab')
+  watch_currentTab(oldValue, newValue): void {
+    const context = this
+    this.$nextTick(() => {
+      // console.info('currentTab -> enforceYAxisLimits')
+      context.enforceYAxisLimits()
+    })
+  }
+
+  enforceYAxisLimits(): void {
+    const gr: any = this.$refs.theGraph
+    const theGraph = gr._data.graph
+
+    if (theGraph.isZoomed('y')) {
+      // console.info('reset y')
+      theGraph.axes_.forEach((axis) => {
+        if (axis.valueRange) { delete axis.valueRange }
+      })
+      theGraph.drawGraph_()
+    }
+
+    const ranges = theGraph.yAxisRanges()
+    // console.info('yAxisRanges: ' + JSON.stringify(ranges))
+    this.enforceYAxisLimitsWithCurrentRanges(ranges)
+  }
+
+  enforceYAxisLimitsWithCurrentRanges(yRanges: number[][]): void {
+
+    const plotConfig = this.currentTab.Configuration.PlotConfig
+    const y1UpperBound: number | null = plotConfig.LeftAxisLimitY ?? null
+    const y2UpperBound: number | null = plotConfig.RightAxisLimitY ?? null
+
+    if (y1UpperBound !== null || y2UpperBound !== null) {
+
+      const gr: any = this.$refs.theGraph
+      const theGraph = gr._data.graph
+
+      const y1 = yRanges[0]
+      const y2 = yRanges[1] ?? [0, 0.001]
+      const y1Lower = y1[0]
+      const y2Lower = y2[0]
+      const y1Upper = y1[1]
+      const y2Upper = y2[1]
+
+      const y1NeedsUpdate = y1UpperBound !== null && y1Upper > y1UpperBound
+      const y2NeedsUpdate = y2UpperBound !== null && y2Upper > y2UpperBound
+
+      if (y1NeedsUpdate || y2NeedsUpdate) {
+
+        const newY1Upper = y1UpperBound === null ? y1Upper : Math.min(y1Upper, y1UpperBound)
+        const newY2Upper = y2UpperBound === null ? y2Upper : Math.min(y2Upper, y2UpperBound)
+
+        const axesValueRange = {
+          y: {
+            valueRange: [y1Lower, newY1Upper],
+          },
+          y2: {
+            valueRange: [y2Lower, newY2Upper],
+          },
+        }
+
+        theGraph.updateOptions({
+          axes: axesValueRange,
+        })
+      }
+    }
   }
 
   mounted() {

@@ -274,8 +274,11 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
 
-                        bool reloadData = tabConfig.PlotConfig.MaxDataPoints != para.Plot.MaxDataPoints ||
-                            tabConfig.PlotConfig.FilterByQuality != para.Plot.FilterByQuality;
+                        bool reloadData =
+                            tabConfig.PlotConfig.MaxDataPoints != para.Plot.MaxDataPoints ||
+                            tabConfig.PlotConfig.FilterByQuality != para.Plot.FilterByQuality ||
+                            tabConfig.PlotConfig.LeftAxisLimitY != para.Plot.LeftAxisLimitY ||
+                            tabConfig.PlotConfig.RightAxisLimitY != para.Plot.RightAxisLimitY;
 
                         tabConfig.PlotConfig = para.Plot;
 
@@ -791,9 +794,14 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             public string LeftAxisName { get; set; } = "";
             public bool LeftAxisStartFromZero { get; set; } = true;
+            public double? LeftAxisLimitY { get; set; } = null;
 
             public string RightAxisName { get; set; } = "";
             public bool RightAxisStartFromZero { get; set; } = true;
+            public double? RightAxisLimitY { get; set; } = null;
+
+            public bool ShouldSerializeLeftAxisLimitY() => LeftAxisLimitY.HasValue;
+            public bool ShouldSerializeRightAxisLimitY() => RightAxisLimitY.HasValue;
         }
 
         public class ItemConfig
