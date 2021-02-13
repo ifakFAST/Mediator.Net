@@ -126,7 +126,28 @@ namespace Ifak.Fast.Mediator
             this.core = core;
         }
 
-        private Dictionary<string, SessionInfo> sessions = new Dictionary<string, SessionInfo>();
+        public void Start() {
+            _ = PurgeExpiredSessions();
+        }
+
+        private async Task PurgeExpiredSessions() {
+
+            while (!terminating) {
+
+                await Task.Delay(TimeSpan.FromMinutes(5));
+
+                bool needPurge = sessions.Values.Any(session => session.IsExpired);
+                if (needPurge) {
+                    var sessionItems = sessions.Values.Where(session => session.IsExpired).ToList();
+                    foreach (var session in sessionItems) {
+                        logger.Info($"Terminating expired session: {session.ID}. Origin: {session.Origin}, Start: {session.StartTime}, Last activity: {session.LastActivity}");
+                        TerminateSession(session, "Session expired");
+                    }
+                }
+            }
+        }
+
+        private readonly Dictionary<string, SessionInfo> sessions = new Dictionary<string, SessionInfo>();
 
         public async Task HandleNewWebSocketSession(string session, WebSocket socket) {
 
@@ -230,8 +251,10 @@ namespace Ifak.Fast.Mediator
                             return Result_BAD("Invalid password");
                         }
                         info.Valid = true;
+                        info.UpdateLastActivity();
                         var obj = new JObject();
                         obj["session"] = session;
+                        // logger.Info($"New session: {session} Origin: {info.Origin}");
                         return Result_OK(obj);
                     }
 
@@ -244,10 +267,15 @@ namespace Ifak.Fast.Mediator
         private async Task<ReqResult> HandleRegular(string path, JObject req) {
 
             string session = ((string)req["session"]) ?? "";
-            if (!sessions.ContainsKey(session)) return Result_BAD("Missing session");
+            if (!sessions.ContainsKey(session)) {
+                string msg = $"Aborting request {path} because of invalid or expired session: {session}";
+                logger.Info(msg);
+                return Result_ConnectivityErr(msg);
+            }
 
             SessionInfo info = sessions[session];
-            if (!info.Valid) return Result_BAD("Invalid session");
+            if (!info.Valid) return Result_ConnectivityErr("Invalid session");
+            info.UpdateLastActivity();
 
             try {
 
@@ -764,14 +792,24 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private void TerminateSession(SessionInfo session) {
+        private void TerminateSession(SessionInfo session, string reason) {
             session.LogoutCompleted = true;
             if (session.EventSocket != null) {
-                session.EventSocketTCS.TrySetResult(null);
-                session.EventSocket = null;
-                session.EventSocketTCS = null;
+                Task tt = SendClose(session.EventSocket, reason);
+                tt.ContinueOnMainThread(t => {
+                    session.EventSocketTCS.TrySetResult(null);
+                    session.EventSocket = null;
+                    session.EventSocketTCS = null;
+                });
             }
-            Task ignored = RemoveSessionDelayed(session.ID);
+            _ = RemoveSessionDelayed(session.ID);
+        }
+
+        private async Task SendClose(WebSocket eventSocket, string reason) {
+            try {
+                await eventSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, reason, CancellationToken.None);
+            }
+            catch (Exception) { }
         }
 
         private async Task RemoveSessionDelayed(string sessionID) {
@@ -1292,6 +1330,11 @@ namespace Ifak.Fast.Mediator
             return new ReqResult(400, new MemoryStream(bytes));
         }
 
+        private ReqResult Result_ConnectivityErr(string errMsg) {
+            byte[] bytes = Encoding.UTF8.GetBytes(errMsg);
+            return new ReqResult(400, new MemoryStream(bytes));
+        }
+
         private ModuleState ModuleFromIdOrThrow(string moduleID) {
             var moduls = core.modules;
             var res = moduls.FirstOrDefault(m => m.ID == moduleID);
@@ -1304,6 +1347,16 @@ namespace Ifak.Fast.Mediator
             public string ID { get; set; }
             public bool terminating = false;
 
+            private Timestamp lastActivity = Timestamp.Now;
+
+            public Timestamp LastActivity => lastActivity;
+
+            public void UpdateLastActivity() {
+                lastActivity = Timestamp.Now;
+            }
+
+            public bool IsExpired => (Timestamp.Now - lastActivity) > Duration.FromHours(1);
+
             public Origin Origin { get; private set; }
             public string Challenge { get; private set; }
             public string Password { get; private set; }
@@ -1314,19 +1367,22 @@ namespace Ifak.Fast.Mediator
             public WebSocket EventSocket { get; set; }
             public TaskCompletionSource<object> EventSocketTCS { get; set; }
 
-            private Action<SessionInfo> terminate;
+            private Action<SessionInfo, string> terminate;
 
-            public SessionInfo(string id, string challenge, Origin origin, string password, Action<SessionInfo> terminate) {
+            public readonly Timestamp StartTime;
+
+            public SessionInfo(string id, string challenge, Origin origin, string password, Action<SessionInfo, string> terminate) {
                 ID = id;
                 Challenge = challenge;
                 Origin = origin;
                 Password = password;
                 this.terminate = terminate;
+                StartTime = Timestamp.Now;
             }
 
             private void Terminate() {
                 if (!LogoutCompleted) {
-                    terminate(this);
+                    terminate(this, "");
                 }
             }
 
@@ -1590,6 +1646,7 @@ namespace Ifak.Fast.Mediator
 
                 try {
                     await socket.ReceiveAsync(ackByteBuffer, CancellationToken.None);
+                    UpdateLastActivity();
                 }
                 catch (Exception exp) {
                     if (LogoutCompleted) return;

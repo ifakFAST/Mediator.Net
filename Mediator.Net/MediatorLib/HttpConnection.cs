@@ -18,19 +18,22 @@ namespace Ifak.Fast.Mediator
 {
     public class HttpConnection : Connection
     {
+        private string login = "";
+        private Timestamp tLogin = Timestamp.Now;
+
         public static async Task<Connection> ConnectWithUserLogin(string host, int port, string login, string password, string[] roles = null, EventListener listener = null, int timeoutSeconds = 20) {
 
             if (host == null) throw new ArgumentNullException(nameof(host));
             if (login == null) throw new ArgumentNullException(nameof(login));
             if (password == null) throw new ArgumentNullException(nameof(password));
 
-            var res = new HttpConnection(host, port, TimeSpan.FromSeconds(timeoutSeconds));
+            var res = new HttpConnection(host, port, TimeSpan.FromSeconds(timeoutSeconds), $"User({login})");
             await res.DoConnectAndLogin(login, password, false, roles ?? new string[0], listener);
             return res;
         }
 
         public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener listener = null, int timeoutSeconds = 60) {
-            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds));
+            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})");
             await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
             return res;
         }
@@ -41,7 +44,10 @@ namespace Ifak.Fast.Mediator
         protected EventManager eventManager = null;
         protected string session = null;
 
-        protected HttpConnection(string host, int port, TimeSpan timeout) {
+        protected HttpConnection(string host, int port, TimeSpan timeout, string login) {
+
+            this.login = login;
+
             Uri baseUri = new Uri("http://" + host + ":" + port + "/Mediator/");
             wsUri       = new Uri("ws://"   + host + ":" + port + "/Mediator/");
             client = new HttpClient();
@@ -79,6 +85,7 @@ namespace Ifak.Fast.Mediator
             json = await PostJObject("Authenticate", request);
 
             this.session = (string)json["session"];
+            tLogin = Timestamp.Now;
 
             if (listener != null) {
                 eventManager = new EventManager(listener);
@@ -94,13 +101,8 @@ namespace Ifak.Fast.Mediator
             if (session == null) return;
             this.session = null;
 
-            try {
-                eventManager?.Close();
-                eventManager = null;
-            }
-            catch (Exception) {
-                // Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(Close) + ": " + exp.Message);
-            }
+            eventManager?.Close();
+            eventManager = null;
 
             var request = new JObject();
             request["session"] = session;
@@ -118,19 +120,30 @@ namespace Ifak.Fast.Mediator
             Task ignored = Close();
         }
 
-        protected void OnConnectionBroken() {
+        protected void OnConnectionBroken(string context, Exception exp) {
 
             this.session = null;
 
-            try {
-                eventManager?.Close();
-                eventManager = null;
-            }
-            catch (Exception) {
-                // Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(OnConnectionBroken) + ": " + exp.Message);
-            }
+            ReportConnectionBroken(login, tLogin, context, exp);
 
+            eventManager?.Close();
+            eventManager = null;
             client.Dispose();
+        }
+
+        private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, Exception exp) {
+
+            string now = Timestamp.Now.ToDateTime().ToLocalTime().ToString("HH':'mm':'ss'.'fff", System.Globalization.CultureInfo.InvariantCulture);
+            string at = tLogin.ToDateTime().ToLocalTime().ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture);
+            string s = $"{now}: ConnectionBroken in {context}; Login: {login} at {at}";
+            if (exp != null) {
+                s += Environment.NewLine;
+                string indent = new string(' ', now.Length + 1);
+                Exception e = exp.GetBaseException() ?? exp;
+                s += $"{indent} --> {e.GetType().FullName}: {e.Message}";
+            }
+            Console.Error.WriteLine(s);
+            Console.Error.Flush();
         }
 
         #region Methods
@@ -476,12 +489,12 @@ namespace Ifak.Fast.Mediator
             try {
                 response = await client.PostAsync(path, payload);
             }
-            catch (TaskCanceledException) {
-                OnConnectionBroken();
+            catch (TaskCanceledException exp) {
+                OnConnectionBroken($"PostJObject {path} client.PostAsync TaskCanceled", exp);
                 throw new ConnectivityException("Time out");
             }
             catch (Exception exp) {
-                OnConnectionBroken();
+                OnConnectionBroken($"PostJObject {path} client.PostAsync", exp);
                 throw new ConnectivityException(exp.Message);
             }
 
@@ -492,17 +505,17 @@ namespace Ifak.Fast.Mediator
                         if (string.IsNullOrEmpty(content)) return new JObject();
                         return StdJson.JObjectFromString(content);
                     }
-                    catch (TaskCanceledException) {
-                        OnConnectionBroken();
+                    catch (TaskCanceledException exp) {
+                        OnConnectionBroken($"PostJObject {path} response.Content.ReadAsStringAsync TaskCanceled", exp);
                         throw new ConnectivityException("Time out");
                     }
                     catch (Exception exp) {
-                        OnConnectionBroken();
+                        OnConnectionBroken($"PostJObject {path} response.Content.ReadAsStringAsync", exp);
                         throw new ConnectivityException(exp.Message);
                     }
                 }
                 else {
-                    await ThrowError(response);
+                    await ThrowError(response, $"PostJObject {path}");
                     return null; // never come here
                 }
             }
@@ -527,12 +540,12 @@ namespace Ifak.Fast.Mediator
                 try {
                     response = await client.PostAsync(path, payload);
                 }
-                catch (TaskCanceledException) {
-                    OnConnectionBroken();
+                catch (TaskCanceledException exp) {
+                    OnConnectionBroken($"Post<T> {path} client.PostAsync TaskCanceled", exp);
                     throw new ConnectivityException("Time out");
                 }
                 catch (Exception exp) {
-                    OnConnectionBroken();
+                    OnConnectionBroken($"Post<T> {path} client.PostAsync", exp);
                     throw new ConnectivityException(exp.Message);
                 }
             }
@@ -545,23 +558,23 @@ namespace Ifak.Fast.Mediator
                             return StdJson.ObjectFromReader<T>(reader);
                         }
                     }
-                    catch (TaskCanceledException) {
-                        OnConnectionBroken();
+                    catch (TaskCanceledException exp) {
+                        OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync TaskCanceled", exp);
                         throw new ConnectivityException("Time out");
                     }
                     catch (Exception exp) {
-                        OnConnectionBroken();
+                        OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync", exp);
                         throw new ConnectivityException(exp.Message);
                     }
                 }
                 else {
-                    await ThrowError(response);
+                    await ThrowError(response, $"Post<T> {path}");
                     return default(T); // never come here
                 }
             }
         }
 
-        protected async Task ThrowError(HttpResponseMessage response) {
+        protected async Task ThrowError(HttpResponseMessage response, string context) {
 
             string content = null;
             try {
@@ -578,7 +591,7 @@ namespace Ifak.Fast.Mediator
             const string PropertyError = "error";
             if (errObj == null || errObj.Property(PropertyError) == null) {
                 string errMsg = string.IsNullOrWhiteSpace(content) ? response.StatusCode.ToString() : content;
-                OnConnectionBroken();
+                OnConnectionBroken($"ThrowError {context} '{errMsg}'", null);
                 throw new ConnectivityException(errMsg);
             }
             else {
@@ -625,7 +638,7 @@ namespace Ifak.Fast.Mediator
                 this.listener = listener;
             }
 
-            public async Task StartWebSocket(string session, Uri wsUri, Action notifyConnectionBroken) {
+            public async Task StartWebSocket(string session, Uri wsUri, Action<string, Exception> notifyConnectionBroken) {
 
                 webSocketCancel = new CancellationTokenSource();
                 webSocket = new ClientWebSocket();
@@ -638,7 +651,7 @@ namespace Ifak.Fast.Mediator
                 var t = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
             }
 
-            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action notifyConnectionBroken) {
+            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, Exception> notifyConnectionBroken) {
 
                 byte[] bytesOK = new byte[] { (byte)'O', (byte)'K' };
                 ArraySegment<byte> ok = new ArraySegment<byte>(bytesOK);
@@ -654,10 +667,10 @@ namespace Ifak.Fast.Mediator
                         try {
                             result = await webSocket.ReceiveAsync(buffer, cancelToken);
                         }
-                        catch (Exception) {
+                        catch (Exception exp) {
                             var t = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
-                                notifyConnectionBroken();
+                                notifyConnectionBroken("ReadWebSocketForEvents ReceiveAsync", exp);
                             }
                             Task ignored = listener.OnConnectionClosed();
                             return;
@@ -673,6 +686,7 @@ namespace Ifak.Fast.Mediator
                         using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
                             eventObj = StdJson.JObjectFromReader(reader);
                         }
+
                         try {
                             await DispatchEvent(eventObj);
                         }
@@ -690,10 +704,10 @@ namespace Ifak.Fast.Mediator
                         try {
                             await webSocket.SendAsync(ok, WebSocketMessageType.Text, true, CancellationToken.None);
                         }
-                        catch (Exception) {
+                        catch (Exception exp) {
                             var t = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
-                                notifyConnectionBroken();
+                                notifyConnectionBroken("ReadWebSocketForEvents SendAsync(ok)", exp);
                             }
                             Task ignored = listener.OnConnectionClosed();
                             return;
@@ -702,7 +716,7 @@ namespace Ifak.Fast.Mediator
                     else if (result.MessageType == WebSocketMessageType.Close) {
                         await CloseSocket();
                         if (!cancelToken.IsCancellationRequested) {
-                            notifyConnectionBroken();
+                            notifyConnectionBroken($"ReadWebSocketForEvents Close message received '{result.CloseStatusDescription}'", null);
                         }
                         await listener.OnConnectionClosed();
                         return;
@@ -718,8 +732,14 @@ namespace Ifak.Fast.Mediator
             }
 
             public void Close() {
-                webSocketCancel?.Cancel();
-                webSocketCancel?.Dispose();
+                try {
+                    webSocketCancel?.Cancel();
+                }
+                catch (Exception) { }
+                try {
+                    webSocketCancel?.Dispose();
+                }
+                catch (Exception) { }
                 webSocketCancel = null;
             }
 

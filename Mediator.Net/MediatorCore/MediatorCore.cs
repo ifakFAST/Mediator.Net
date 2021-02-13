@@ -42,9 +42,9 @@ namespace Ifak.Fast.Mediator
         private static SynchronizationContext theSyncContext = null;
 
         public MediatorCore() {
-            reqHandler = new HandleClientRequests(this);
             if (theCore == null) {
                 theCore = this;
+                reqHandler = new HandleClientRequests(this);
             }
         }
 
@@ -78,6 +78,7 @@ namespace Ifak.Fast.Mediator
         internal async Task Run(string configFileName, bool clearDBs, string fileStartComplete) {
 
             theSyncContext = SynchronizationContext.Current;
+            reqHandler.Start();
 
             Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
             userManagement = config.UserManagement;
