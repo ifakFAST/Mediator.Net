@@ -182,7 +182,12 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
                     return res.ToArray();
                 }
                 catch (Exception) {
-                    transaction.Rollback();
+                    try {
+                        transaction.Rollback();
+                    }
+                    catch (Exception exp) {
+                        logger.Warn("DoCreateChannels: transaction.Rollback failed: " + exp.Message);
+                    }
                     throw;
                 }
             }
@@ -210,9 +215,15 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 
                     return errors.ToArray();
                 }
-                catch (Exception ex) {
-                    transaction.Rollback();
-                    logger.Error(ex, "BatchExecute failed: " + ex.Message);
+                catch (Exception) {
+
+                    try {
+                        transaction.Rollback();
+                    }
+                    catch (Exception exp) {
+                        logger.Warn("BatchExecute: transaction.Rollback failed: " + exp.Message);
+                    }
+
                     throw;
                 }
             }
