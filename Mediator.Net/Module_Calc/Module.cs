@@ -498,7 +498,13 @@ namespace Ifak.Fast.Mediator.Calc
                         await Task.Delay(10);
                     }
                     sw.Stop();
-                    throw;
+
+                    if (moduleShutdown) {
+                        throw;
+                    }
+
+                    await RestartConnectionOrFail();
+                    await WriteOutputVars(outputDest);
                 }
                 else {
                     throw e;
@@ -521,7 +527,13 @@ namespace Ifak.Fast.Mediator.Calc
                         await Task.Delay(10);
                     }
                     sw.Stop();
-                    throw;
+
+                    if (moduleShutdown) {
+                        throw;
+                    }
+
+                    await RestartConnectionOrFail();
+                    return await ReadInputVars(adapter, inputs, inputVars, now);
                 }
                 else if (e is RequestException) {
 
@@ -558,6 +570,37 @@ namespace Ifak.Fast.Mediator.Calc
                 else {
                     throw e;
                 }
+            }
+        }
+
+        private bool isRestartingConnection = false;
+
+        private async Task RestartConnectionOrFail() {
+
+            if (isRestartingConnection) {
+                while (isRestartingConnection) {
+                    await Task.Delay(50);
+                }
+                return;
+            }
+
+            Console.Out.WriteLine($"{Timestamp.Now} WARN: Connection closed unexpectedly. Restarting connection...");
+            Console.Out.Flush();
+
+            try {
+                isRestartingConnection = true;
+                this.connection = await HttpConnection.ConnectWithModuleLogin(initInfo);
+                isRestartingConnection = false;
+                Console.Out.WriteLine($"{Timestamp.Now}: Connection restarted successfully.");
+                Console.Out.Flush();
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}");
+                Console.Error.WriteLine($"{Timestamp.Now}: Terminating in 5 seconds...");
+                Console.Error.Flush();
+                await Task.Delay(5000);
+                Environment.Exit(1);
             }
         }
 
