@@ -53,6 +53,8 @@ namespace Ifak.Fast.Mediator.EventLog
 
             running = true;
 
+            _ = KeepSessionAlive();
+
             foreach (var entry in initBuffer) {
                 await OnAlarmOrEvent(entry);
             }
@@ -64,6 +66,22 @@ namespace Ifak.Fast.Mediator.EventLog
 
             running = false;
             var ignored = connection.Close();
+        }
+
+        private async Task KeepSessionAlive() {
+
+            while (running) {
+
+                await Task.Delay(TimeSpan.FromMinutes(15));
+
+                if (running) {
+
+                    try {
+                        await connection.Ping();
+                    }
+                    catch (Exception) { }
+                }
+            }
         }
 
         private async Task LoadData() {
@@ -229,7 +247,7 @@ namespace Ifak.Fast.Mediator.EventLog
         }
 
         public Task OnConnectionClosed() {
-            Task ignored = CheckNeedConnectionRestart();
+            _ = CheckNeedConnectionRestart();
             return Task.FromResult(true);
         }
 

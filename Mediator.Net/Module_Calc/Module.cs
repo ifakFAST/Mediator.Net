@@ -335,9 +335,15 @@ namespace Ifak.Fast.Mediator.Calc
             adapter.Instance = null;
         }
 
+        private bool running = false;
+
         public override async Task Run(Func<bool> shutdown) {
 
             this.connection = await HttpConnection.ConnectWithModuleLogin(initInfo);
+
+            running = true;
+
+            _ = KeepSessionAlive();
 
             foreach (CalcInstance a in adapters) {
                 StartRunLoopTask(a);
@@ -346,7 +352,26 @@ namespace Ifak.Fast.Mediator.Calc
             while (!shutdown()) {
                 await Task.Delay(100);
             }
+
+            running = false;
+
             await Shutdown();
+        }
+
+        private async Task KeepSessionAlive() {
+
+            while (running) {
+
+                await Task.Delay(TimeSpan.FromMinutes(15));
+
+                if (running) {
+
+                    try {
+                        await connection.Ping();
+                    }
+                    catch (Exception) { }
+                }
+            }
         }
 
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
