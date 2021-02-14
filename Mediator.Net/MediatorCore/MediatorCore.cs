@@ -325,24 +325,31 @@ namespace Ifak.Fast.Mediator
             HttpRequest request = context.Request;
             HttpResponse response = context.Response;
 
+            string path = request.Path;
+
             if (shutdown) {
+
+                if (HandleClientRequests.IsLogout(path)) {
+                    response.StatusCode = 200;
+                    return;
+                }
+
                 response.StatusCode = 400; // BAD Request
-                string path = request.Path.ToString();
                 string methodName = path.StartsWith(HandleClientRequests.PathPrefix) ? path.Substring(HandleClientRequests.PathPrefix.Length) : path;
                 byte[] bytes = Encoding.UTF8.GetBytes($"Can not respond to {methodName} request because system is shutting down.");
-                Task ignored = response.Body.WriteAsync(bytes, 0, bytes.Length);
+                _ = response.Body.WriteAsync(bytes, 0, bytes.Length);
                 return;
             }
 
             try {
 
-                if (request.Path == HandleClientRequests.PathPrefix && context.WebSockets.IsWebSocketRequest) {
+                if (path == HandleClientRequests.PathPrefix && context.WebSockets.IsWebSocketRequest) {
                     WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
                     await HandleClientWebSocket(webSocket);
                     return;
                 }
 
-                if (request.Method != "POST" || !HandleClientRequests.IsValid(request.Path)) {
+                if (request.Method != "POST" || !HandleClientRequests.IsValid(path)) {
                     logger.Warn("Invalid request " + request.Path.ToUriComponent());
                     response.StatusCode = 400; // BAD Request
                     return;
@@ -358,7 +365,7 @@ namespace Ifak.Fast.Mediator
                     }
                 }
 
-                using (ReqResult result = await reqHandler.Handle(request.Path, obj)) {
+                using (ReqResult result = await reqHandler.Handle(path, obj)) {
 
                     //logger.Info(result.AsString());
 

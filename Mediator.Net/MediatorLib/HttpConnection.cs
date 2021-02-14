@@ -148,6 +148,11 @@ namespace Ifak.Fast.Mediator
 
         #region Methods
 
+        public override async Task Ping() {
+            JObject request = MakeSessionRequest();
+            await PostJObject("Ping", request);
+        }
+
         public override async Task EnableAlarmsAndEvents(Severity minSeverity = Severity.Info) {
             JObject request = MakeSessionRequest();
             request["minSeverity"] = new JRaw(StdJson.ValueToString(minSeverity));

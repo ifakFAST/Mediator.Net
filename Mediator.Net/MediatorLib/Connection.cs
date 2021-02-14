@@ -22,6 +22,11 @@ namespace Ifak.Fast.Mediator
         public abstract bool IsClosed { get; }
 
         /// <summary>
+        /// Ping the connection in order to keep the session alive.
+        /// </summary>
+        public abstract Task Ping();
+
+        /// <summary>
         /// Returns the modules that the running Mediator instance is composed of (can not change while Mediator is running).
         /// </summary>
         public abstract Task<ModuleInfo[]> GetModules();

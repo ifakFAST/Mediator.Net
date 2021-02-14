@@ -32,6 +32,7 @@ namespace Ifak.Fast.Mediator
         public const string PathPrefix = "/Mediator/";
         const string Req_Login = PathPrefix + "Login";
         const string Req_Auth = PathPrefix + "Authenticate";
+        const string Req_Ping = PathPrefix + "Ping";
         const string Req_GetModules = PathPrefix + "GetModules";
         const string Req_GetLocations = PathPrefix + "GetLocations";
         const string Req_GetLoginUser = PathPrefix + "GetLoginUser";
@@ -72,9 +73,12 @@ namespace Ifak.Fast.Mediator
         const string Req_HistorianDeleteVariables = PathPrefix + "HistorianDeleteVariables";
         const string Req_HistorianGetLatestTimestampDB = PathPrefix + "HistorianGetLatestTimestampDB";
 
+        public static bool IsLogout(string path) => path == Req_Logout;
+
         public static readonly HashSet<string> Requests = new HashSet<string>() {
             Req_Login,
             Req_Auth,
+            Req_Ping,
             Req_GetModules,
             Req_GetLocations,
             Req_GetLoginUser,
@@ -766,6 +770,10 @@ namespace Ifak.Fast.Mediator
                             catch (Exception exp) {
                                 return Result_BAD(exp.Message);
                             }
+                        }
+
+                    case Req_Ping: {
+                            return Result_OK();
                         }
 
                     case Req_Logout: {
