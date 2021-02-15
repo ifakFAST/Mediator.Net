@@ -1608,7 +1608,7 @@ namespace Ifak.Fast.Mediator
 
                 if (socket.State != WebSocketState.Open) {
                     await Task.Delay(500);
-                    if (LogoutCompleted) return;
+                    if (LogoutCompleted || terminating) return;
                     logger.Warn($"SendWebSocket: Will not send event because socket.State = {socket.State}. Terminating session...");
                     Terminate();
                     return;
@@ -1634,18 +1634,18 @@ namespace Ifak.Fast.Mediator
                         await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
                     }
                     catch (Exception exp) {
-                        if (LogoutCompleted) return;
+                        if (LogoutCompleted || terminating) return;
                         Exception e = exp.GetBaseException() ?? exp;
                         var state = socket.State;
                         await Task.Delay(500);
-                        if (LogoutCompleted) return;
+                        if (LogoutCompleted || terminating) return;
                         logger.Warn(e, $"SendWebSocket: EventSocket.SendAsync, State = {state}. Terminating session...");
                         Terminate();
                         return;
                     }
                 }
                 catch (Exception exp) {
-                    if (LogoutCompleted) return;
+                    if (LogoutCompleted || terminating) return;
                     Exception e = exp.GetBaseException() ?? exp;
                     logger.Warn(e, "Exception in SendWebSocket. Terminating session...");
                     Terminate();
@@ -1657,11 +1657,11 @@ namespace Ifak.Fast.Mediator
                     UpdateLastActivity();
                 }
                 catch (Exception exp) {
-                    if (LogoutCompleted) return;
+                    if (LogoutCompleted || terminating) return;
                     Exception e = exp.GetBaseException() ?? exp;
                     var state = socket.State;
                     await Task.Delay(500);
-                    if (LogoutCompleted) return;
+                    if (LogoutCompleted || terminating) return;
                     logger.Warn(e, $"SendWebSocket: EventSocket.ReceiveAsync ACK, State = {state}. Terminating session...");
                     Terminate();
                     return;

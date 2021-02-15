@@ -133,6 +133,10 @@ namespace Ifak.Fast.Mediator
 
         private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, Exception exp) {
 
+            if (context.Contains("request because system is shutting down.")) {
+                return;
+            }
+
             string now = Timestamp.Now.ToDateTime().ToLocalTime().ToString("HH':'mm':'ss'.'fff", System.Globalization.CultureInfo.InvariantCulture);
             string at = tLogin.ToDateTime().ToLocalTime().ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture);
             string s = $"{now}: ConnectionBroken in {context}; Login: {login} at {at}";
