@@ -7,11 +7,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using McMaster.NETCore.Plugins;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
@@ -61,6 +59,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             var config = new Mediator.Config(parameter.ModuleConfig);
             string libs = config.GetOptionalString("csharp-libraries", "");
+            bool cache = config.GetOptionalBool("csharp-cache-scripts", true);
 
             string[] assemblies = libs
                 .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
@@ -74,27 +73,18 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             absoluteAssemblies = absoluteAssemblies.Select(assembly => {
                 if (assembly.ToLowerInvariant().EndsWith(".cs")) {
-                    return CompileLib.CSharpFile2Assembly(assembly);
+                    CompileResult compileRes = CompileLib.CSharpFile2Assembly(assembly);
+                    Print(compileRes, assembly);
+                    return compileRes.AssemblyFileName;
                 }
                 return assembly;
             }).ToArray();
 
             var referencedAssemblies = new List<Assembly>();
-            referencedAssemblies.Add(typeof(System.Collections.Generic.IList<int>).Assembly);
-            referencedAssemblies.Add(typeof(System.Linq.Enumerable).Assembly);
-            referencedAssemblies.Add(typeof(Ifak.Fast.Mediator.Timestamp).Assembly);
-            referencedAssemblies.Add(typeof(Input).Assembly);
 
             foreach (string assembly in absoluteAssemblies) {
                 try {
-
-                    // Assembly ass= Assembly.LoadFrom(assembly);
-
-                    PluginLoader loader = PluginLoader.CreateFromAssemblyFile(
-                        assemblyFile: assembly,
-                        sharedTypes: new Type[] { typeof(InputBase), typeof(OutputBase), typeof(AbstractState) });
-
-                    Assembly ass = loader.LoadDefaultAssembly();
+                    Assembly ass = Assembly.LoadFrom(assembly);
                     referencedAssemblies.Add(ass);
                 }
                 catch (Exception exp) {
@@ -102,30 +92,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
 
-            var options = ScriptOptions.Default
-                .WithImports(
-                    "System",
-                    "System.Collections.Generic",
-                    "System.Linq",
-                    "System.Globalization",
-                    "System.Text",
-                    "Ifak.Fast.Mediator.Calc.Adapter_CSharp",
-                    "Ifak.Fast.Mediator")
-                .WithReferences(referencedAssemblies.ToArray())
-                .WithEmitDebugInformation(true);
+            CodeToObjectBase objMaker;
+            if (cache)
+                objMaker = new CodeToObjectCompile();
+            else
+                objMaker = new CodeToObjectScripting();
 
-            const string className = "Script";
-
-            var script = CSharpScript.
-                Create<object>(code, options).
-                ContinueWith($"new {className}()");
-
-            // var diag = script.Compile();
-
-            ScriptState<object> scriptState = await script.RunAsync();
-            object obj = scriptState.ReturnValue;
-
-            // Console.WriteLine($"Time script: {sw.ElapsedMilliseconds} ms");
+            object obj = await objMaker.MakeObjectFromCode(parameter.Calculation.Name, code, referencedAssemblies);
 
             inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: false).ToArray();
             outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
@@ -161,6 +134,33 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 States = states.Select(MakeStateDef).ToArray(),
                 ExternalStatePersistence = true
             };
+        }
+
+        private static readonly HashSet<string> reportedLibs = new HashSet<string>();
+
+        private void Print(CompileResult compileRes, string fileName) {
+
+            if (reportedLibs.Contains(fileName)) return;
+            reportedLibs.Add(fileName);
+
+            string name = Path.GetFileName(fileName);
+            string assemblyFileName = Path.GetFileName(compileRes.AssemblyFileName);
+            string assemblyDir = Path.GetDirectoryName(compileRes.AssemblyFileName);
+            var buffer = new StringBuilder();
+            if (compileRes.IsUsingCachedAssembly) {
+                buffer.AppendLine($"C# lib {name}: Using cached assembly");
+                buffer.AppendLine($"   Directory: {assemblyDir}");
+                buffer.AppendLine($"   Assembly:  {assemblyFileName}");
+                buffer.AppendLine($"   Created:   {File.GetCreationTime(compileRes.AssemblyFileName)}");
+            }
+            else {
+                buffer.AppendLine($"C# lib {name}: Compiled C# source file to cached assembly");
+                buffer.AppendLine($"   Directory:   {assemblyDir}");
+                buffer.AppendLine($"   Assembly:    {assemblyFileName}");
+                buffer.AppendLine($"   CompileTime: {compileRes.CompileTime}");
+            }
+            Console.Out.WriteLine(buffer.ToString());
+            Console.Out.Flush();
         }
 
         public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {

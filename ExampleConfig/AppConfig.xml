@@ -61,10 +61,11 @@
             <ExternalCommand>dotnet</ExternalCommand>
             <ExternalArgs>./Bin/Module_Calc/Module_Calc.dll {PORT}</ExternalArgs>
             <Config>
-                <NamedValue name="model-file" value="./Config/Model_Calc.xml"/>                
+                <NamedValue name="model-file" value="./Config/Model_Calc.xml"/>
                 <NamedValue name="adapter-assemblies" value=""/>
                 <NamedValue name="simba-location" value=""/>
                 <NamedValue name="csharp-libraries" value="./Config/CSharpLib.cs"/>
+                <NamedValue name="csharp-cache-scripts" value="true"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">

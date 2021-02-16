@@ -13,46 +13,73 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
 using System.Reflection;
+using System.Threading;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
     public class CompileLib
     {
-        public static string CSharpFile2Assembly(string fullFileName) {
-
+        public static CompileResult CSharpFile2Assembly(string fullFileName) {
             string code = File.ReadAllText(fullFileName, Encoding.UTF8);
+            return CSharpCode2Assembly(code, new Assembly[0]);
+        }
+
+        static string GetVersionifakFAST() {
+            Version v = typeof(Timestamp).Assembly.GetName().Version;
+            if (v == null) return "0";
+            return v.ToString(fieldCount: 3).Trim();
+        }
+
+        public static CompileResult CSharpCode2Assembly(string code, IList<Assembly> refAssemblies) {
+
+            string version = GetVersionifakFAST();
+
             string hash = GetHash(code);
-            string tempDir = Path.GetTempPath();
+            string tempDir = Path.Combine(Path.GetTempPath(), "ifakFAST", version);
+            Directory.CreateDirectory(tempDir);
+
             string assemblyName = hash + ".dll";
             string assemblyFullName = Path.Combine(tempDir, assemblyName);
             if (File.Exists(assemblyFullName)) {
-                var buffer = new StringBuilder();
-                buffer.AppendLine($"Using cached C# lib assembly:");
-                buffer.AppendLine($"\tSource:   {fullFileName}");
-                buffer.AppendLine($"\tAssembly: {assemblyFullName}");
-                buffer.AppendLine($"\tCreated:  {File.GetCreationTime(assemblyFullName)}");
-                Console.Out.WriteLine(buffer.ToString());
-                Console.Out.Flush();
-                return assemblyFullName;
+                return CompileResult.Make(cached: true, assembly: assemblyFullName, time: Duration.FromSeconds(0));
             }
 
-            CSharpCompilation comp = GenerateCode(assemblyName, code);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            CSharpCompilation comp = GenerateCode(assemblyName, code, refAssemblies);
 
             using (var stream = new MemoryStream()) {
 
                 EmitResult result = comp.Emit(stream);
 
+                sw.Stop();
+
                 if (result.Success) {
                     stream.Seek(0, SeekOrigin.Begin);
-                    File.WriteAllBytes(assemblyFullName, stream.ToArray());
-                    Console.WriteLine($"Compiled C# lib assembly from source file:");
-                    Console.WriteLine($"\tSource:   {fullFileName}");
-                    Console.WriteLine($"\tAssembly: {assemblyFullName}");
+                    byte[] bytes = stream.ToArray();
+
+                    const int Tries = 5;
+                    for (int n = 1; n <= Tries; ++n) {
+                        try {
+                            File.WriteAllBytes(assemblyFullName, bytes);
+                            return CompileResult.Make(cached: false, assembly: assemblyFullName, time: Duration.FromMilliseconds(sw.ElapsedMilliseconds));
+                        }
+                        catch (Exception e) {
+                            Exception exp = e.GetBaseException() ?? e;
+                            Console.Out.WriteLine($"WARN: Failed to write assembly file {assemblyFullName}: {e.Message} [Try {n}/{Tries}]");
+                            Console.Out.Flush();
+                            Thread.Sleep(n * 100);
+                            if (n >= Tries) {
+                                throw new IOException($"Failed to write assembly file {assemblyFullName}: {e.Message}");
+                            }
+                        }
+                    }
+                    throw new IOException($"Failed to write assembly file {assemblyFullName}");
                 }
                 else {
 
-                    string errMsg = $"Failed to compile C# lib {fullFileName}";
-                    Console.Error.WriteLine(errMsg);
+                    var buffer = new StringBuilder();
+                    buffer.AppendLine($"Failed to compile C# lib");
 
                     var failures = result.Diagnostics.Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
 
@@ -60,17 +87,15 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                         var lineSpan = dia.Location.GetLineSpan();
                         int line = lineSpan.StartLinePosition.Line + 1;
                         int charac = lineSpan.StartLinePosition.Character + 1;
-                        Console.Error.WriteLine($"{dia.Id} in line {line} pos {charac} Error: {dia.GetMessage()}");
+                        buffer.AppendLine($"{dia.Id} in line {line} pos {charac} Error: {dia.GetMessage()}");
                     }
 
-                    throw new Exception(errMsg);
+                    throw new Exception(buffer.ToString());
                 }
             }
-
-            return assemblyFullName;
         }
 
-        private static CSharpCompilation GenerateCode(string assemblyName, string sourceCode) {
+        private static CSharpCompilation GenerateCode(string assemblyName, string sourceCode, IList<Assembly> refAssemblies) {
 
             var codeString = SourceText.From(sourceCode);
             var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp8);
@@ -99,6 +124,10 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             references.Add(MetadataReference.CreateFromFile(typeof(CSharp).Assembly.Location));
             references.Add(MetadataReference.CreateFromFile(typeof(Ifak.Fast.Mediator.Timestamp).Assembly.Location));
 
+            foreach (Assembly ass in refAssemblies) {
+                references.Add(MetadataReference.CreateFromFile(ass.Location));
+            }
+
             return CSharpCompilation.Create(assemblyName,
                 new[] { parsedSyntaxTree },
                 references: references,
@@ -117,6 +146,21 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
                 return sBuilder.ToString();
             }
+        }
+    }
+
+    public struct CompileResult
+    {
+        public bool IsUsingCachedAssembly { get; private set; }
+        public string AssemblyFileName    { get; private set; }
+        public Duration CompileTime       { get; private set; }
+
+        public static CompileResult Make(bool cached, string assembly, Duration time) {
+            return new CompileResult() {
+                IsUsingCachedAssembly = cached,
+                AssemblyFileName = assembly,
+                CompileTime = time,
+            };
         }
     }
 }
