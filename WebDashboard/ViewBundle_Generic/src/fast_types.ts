@@ -35,9 +35,11 @@ export interface LocationInfo {
   Parent: string
 }
 
-export type HistoryMode = 'None' | 'Complete' | 'ValueOrQualityChanged' | 'Interval' | 'IntervalExact'
+export type HistoryMode =
+  'None' | 'Complete' | 'ValueOrQualityChanged' | 'Interval' | 'IntervalExact' | 'IntervalOrChanged' | 'IntervalExactOrChanged'
 
-export const HistoryModeValues: HistoryMode[] = ['None', 'Complete', 'ValueOrQualityChanged', 'Interval', 'IntervalExact']
+export const HistoryModeValues: HistoryMode[] = [
+  'None', 'Complete', 'ValueOrQualityChanged', 'Interval', 'IntervalExact', 'IntervalOrChanged', 'IntervalExactOrChanged']
 
 export type DataType =
   'Bool' |

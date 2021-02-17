@@ -171,6 +171,8 @@ namespace Ifak.Fast.Mediator
         public static History ValueOrQualityChanged => new History(HistoryMode.ValueOrQualityChanged);
         public static History IntervalDefault(Duration interval, Duration? offset = null) => new History(HistoryMode.Interval, interval, offset);
         public static History IntervalExact(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalExact, interval, offset);
+        public static History IntervalOrChanged(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalOrChanged, interval, offset);
+        public static History IntervalExactOrChanged(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalExactOrChanged, interval, offset);
 
         public HistoryMode Mode { get; set; }
         public Duration? Interval { get; set; }
@@ -217,6 +219,12 @@ namespace Ifak.Fast.Mediator
                 case "IntervalExact":
                     Mode = HistoryMode.IntervalExact;
                     break;
+                case "IntervalOrChanged":
+                    Mode = HistoryMode.IntervalOrChanged;
+                    break;
+                case "IntervalExactOrChanged":
+                    Mode = HistoryMode.IntervalExactOrChanged;
+                    break;
                 default:
                     throw new Exception("Unknown HistoryMode: " + m);
             }
@@ -233,16 +241,18 @@ namespace Ifak.Fast.Mediator
 
         public void WriteXml(XmlWriter writer) {
             writer.WriteAttributeString("mode", Mode.ToString());
-            if (Interval.HasValue && (Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact)) {
+            bool modeInterval = Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact || Mode == HistoryMode.IntervalOrChanged || Mode == HistoryMode.IntervalExactOrChanged;
+            if (Interval.HasValue && modeInterval) {
                 writer.WriteAttributeString("interval", Interval.Value.ToString());
             }
-            if (Offset.HasValue && (Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact)) {
+            if (Offset.HasValue && modeInterval) {
                 writer.WriteAttributeString("offset", Offset.Value.ToString());
             }
         }
 
         public void ValidateOrThrow() {
-            if (Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact) {
+            bool modeInterval = Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact || Mode == HistoryMode.IntervalOrChanged || Mode == HistoryMode.IntervalExactOrChanged;
+            if (modeInterval) {
                 if (!Interval.HasValue) throw new Exception($"Missing interval value for history mode {Mode}");
                 if (Interval.Value.TotalMilliseconds == 0) throw new Exception($"Interval value must be non zero for history mode {Mode}");
             }
@@ -266,7 +276,9 @@ namespace Ifak.Fast.Mediator
         Complete,
         ValueOrQualityChanged,
         Interval, // save if t_last < t_now and t_now is on or over latest interval bound
-        IntervalExact
+        IntervalExact,
+        IntervalOrChanged,
+        IntervalExactOrChanged,
     }
 
     public struct ObjectValue : IEquatable<ObjectValue>

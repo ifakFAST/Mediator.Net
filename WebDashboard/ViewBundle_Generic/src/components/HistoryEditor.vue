@@ -38,7 +38,7 @@ export default class HistoryEditor extends Vue {
 
   update(key: string, value: any): void {
     const newObj: fast.History = { ...this.value, [key]: value }
-    const noIntervalMode = newObj.Mode !== 'Interval' && newObj.Mode !== 'IntervalExact'
+    const noIntervalMode = newObj.Mode !== 'Interval' && newObj.Mode !== 'IntervalExact' && newObj.Mode !== 'IntervalOrChanged' && newObj.Mode !== 'IntervalExactOrChanged'
     const interval = newObj.Interval
     if (noIntervalMode || interval === undefined || interval === null || interval.trim() === '') {
       newObj.Interval = null
@@ -54,7 +54,7 @@ export default class HistoryEditor extends Vue {
   }
 
   get showInterval(): boolean {
-    return this.value.Mode === 'Interval' || this.value.Mode === 'IntervalExact'
+    return this.value.Mode === 'Interval' || this.value.Mode === 'IntervalExact' || this.value.Mode === 'IntervalOrChanged' || this.value.Mode === 'IntervalExactOrChanged'
   }
 
   get modeWidth(): string {

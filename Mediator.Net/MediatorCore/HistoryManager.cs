@@ -320,8 +320,29 @@ namespace Ifak.Fast.Mediator
                                 break;
                             }
 
+                        case HistoryMode.IntervalOrChanged: {
+                                if (value.Value.V != previousValue.V ||
+                                    value.Value.Q != previousValue.Q ||
+                                    IsIntervalHit(tNew, history) ||
+                                    (tNew - tOld >= history.Interval) ||
+                                    IsIntervalBetweenTimetamps(tOld, tNew, history)) {
+
+                                    valuesToSave.Add(new StoreValue(value, type));
+                                }
+                                break;
+                            }
+
                         case HistoryMode.IntervalExact: {
                                 if (IsIntervalHit(tNew, history)) {
+                                    valuesToSave.Add(new StoreValue(value, type));
+                                }
+                                break;
+                            }
+
+                        case HistoryMode.IntervalExactOrChanged: {
+                                if (value.Value.V != previousValue.V ||
+                                    value.Value.Q != previousValue.Q ||
+                                    IsIntervalHit(tNew, history)) {
                                     valuesToSave.Add(new StoreValue(value, type));
                                 }
                                 break;
