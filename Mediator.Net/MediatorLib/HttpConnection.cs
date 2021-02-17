@@ -88,6 +88,11 @@ namespace Ifak.Fast.Mediator
             tLogin = Timestamp.Now;
 
             if (listener != null) {
+
+                request = new JObject();
+                request["session"] = session;
+                await PostJObject("EnableEventPing", request);
+
                 eventManager = new EventManager(listener);
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
             }
@@ -651,6 +656,7 @@ namespace Ifak.Fast.Mediator
 
                 webSocketCancel = new CancellationTokenSource();
                 webSocket = new ClientWebSocket();
+                webSocket.Options.KeepAliveInterval = TimeSpan.FromMilliseconds(0);
 
                 await webSocket.ConnectAsync(wsUri, CancellationToken.None);
 
@@ -778,6 +784,10 @@ namespace Ifak.Fast.Mediator
                     case "OnAlarmOrEvent": {
                             AlarmOrEvent[] alarmOrEvents = StdJson.ObjectFromJToken<AlarmOrEvent[]>(theEvent["events"]);
                             return listener.OnAlarmOrEvents(alarmOrEvents);
+                        }
+
+                    case "OnPing": {
+                            return Task.FromResult(true);
                         }
 
                     default:

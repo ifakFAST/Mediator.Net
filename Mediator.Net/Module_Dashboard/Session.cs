@@ -72,6 +72,10 @@ namespace Ifak.Fast.Mediator.Dashboard
                         if (closed) {
                             return;
                         }
+                        await Task.Delay(2000);
+                        if (closed) {
+                            return;
+                        }
                         Exception exp = exception.GetBaseException();
                         Console.Out.WriteLine($"Exception in GetNaviAugmentation of view {viewID}: {exp.Message}");
                         await Task.Delay(10000);

@@ -66,6 +66,7 @@
                 <NamedValue name="model-file" value="Model_Calc.xml"/>
                 <NamedValue name="simba-location" value="D:\Simba\Simba3\Workspace\wSisi\bin\Release\simba.exe"/>
                 <NamedValue name="csharp-libraries" value="CSharpLib.cs"/>
+                <NamedValue name="csharp-cache-scripts" value="true"/>
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
             <HistoryDBs>

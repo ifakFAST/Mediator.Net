@@ -32,6 +32,7 @@ namespace Ifak.Fast.Mediator
         public const string PathPrefix = "/Mediator/";
         const string Req_Login = PathPrefix + "Login";
         const string Req_Auth = PathPrefix + "Authenticate";
+        const string Req_EnableEventPing = PathPrefix + "EnableEventPing";
         const string Req_Ping = PathPrefix + "Ping";
         const string Req_GetModules = PathPrefix + "GetModules";
         const string Req_GetLocations = PathPrefix + "GetLocations";
@@ -78,6 +79,7 @@ namespace Ifak.Fast.Mediator
         public static readonly HashSet<string> Requests = new HashSet<string>() {
             Req_Login,
             Req_Auth,
+            Req_EnableEventPing,
             Req_Ping,
             Req_GetModules,
             Req_GetLocations,
@@ -168,14 +170,13 @@ namespace Ifak.Fast.Mediator
                 return;
             }
 
-            if (info.EventSocket != null) {
+            if (info.HasEventSocket) {
                 logger.Warn("A websocket is already assigned to this session");
                 await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, "A websocket is already assigned to this session", CancellationToken.None);
                 return;
             }
             var tcs = new TaskCompletionSource<object>();
-            info.EventSocket = socket;
-            info.EventSocketTCS = tcs;
+            info.SetEventSocket(socket, tcs);
             await tcs.Task;
         }
 
@@ -776,6 +777,11 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
+                    case Req_EnableEventPing: {
+                            info.eventPingEnabled = true;
+                            return Result_OK();
+                        }
+
                     case Req_Logout: {
                             LogoutSession(info);
                             return Result_OK();
@@ -793,21 +799,19 @@ namespace Ifak.Fast.Mediator
         private void LogoutSession(SessionInfo session) {
             session.LogoutCompleted = true;
             sessions.Remove(session.ID);
-            if (session.EventSocket != null) {
+            if (session.HasEventSocket) {
                 session.EventSocketTCS.TrySetResult(null);
-                session.EventSocket = null;
-                session.EventSocketTCS = null;
+                session.SetEventSocket(null, null);
             }
         }
 
         private void TerminateSession(SessionInfo session, string reason) {
             session.LogoutCompleted = true;
-            if (session.EventSocket != null) {
+            if (session.HasEventSocket) {
                 Task tt = SendClose(session.EventSocket, reason);
                 tt.ContinueOnMainThread(t => {
                     session.EventSocketTCS.TrySetResult(null);
-                    session.EventSocket = null;
-                    session.EventSocketTCS = null;
+                    session.SetEventSocket(null, null);
                 });
             }
             _ = RemoveSessionDelayed(session.ID);
@@ -1354,13 +1358,21 @@ namespace Ifak.Fast.Mediator
         {
             public string ID { get; set; }
             public bool terminating = false;
+            public bool eventPingEnabled = false;
 
             private Timestamp lastActivity = Timestamp.Now;
+            private Timestamp lastEventActivity = Timestamp.Now;
 
             public Timestamp LastActivity => lastActivity;
 
             public void UpdateLastActivity() {
                 lastActivity = Timestamp.Now;
+            }
+
+            private void UpdateLastEventActivity() {
+                Timestamp now = Timestamp.Now;
+                lastActivity = now;
+                lastEventActivity = now;
             }
 
             public bool IsExpired => (Timestamp.Now - lastActivity) > Duration.FromHours(1);
@@ -1374,6 +1386,14 @@ namespace Ifak.Fast.Mediator
 
             public WebSocket EventSocket { get; set; }
             public TaskCompletionSource<object> EventSocketTCS { get; set; }
+
+            public void SetEventSocket(WebSocket socket, TaskCompletionSource<object> eventSocketTCS) {
+                EventSocket = socket;
+                EventSocketTCS = eventSocketTCS;
+                if (socket != null && eventPingEnabled) {
+                    _ = PingTask();
+                }
+            }
 
             private Action<SessionInfo, string> terminate;
 
@@ -1623,7 +1643,9 @@ namespace Ifak.Fast.Mediator
 
                     using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
                         writer.Write(msgStart);
-                        StdJson.ObjectToWriter(content, writer);
+                        if (content != null) {
+                            StdJson.ObjectToWriter(content, writer);
+                        }
                         writer.Write("}");
                     }
 
@@ -1654,7 +1676,7 @@ namespace Ifak.Fast.Mediator
 
                 try {
                     await socket.ReceiveAsync(ackByteBuffer, CancellationToken.None);
-                    UpdateLastActivity();
+                    UpdateLastEventActivity();
                 }
                 catch (Exception exp) {
                     if (LogoutCompleted || terminating) return;
@@ -1665,6 +1687,31 @@ namespace Ifak.Fast.Mediator
                     logger.Warn(e, $"SendWebSocket: EventSocket.ReceiveAsync ACK, State = {state}. Terminating session...");
                     Terminate();
                     return;
+                }
+            }
+
+            private async Task PingTask() {
+
+                TimeSpan interval = TimeSpan.FromMinutes(1);
+
+                await Task.Delay(interval);
+
+                while (HasEventSocket && !terminating && !LogoutCompleted) {
+
+                    Duration x = Timestamp.Now - lastEventActivity;
+                    if (x > interval && !forceEventBuffering) {
+
+                        try {
+                            forceEventBuffering = true;
+                            await SendWebSocket("{ \"event\": \"OnPing\" ", null);
+                        }
+                        finally {
+                            forceEventBuffering = false;
+                        }
+                        CheckPendingEvents();
+                    }
+
+                    await Task.Delay(interval);
                 }
             }
         }
