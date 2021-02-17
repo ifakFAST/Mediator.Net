@@ -1,4 +1,8 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Scripting;
+﻿// Licensed to ifak e.V. under one or more agreements.
+// ifak e.V. licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using System;
 using System.Collections.Generic;
