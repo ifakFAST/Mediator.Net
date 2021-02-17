@@ -8,6 +8,442 @@
         }
       </Config>
     </View>
+    <View id="pages" name="Pages" type="Pages" group="">
+      <Config>{
+  "Pages": [
+    {
+      "ID": "p1",
+      "Name": "Overview",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_2b81",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "Left",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#339933",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "TSS",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Right",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_003",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_057e",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "Test",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Right",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "p2",
+      "Name": "Details Pump 1",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "SixOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_23e2",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "SixOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_d607",
+                  "Type": "HistoryPlot",
+                  "Width": "98%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "NH",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "p3",
+      "Name": "Details Pump 2",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Auto",
+              "Widgets": [
+                {
+                  "ID": "w1",
+                  "Type": "VarTable",
+                  "Width": "",
+                  "Height": "",
+                  "Config": {
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Unit": "mg/L",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": 0.0,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "NH",
+                        "Unit": "mg/L",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": 0.0,
+                        "AlarmAbove": 100.4
+                      },
+                      {
+                        "Name": "TSS",
+                        "Unit": "mg/L",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Data_003",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "SP",
+                        "Unit": "mg/L",
+                        "TrendFrame": "15 min",
+                        "Variable": {
+                          "Object": "IO:Data_006",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": 1.0,
+                        "AlarmAbove": null
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_53fe",
+                  "Type": "VarTable",
+                  "Width": "100%",
+                  "Height": "",
+                  "Config": {
+                    "Items": []
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "P_99dc",
+      "Name": "Page",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_ed4b",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_0697",
+                  "Type": "VarTable",
+                  "Width": "100%",
+                  "Height": "",
+                  "Config": {
+                    "Items": []
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_07c7",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</Config>
+    </View>
     <View id="io" name="IO" type="GenericModuleConfig" group="">
       <Config>
         { 
@@ -97,7 +533,7 @@
                   "Axis": "Left",
                   "Checked": true,
                   "Variable": {
-                    "Object": "IO:Data_006",
+                    "Object": "IO:Data_002",
                     "Name": "Value"
                   }
                 }
@@ -119,6 +555,144 @@
           ]
         }
       </Config>
+    </View>
+    <View id="LlTtC3" name="History Pages" type="Pages" group="">
+      <Config>{
+  "Pages": [
+    {
+      "ID": "Control",
+      "Name": "Control",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "w1",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "600px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 9000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "Measurements",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "Control Output",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "Setpoint",
+                        "Color": "#339933",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Right",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_004",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "Sinus",
+      "Name": "Sinus",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "w12",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "600px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": false,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": false
+                    },
+                    "Items": [
+                      {
+                        "Name": "Sine",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</Config>
     </View>
   </Views>
 </Dashboard_Model>

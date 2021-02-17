@@ -9,6 +9,7 @@
                        :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
                         @duplicateView="duplicateView" @renameView="renameView"
+                        @duplicateConvertView="duplicateConvertView"
                         @moveUp="moveUpView" @moveDown="moveDownView" @delete="deleteView"></dashboard>
         </template>
     </div>
@@ -199,6 +200,21 @@ export default {
         })
         .catch(function(error) {
           console.info('Duplicate View failed!');
+          alert(error);
+        });
+    },
+    duplicateConvertView(viewID) {
+      const context = this;
+      axios
+        .post("/duplicateConvertView?" + this.sessionID + "_" + viewID)
+        .then(function(response) {
+          console.info('duplicateConvertView success.');
+          const viewID = response.data.newViewID;
+          context.model = response.data.model;
+          context.doActivateView(viewID);
+        })
+        .catch(function(error) {
+          console.info('Duplicate Convert View failed!');
           alert(error);
         });
     },

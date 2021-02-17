@@ -40,7 +40,6 @@
 
 <script lang="ts">
 
-import DyGraph from '../components/DyGraph.vue'
 import { Component, Vue, Watch, Prop } from 'vue-property-decorator'
 
 interface ModuleInfo {

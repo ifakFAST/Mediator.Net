@@ -10,6 +10,7 @@ module.exports = {
     history:   'src/view_history/main.ts',
     generic:   'src/view_generic/main.ts',
     calc:      'src/view_calc/main.ts',
+    pages:     'src/view_pages/main.ts',
   },
   transpileDependencies: [
     "vuetify"

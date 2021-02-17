@@ -289,6 +289,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private const string Path_ViewReq = "/viewRequest/";
         private const string Path_ActivateView = "/activateView";
         private const string Path_DuplicateView = "/duplicateView";
+        private const string Path_DuplicateConvertView = "/duplicateConvertView";
         private const string Path_RenameView = "/renameView";
         private const string Path_MoveView = "/moveView";
         private const string Path_DeleteView = "/deleteView";
@@ -353,6 +354,18 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
                     string newViewID = await session.OnDuplicateView(viewID);
+
+                    uiModel = MakeUiModel(model, viewTypes);
+
+                    return ReqResult.OK(new {
+                        newViewID,
+                        model = uiModel
+                    });
+                }
+                else if (path == Path_DuplicateConvertView) {
+
+                    (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                    string newViewID = await session.OnDuplicateConvertHistoryPlot(viewID);
 
                     uiModel = MakeUiModel(model, viewTypes);
 
@@ -521,7 +534,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                     viewName = v.Name,
                     viewURL = url ? v.Config.Object<ViewURLConfig>().URL : viewType.HtmlPath,
                     viewIcon = viewType.Icon,
-                    viewGroup = v.Group
+                    viewGroup = v.Group,
+                    viewType = v.Type,
                 };
 
                 result.views.Add(viewInstance);
@@ -559,6 +573,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public string viewName { get; set; } = "";
         public string viewURL { get; set; } = "";
         public string viewGroup { get; set; } = "";
+        public string viewType { get; set; } = "";
     }
 
     public class InvalidSessionException : Exception

@@ -11,6 +11,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -130,6 +131,38 @@ namespace Ifak.Fast.Mediator.Dashboard
                 Group = view.Group,
                 Config = view.Config,
                 Type = view.Type,
+            };
+
+            model.Views.Add(newView);
+            DataValue dv = DataValue.FromObject(model.Views);
+            MemberValue member = MemberValue.Make(moduleID, model.ID, nameof(DashboardModel.Views), dv);
+            await connection.UpdateConfig(member);
+
+            await CreateView(newView);
+
+            return newView.ID;
+        }
+
+        public async Task<string> OnDuplicateConvertHistoryPlot(string viewID) {
+
+            lastActivity = Timestamp.Now;
+
+            View view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            if (view.Type != typeof(View_HistoryPlots).GetCustomAttribute<Identify>().ID)
+                throw new Exception("View is not a HistoryPlot!");
+
+            var config = view.Config.Object<View_HistoryPlots.ViewConfig>();
+            var newConfig = Pages.ConfigFromHistoryPlot.Convert(config);
+
+            View newView = new View() {
+                ID = GernerateID(6),
+                Name = view.Name,
+                Group = view.Group,
+                Config = DataValue.FromObject(newConfig, indented: true),
+                Type = typeof(Pages.View).GetCustomAttribute<Identify>().ID,
             };
 
             model.Views.Add(newView);
