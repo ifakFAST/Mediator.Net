@@ -12,7 +12,7 @@
     </Folders>
     <Calculations>
       <Calculation id="cs" name="Script_Smooth" type="CSharp" enabled="true">
-        <Cycle>1 s</Cycle>
+        <Cycle>2 s</Cycle>
         <Definition>using Std;
 
 class Script {
@@ -23,8 +23,8 @@ class Script {
     Output Y1 = new Output("Y1", "mg/L", roundDigits: 4);
     Output Y2 = new Output("Y2", "mg/L", roundDigits: 4);
     
-    PT1 pt_1 = new PT1(K: 1, T: Duration.FromSeconds(30));
-    PT1 pt_2 = new PT1(K: 1, T: Duration.FromSeconds(30));
+    PT1 pt_1 = new PT1(K: 1, T: Duration.FromSeconds(20));
+    PT1 pt_2 = new PT1(K: 1, T: Duration.FromSeconds(20));
     
     public void Step(Timestamp t, Duration dt) {
         Y1.Value = pt_1.Step(u: X1, dt: dt);

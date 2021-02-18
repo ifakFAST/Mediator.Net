@@ -23,85 +23,423 @@
       </Config>
     </View>
     <View id="eventLog" name="EventLog" type="EventLog" group="">
-      <Config />
+      <Config>null</Config>
     </View>
-    <View id="history" name="History" type="HistoryPlots" group="">
-      <Config>
+    <View id="IkBsa5" name="History" type="Pages" group="">
+      <Config>{
+  "Pages": [
+    {
+      "ID": "Measurements",
+      "Name": "Measurements 1",
+      "Rows": [
         {
-          "Tabs": [
+          "Columns": [
             {
-              "Name": "Measurements",
-              "PlotConfig": {
-                "MaxDataPoints": 9000,
-                "LeftAxisName": "Measurements",
-                "LeftAxisStartFromZero": true,
-                "RightAxisName": "",
-                "RightAxisStartFromZero": true
-              },
-              "Items": [
+              "Width": "Fill",
+              "Widgets": [
                 {
-                  "Name": "SO",
-                  "Color": "#1BA1E2",
-                  "Size": 3.0,
-                  "SeriesType": "Scatter",
-                  "Axis": "Left",
-                  "Checked": true,
-                  "Variable": {
-                    "Object": "IO:Measurement_SO",
-                    "Name": "Value"
-                  }
-                },
-                {
-                  "Name": "NH",
-                  "Color": "#A05000",
-                  "Size": 3.0,
-                  "SeriesType": "Scatter",
-                  "Axis": "Left",
-                  "Checked": true,
-                  "Variable": {
-                    "Object": "IO:Measurement_NH",
-                    "Name": "Value"
-                  }
-                },
-                {
-                  "Name": "SO_Smooth",
-                  "Color": "#A200FF",
-                  "Size": 3.0,
-                  "SeriesType": "Scatter",
-                  "Axis": "Left",
-                  "Checked": true,
-                  "Variable": {
-                    "Object": "CALC:Signal_d50db4",
-                    "Name": "Value"
-                  }
-                },
-                {
-                  "Name": "NH_Smooth",
-                  "Color": "#051400",
-                  "Size": 3.0,
-                  "SeriesType": "Scatter",
-                  "Axis": "Left",
-                  "Checked": true,
-                  "Variable": {
-                    "Object": "CALC:Signal_a91175",
-                    "Name": "Value"
+                  "ID": "w1",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "600px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 9000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "Measurements",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_SO",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_NH",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "SO_Smooth",
+                        "Color": "#A200FF",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:Signal_d50db4",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH_Smooth",
+                        "Color": "#051400",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:Signal_a91175",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
                   }
                 }
               ]
             }
-          ],
-          "DataExport": {
-            "CSV": {
-              "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
-              "ColumnSeparator": ","
-            },
-            "Spreadsheet": {
-              "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
-            }
-          },
-          "ExcludeModules": [ "EventLog", "Dashboard" ]
+          ]
         }
-      </Config>
+      ]
+    },
+    {
+      "ID": "P_e1cf",
+      "Name": "Measurements 2",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "TwelveOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_7a0c",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_SO",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_NH",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "TwelveOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_9169",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO Smooth",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:Signal_d50db4",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH Smooth",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:Signal_a91175",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "P_a0ae",
+      "Name": "Measurements 3",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "FourOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_fbd0",
+                  "Type": "VarTable",
+                  "Width": "",
+                  "Height": "",
+                  "Config": {
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Unit": "",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Measurement_SO",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "SO Smooth",
+                        "Unit": "",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "CALC:Signal_d50db4",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "NH",
+                        "Unit": "",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Measurement_NH",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "NH Smooth",
+                        "Unit": "",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "CALC:Signal_a91175",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      },
+                      {
+                        "Name": "TSS",
+                        "Unit": "",
+                        "TrendFrame": "5 min",
+                        "Variable": {
+                          "Object": "IO:Measurement_TSS",
+                          "Name": "Value"
+                        },
+                        "WarnBelow": null,
+                        "WarnAbove": null,
+                        "AlarmBelow": null,
+                        "AlarmAbove": null
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "EightOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_f13d",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "215px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "SO",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_SO",
+                          "Name": "Value"
+                        }
+                      },
+                      {
+                        "Name": "NH",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_NH",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_a3c3",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 12000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true
+                    },
+                    "Items": [
+                      {
+                        "Name": "TSS",
+                        "Color": "#A200FF",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Measurement_TSS",
+                          "Name": "Value"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</Config>
     </View>
   </Views>
 </Dashboard_Model>

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <IO_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_IO">
-  <Scheduling mode="Interval" interval="1 s" />
-  <History mode="Interval" interval="1 s" />
+  <Scheduling mode="Interval" interval="2 s" />
+  <History mode="Interval" interval="2 s" />
   <Adapters>
     <Adapter id="Adapter_001" name="SimulatingAdapter" type="Dummy" address="">
       <MaxFractionalDigits>3</MaxFractionalDigits>
