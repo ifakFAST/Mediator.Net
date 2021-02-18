@@ -30,17 +30,17 @@ The Mediator core and all generic modules in this repository are licensed under 
 * Enables the acknowledgement and reset of warnings and alarms
 * Enables notifications to users, e.g. by e-mail
 
-### Module **Simba# Control** (not part of open-source distribution)
-
+### Module **Calculation**
+* Define cyclic calculations, e.g. for control or key-performance-indicator calculation
+* Two types of calculation available: C# scripts and [SIMBA#](https://simba.ifak.eu/)
 * Enables model-based supervisory control solutions
-* Define control model by flow-based diagrams with [SIMBA#](https://simba.ifak.eu/)
 * Evaluate control solution by integrated simulation of process and control model
 
 ## Quick Start
 1. Get the [latest release](https://github.com/ifakFAST/Mediator.Net/releases/latest)
 2. Unzip
 3. Run: Either start *Run.bat* on Windows or type *sh Run.bat* on Linux
-4. Navigte to http://localhost:8082/ using the browser
+4. Navigate to http://localhost:8082/ using the browser
 5. Login with user name and password, for default values see ReadMe.txt
 
 ## Further documentation
