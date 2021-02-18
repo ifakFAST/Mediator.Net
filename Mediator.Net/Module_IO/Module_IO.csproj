@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Workstation.UaClient" Version="2.6.0" />
+    <PackageReference Include="Workstation.UaClient" Version="3.0.0" />
   </ItemGroup>
 
 </Project>
