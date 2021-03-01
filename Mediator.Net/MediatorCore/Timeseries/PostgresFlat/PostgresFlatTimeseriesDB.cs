@@ -75,6 +75,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             finally {
                 connection = null;
             }
+            cacheChannelEntry.Clear();
         }
 
         public override bool ExistsChannel(string objectID, string variable) {
@@ -104,6 +105,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 command.ExecuteNonQuery();
             }
+            cacheChannelEntry.Clear();
             return true;
         }
 
@@ -239,19 +241,29 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             }
         }
 
+        private readonly Dictionary<ChannelRef, ChannelEntry> cacheChannelEntry = new Dictionary<ChannelRef, ChannelEntry>();
+
         protected ChannelEntry? GetChannelDescription(string objectID, string variable) {
+
+            var channelRef = ChannelRef.Make(objectID, variable);
+            if (cacheChannelEntry.TryGetValue(channelRef, out var mapEnt)) {
+                return mapEnt;
+            }
+
             using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
                 command.Parameters.Add(Factory.MakeParameter("obj", objectID));
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 using (var reader = command.ExecuteReader()) {
                     if (!reader.Read()) return null;
                     string type = (string)reader["type"];
-                    return new ChannelEntry() {
+                    var chEntry = new ChannelEntry() {
                         Object = objectID,
                         Variable = variable,
                         VarID = (int)reader["varID"],
                         Type = (DataType)Enum.Parse(typeof(DataType), type, ignoreCase: true)
                     };
+                    cacheChannelEntry[channelRef] = chEntry;
+                    return chEntry;
                 }
             }
         }

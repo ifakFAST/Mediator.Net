@@ -78,4 +78,39 @@ namespace Ifak.Fast.Mediator.Timeseries
         public string Variable { get; private set; }
         public DataType Type { get; private set; }
     }
+
+    public struct ChannelRef : IEquatable<ChannelRef>
+    {
+        public static ChannelRef Make(string objectID, string variableName) {
+            return new ChannelRef(objectID, variableName);
+        }
+
+        public ChannelRef(string objectID, string variableName) {
+            this.objectID = objectID;
+            this.variableName = variableName;
+        }
+
+        private readonly string objectID;
+        public readonly string variableName;
+
+        public string ObjectID => objectID ?? "";
+        public string VariableName => variableName ?? "";
+
+        public bool Equals(ChannelRef other) => objectID == other.objectID && variableName == other.variableName;
+
+        public override bool Equals(object obj) {
+            if (obj is ChannelRef) {
+                return Equals((ChannelRef)obj);
+            }
+            return false;
+        }
+
+        public static bool operator ==(ChannelRef lhs, ChannelRef rhs) => lhs.Equals(rhs);
+
+        public static bool operator !=(ChannelRef lhs, ChannelRef rhs) => !(lhs.Equals(rhs));
+
+        public override string ToString() => ObjectID + "." + VariableName;
+
+        public override int GetHashCode() => HashCode.Combine(objectID, variableName);
+    }
 }

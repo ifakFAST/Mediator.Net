@@ -16,10 +16,13 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
         protected DbConnection connection = null;
         private string tableSeparator = "$";
+        private PreparedStatement stmtSelectChannel;
 
         public override bool IsOpen => connection != null;
 
         public override void ClearDatabase(string name, string connectionString, string[] dbSettings) {
+
+            cacheChannelEntry.Clear();
 
             if (string.IsNullOrEmpty(connectionString)) {
                 logger.Warn($"ClearDatabase: ConnectionString is empty for SQLite database {name}");
@@ -65,6 +68,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 var connection = Factory.MakeConnection(connectionString);
                 connection.Open();
                 this.connection = connection;
+                stmtSelectChannel = new PreparedStatement(connection, $"SELECT * FROM channel_defs WHERE obj = @1 AND var = @2", 2);
             }
             catch (Exception exp) {
                 throw new Application​Exception($"Opening SQLite database {name} failed: " + exp.Message);
@@ -117,6 +121,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             finally {
                 connection = null;
             }
+            cacheChannelEntry.Clear();
         }
 
         public override bool ExistsChannel(string objectID, string variable) {
@@ -147,6 +152,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 command.ExecuteNonQuery();
             }
+            cacheChannelEntry.Clear();
             return true;
         }
 
@@ -263,20 +269,35 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             if (!IsOpen) throw new Exception("Invalid operation on closed database");
         }
 
+        private readonly Dictionary<ChannelRef, ChannelEntry> cacheChannelEntry = new Dictionary<ChannelRef, ChannelEntry>();
+
         protected ChannelEntry? GetChannelDescription(string objectID, string variable) {
-            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
-                command.Parameters.Add(Factory.MakeParameter("obj", objectID));
-                command.Parameters.Add(Factory.MakeParameter("var", variable));
-                using (var reader = command.ExecuteReader()) {
-                    if (!reader.Read()) return null;
-                    string type = (string)reader["type"];
-                    return new ChannelEntry() {
-                        Object = objectID,
-                        Variable = variable,
-                        DataTableName = (string)reader["table_name"],
-                        Type = (DataType)Enum.Parse(typeof(DataType), type, ignoreCase: true)
-                    };
-                }
+
+            var channelRef = ChannelRef.Make(objectID, variable);
+            if (cacheChannelEntry.TryGetValue(channelRef, out var mapEnt)) {
+                return mapEnt;
+            }
+
+            var stmtSelectChannel = this.stmtSelectChannel;
+
+            if (stmtSelectChannel == null) {
+                return null;
+            }
+
+            stmtSelectChannel[0] = objectID;
+            stmtSelectChannel[1] = variable;
+
+            using (var reader = stmtSelectChannel.ExecuteReader()) {
+                if (!reader.Read()) return null;
+                string type = (string)reader["type"];
+                ChannelEntry chEntry = new ChannelEntry() {
+                    Object = objectID,
+                    Variable = variable,
+                    DataTableName = (string)reader["table_name"],
+                    Type = (DataType)Enum.Parse(typeof(DataType), type, ignoreCase: true)
+                };
+                cacheChannelEntry[channelRef] = chEntry;
+                return chEntry;
             }
         }
 
