@@ -384,9 +384,20 @@ namespace Ifak.Fast.Mediator
             return (T)serializer.Deserialize(reader, typeof(T));
         }
 
+        public static object ObjectFromReader(TextReader reader, Type t) {
+            var serializer = JsonSerializer.CreateDefault(settings_NoIndent_UseShouldSerializeMembers);
+            return serializer.Deserialize(reader, t);
+        }
+
         public static T ObjectFromUtf8Stream<T>(Stream stream) {
             using (var reader = new StreamReader(stream, Encoding.UTF8)) {
-                return StdJson.ObjectFromReader<T>(reader);
+                return ObjectFromReader<T>(reader);
+            }
+        }
+
+        public static object ObjectFromUtf8Stream(Stream stream, Type t) {
+            using (var reader = new StreamReader(stream, Encoding.UTF8)) {
+                return ObjectFromReader(reader, t);
             }
         }
 
