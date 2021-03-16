@@ -159,12 +159,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private async Task CloseChannel() {
+            UaTcpSessionChannel connection = this.connection;
             if (connection == null) return;
+            this.connection = null;
             try {
                 await connection.CloseAsync();
             }
             catch (Exception) { }
-            connection = null;
         }
 
         public override async Task Shutdown() {
