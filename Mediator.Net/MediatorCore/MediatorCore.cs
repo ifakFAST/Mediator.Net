@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using NLog;
 
@@ -40,6 +39,8 @@ namespace Ifak.Fast.Mediator
 
         private static MediatorCore theCore = null;
         private static SynchronizationContext theSyncContext = null;
+
+        private readonly Dictionary<string, ReqDef> mapRequests = new Dictionary<string, ReqDef>();
 
         public MediatorCore() {
             if (theCore == null) {
@@ -79,6 +80,10 @@ namespace Ifak.Fast.Mediator
 
             theSyncContext = SynchronizationContext.Current;
             reqHandler.Start();
+
+            foreach (ReqDef entry in RequestDefinitions.Definitions) {
+                mapRequests[entry.HttpPath] = entry;
+            }
 
             Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
             userManagement = config.UserManagement;
@@ -197,7 +202,8 @@ namespace Ifak.Fast.Mediator
                     LoginServer = "localhost",
                     LoginPort = listenPort,
                     DataFolder = GetDataFolder(module.Config),
-                    Configuration = configItems.ToArray()
+                    Configuration = configItems.ToArray(),
+                    //InProcApi = reqHandler,
                 };
                 await module.Instance.Init(initInfo, restoreVariableValues, module, null);
                 ObjectInfo[] allObjs = await module.Instance.GetAllObjects();
@@ -349,7 +355,7 @@ namespace Ifak.Fast.Mediator
                     return;
                 }
 
-                if (request.Method != "POST" || !HandleClientRequests.IsValid(path)) {
+                if (request.Method != "POST" || !mapRequests.TryGetValue(path, out ReqDef reqDef)) {
                     logger.Warn("Invalid request " + request.Path.ToUriComponent());
                     response.StatusCode = 400; // BAD Request
                     return;
@@ -357,15 +363,9 @@ namespace Ifak.Fast.Mediator
 
                 //logger.Info("Client request: " + request.Path);
 
-                JObject obj = null;
-                using (var body = request.Body) {
-                    using (var reader = new StreamReader(body, Encoding.UTF8)) {
-                        obj = await StdJson.JObjectFromReaderAsync(reader);
-                        //logger.Info("ReqStr: " + StdJson.ObjectToString(obj, true));
-                    }
-                }
+                RequestBase obj = await GetRequestObject(request, reqDef.ReqType);
 
-                using (ReqResult result = await reqHandler.Handle(path, obj)) {
+                using (ReqResult result = await reqHandler.Handle(obj)) {
 
                     //logger.Info(result.AsString());
 
@@ -384,6 +384,17 @@ namespace Ifak.Fast.Mediator
             catch (Exception exp) {
                 response.StatusCode = 500;
                 logger.Warn(exp.GetBaseException(), "Error handling client request");
+            }
+        }
+
+        private async Task<RequestBase> GetRequestObject(HttpRequest request, Type t) {
+
+            using (var memoryStream = MemoryManager.GetMemoryStream("HandleClientRequest")) {
+                using (var body = request.Body) {
+                    await body.CopyToAsync(memoryStream).ConfigureAwait(false);
+                }
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                return (RequestBase)StdJson.ObjectFromUtf8Stream(memoryStream, t);
             }
         }
 

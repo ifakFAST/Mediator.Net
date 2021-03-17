@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator
 {
-    public class HandleClientRequests
+    public class HandleClientRequests /* : InProcApi */
     {
         private static Logger logger = LogManager.GetLogger("HandleClientRequests");
 
@@ -30,101 +30,8 @@ namespace Ifak.Fast.Mediator
         }
 
         public const string PathPrefix = "/Mediator/";
-        const string Req_Login = PathPrefix + "Login";
-        const string Req_Auth = PathPrefix + "Authenticate";
-        const string Req_EnableEventPing = PathPrefix + "EnableEventPing";
-        const string Req_Ping = PathPrefix + "Ping";
-        const string Req_GetModules = PathPrefix + "GetModules";
-        const string Req_GetLocations = PathPrefix + "GetLocations";
-        const string Req_GetLoginUser = PathPrefix + "GetLoginUser";
-        const string Req_GetRootObject = PathPrefix + "GetRootObject";
-        const string Req_GetAllObjects = PathPrefix + "GetAllObjects";
-        const string Req_GetAllObjectsOfType = PathPrefix + "GetAllObjectsOfType";
-        const string Req_GetObjectsByID = PathPrefix + "GetObjectsByID";
-        const string Req_GetChildrenOfObjects = PathPrefix + "GetChildrenOfObjects";
-        const string Req_GetAllObjectsWithVariablesOfType = PathPrefix + "GetAllObjectsWithVariablesOfType";
-        const string Req_GetObjectValuesByID = PathPrefix + "GetObjectValuesByID";
-        const string Req_GetMemberValues = PathPrefix + "GetMemberValues";
-        const string Req_GetMetaInfos = PathPrefix + "GetMetaInfos";
-        const string Req_GetParentOfObject = PathPrefix + "GetParentOfObject";
-        const string Req_ReadVariables = PathPrefix + "ReadVariables";
-        const string Req_ReadVariablesIgnoreMissing = PathPrefix + "ReadVariablesIgnoreMissing";
-        const string Req_ReadVariablesSync = PathPrefix + "ReadVariablesSync";
-        const string Req_ReadVariablesSyncIgnoreMissing = PathPrefix + "ReadVariablesSyncIgnoreMissing";
-        const string Req_WriteVariables = PathPrefix + "WriteVariables";
-        const string Req_WriteVariablesIgnoreMissing = PathPrefix + "WriteVariablesIgnoreMissing";
-        const string Req_WriteVariablesSync = PathPrefix + "WriteVariablesSync";
-        const string Req_WriteVariablesSyncIgnoreMissing = PathPrefix + "WriteVariablesSyncIgnoreMissing";
-        const string Req_ReadAllVariablesOfObjectTree = PathPrefix + "ReadAllVariablesOfObjectTree";
-        const string Req_UpdateConfig = PathPrefix + "UpdateConfig";
-        const string Req_CallMethod = PathPrefix + "CallMethod";
-        const string Req_Browse = PathPrefix + "BrowseObjectMemberValues";
-        const string Req_Logout = PathPrefix + "Logout";
-        const string Req_EnableVariableValueChangedEvents = PathPrefix + "EnableVariableValueChangedEvents";
-        const string Req_EnableVariableHistoryChangedEvents = PathPrefix + "EnableVariableHistoryChangedEvents";
-        const string Req_EnableConfigChangedEvents = PathPrefix + "EnableConfigChangedEvents";
-        const string Req_DisableChangeEvents = PathPrefix + "DisableChangeEvents";
-        const string Req_EnableAlarmsAndEvents = PathPrefix + "EnableAlarmsAndEvents";
-        const string Req_DisableAlarmsAndEvents = PathPrefix + "DisableAlarmsAndEvents";
-        const string Req_HistorianReadRaw = PathPrefix + "HistorianReadRaw";
-        const string Req_HistorianCount = PathPrefix + "HistorianCount";
-        const string Req_HistorianDeleteInterval = PathPrefix + "HistorianDeleteInterval";
-        const string Req_HistorianModify = PathPrefix + "HistorianModify";
-        const string Req_HistorianDeleteAllVariablesOfObjectTree = PathPrefix + "HistorianDeleteAllVariablesOfObjectTree";
-        const string Req_HistorianDeleteVariables = PathPrefix + "HistorianDeleteVariables";
-        const string Req_HistorianGetLatestTimestampDB = PathPrefix + "HistorianGetLatestTimestampDB";
 
-        public static bool IsLogout(string path) => path == Req_Logout;
-
-        public static readonly HashSet<string> Requests = new HashSet<string>() {
-            Req_Login,
-            Req_Auth,
-            Req_EnableEventPing,
-            Req_Ping,
-            Req_GetModules,
-            Req_GetLocations,
-            Req_GetLoginUser,
-            Req_GetRootObject,
-            Req_GetAllObjects,
-            Req_GetAllObjectsOfType,
-            Req_GetObjectsByID,
-            Req_GetChildrenOfObjects,
-            Req_GetAllObjectsWithVariablesOfType,
-            Req_GetObjectValuesByID,
-            Req_GetMemberValues,
-            Req_GetParentOfObject,
-            Req_ReadVariables,
-            Req_ReadVariablesIgnoreMissing,
-            Req_ReadVariablesSync,
-            Req_ReadVariablesSyncIgnoreMissing,
-            Req_WriteVariables,
-            Req_WriteVariablesIgnoreMissing,
-            Req_WriteVariablesSync,
-            Req_WriteVariablesSyncIgnoreMissing,
-            Req_ReadAllVariablesOfObjectTree,
-            Req_UpdateConfig,
-            Req_CallMethod,
-            Req_Browse,
-            Req_EnableVariableValueChangedEvents,
-            Req_EnableVariableHistoryChangedEvents,
-            Req_EnableConfigChangedEvents,
-            Req_DisableChangeEvents,
-            Req_EnableAlarmsAndEvents,
-            Req_DisableAlarmsAndEvents,
-            Req_HistorianReadRaw,
-            Req_HistorianCount,
-            Req_HistorianDeleteInterval,
-            Req_HistorianModify,
-            Req_HistorianDeleteAllVariablesOfObjectTree,
-            Req_HistorianDeleteVariables,
-            Req_HistorianGetLatestTimestampDB,
-            Req_GetMetaInfos,
-            Req_Logout
-        };
-
-        public static bool IsValid(string absolutePath) {
-            return Requests.Contains(absolutePath);
-        }
+        public static bool IsLogout(string path) => path == RequestDefinitions.Logout.HttpPath;
 
         private readonly MediatorCore core;
 
@@ -134,6 +41,7 @@ namespace Ifak.Fast.Mediator
 
         public void Start() {
             _ = PurgeExpiredSessions();
+            //_ = ProcessReqLoop();
         }
 
         private async Task PurgeExpiredSessions() {
@@ -180,14 +88,17 @@ namespace Ifak.Fast.Mediator
             await tcs.Task;
         }
 
-        public async Task<ReqResult> Handle(string path, JObject req) {
+        public async Task<ReqResult> Handle(RequestBase request) {
 
-            switch (path) {
+            int id = request.GetID();
 
-                case Req_Login: {
+            switch (id) {
 
+                case LoginReq.ID: {
+
+                        var req = (LoginReq)request;
                         string password = "";
-                        string moduleID = (string)req["moduleID"];
+                        string moduleID = req.ModuleID;
                         bool isModuleSession = moduleID != null;
 
                         var origin = new Origin();
@@ -205,8 +116,8 @@ namespace Ifak.Fast.Mediator
                         }
                         else {
 
-                            string login = (string)req["login"];
-                            string[] roles = StdJson.ObjectFromJToken<string[]>(req["roles"]);
+                            string login = req.Login;
+                            string[] roles = req.Roles;
 
                             User user = core.userManagement.Users.FirstOrDefault(u => u.Login == login);
 
@@ -240,15 +151,16 @@ namespace Ifak.Fast.Mediator
                         return Result_OK(obj);
                     }
 
-                case Req_Auth: {
+                case AuthenticateReq.ID: {
 
-                        string session = ((string)req["session"]) ?? "";
+                        var req = (AuthenticateReq)request;
+                        string session = req.Session ?? "";
                         if (!sessions.ContainsKey(session)) {
                             return Result_BAD("Invalid session");
                         }
 
                         SessionInfo info = sessions[session];
-                        long hash = (long)(double)req["hash"];
+                        long hash = req.Hash;
                         string password = info.Password;
                         long myHash = ClientDefs.strHash(password + info.Challenge + password + session);
                         if (hash != myHash) {
@@ -265,15 +177,15 @@ namespace Ifak.Fast.Mediator
 
 
                 default:
-                    return await HandleRegular(path, req);
+                    return await HandleRegular(request);
             }
         }
 
-        private async Task<ReqResult> HandleRegular(string path, JObject req) {
+        private async Task<ReqResult> HandleRegular(RequestBase request) {
 
-            string session = ((string)req["session"]) ?? "";
+            string session = request.Session ?? "";
             if (!sessions.ContainsKey(session)) {
-                string msg = $"Aborting request {path} because of invalid or expired session: {session}";
+                string msg = $"Aborting request {request.GetPath()} because of invalid or expired session: {session}";
                 logger.Info(msg);
                 return Result_ConnectivityErr(msg);
             }
@@ -284,9 +196,11 @@ namespace Ifak.Fast.Mediator
 
             try {
 
-                switch (path) {
+                int numID = request.GetID();
 
-                    case Req_GetModules: {
+                switch (numID) {
+
+                    case GetModulesReq.ID: {
 
                             Func<ModuleState, bool> hasNumericVariables = (m) => {
                                 return m.AllObjects.Any(obj => obj.Variables != null && obj.Variables.Any(v => v.IsNumeric || v.Type == DataType.Bool));
@@ -302,7 +216,7 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(res);
                         }
 
-                    case Req_GetLocations: {
+                    case GetLocationsReq.ID: {
                             LocationInfo[] res = core.locations.Select(m => new LocationInfo() {
                                 ID = m.ID,
                                 Name = m.Name,
@@ -313,7 +227,8 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(res);
                         }
 
-                    case Req_GetLoginUser: {
+                    case GetLoginUserReq.ID: {
+
                             string id = info.Origin.ID;
                             if (id == null || info.Origin.Type != OriginType.User) {
                                 return Result_BAD("Not a user login");
@@ -325,33 +240,34 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(user);
                         }
 
-                    case Req_GetRootObject: {
-                            string moduleID = ((string)req["moduleID"]) ?? "";
+                    case GetRootObjectReq.ID: {
+                            var req = (GetRootObjectReq)request;
+                            string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             var res = module.AllObjects.FirstOrDefault(obj => !obj.Parent.HasValue);
                             return Result_OK(res);
                         }
 
-                    case Req_GetAllObjects: {
-                            string moduleID = ((string)req["moduleID"]) ?? "";
+                    case GetAllObjectsReq.ID: {
+                            var req = (GetAllObjectsReq)request;
+                            string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             var res = module.AllObjects;
                             return Result_OK(res);
                         }
 
-                    case Req_GetAllObjectsOfType: {
-                            string moduleID = ((string)req["moduleID"]) ?? "";
-                            string className = ((string)req["className"]) ?? "";
+                    case GetAllObjectsOfTypeReq.ID: {
+                            var req = (GetAllObjectsOfTypeReq)request;
+                            string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
+                            string className = req.ClassName ?? "";
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             var res = module.AllObjects.Where(x => x.ClassName == className).ToArray();
                             return Result_OK(res);
                         }
 
-                    case Req_GetObjectsByID: {
-
-                            JToken tokenIDs = req["objectIDs"];
-                            if (tokenIDs == null) throw new Exception("Missing objectIDs");
-                            ObjectRef[] objectIDs = StdJson.ObjectFromJToken<ObjectRef[]>(tokenIDs);
+                    case GetObjectsByIDReq.ID: {
+                            var req = (GetObjectsByIDReq)request;
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
                             ObjectInfo[] result = objectIDs.Select(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 foreach (ObjectInfo inf in module.AllObjects) {
@@ -364,12 +280,9 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(result);
                         }
 
-                    case Req_GetChildrenOfObjects: {
-
-                            JToken tokenIDs = req["objectIDs"];
-                            if (tokenIDs == null) throw new Exception("Missing objectIDs");
-                            ObjectRef[] objectIDs = StdJson.ObjectFromJToken<ObjectRef[]>(tokenIDs);
-
+                    case GetChildrenOfObjectsReq.ID: {
+                            var req = (GetChildrenOfObjectsReq)request;
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
                             ObjectInfo[] result = objectIDs.SelectMany(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
@@ -378,12 +291,12 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(result);
                         }
 
-                    case Req_GetAllObjectsWithVariablesOfType: {
-                            string moduleID = ((string)req["moduleID"]) ?? "";
-                            JToken tokenTypes = req["types"];
-                            string[] types = StdJson.ObjectFromJToken<string[]>(tokenTypes);
+                    case GetAllObjectsWithVariablesOfTypeReq.ID: {
+                            var req = (GetAllObjectsWithVariablesOfTypeReq)request;
+                            string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
+                            DataType[] types = req.Types ?? throw new Exception("Missing types");
                             Func<Variable, bool> varHasType = (variable) => {
-                                string type = variable.Type.ToString();
+                                DataType type = variable.Type;
                                 return types.Any(t => t == type);
                             };
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
@@ -393,11 +306,9 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(res);
                         }
 
-                    case Req_GetObjectValuesByID: {
-
-                            JToken tokenIDs = req["objectIDs"];
-                            if (tokenIDs == null) throw new Exception("Missing objectIDs");
-                            ObjectRef[] objectIDs = StdJson.ObjectFromJToken<ObjectRef[]>(tokenIDs);
+                    case GetObjectValuesByIDReq.ID: {
+                            var req = (GetObjectValuesByIDReq)request;
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
 
                             if (objectIDs.Length <= 1 || objectIDs.All(o => o.ModuleID == objectIDs[0].ModuleID)) {
                                 ModuleState module = ModuleFromIdOrThrow(objectIDs[0].ModuleID);
@@ -420,11 +331,9 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(allValuesFlat);
                         }
 
-                    case Req_GetMemberValues: {
-
-                            JToken tokenMember = req["member"];
-                            if (tokenMember == null) throw new Exception("Missing member");
-                            MemberRef[] member = StdJson.ObjectFromJToken<MemberRef[]>(tokenMember);
+                    case GetMemberValuesReq.ID: {
+                            var req = (GetMemberValuesReq)request;
+                            MemberRef[] member = req.Member ?? throw new Exception("Missing member"); ;
 
                             if (member.Length <= 1 || member.All(o => o.Object.ModuleID == member[0].Object.ModuleID)) {
                                 ModuleState module = ModuleFromIdOrThrow(member[0].Object.ModuleID);
@@ -447,10 +356,10 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(allValuesFlat);
                         }
 
-                    case Req_GetParentOfObject: {
-                            string strObjID = (string)req["objectID"];
-                            if (strObjID == null) throw new Exception("Missing objectID");
-                            ObjectRef objectID = ObjectRef.FromEncodedString(strObjID);
+                    case GetParentOfObjectReq.ID: {
+                            var req = (GetParentOfObjectReq)request;
+                            ObjectRef objectID = req.ObjectID;
+
                             ModuleState module = ModuleFromIdOrThrow(objectID.ModuleID);
                             foreach (ObjectInfo o in module.AllObjects) {
                                 if (o.ID == objectID) {
@@ -466,52 +375,55 @@ namespace Ifak.Fast.Mediator
                             return Result_BAD("No object found with id " + objectID);
                         }
 
-                    case Req_ReadVariables: {
-
-                            VariableValue[] vvs = DoReadVariables(req, ignoreMissing: false);
+                    case ReadVariablesReq.ID: {
+                            var req = (ReadVariablesReq)request;
+                            VariableValue[] vvs = DoReadVariables(req.Variables, ignoreMissing: false);
                             return Result_OK(vvs.Select(vv => vv.Value).ToArray());
                         }
 
-                    case Req_ReadVariablesIgnoreMissing: {
-
-                            VariableValue[] vvs = DoReadVariables(req, ignoreMissing: true);
+                    case ReadVariablesIgnoreMissingReq.ID: {
+                            var req = (ReadVariablesIgnoreMissingReq)request;
+                            VariableValue[] vvs = DoReadVariables(req.Variables, ignoreMissing: true);
                             return Result_OK(vvs);
                         }
 
-                    case Req_ReadVariablesSync: {
-
-                            List<VariableValue> vvs = await DoReadVariablesSync(req, info, ignoreMissing: false);
+                    case ReadVariablesSyncReq.ID: {
+                            var req = (ReadVariablesSyncReq)request;
+                            List<VariableValue> vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
                             return Result_OK(vvs.Select(vv => vv.Value).ToArray());
                         }
 
-                    case Req_ReadVariablesSyncIgnoreMissing: {
-
-                            List<VariableValue> vvs = await DoReadVariablesSync(req, info, ignoreMissing: true);
+                    case ReadVariablesSyncIgnoreMissingReq.ID: {
+                            var req = (ReadVariablesSyncIgnoreMissingReq)request;
+                            List<VariableValue> vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
                             return Result_OK(vvs);
                         }
 
-                    case Req_WriteVariables: {
-                            await DoWriteVariables(req, info, ignoreMissing: false);
+                    case WriteVariablesReq.ID: {
+                            var req = (WriteVariablesReq)request;
+                            await DoWriteVariables(req.Values, info, ignoreMissing: false);
                             return Result_OK();
                         }
 
-                    case Req_WriteVariablesIgnoreMissing: {
-                            WriteResult res = await DoWriteVariables(req, info, ignoreMissing: true);
+                    case WriteVariablesIgnoreMissingReq.ID: {
+                            var req = (WriteVariablesIgnoreMissingReq)request;
+                            WriteResult res = await DoWriteVariables(req.Values, info, ignoreMissing: true);
                             return Result_OK(res);
                         }
 
-                    case Req_WriteVariablesSync: {
-                            return await DoWriteVariablesSync(req, info, ignoreMissing: false);
+                    case WriteVariablesSyncReq.ID: {
+                            var req = (WriteVariablesSyncReq)request;
+                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: false);
                         }
 
-                    case Req_WriteVariablesSyncIgnoreMissing: {
-                            return await DoWriteVariablesSync(req, info, ignoreMissing: true);
+                    case WriteVariablesSyncIgnoreMissingReq.ID: {
+                            var req = (WriteVariablesSyncIgnoreMissingReq)request;
+                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: true);
                         }
 
-                    case Req_ReadAllVariablesOfObjectTree: {
-                            string objectID = (string)req["objectID"];
-                            if (objectID == null) throw new Exception("Missing objectID");
-                            ObjectRef obj = ObjectRef.FromEncodedString(objectID);
+                    case ReadAllVariablesOfObjectTreeReq.ID: {
+                            var req = (ReadAllVariablesOfObjectTreeReq)request;
+                            ObjectRef obj = req.ObjectID;
                             string mod = obj.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(mod);
                             IList<ObjectInfo> allObj = module.AllObjects;
@@ -524,14 +436,13 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(result);
                         }
 
-                    case Req_UpdateConfig: {
+                    case UpdateConfigReq.ID: {
 
-                            JToken tokenUpdateOrDeleteObjects = req["updateOrDeleteObjects"];
-                            JToken tokenUpdateOrDeleteMembers = req["updateOrDeleteMembers"];
-                            JToken tokenAddArrayElements = req["addArrayElements"];
-                            ObjectValue[] updateOrDeleteObjects = tokenUpdateOrDeleteObjects == null ? new ObjectValue[0] : StdJson.ObjectFromJToken<ObjectValue[]>(tokenUpdateOrDeleteObjects);
-                            MemberValue[] updateOrDeleteMembers = tokenUpdateOrDeleteMembers == null ? new MemberValue[0] : StdJson.ObjectFromJToken<MemberValue[]>(tokenUpdateOrDeleteMembers);
-                            AddArrayElement[] addArrayElements = tokenAddArrayElements == null ? new AddArrayElement[0] : StdJson.ObjectFromJToken<AddArrayElement[]>(tokenAddArrayElements);
+                            var req = (UpdateConfigReq)request;
+
+                            ObjectValue[] updateOrDeleteObjects = req.UpdateOrDeleteObjects ?? new ObjectValue[0];
+                            MemberValue[] updateOrDeleteMembers = req.UpdateOrDeleteMembers ?? new MemberValue[0];
+                            AddArrayElement[] addArrayElements = req.AddArrayElements ?? new AddArrayElement[0];
 
                             string[] moduleIDs = updateOrDeleteObjects.Select(x => x.Object.ModuleID)
                                 .Concat(updateOrDeleteMembers.Select(x => x.Member.Object.ModuleID))
@@ -559,15 +470,13 @@ namespace Ifak.Fast.Mediator
                             return Result_BAD(res.Error);
                         }
 
-                    case Req_EnableVariableValueChangedEvents: {
+                    case EnableVariableValueChangedEventsReq.ID: {
 
-                            JToken tokenOptions = req["options"];
-                            JToken tokenVariables = req["variables"];
-                            JToken tokenTreeRoots = req["idsOfEnabledTreeRoots"];
+                            var req = (EnableVariableValueChangedEventsReq)request;
 
-                            SubOptions options = StdJson.ObjectFromJToken<SubOptions>(tokenOptions);
-                            VariableRef[] variables = tokenVariables == null ? new VariableRef[0] : StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
-                            ObjectRef[] idsOfEnabledTreeRoots = tokenTreeRoots == null ? new ObjectRef[0] : StdJson.ObjectFromJToken<ObjectRef[]>(tokenTreeRoots);
+                            SubOptions options = req.Options;
+                            VariableRef[] variables = req.Variables ?? new VariableRef[0];
+                            ObjectRef[] idsOfEnabledTreeRoots = req.IdsOfEnabledTreeRoots ?? new ObjectRef[0];
 
                             foreach (ObjectRef obj in idsOfEnabledTreeRoots) {
                                 info.VariablesChangedEventTrees[obj] = options;
@@ -580,13 +489,12 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
-                    case Req_EnableVariableHistoryChangedEvents: {
+                    case EnableVariableHistoryChangedEventsReq.ID: {
 
-                            JToken tokenVariables = req["variables"];
-                            JToken tokenTreeRoots = req["idsOfEnabledTreeRoots"];
+                            var req = (EnableVariableHistoryChangedEventsReq)request;
 
-                            VariableRef[] variables = tokenVariables == null ? new VariableRef[0] : StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
-                            ObjectRef[] idsOfEnabledTreeRoots = tokenTreeRoots == null ? new ObjectRef[0] : StdJson.ObjectFromJToken<ObjectRef[]>(tokenTreeRoots);
+                            VariableRef[] variables = req.Variables ?? new VariableRef[0];
+                            ObjectRef[] idsOfEnabledTreeRoots = req.IdsOfEnabledTreeRoots ?? new ObjectRef[0];
 
                             foreach (ObjectRef obj in idsOfEnabledTreeRoots) {
                                 info.VariablesHistoryChangedEventTrees.Add(obj);
@@ -599,10 +507,11 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
-                    case Req_EnableConfigChangedEvents: {
+                    case EnableConfigChangedEventsReq.ID: {
 
-                            JToken tokenObjects = req["objects"];
-                            ObjectRef[] objects = tokenObjects == null ? new ObjectRef[0] : StdJson.ObjectFromJToken<ObjectRef[]>(tokenObjects);
+                            var req = (EnableConfigChangedEventsReq)request;
+
+                            ObjectRef[] objects = req.Objects ?? new ObjectRef[0];
 
                             foreach (ObjectRef obj in objects) {
                                 info.ConfigChangeObjects.Add(obj);
@@ -611,11 +520,13 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
-                    case Req_DisableChangeEvents: {
+                    case DisableChangeEventsReq.ID: {
 
-                            bool disableVarValueChanges = (bool)req["disableVarValueChanges"];
-                            bool disableVarHistoryChanges = (bool)req["disableVarHistoryChanges"];
-                            bool disableConfigChanges = (bool)req["disableConfigChanges"];
+                            var req = (DisableChangeEventsReq)request;
+
+                            bool disableVarValueChanges = req.DisableVarValueChanges;
+                            bool disableVarHistoryChanges = req.DisableVarHistoryChanges;
+                            bool disableConfigChanges = req.DisableConfigChanges;
 
                             if (disableVarValueChanges) {
                                 info.VariablesChangedEventTrees.Clear();
@@ -634,73 +545,77 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
-                    case Req_EnableAlarmsAndEvents: {
-                            Severity minSeverity = (Severity)Enum.Parse(typeof(Severity), (string)req["minSeverity"]);
+                    case EnableAlarmsAndEventsReq.ID: {
+
+                            var req = (EnableAlarmsAndEventsReq)request;
+
+                            Severity minSeverity = req.MinSeverity;
                             info.AlarmsAndEventsEnabled = true;
                             info.MinSeverity = minSeverity;
                             return Result_OK();
                         }
 
-                    case Req_DisableAlarmsAndEvents: {
+                    case DisableAlarmsAndEventsReq.ID: {
                             info.AlarmsAndEventsEnabled = false;
                             return Result_OK();
                         }
 
-                    case Req_HistorianReadRaw: {
+                    case HistorianReadRawReq.ID: {
 
-                            VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
-                            Timestamp tStart = Timestamp.FromISO8601((string)req["startInclusive"]);
-                            Timestamp tEnd   = Timestamp.FromISO8601((string)req["endInclusive"]);
-                            int maxValues = (int)req["maxValues"];
-                            BoundingMethod bounding = (BoundingMethod)Enum.Parse(typeof(BoundingMethod), (string)req["bounding"]);
-                            QualityFilter filter = QualityFilter.ExcludeNone;
-                            string strFilter = (string)req["filter"];
-                            if (strFilter != null) {
-                                filter = (QualityFilter)Enum.Parse(typeof(QualityFilter), strFilter);
-                            }
+                            var req = (HistorianReadRawReq)request;
+
+                            VariableRef variable = req.Variable;
+                            Timestamp tStart = req.StartInclusive;
+                            Timestamp tEnd = req.EndInclusive;
+                            int maxValues = req.MaxValues;
+                            BoundingMethod bounding = req.Bounding;
+                            QualityFilter filter = req.Filter;
+
                             IList<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
                             return Result_OK(vttqs);
                         }
 
-                    case Req_HistorianCount: {
+                    case HistorianCountReq.ID: {
 
-                            VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
-                            Timestamp tStart = Timestamp.FromISO8601((string)req["startInclusive"]);
-                            Timestamp tEnd = Timestamp.FromISO8601((string)req["endInclusive"]);
-                            QualityFilter filter = QualityFilter.ExcludeNone;
-                            string strFilter = (string)req["filter"];
-                            if (strFilter != null) {
-                                filter = (QualityFilter)Enum.Parse(typeof(QualityFilter), strFilter);
-                            }
+                            var req = (HistorianCountReq)request;
+
+                            VariableRef variable = req.Variable;
+                            Timestamp tStart = req.StartInclusive;
+                            Timestamp tEnd = req.EndInclusive;
+                            QualityFilter filter = req.Filter;
 
                             long count = await core.history.HistorianCount(variable, tStart, tEnd, filter);
                             return Result_OK(count);
                         }
-                    case Req_HistorianDeleteInterval: {
+                    case HistorianDeleteIntervalReq.ID: {
 
-                            VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
-                            Timestamp tStart = Timestamp.FromISO8601((string)req["startInclusive"]);
-                            Timestamp tEnd = Timestamp.FromISO8601((string)req["endInclusive"]);
+                            var req = (HistorianDeleteIntervalReq)request;
+
+                            VariableRef variable = req.Variable;
+                            Timestamp tStart = req.StartInclusive;
+                            Timestamp tEnd = req.EndInclusive;
 
                             long count = await core.history.HistorianDeleteInterval(variable, tStart, tEnd);
                             return Result_OK(count);
                         }
 
-                    case Req_HistorianModify: {
+                    case HistorianModifyReq.ID: {
 
-                            VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
-                            VTQ[] data = StdJson.ObjectFromJToken<VTQ[]>(req["data"]);
-                            ModifyMode mode = (ModifyMode)Enum.Parse(typeof(ModifyMode), (string)req["mode"]);
+                            var req = (HistorianModifyReq)request;
+
+                            VariableRef variable = req.Variable;
+                            VTQ[] data = req.Data;
+                            ModifyMode mode = req.Mode;
 
                             await core.history.HistorianModify(variable, data, mode);
                             return Result_OK();
                         }
 
-                    case Req_HistorianDeleteAllVariablesOfObjectTree: {
+                    case HistorianDeleteAllVariablesOfObjectTreeReq.ID: {
 
-                            string objectID = (string)req["objectID"];
-                            if (objectID == null) throw new Exception("Missing objectID");
-                            ObjectRef obj = ObjectRef.FromEncodedString(objectID);
+                            var req = (HistorianDeleteAllVariablesOfObjectTreeReq)request;
+
+                            ObjectRef obj = req.ObjectID;
                             string mod = obj.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(mod);
                             IList<ObjectInfo> allObj = module.AllObjects;
@@ -710,29 +625,34 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
-                    case Req_HistorianDeleteVariables: {
-                            JToken tokenVariables = req["variables"];
-                            if (tokenVariables == null) throw new Exception("Missing variables");
-                            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
+                    case HistorianDeleteVariablesReq.ID: {
+
+                            var req = (HistorianDeleteVariablesReq)request;
+
+                            VariableRef[] variables = req.Variables ?? throw new Exception("Missing variables");
                             await core.history.DeleteVariables(variables);
                             return Result_OK();
                         }
 
-                    case Req_HistorianGetLatestTimestampDB: {
+                    case HistorianGetLatestTimestampDBReq.ID: {
 
-                            VariableRef variable = StdJson.ObjectFromJToken<VariableRef>(req["variable"]);
-                            Timestamp tStart = Timestamp.FromISO8601((string)req["startInclusive"]);
-                            Timestamp tEnd = Timestamp.FromISO8601((string)req["endInclusive"]);
+                            var req = (HistorianGetLatestTimestampDBReq)request;
+
+                            VariableRef variable = req.Variable;
+                            Timestamp tStart = req.StartInclusive;
+                            Timestamp tEnd = req.EndInclusive;
 
                             VTTQ? res = await core.history.HistorianGetLatestTimestampDb(variable, tStart, tEnd);
                             return Result_OK(res);
                         }
 
-                    case Req_CallMethod: {
+                    case CallMethodReq.ID: {
 
-                            string moduleID   = (string)req["moduleID"];
-                            string methodName = (string)req["methodName"];
-                            NamedValue[] parameters = StdJson.ObjectFromJToken<NamedValue[]>(req["parameters"]);
+                            var req = (CallMethodReq)request;
+
+                            string moduleID   = req.ModuleID;
+                            string methodName = req.MethodName;
+                            NamedValue[] parameters = req.Parameters;
 
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             Result<DataValue> res = await RestartOnExp(module, m => m.OnMethodCall(info.Origin, methodName, parameters));
@@ -743,15 +663,12 @@ namespace Ifak.Fast.Mediator
                                 return Result_BAD(res.Error);
                         }
 
-                    case Req_Browse: {
+                    case BrowseObjectMemberValuesReq.ID: {
 
-                            MemberRef member = StdJson.ObjectFromJToken<MemberRef>(req["member"]);
-                            int? continueID = null;
+                            var req = (BrowseObjectMemberValuesReq)request;
 
-                            JToken id;
-                            if (req.TryGetValue("continueID", out id)) {
-                                continueID = StdJson.ObjectFromJToken<int>(id);
-                            }
+                            MemberRef member = req.Member;
+                            int? continueID = req.ContinueID;
 
                             string moduleID = member.Object.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
@@ -760,9 +677,11 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(res);
                         }
 
-                    case Req_GetMetaInfos: {
+                    case GetMetaInfosReq.ID: {
 
-                            string moduleID = (string)req["moduleID"];
+                            var req = (GetMetaInfosReq)request;
+
+                            string moduleID = req.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             try {
                                 MetaInfos meta = await module.Instance.GetMetaInfo();
@@ -773,16 +692,16 @@ namespace Ifak.Fast.Mediator
                             }
                         }
 
-                    case Req_Ping: {
+                    case PingReq.ID: {
                             return Result_OK();
                         }
 
-                    case Req_EnableEventPing: {
+                    case EnableEventPingReq.ID: {
                             info.eventPingEnabled = true;
                             return Result_OK();
                         }
 
-                    case Req_Logout: {
+                    case LogoutReq.ID: {
                             LogoutSession(info);
                             return Result_OK();
                         }
@@ -829,10 +748,10 @@ namespace Ifak.Fast.Mediator
             sessions.Remove(sessionID);
         }
 
-        private async Task<ReqResult> DoWriteVariablesSync(JObject req, SessionInfo info, bool ignoreMissing) {
-            JToken tokenValues = req["values"];
-            if (tokenValues == null) throw new Exception("Missing values");
-            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
+        private async Task<ReqResult> DoWriteVariablesSync(VariableValue[] values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+
+            if (values == null) throw new Exception("Missing values");
+
             VariableError[] ignoredVars = null;
             if (ignoreMissing) {
                 VariableValue[] filteredValues = values.Where(VarExists).ToArray();
@@ -841,11 +760,7 @@ namespace Ifak.Fast.Mediator
                 }
                 values = filteredValues;
             }
-            string strTimeout = (string)req["timeout"];
-            Duration? timeout = null;
-            if (strTimeout != null) {
-                timeout = Duration.Parse(strTimeout);
-            }
+
             List<string> moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToList();
             if (!ignoreMissing) {
                 foreach (string moduleID in moduleIDs) {
@@ -913,10 +828,9 @@ namespace Ifak.Fast.Mediator
             return Result_OK(writeResult);
         }
 
-        private async Task<WriteResult> DoWriteVariables(JObject req, SessionInfo info, bool ignoreMissing) {
-            JToken tokenValues = req["values"];
-            if (tokenValues == null) throw new Exception("Missing values");
-            VariableValue[] values = StdJson.ObjectFromJToken<VariableValue[]>(tokenValues);
+        private async Task<WriteResult> DoWriteVariables(VariableValue[] values, SessionInfo info, bool ignoreMissing) {
+            if (values == null) throw new Exception("Missing values");
+
             VariableError[] ignoredVars = null;
             if (ignoreMissing) {
                 VariableValue[] filteredValues = values.Where(VarExists).ToArray();
@@ -960,20 +874,14 @@ namespace Ifak.Fast.Mediator
             return ignoredVars == null ? WriteResult.OK : WriteResult.Failure(ignoredVars);
         }
 
-        private async Task<List<VariableValue>> DoReadVariablesSync(JObject req, SessionInfo info, bool ignoreMissing) {
-            JToken tokenVariables = req["variables"];
-            if (tokenVariables == null) throw new Exception("Missing variables");
-            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
+        private async Task<List<VariableValue>> DoReadVariablesSync(VariableRef[] variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+
+            if (variables == null) throw new Exception("Missing variables");
 
             if (ignoreMissing) {
                 variables = variables.Where(VarExists).ToArray();
             }
 
-            string strTimeout = (string)req["timeout"];
-            Duration? timeout = null;
-            if (strTimeout != null) {
-                timeout = Duration.Parse(strTimeout);
-            }
             List<string> moduleIDs = variables.Select(x => x.Object.ModuleID).Distinct().ToList();
 
             if (!ignoreMissing) {
@@ -1036,10 +944,8 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        private VariableValue[] DoReadVariables(JObject req, bool ignoreMissing) {
-            JToken tokenVariables = req["variables"];
-            if (tokenVariables == null) throw new Exception("Missing variables");
-            VariableRef[] variables = StdJson.ObjectFromJToken<VariableRef[]>(tokenVariables);
+        private VariableValue[] DoReadVariables(VariableRef[] variables, bool ignoreMissing) {
+            if (variables == null) throw new Exception("Missing variables");
             VariableValue[] res = variables.Where(v => !ignoreMissing || VarExists(v)).Select(variable => {
                 string mod = variable.Object.ModuleID;
                 ModuleState module = ModuleFromIdOrThrow(mod);
@@ -1320,31 +1226,21 @@ namespace Ifak.Fast.Mediator
         }
 
         private ReqResult Result_OK() {
-            return new ReqResult(200, new MemoryStream(0));
+            return ReqResult.OK(null);
         }
 
         private ReqResult Result_OK(object obj) {
-            var res = MemoryManager.GetMemoryStream("HandleClientRequests.Result_OK");
-            try {
-                StdJson.ObjectToStream(obj, res);
-                res.Seek(0, SeekOrigin.Begin);
-            }
-            catch (Exception) {
-                res.Dispose();
-                throw;
-            }
-            return new ReqResult(200, res);
+            return ReqResult.OK(obj);
         }
 
         private ReqResult Result_BAD(string errMsg) {
-            string js = "{ \"error\": " + StdJson.ValueToString(errMsg) + "}";
-            byte[] bytes = Encoding.UTF8.GetBytes(js);
-            return new ReqResult(400, new MemoryStream(bytes));
+            return ReqResult.Err(errMsg);
         }
 
         private ReqResult Result_ConnectivityErr(string errMsg) {
-            byte[] bytes = Encoding.UTF8.GetBytes(errMsg);
-            return new ReqResult(400, new MemoryStream(bytes));
+            //byte[] bytes = Encoding.UTF8.GetBytes(errMsg);
+            //return new ReqResult(400, new MemoryStream(bytes));
+            return ReqResult.Connectivity(errMsg);
         }
 
         private ModuleState ModuleFromIdOrThrow(string moduleID) {
@@ -1353,6 +1249,62 @@ namespace Ifak.Fast.Mediator
             if (res == null) throw new Exception("Unknown module id: " + moduleID);
             return res;
         }
+
+        //public Task<object> AddRequest(RequestBase req) {
+        //    var promise = new TaskCompletionSource<object>();
+        //    ReqItem it = new ReqItem() {
+        //        Req = req,
+        //        Promise = promise
+        //    };
+        //    queue.Post(it);
+        //    return promise.Task;
+        //}
+
+        //public readonly AsyncQueue<ReqItem> queue = new AsyncQueue<ReqItem>();
+
+        //private async Task ProcessReqLoop() {
+
+        //    while (!terminating) {
+
+        //        ReqItem req = await queue.ReceiveAsync();
+
+        //        var promise = req.Promise;
+        //        try {
+        //            Task<ReqResult> t = Handle(req.Req);
+        //            _ = t.ContinueWith(task => {
+        //                try {
+        //                    ReqResult reqResult = task.Result;
+        //                    // logger.Info($"Got Request {req.ID} {reqResult.ResultCode}" );
+        //                    if (reqResult.ResultCode == ReqRes.OK) {
+        //                        promise.SetResult(reqResult.Obj);
+        //                    }
+        //                    else if (reqResult.ResultCode == ReqRes.Error) {
+        //                        var e = new RequestException(reqResult.Obj as string);
+        //                        promise.SetException(e);
+        //                    }
+        //                    else if (reqResult.ResultCode == ReqRes.ConnectivityErr) {
+        //                        var e = new ConnectivityException(reqResult.Obj as string);
+        //                        promise.SetException(e);
+        //                    }
+        //                }
+        //                catch (Exception exp) {
+        //                    var e = exp.GetBaseException() ?? exp;
+        //                    promise.SetException(e);
+        //                }
+        //            });
+        //        }
+        //        catch (Exception exp) {
+        //            var e = exp.GetBaseException() ?? exp;
+        //            promise.SetException(e);
+        //        }
+        //    }
+        //}
+
+        //public struct ReqItem
+        //{
+        //    public RequestBase Req { get; set; }
+        //    public TaskCompletionSource<object> Promise { get; set; }
+        //}
 
         public class SessionInfo
         {
@@ -1717,22 +1669,70 @@ namespace Ifak.Fast.Mediator
         }
     }
 
+    public enum ReqRes
+    {
+        OK,
+        Error,
+        ConnectivityErr
+    }
+
     public sealed class ReqResult : IDisposable {
 
-        public ReqResult(int statusCode, MemoryStream bytes) {
-            if (bytes == null) throw new ArgumentNullException("bytes");
-            StatusCode = statusCode;
-            Bytes = bytes;
+        public static ReqResult OK(object obj) {
+            return new ReqResult(ReqRes.OK, 200, obj);
         }
 
-        public MemoryStream Bytes { get; private set; }
+        public static ReqResult Err(string errMsg) {
+            string js = "{ \"error\": " + StdJson.ValueToString(errMsg) + "}";
+            byte[] bytes = Encoding.UTF8.GetBytes(js);
+            return new ReqResult(ReqRes.Error, 400, errMsg, new MemoryStream(bytes));
+        }
+
+        public static ReqResult Connectivity(string errMsg) {
+            byte[] bytes = Encoding.UTF8.GetBytes(errMsg);
+            return new ReqResult(ReqRes.ConnectivityErr, 400, errMsg, new MemoryStream(bytes));
+        }
+
+        private ReqResult(ReqRes resRes, int statusCode, object obj, MemoryStream memStream = null) {
+            StatusCode = statusCode;
+            ResultCode = resRes;
+            Obj = obj;
+            this.memStream = memStream;
+        }
+
+        public object Obj { get; private set; }
+
+        private MemoryStream memStream;
+
+        public MemoryStream Bytes {
+            get {
+                if (memStream != null) return memStream;
+                if (Obj == null) {
+                    memStream = new MemoryStream(0);
+                    return memStream;
+                }
+                var res = MemoryManager.GetMemoryStream("HandleClientRequests.Result_OK");
+                try {
+                    StdJson.ObjectToStream(Obj, res);
+                    res.Seek(0, SeekOrigin.Begin);
+                }
+                catch (Exception) {
+                    res.Dispose();
+                    throw;
+                }
+                memStream = res;
+                return res;
+            }
+        }
+
+        public ReqRes ResultCode { get; private set; }
 
         public int StatusCode { get; private set; }
 
         public string AsString() => Encoding.UTF8.GetString(Bytes.ToArray());
 
         public void Dispose() {
-            Bytes.Dispose();
+            memStream?.Dispose();
         }
     }
 }

@@ -195,7 +195,15 @@ namespace Ifak.Fast.Mediator
         public string DataFolder { get; set; }
         public NamedValue[] Configuration { get; set; }
         public Config GetConfigReader() => new Config(Configuration);
+
+        //[Json.JsonIgnore]
+        //public InProcApi InProcApi { get; set; }
     }
+
+    //public interface InProcApi
+    //{
+    //    Task<object> AddRequest(RequestBase req);
+    //}
 
     public interface ModuleThread
     {

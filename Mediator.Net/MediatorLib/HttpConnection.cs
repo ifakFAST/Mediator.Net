@@ -4,7 +4,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
@@ -33,7 +32,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener listener = null, int timeoutSeconds = 60) {
-            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})");
+            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})" /*, info.InProcApi*/);
             await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
             return res;
         }
@@ -43,13 +42,15 @@ namespace Ifak.Fast.Mediator
 
         protected EventManager eventManager = null;
         protected string session = null;
+        //private InProcApi inProc = null;
 
-        protected HttpConnection(string host, int port, TimeSpan timeout, string login) {
+        protected HttpConnection(string host, int port, TimeSpan timeout, string login /*, InProcApi inProc = null*/) {
 
+            //this.inProc = inProc;
             this.login = login;
 
             Uri baseUri = new Uri("http://" + host + ":" + port + "/Mediator/");
-            wsUri       = new Uri("ws://"   + host + ":" + port + "/Mediator/");
+            wsUri = new Uri("ws://" + host + ":" + port + "/Mediator/");
             client = new HttpClient();
             client.Timeout = timeout;
             client.BaseAddress = baseUri;
@@ -59,39 +60,41 @@ namespace Ifak.Fast.Mediator
 
         protected async Task DoConnectAndLogin(string login, string password, bool isModule, string[] roles, EventListener listener) {
 
-            var request = new JObject();
+            var reqLogin = new LoginReq();
 
             if (isModule) {
-                request["moduleID"] = login;
+                reqLogin.ModuleID = login;
             }
             else {
-                request["login"] = login;
-                request["roles"] = new JRaw(StdJson.ValueToString(roles));
+                reqLogin.Login = login;
+                reqLogin.Roles = roles;
             }
 
-            JObject json = await PostJObject("Login", request);
+            JObject json = await PostJObject(reqLogin);
 
             string session = (string)json["session"];
             string challenge = (string)json["challenge"];
             if (string.IsNullOrEmpty(session) || string.IsNullOrEmpty(challenge))
                 throw new ConnectivityException("Invalid response");
 
-            long hash = Util.ClientDefs.strHash(password + challenge + password + session);
+            long hash = ClientDefs.strHash(password + challenge + password + session);
 
-            request = new JObject();
-            request["session"] = session;
-            request["hash"] = hash;
+            var reqAuth = new AuthenticateReq() {
+                Session = session,
+                Hash = hash
+            };
 
-            json = await PostJObject("Authenticate", request);
+            json = await PostJObject(reqAuth);
 
             this.session = (string)json["session"];
             tLogin = Timestamp.Now;
 
             if (listener != null) {
 
-                request = new JObject();
-                request["session"] = session;
-                await PostJObject("EnableEventPing", request);
+                var reqEnablePing = new EnableEventPingReq() {
+                    Session = session
+                };
+                await PostJObject(reqEnablePing);
 
                 eventManager = new EventManager(listener);
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
@@ -109,10 +112,12 @@ namespace Ifak.Fast.Mediator
             eventManager?.Close();
             eventManager = null;
 
-            var request = new JObject();
-            request["session"] = session;
+            var request = new LogoutReq() {
+                Session = session
+            };
+
             try {
-                await PostJObject("Logout", request);
+                await PostJObject(request);
             }
             catch (Exception) {
                 // Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(Close) + ": " + exp.Message);
@@ -122,7 +127,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override void Dispose() {
-            Task ignored = Close();
+            _ = Close();
         }
 
         protected void OnConnectionBroken(string context, Exception exp) {
@@ -158,224 +163,222 @@ namespace Ifak.Fast.Mediator
         #region Methods
 
         public override async Task Ping() {
-            JObject request = MakeSessionRequest();
-            await PostJObject("Ping", request);
+            var request = MakeSessionRequest<PingReq>();
+            await PostJObject(request);
         }
 
         public override async Task EnableAlarmsAndEvents(Severity minSeverity = Severity.Info) {
-            JObject request = MakeSessionRequest();
-            request["minSeverity"] = new JRaw(StdJson.ValueToString(minSeverity));
-            await PostJObject("EnableAlarmsAndEvents", request);
+            var request = MakeSessionRequest<EnableAlarmsAndEventsReq>();
+            request.MinSeverity = minSeverity;
+            await PostJObject(request);
         }
 
         public override async Task DisableAlarmsAndEvents() {
-            JObject request = MakeSessionRequest();
-            await PostJObject("DisableAlarmsAndEvents", request);
+            var request = MakeSessionRequest<DisableAlarmsAndEventsReq>();
+            await PostJObject(request);
         }
 
         public override async Task EnableConfigChangedEvents(params ObjectRef[] objects) {
-            JObject request = MakeSessionRequest();
-            request["objects"] = new JRaw(StdJson.ValueToString(objects));
-            await PostJObject("EnableConfigChangedEvents", request);
+            var request = MakeSessionRequest<EnableConfigChangedEventsReq>();
+            request.Objects = objects;
+            await PostJObject(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params VariableRef[] variables) {
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            await PostJObject("EnableVariableHistoryChangedEvents", request);
+            var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
+            request.Variables = variables;
+            await PostJObject(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params ObjectRef[] idsOfEnabledTreeRoots) {
-            JObject request = MakeSessionRequest();
-            request["idsOfEnabledTreeRoots"] = new JRaw(StdJson.ValueToString(idsOfEnabledTreeRoots));
-            await PostJObject("EnableVariableHistoryChangedEvents", request);
+            var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
+            request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
+            await PostJObject(request);
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params VariableRef[] variables) {
-            JObject request = MakeSessionRequest();
-            request["options"] = new JRaw(StdJson.ObjectToString(options));
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            await PostJObject("EnableVariableValueChangedEvents", request);
+            var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
+            request.Options = options;
+            request.Variables = variables;
+            await PostJObject(request);
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params ObjectRef[] idsOfEnabledTreeRoots) {
-            JObject request = MakeSessionRequest();
-            request["options"] = new JRaw(StdJson.ObjectToString(options));
-            request["idsOfEnabledTreeRoots"] = new JRaw(StdJson.ValueToString(idsOfEnabledTreeRoots));
-            await PostJObject("EnableVariableValueChangedEvents", request);
+            var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
+            request.Options = options;
+            request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
+            await PostJObject(request);
         }
 
         public override async Task DisableChangeEvents(bool disableVarValueChanges, bool disableVarHistoryChanges, bool disableConfigChanges) {
-            JObject request = MakeSessionRequest();
-            request["disableVarValueChanges"] = disableVarValueChanges;
-            request["disableVarHistoryChanges"] = disableVarHistoryChanges;
-            request["disableConfigChanges"] = disableConfigChanges;
-            await PostJObject("DisableChangeEvents", request);
+            var request = MakeSessionRequest<DisableChangeEventsReq>();
+            request.DisableVarValueChanges = disableVarValueChanges;
+            request.DisableVarHistoryChanges = disableVarHistoryChanges;
+            request.DisableConfigChanges = disableConfigChanges;
+            await PostJObject(request);
         }
 
         public override async Task<User> GetLoginUser() {
-            JObject request = MakeSessionRequest();
-            return await Post<User>("GetLoginUser", request);
+            var request = MakeSessionRequest<GetLoginUserReq>();
+            return await Post<User>(request);
         }
 
         public override async Task<ModuleInfo[]> GetModules() {
-            JObject request = MakeSessionRequest();
-            return await Post<ModuleInfo[]>("GetModules", request);
+            var request = MakeSessionRequest<GetModulesReq>();
+            return await Post<ModuleInfo[]>(request);
         }
 
         public override async Task<LocationInfo[]> GetLocations() {
-            JObject request = MakeSessionRequest();
-            return await Post<LocationInfo[]>("GetLocations", request);
+            var request = MakeSessionRequest<GetLocationsReq>();
+            return await Post<LocationInfo[]>(request);
         }
 
         public override async Task<ObjectInfo[]> GetAllObjects(string moduleID) {
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = new JRaw(StdJson.ValueToString(moduleID));
-            return await Post<ObjectInfo[]>("GetAllObjects", request);
+            var request = MakeSessionRequest<GetAllObjectsReq>();
+            request.ModuleID = moduleID;
+            return await Post<ObjectInfo[]>(request);
         }
 
         public override async Task<ObjectInfo[]> GetAllObjectsOfType(string moduleID, string className) {
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = new JRaw(StdJson.ValueToString(moduleID));
-            request["className"] = new JRaw(StdJson.ValueToString(className));
-            return await Post<ObjectInfo[]>("GetAllObjectsOfType", request);
+            var request = MakeSessionRequest<GetAllObjectsOfTypeReq>();
+            request.ModuleID = moduleID;
+            request.ClassName = className;
+            return await Post<ObjectInfo[]>(request);
         }
 
         public override async Task<ObjectInfo[]> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types) {
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = new JRaw(StdJson.ValueToString(moduleID));
-            request["types"] = new JRaw(StdJson.ValueToString(types.Cast<Enum>().ToArray()));
-            return await Post<ObjectInfo[]>("GetAllObjectsWithVariablesOfType", request);
+            var request = MakeSessionRequest<GetAllObjectsWithVariablesOfTypeReq>();
+            request.ModuleID = moduleID;
+            request.Types = types;
+            return await Post<ObjectInfo[]>(request);
         }
 
         public override async Task<ObjectInfo[]> GetChildrenOfObjects(params ObjectRef[] objectIDs) {
-            JObject request = MakeSessionRequest();
-            request["objectIDs"] = new JRaw(StdJson.ValueToString(objectIDs));
-            return await Post<ObjectInfo[]>("GetChildrenOfObjects", request);
+            var request = MakeSessionRequest<GetChildrenOfObjectsReq>();
+            request.ObjectIDs = objectIDs;
+            return await Post<ObjectInfo[]>(request);
         }
 
         public override async Task<MemberValue[]> GetMemberValues(MemberRef[] member) {
             if (member == null) throw new ArgumentNullException(nameof(member));
-            JObject request = MakeSessionRequest();
-            request["member"] = new JRaw(StdJson.ObjectToString(member));
-            return await Post<MemberValue[]>("GetMemberValues", request);
+            var request = MakeSessionRequest<GetMemberValuesReq>();
+            request.Member = member;
+            return await Post<MemberValue[]>(request);
         }
 
         public override async Task<MetaInfos> GetMetaInfos(string moduleID) {
             if (moduleID == null) throw new ArgumentNullException(nameof(moduleID));
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = new JRaw(StdJson.ValueToString(moduleID));
-            return await Post<MetaInfos>("GetMetaInfos", request);
+            var request = MakeSessionRequest<GetMetaInfosReq>();
+            request.ModuleID = moduleID;
+            return await Post<MetaInfos>(request);
         }
 
         public override async Task<ObjectInfo[]> GetObjectsByID(params ObjectRef[] objectIDs) {
-            JObject request = MakeSessionRequest();
-            request["objectIDs"] = new JRaw(StdJson.ValueToString(objectIDs));
-            return await Post<ObjectInfo[]>("GetObjectsByID", request);
+            var request = MakeSessionRequest<GetObjectsByIDReq>();
+            request.ObjectIDs = objectIDs;
+            return await Post<ObjectInfo[]>(request);
         }
 
         public override async Task<ObjectValue[]> GetObjectValuesByID(params ObjectRef[] objectIDs) {
-            JObject request = MakeSessionRequest();
-            request["objectIDs"] = new JRaw(StdJson.ValueToString(objectIDs));
-            return await Post<ObjectValue[]>("GetObjectValuesByID", request);
+            var request = MakeSessionRequest<GetObjectValuesByIDReq>();
+            request.ObjectIDs = objectIDs;
+            return await Post<ObjectValue[]>(request);
         }
 
         public override async Task<ObjectValue> GetParentOfObject(ObjectRef objectID) {
-            JObject request = MakeSessionRequest();
-            request["objectID"] = new JRaw(StdJson.ValueToString(objectID));
-            return await Post<ObjectValue>("GetParentOfObject", request);
+            var request = MakeSessionRequest<GetParentOfObjectReq>();
+            request.ObjectID = objectID;
+            return await Post<ObjectValue>(request);
         }
 
         public override async Task<ObjectInfo> GetRootObject(string moduleID) {
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = new JRaw(StdJson.ValueToString(moduleID));
-            return await Post<ObjectInfo>("GetRootObject", request);
+            var request = MakeSessionRequest<GetRootObjectReq>();
+            request.ModuleID = moduleID;
+            return await Post<ObjectInfo>(request);
         }
 
         public override async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter = QualityFilter.ExcludeNone) {
-            JObject request = MakeSessionRequest();
-            request["variable"] = new JRaw(StdJson.ObjectToString(variable));
-            request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
-            request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
-            request["filter"] = new JRaw(StdJson.ValueToString(filter));
-            return await Post<long>("HistorianCount", request);
+            var request = MakeSessionRequest<HistorianCountReq>();
+            request.Variable = variable;
+            request.StartInclusive = startInclusive;
+            request.EndInclusive = endInclusive;
+            request.Filter = filter;
+            return await Post<long>(request);
         }
 
         public override async Task HistorianDeleteAllVariablesOfObjectTree(ObjectRef objectID) {
-            JObject request = MakeSessionRequest();
-            request["objectID"] = new JRaw(StdJson.ValueToString(objectID));
-            await PostJObject("HistorianDeleteAllVariablesOfObjectTree", request);
+            var request = MakeSessionRequest<HistorianDeleteAllVariablesOfObjectTreeReq>();
+            request.ObjectID = objectID;
+            await PostJObject(request);
         }
 
         public override async Task HistorianDeleteVariables(params VariableRef[] variables) {
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            await PostJObject("HistorianDeleteVariables", request);
+            var request = MakeSessionRequest<HistorianDeleteVariablesReq>();
+            request.Variables = variables;
+            await PostJObject(request);
         }
 
         public override async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
-            JObject request = MakeSessionRequest();
-            request["variable"] = new JRaw(StdJson.ObjectToString(variable));
-            request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
-            request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
-            return await Post<long>("HistorianDeleteInterval", request);
+            var request = MakeSessionRequest<HistorianDeleteIntervalReq>();
+            request.Variable = variable;
+            request.StartInclusive = startInclusive;
+            request.EndInclusive = endInclusive;
+            return await Post<long>(request);
         }
 
         public override async Task<VTTQ?> HistorianGetLatestTimestampDB(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
-            JObject request = MakeSessionRequest();
-            request["variable"] = new JRaw(StdJson.ObjectToString(variable));
-            request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
-            request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
-            return await Post<VTTQ?>("HistorianGetLatestTimestampDB", request);
+            var request = MakeSessionRequest<HistorianGetLatestTimestampDBReq>();
+            request.Variable = variable;
+            request.StartInclusive = startInclusive;
+            request.EndInclusive = endInclusive;
+            return await Post<VTTQ?>(request);
         }
 
         public override async Task HistorianModify(VariableRef variable, ModifyMode mode, params VTQ[] data) {
-            JObject request = MakeSessionRequest();
-            request["variable"] = new JRaw(StdJson.ObjectToString(variable));
-            request["data"] = new JRaw(StdJson.ObjectToString(data));
-            request["mode"] = new JRaw(StdJson.ValueToString(mode));
-            await PostJObject("HistorianModify", request);
+            var request = MakeSessionRequest<HistorianModifyReq>();
+            request.Variable = variable;
+            request.Data = data;
+            request.Mode = mode;
+            await PostJObject(request);
         }
 
         public override async Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
-            JObject request = MakeSessionRequest();
-            request["variable"] = new JRaw(StdJson.ObjectToString(variable));
-            request["startInclusive"] = new JRaw(StdJson.ValueToString(startInclusive));
-            request["endInclusive"] = new JRaw(StdJson.ValueToString(endInclusive));
-            request["maxValues"] = new JRaw(StdJson.ValueToString(maxValues));
-            request["bounding"] = new JRaw(StdJson.ValueToString(bounding));
-            request["filter"] = new JRaw(StdJson.ValueToString(filter));
-            return await Post<VTTQ[]>("HistorianReadRaw", request);
+            var request = MakeSessionRequest<HistorianReadRawReq>();
+            request.Variable = variable;
+            request.StartInclusive = startInclusive;
+            request.EndInclusive = endInclusive;
+            request.MaxValues = maxValues;
+            request.Bounding = bounding;
+            request.Filter = filter;
+            return await Post<VTTQ[]>(request);
         }
 
         public override async Task<VariableValue[]> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
-            JObject request = MakeSessionRequest();
-            request["objectID"] = new JRaw(StdJson.ValueToString(objectID));
-            return await Post<VariableValue[]>("ReadAllVariablesOfObjectTree", request);
+            var request = MakeSessionRequest<ReadAllVariablesOfObjectTreeReq>();
+            request.ObjectID = objectID;
+            return await Post<VariableValue[]>(request);
         }
 
         public override async Task<VTQ[]> ReadVariables(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            return await Post<VTQ[]>("ReadVariables", request);
+            var request = MakeSessionRequest<ReadVariablesReq>();
+            request.Variables = variables;
+            return await Post<VTQ[]>(request);
         }
 
         public override async Task<VariableValue[]> ReadVariablesIgnoreMissing(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            return await Post<VariableValue[]>("ReadVariablesIgnoreMissing", request);
+            var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
+            request.Variables = variables;
+            return await Post<VariableValue[]>(request);
         }
 
         public override async Task<VTQ[]> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            if (timeout.HasValue) {
-                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
-            }
-            Task<VTQ[]> task = Post<VTQ[]>("ReadVariablesSync", request);
+            var request = MakeSessionRequest<ReadVariablesSyncReq>();
+            request.Variables = variables;
+            request.Timeout = timeout;
+            Task<VTQ[]> task = Post<VTQ[]>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -391,12 +394,11 @@ namespace Ifak.Fast.Mediator
 
         public override async Task<VariableValue[]> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
-            JObject request = MakeSessionRequest();
-            request["variables"] = new JRaw(StdJson.ObjectToString(variables));
-            if (timeout.HasValue) {
-                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
-            }
-            Task<VariableValue[]> task = Post<VariableValue[]>("ReadVariablesSyncIgnoreMissing", request);
+            var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
+            request.Variables = variables;
+            request.Timeout = timeout;
+
+            Task<VariableValue[]> task = Post<VariableValue[]>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -411,38 +413,30 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task UpdateConfig(ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements) {
-            JObject request = MakeSessionRequest();
-            if (updateOrDeleteObjects != null && updateOrDeleteObjects.Length > 0) {
-                request["updateOrDeleteObjects"] = new JRaw(StdJson.ObjectToString(updateOrDeleteObjects));
-            }
-            if (updateOrDeleteMembers != null && updateOrDeleteMembers.Length > 0) {
-                request["updateOrDeleteMembers"] = new JRaw(StdJson.ObjectToString(updateOrDeleteMembers));
-            }
-            if (addArrayElements != null && addArrayElements.Length > 0) {
-                request["addArrayElements"] = new JRaw(StdJson.ObjectToString(addArrayElements));
-            }
-            await PostJObject("UpdateConfig", request);
+            var request = MakeSessionRequest<UpdateConfigReq>();
+            request.UpdateOrDeleteObjects = updateOrDeleteObjects;
+            request.UpdateOrDeleteMembers = updateOrDeleteMembers;
+            request.AddArrayElements = addArrayElements;
+            await PostJObject(request);
         }
 
         public override Task WriteVariables(VariableValue[] values) {
-            JObject request = MakeSessionRequest();
-            request["values"] = new JRaw(StdJson.ObjectToString(values));
-            return PostJObject("WriteVariables", request);
+            var request = MakeSessionRequest<WriteVariablesReq>();
+            request.Values = values;
+            return PostJObject(request);
         }
 
         public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValue[] values) {
-            JObject request = MakeSessionRequest();
-            request["values"] = new JRaw(StdJson.ObjectToString(values));
-            return Post<WriteResult>("WriteVariablesIgnoreMissing", request);
+            var request = MakeSessionRequest<WriteVariablesIgnoreMissingReq>();
+            request.Values = values;
+            return Post<WriteResult>(request);
         }
 
         public override async Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null) {
-            JObject request = MakeSessionRequest();
-            request["values"] = new JRaw(StdJson.ObjectToString(values));
-            if (timeout.HasValue) {
-                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
-            }
-            Task<WriteResult> task = Post<WriteResult>("WriteVariablesSync", request);
+            var request = MakeSessionRequest<WriteVariablesSyncReq>();
+            request.Values = values;
+            request.Timeout = timeout;
+            Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -457,12 +451,10 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null) {
-            JObject request = MakeSessionRequest();
-            request["values"] = new JRaw(StdJson.ObjectToString(values));
-            if (timeout.HasValue) {
-                request["timeout"] = new JRaw(StdJson.ValueToString(timeout.Value));
-            }
-            Task<WriteResult> task = Post<WriteResult>("WriteVariablesSyncIgnoreMissing", request);
+            var request = MakeSessionRequest<WriteVariablesSyncIgnoreMissingReq>();
+            request.Values = values;
+            request.Timeout = timeout;
+            Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -477,29 +469,32 @@ namespace Ifak.Fast.Mediator
         }
 
         public override Task<DataValue> CallMethod(string moduleID, string methodName, params NamedValue[] parameters) {
-            JObject request = MakeSessionRequest();
-            request["moduleID"] = moduleID;
-            request["methodName"] = methodName;
-            request["parameters"] = new JRaw(StdJson.ObjectToString(parameters));
-            return Post<DataValue>("CallMethod", request);
+            var request = MakeSessionRequest<CallMethodReq>();
+            request.ModuleID = moduleID;
+            request.MethodName = methodName;
+            request.Parameters = parameters;
+            return Post<DataValue>(request);
         }
 
         public override Task<BrowseResult> BrowseObjectMemberValues(MemberRef member, int? continueID = null) {
-            JObject request = MakeSessionRequest();
-            request["member"] = new JRaw(StdJson.ObjectToString(member));
-            if (continueID.HasValue) {
-                request["continueID"] = new JRaw(StdJson.ValueToString(continueID.Value));
-            }
-            return Post<BrowseResult>("BrowseObjectMemberValues", request);
+            var request = MakeSessionRequest<BrowseObjectMemberValuesReq>();
+            request.Member = member;
+            request.ContinueID = continueID;
+            return Post<BrowseResult>(request);
         }
 
         #endregion
 
-        protected async Task<JObject> PostJObject(string path, JObject obj) {
+        protected async Task<JObject> PostJObject(RequestBase obj) {
 
+            //if (inProc != null) {
+            //    return (JObject)await inProc.AddRequest(obj);
+            //}
+
+            string path = obj.GetPath();
             var payload = new StringContent(StdJson.ObjectToString(obj), Encoding.UTF8);
 
-            HttpResponseMessage response = null;
+            HttpResponseMessage response;
             try {
                 response = await client.PostAsync(path, payload);
             }
@@ -535,8 +530,13 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        protected async Task<T> Post<T>(string path, JObject obj) {
+        protected async Task<T> Post<T>(RequestBase obj) {
 
+            //if (inProc != null) {
+            //    return (T)await inProc.AddRequest(obj);
+            //}
+
+            string path = obj.GetPath();
             var requestStream = MemoryManager.GetMemoryStream("HttpConnection.Post");
             try {
                 StdJson.ObjectToStream(obj, requestStream);
@@ -634,11 +634,11 @@ namespace Ifak.Fast.Mediator
 
         private const string ConnectionClosedMessage = "Connection is closed.";
 
-        private JObject MakeSessionRequest() {
+        private T MakeSessionRequest<T>() where T: RequestBase, new() {
             if (IsClosed) throw new ConnectivityException(ConnectionClosedMessage);
-            JObject request = new JObject();
-            request["session"] = session;
-            return request;
+            T t = new T();
+            t.Session = session;
+            return t;
         }
 
         public class EventManager
@@ -663,7 +663,7 @@ namespace Ifak.Fast.Mediator
                 var sendBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(session));
                 await webSocket.SendAsync(sendBuffer, WebSocketMessageType.Text, endOfMessage: true, cancellationToken: CancellationToken.None);
 
-                var t = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
+                _ = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
             }
 
             protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, Exception> notifyConnectionBroken) {
@@ -677,17 +677,17 @@ namespace Ifak.Fast.Mediator
 
                     stream.Seek(0, SeekOrigin.Begin);
 
-                    WebSocketReceiveResult result = null;
+                    WebSocketReceiveResult result;
                     do {
                         try {
                             result = await webSocket.ReceiveAsync(buffer, cancelToken);
                         }
                         catch (Exception exp) {
-                            var t = CloseSocket(); // no need to wait for completion
+                            _ = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
                                 notifyConnectionBroken("ReadWebSocketForEvents ReceiveAsync", exp);
                             }
-                            Task ignored = listener.OnConnectionClosed();
+                            _ = listener.OnConnectionClosed();
                             return;
                         }
                         stream.Write(buffer.Array, buffer.Offset, result.Count);
@@ -720,11 +720,11 @@ namespace Ifak.Fast.Mediator
                             await webSocket.SendAsync(ok, WebSocketMessageType.Text, true, CancellationToken.None);
                         }
                         catch (Exception exp) {
-                            var t = CloseSocket(); // no need to wait for completion
+                            _ = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
                                 notifyConnectionBroken("ReadWebSocketForEvents SendAsync(ok)", exp);
                             }
-                            Task ignored = listener.OnConnectionClosed();
+                            _ = listener.OnConnectionClosed();
                             return;
                         }
                     }
