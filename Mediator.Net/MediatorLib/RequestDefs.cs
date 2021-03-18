@@ -111,6 +111,15 @@ namespace Ifak.Fast.Mediator
         public string[] Roles { get; set; }
     }
 
+    public class LoginResponse
+    {
+        [JsonProperty("session")]
+        public string Session { get; set; }
+
+        [JsonProperty("challenge")]
+        public string Challenge { get; set; }
+    }
+
     public class AuthenticateReq : RequestBase
     {
         public const int ID = 2;
@@ -120,6 +129,12 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("hash")]
         public long Hash { get; set; }
+    }
+
+    public class AuthenticateResponse
+    {
+        [JsonProperty("session")]
+        public string Session { get; set; }
     }
 
     public class ReadVariablesReq : RequestBase

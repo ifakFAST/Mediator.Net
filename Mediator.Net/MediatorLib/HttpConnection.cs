@@ -10,7 +10,6 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 using ModuleInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ModuleInfo>;
@@ -20,6 +19,7 @@ using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectVa
 using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using System.Collections.Generic;
 
 namespace Ifak.Fast.Mediator
 {
@@ -78,10 +78,10 @@ namespace Ifak.Fast.Mediator
                 reqLogin.Roles = roles;
             }
 
-            JObject json = await PostJObject(reqLogin);
+            LoginResponse loginResponse = await Post<LoginResponse>(reqLogin);
 
-            string session = (string)json["session"];
-            string challenge = (string)json["challenge"];
+            string session = loginResponse.Session;
+            string challenge = loginResponse.Challenge;
             if (string.IsNullOrEmpty(session) || string.IsNullOrEmpty(challenge))
                 throw new ConnectivityException("Invalid response");
 
@@ -92,9 +92,9 @@ namespace Ifak.Fast.Mediator
                 Hash = hash
             };
 
-            json = await PostJObject(reqAuth);
+            AuthenticateResponse authResponse = await Post<AuthenticateResponse>(reqAuth);
 
-            this.session = (string)json["session"];
+            this.session = authResponse.Session;
             tLogin = Timestamp.Now;
 
             if (listener != null) {
@@ -493,7 +493,7 @@ namespace Ifak.Fast.Mediator
 
         #endregion
 
-        protected async Task<JObject> PostJObject(RequestBase obj) {
+        protected async Task PostJObject(RequestBase obj) {
 
             //if (inProc != null) {
             //    return (JObject)await inProc.AddRequest(obj);
@@ -516,24 +516,8 @@ namespace Ifak.Fast.Mediator
             }
 
             using (response) {
-                if (response.IsSuccessStatusCode) {
-                    try {
-                        string content = await response.Content.ReadAsStringAsync();
-                        if (string.IsNullOrEmpty(content)) return new JObject();
-                        return StdJson.JObjectFromString(content);
-                    }
-                    catch (TaskCanceledException exp) {
-                        OnConnectionBroken($"PostJObject {path} response.Content.ReadAsStringAsync TaskCanceled", exp);
-                        throw new ConnectivityException("Time out");
-                    }
-                    catch (Exception exp) {
-                        OnConnectionBroken($"PostJObject {path} response.Content.ReadAsStringAsync", exp);
-                        throw new ConnectivityException(exp.Message);
-                    }
-                }
-                else {
+                if (!response.IsSuccessStatusCode) {
                     await ThrowError(response, $"PostJObject {path}");
-                    return null; // never come here
                 }
             }
         }
@@ -604,39 +588,19 @@ namespace Ifak.Fast.Mediator
             }
             catch (Exception) {}
 
-            JObject errObj = null;
+            ErrorResult errObj = null;
             try {
-                errObj = StdJson.JObjectFromString(content);
+                errObj = StdJson.ObjectFromString<ErrorResult>(content);
             }
             catch (Exception) {}
 
-            const string PropertyError = "error";
-            if (errObj == null || errObj.Property(PropertyError) == null) {
+            if (errObj == null || errObj.Error == null) {
                 string errMsg = string.IsNullOrWhiteSpace(content) ? response.StatusCode.ToString() : content;
                 OnConnectionBroken($"ThrowError {context} '{errMsg}'", null);
                 throw new ConnectivityException(errMsg);
             }
             else {
-                string errMsg = GetStringPropertyOrDefault(errObj, PropertyError, response.StatusCode.ToString());
-                throw new RequestException(errMsg);
-            }
-        }
-
-        private bool GetBoolPropertyOrDefault(JObject obj, string name, bool defaultValue) {
-            try {
-                return (bool)obj[name];
-            }
-            catch {
-                return defaultValue;
-            }
-        }
-
-        private string GetStringPropertyOrDefault(JObject obj, string name, string defaultValue) {
-            try {
-                return (string)obj[name];
-            }
-            catch {
-                return defaultValue;
+                throw new RequestException(errObj.Error);
             }
         }
 
@@ -705,9 +669,10 @@ namespace Ifak.Fast.Mediator
                     stream.Seek(0, SeekOrigin.Begin);
 
                     if (result.MessageType == WebSocketMessageType.Text) {
-                        JObject eventObj = null;
+
+                        EventContent eventObj = null;
                         using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
-                            eventObj = StdJson.JObjectFromReader(reader);
+                            eventObj = StdJson.ObjectFromReader<EventContent>(reader);
                         }
 
                         try {
@@ -766,31 +731,28 @@ namespace Ifak.Fast.Mediator
                 webSocketCancel = null;
             }
 
-            protected Task DispatchEvent(JObject theEvent) {
+            protected Task DispatchEvent(EventContent theEvent) {
 
-                string eventName = (string)theEvent["event"];
+                string eventName = theEvent.Event;
 
                 switch (eventName) {
                     case "OnVariableValueChanged": {
-                            JArray jVariables = (JArray)theEvent["variables"];
-                            VariableValue[] variables = StdJson.ObjectFromJToken<VariableValue[]>(jVariables);
+                            VariableValue[] variables = theEvent.Variables.ToArray();
                             return listener.OnVariableValueChanged(variables);
                         }
 
                     case "OnVariableHistoryChanged": {
-                            JArray jChanges = (JArray)theEvent["changes"];
-                            HistoryChange[] variables = StdJson.ObjectFromJToken<HistoryChange[]>(jChanges);
+                            HistoryChange[] variables = theEvent.Changes.ToArray();
                             return listener.OnVariableHistoryChanged(variables);
                         }
 
                     case "OnConfigChanged": {
-                            JArray jChanges = (JArray)theEvent["changedObjects"];
-                            ObjectRef[] changes = StdJson.ObjectFromJToken<ObjectRef[]>(jChanges);
+                            ObjectRef[] changes = theEvent.ChangedObjects.ToArray();
                             return listener.OnConfigChanged(changes);
                         }
 
                     case "OnAlarmOrEvent": {
-                            AlarmOrEvent[] alarmOrEvents = StdJson.ObjectFromJToken<AlarmOrEvent[]>(theEvent["events"]);
+                            AlarmOrEvent[] alarmOrEvents = theEvent.Events.ToArray();
                             return listener.OnAlarmOrEvents(alarmOrEvents);
                         }
 
@@ -804,5 +766,29 @@ namespace Ifak.Fast.Mediator
                 }
             }
         }
+    }
+
+    public class ErrorResult
+    {
+        [Json.JsonProperty("error")]
+        public string Error { get; set; }
+    }
+
+    public class EventContent
+    {
+        [Json.JsonProperty("event")]
+        public string Event { get; set; }
+
+        [Json.JsonProperty("variables")]
+        public List<VariableValue> Variables { get; set; }
+
+        [Json.JsonProperty("changes")]
+        public List<HistoryChange> Changes { get; set; }
+
+        [Json.JsonProperty("changedObjects")]
+        public List<ObjectRef> ChangedObjects { get; set; }
+
+        [Json.JsonProperty("events")]
+        public List<AlarmOrEvent> Events { get; set; }
     }
 }

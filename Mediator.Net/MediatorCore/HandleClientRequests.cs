@@ -151,12 +151,14 @@ namespace Ifak.Fast.Mediator
 
                         string session = Guid.NewGuid().ToString();
                         string challenge = Guid.NewGuid().ToString();
-                        var obj = new JObject();
-                        obj["session"] = session;
-                        obj["challenge"] = challenge;
+
+                        var response = new LoginResponse() {
+                            Session = session,
+                            Challenge = challenge,
+                        };
 
                         sessions[session] = new SessionInfo(session, challenge, origin, password, TerminateSession);
-                        return Result_OK(obj);
+                        return Result_OK(response);
                     }
 
                 case AuthenticateReq.ID: {
@@ -177,10 +179,13 @@ namespace Ifak.Fast.Mediator
                         }
                         info.Valid = true;
                         info.UpdateLastActivity();
-                        var obj = new JObject();
-                        obj["session"] = session;
+
+                        var response = new AuthenticateResponse() {
+                            Session = session,
+                        };
+
                         // logger.Info($"New session: {session} Origin: {info.Origin}");
-                        return Result_OK(obj);
+                        return Result_OK(response);
                     }
 
 
