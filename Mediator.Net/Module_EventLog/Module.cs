@@ -92,7 +92,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
             while (true) {
 
-                VTTQ[] data = await connection.HistorianReadRaw(varRef, Timestamp.Empty, t, 1000, BoundingMethod.TakeLastN);
+                var data = await connection.HistorianReadRaw(varRef, Timestamp.Empty, t, 1000, BoundingMethod.TakeLastN);
 
                 var events = data.Select(VTTQ2AggregatedEvent)
                     .Where(ev => ev.IsWarningOrAlarm() && ev.State != EventState.Reset && !(ev.State == EventState.Ack && ev.ReturnedToNormal))

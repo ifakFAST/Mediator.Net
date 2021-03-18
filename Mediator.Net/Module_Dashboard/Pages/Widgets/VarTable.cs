@@ -39,7 +39,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public async Task<ReqResult> UiReq_LoadData() {
 
-            VariableValue[] values = await Connection.ReadVariablesIgnoreMissing(Variables);
+            List<VariableValue> values = await Connection.ReadVariablesIgnoreMissing(Variables);
 
             var items = MakeValues(configuration, values);
 
@@ -52,7 +52,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return ReqResult.OK(items);
         }
 
-        private static VarVal[] MakeValues(VarTableConfig config, VariableValue[] values) {
+        private static VarVal[] MakeValues(VarTableConfig config, IList<VariableValue> values) {
 
             var res = new List<VarVal>();
             foreach (var it in config.Items) {
@@ -180,7 +180,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             Timestamp end = Timestamp.Now;
             Timestamp start = end - it.TrendFrame;
-            VTTQ[] vttqs = await Connection.HistorianReadRaw(it.Variable, start, end, 120, BoundingMethod.CompressToN, QualityFilter.ExcludeBad);
+            var vttqs = await Connection.HistorianReadRaw(it.Variable, start, end, 120, BoundingMethod.CompressToN, QualityFilter.ExcludeBad);
 
             double[] values = vttqs.Where(v => v.V.AsDouble().HasValue).Select(v => v.V.AsDouble().Value).ToArray();
 

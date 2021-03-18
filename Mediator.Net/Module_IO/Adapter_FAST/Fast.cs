@@ -111,7 +111,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 return new string[0];
             }
 
-            ObjectInfo[] allObjects = await connection.GetAllObjects(moduleID);
+            var allObjects = await connection.GetAllObjects(moduleID);
 
             var result = new List<string>();
             foreach (ObjectInfo obj in allObjects) {
@@ -141,9 +141,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             VariableRef[] dataItemsToRead = readHelper.GetRefs();
 
             try {
-                VariableValue[] readResponse = await connection.ReadVariablesSyncIgnoreMissing(dataItemsToRead);
+                List<VariableValue> readResponse = await connection.ReadVariablesSyncIgnoreMissing(dataItemsToRead);
 
-                if (readResponse.Length == dataItemsToRead.Length) {
+                if (readResponse.Count == dataItemsToRead.Length) {
                     readHelper.SetAllResults(readResponse, (vv, request) => vv.Value);
                     return readHelper.values;
                 }

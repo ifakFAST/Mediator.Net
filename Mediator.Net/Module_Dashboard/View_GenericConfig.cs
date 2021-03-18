@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -18,7 +19,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private readonly Dictionary<string, ClassInfo> objTypes = new Dictionary<string, ClassInfo>();
         private readonly Dictionary<string, EnumInfo> enumTypes = new Dictionary<string, EnumInfo>();
         private readonly Dictionary<string, StructInfo> structTypes = new Dictionary<string, StructInfo>();
-        private ObjectInfo[] objects = new ObjectInfo[0];
+        private ObjectInfos objects = new ObjectInfos();
 
         private readonly Dictionary<VariableRef, VTQ> mapVariables = new Dictionary<VariableRef, VTQ>();
         private bool hasLocations = false;
@@ -46,7 +47,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         mapVariables.Clear();
                         ObjectInfo root = objects.FirstOrDefault(o => !o.Parent.HasValue);
-                        VariableValue[] variables = await Connection.ReadAllVariablesOfObjectTree(root.ID);
+                        List<VariableValue> variables = await Connection.ReadAllVariablesOfObjectTree(root.ID);
                         await Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), root.ID);
 
                         foreach (VariableValue vv in variables) {
@@ -88,7 +89,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
 
                         var locations = await Connection.GetLocations();
-                        hasLocations = locations.Length > 0;
+                        hasLocations = locations.Count > 0;
                         rootLocation = hasLocations ? LocationRef.FromLocationID(locations[0].ID) : (LocationRef?)null;
 
                         return ReqResult.OK(new {
@@ -163,7 +164,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         objects = await Connection.GetAllObjects(moduleID);
 
-                        VariableValue[] newVarVals = await Connection.ReadAllVariablesOfObjectTree(ObjectRef.Make(objParent.ModuleID, addParams.NewObjID));
+                        List<VariableValue> newVarVals = await Connection.ReadAllVariablesOfObjectTree(ObjectRef.Make(objParent.ModuleID, addParams.NewObjID));
                         foreach (VariableValue vv in newVarVals) {
                             mapVariables[vv.Variable] = vv.Value;
                         }
@@ -288,7 +289,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             ClassInfo info = objTypes[type];
 
             MemberRef[] members = info.SimpleMember.Select(m => MemberRef.Make(obj, m.Name)).ToArray();
-            MemberValue[] memValues = await Connection.GetMemberValues(members);
+            List<MemberValue> memValues = await Connection.GetMemberValues(members);
 
             var values = new List<ObjectMember>();
 
@@ -493,7 +494,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string[] Members { get; set; } = new string[0];
         }
 
-        private TreeNode TransformModel(ObjectInfo[] objects) {
+        private TreeNode TransformModel(ObjectInfos objects) {
 
             ObjectInfo rootObjInfo = null;
             var objectsChildren = new Dictionary<ObjectRef, List<ObjectInfo>>();

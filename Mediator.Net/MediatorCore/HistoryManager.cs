@@ -108,7 +108,7 @@ namespace Ifak.Fast.Mediator
             return Task.WhenAll(terminateTasks);
         }
 
-        public async Task<IList<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
+        public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
             HistoryDBWorker worker = WorkerByVarRef(variable);
 

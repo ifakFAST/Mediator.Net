@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -448,7 +449,7 @@ namespace Ifak.Fast.Mediator.Calc
                 // Config.Input[] inputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToArray();
                 // VariableRef[] inputVars = inputs.Select(inp => inp.Variable.Value).ToArray();
 
-                VTQ[] values = await ReadInputVars(adapter, inputs, inputVars, t);
+                VTQs values = await ReadInputVars(adapter, inputs, inputVars, t);
 
                 // sw.Stop();
                 // double dd = sw.ElapsedTicks;
@@ -537,7 +538,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
-        private async Task<VTQ[]> ReadInputVars(CalcInstance adapter, IList<Config.Input> inputs, VariableRef[] inputVars, Timestamp now) {
+        private async Task<VTQs> ReadInputVars(CalcInstance adapter, IList<Config.Input> inputs, VariableRef[] inputVars, Timestamp now) {
             try {
                 return await connection.ReadVariables(inputVars);
             }
@@ -564,15 +565,15 @@ namespace Ifak.Fast.Mediator.Calc
 
                     int N = inputs.Count;
                     var invalidInputVars = new List<int>();
-                    VTQ[] res = new VTQ[N];
+                    VTQs res = new VTQs(N);
 
                     for (int i = 0; i < N; ++i) {
                         VariableRef variable = inputVars[i];
                         try {
-                            res[i] = await connection.ReadVariable(variable);
+                            res.Add(await connection.ReadVariable(variable));
                         }
                         catch(Exception) {
-                            res[i] = VTQ.Make(inputs[i].GetDefaultValue(), now, Quality.Bad);
+                            res.Add(VTQ.Make(inputs[i].GetDefaultValue(), now, Quality.Bad));
                             invalidInputVars.Add(i);
                         }
                     }

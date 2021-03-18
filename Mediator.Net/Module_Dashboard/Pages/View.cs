@@ -10,6 +10,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
@@ -282,13 +283,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID) {
 
-            ObjectInfo[] objects;
+            ObjectInfos objects;
 
             try {
                 objects = await Connection.GetAllObjects(ModuleID);
             }
             catch (Exception) {
-                objects = new ObjectInfo[0];
+                objects = new ObjectInfos();
             }
 
             return ReqResult.OK(new {
@@ -297,7 +298,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                     ID = o.ID.ToEncodedString(),
                     Name = o.Name,
                     Variables = o.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray()
-                })
+                }).ToArray()
             });
         }
 

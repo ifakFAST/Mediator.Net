@@ -12,6 +12,14 @@ using System.Threading.Tasks;
 using System.Threading;
 using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
+using ModuleInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ModuleInfo>;
+using LocationInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.LocationInfo>;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
+using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectValue>;
+using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -223,47 +231,47 @@ namespace Ifak.Fast.Mediator
             return await Post<User>(request);
         }
 
-        public override async Task<ModuleInfo[]> GetModules() {
+        public override async Task<ModuleInfos> GetModules() {
             var request = MakeSessionRequest<GetModulesReq>();
-            return await Post<ModuleInfo[]>(request);
+            return await Post<ModuleInfos>(request);
         }
 
-        public override async Task<LocationInfo[]> GetLocations() {
+        public override async Task<LocationInfos> GetLocations() {
             var request = MakeSessionRequest<GetLocationsReq>();
-            return await Post<LocationInfo[]>(request);
+            return await Post<LocationInfos>(request);
         }
 
-        public override async Task<ObjectInfo[]> GetAllObjects(string moduleID) {
+        public override async Task<ObjectInfos> GetAllObjects(string moduleID) {
             var request = MakeSessionRequest<GetAllObjectsReq>();
             request.ModuleID = moduleID;
-            return await Post<ObjectInfo[]>(request);
+            return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<ObjectInfo[]> GetAllObjectsOfType(string moduleID, string className) {
+        public override async Task<ObjectInfos> GetAllObjectsOfType(string moduleID, string className) {
             var request = MakeSessionRequest<GetAllObjectsOfTypeReq>();
             request.ModuleID = moduleID;
             request.ClassName = className;
-            return await Post<ObjectInfo[]>(request);
+            return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<ObjectInfo[]> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types) {
+        public override async Task<ObjectInfos> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types) {
             var request = MakeSessionRequest<GetAllObjectsWithVariablesOfTypeReq>();
             request.ModuleID = moduleID;
             request.Types = types;
-            return await Post<ObjectInfo[]>(request);
+            return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<ObjectInfo[]> GetChildrenOfObjects(params ObjectRef[] objectIDs) {
+        public override async Task<ObjectInfos> GetChildrenOfObjects(params ObjectRef[] objectIDs) {
             var request = MakeSessionRequest<GetChildrenOfObjectsReq>();
             request.ObjectIDs = objectIDs;
-            return await Post<ObjectInfo[]>(request);
+            return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<MemberValue[]> GetMemberValues(MemberRef[] member) {
+        public override async Task<MemberValues> GetMemberValues(MemberRef[] member) {
             if (member == null) throw new ArgumentNullException(nameof(member));
             var request = MakeSessionRequest<GetMemberValuesReq>();
             request.Member = member;
-            return await Post<MemberValue[]>(request);
+            return await Post<MemberValues>(request);
         }
 
         public override async Task<MetaInfos> GetMetaInfos(string moduleID) {
@@ -273,16 +281,16 @@ namespace Ifak.Fast.Mediator
             return await Post<MetaInfos>(request);
         }
 
-        public override async Task<ObjectInfo[]> GetObjectsByID(params ObjectRef[] objectIDs) {
+        public override async Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs) {
             var request = MakeSessionRequest<GetObjectsByIDReq>();
             request.ObjectIDs = objectIDs;
-            return await Post<ObjectInfo[]>(request);
+            return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<ObjectValue[]> GetObjectValuesByID(params ObjectRef[] objectIDs) {
+        public override async Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs) {
             var request = MakeSessionRequest<GetObjectValuesByIDReq>();
             request.ObjectIDs = objectIDs;
-            return await Post<ObjectValue[]>(request);
+            return await Post<ObjectValues>(request);
         }
 
         public override async Task<ObjectValue> GetParentOfObject(ObjectRef objectID) {
@@ -342,7 +350,7 @@ namespace Ifak.Fast.Mediator
             await PostJObject(request);
         }
 
-        public override async Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+        public override async Task<VTTQs> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
             var request = MakeSessionRequest<HistorianReadRawReq>();
             request.Variable = variable;
             request.StartInclusive = startInclusive;
@@ -350,35 +358,35 @@ namespace Ifak.Fast.Mediator
             request.MaxValues = maxValues;
             request.Bounding = bounding;
             request.Filter = filter;
-            return await Post<VTTQ[]>(request);
+            return await Post<VTTQs>(request);
         }
 
-        public override async Task<VariableValue[]> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
+        public override async Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
             var request = MakeSessionRequest<ReadAllVariablesOfObjectTreeReq>();
             request.ObjectID = objectID;
-            return await Post<VariableValue[]>(request);
+            return await Post<VariableValues>(request);
         }
 
-        public override async Task<VTQ[]> ReadVariables(VariableRef[] variables) {
+        public override async Task<VTQs> ReadVariables(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesReq>();
             request.Variables = variables;
-            return await Post<VTQ[]>(request);
+            return await Post<VTQs>(request);
         }
 
-        public override async Task<VariableValue[]> ReadVariablesIgnoreMissing(VariableRef[] variables) {
+        public override async Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
             request.Variables = variables;
-            return await Post<VariableValue[]>(request);
+            return await Post<VariableValues>(request);
         }
 
-        public override async Task<VTQ[]> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
+        public override async Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncReq>();
             request.Variables = variables;
             request.Timeout = timeout;
-            Task<VTQ[]> task = Post<VTQ[]>(request);
+            Task<VTQs> task = Post<VTQs>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -392,13 +400,13 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public override async Task<VariableValue[]> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
+        public override async Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
             request.Variables = variables;
             request.Timeout = timeout;
 
-            Task<VariableValue[]> task = Post<VariableValue[]>(request);
+            Task<VariableValues> task = Post<VariableValues>(request);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;

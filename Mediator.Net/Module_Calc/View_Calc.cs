@@ -10,6 +10,7 @@ using System.Globalization;
 using Ifak.Fast.Json.Linq;
 using System.Collections.Generic;
 using Ifak.Fast.Mediator.Calc.Config;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -123,13 +124,13 @@ namespace Ifak.Fast.Mediator.Calc
 
                         var pars = parameters.Object<ReadModuleObjectsParams>();
 
-                        ObjectInfo[] objects;
+                        ObjectInfos objects;
 
                         try {
                             objects = await Connection.GetAllObjects(pars.ModuleID);
                         }
                         catch (Exception) {
-                            objects = new ObjectInfo[0];
+                            objects = new ObjectInfos();
                         }
 
                         Func<Variable, bool> isMatch = GetMatchPredicate(pars.ForType);
@@ -140,7 +141,7 @@ namespace Ifak.Fast.Mediator.Calc
                                 ID = o.ID.ToEncodedString(),
                                 Name = o.Name,
                                 Variables = o.Variables.Where(isMatch).Select(v => v.Name).ToArray()
-                            })
+                            }).ToArray()
                         });
                     }
 
@@ -155,19 +156,19 @@ namespace Ifak.Fast.Mediator.Calc
             Calc_Model model = v.ToObject<Calc_Model>();
 
             ObjectRef[] objects = model.GetAllCalculations().SelectMany(GetObjects).Distinct().ToArray();
-            ObjectInfo[] infos;
+            ObjectInfos infos;
             try {
                 infos = await Connection.GetObjectsByID(objects);
             }
             catch (Exception) {
-                infos = new ObjectInfo[objects.Length];
+                infos = new ObjectInfos(objects.Length);
                 for (int i = 0; i < objects.Length; ++i) {
                     ObjectRef obj = objects[i];
                     try {
-                        infos[i] = await Connection.GetObjectByID(obj);
+                        infos.Add(await Connection.GetObjectByID(obj));
                     }
                     catch (Exception) {
-                        infos[i] = new ObjectInfo(obj, "???", "???");
+                        infos.Add(new ObjectInfo(obj, "???", "???"));
                     }
                 }
             }
@@ -184,7 +185,7 @@ namespace Ifak.Fast.Mediator.Calc
 
             var mods = await Connection.GetModules();
 
-            VariableValue[] variables = await Connection.ReadAllVariablesOfObjectTree(RootID);
+            List<VariableValue> variables = await Connection.ReadAllVariablesOfObjectTree(RootID);
             var changes = VarValsToEventEntries(variables);
 
             DataValue resGetAdapterInfo = await Connection.CallMethod(moduleID, "GetAdapterInfo");
@@ -240,9 +241,9 @@ namespace Ifak.Fast.Mediator.Calc
             await Context.SendEventToUI("VarChange", changes);
         }
 
-        private static IList<EventEntry> VarValsToEventEntries(VariableValue[] variables) {
-            var changes = new List<EventEntry>(variables.Length);
-            for (int n = 0; n < variables.Length; ++n) {
+        private static IList<EventEntry> VarValsToEventEntries(IList<VariableValue> variables) {
+            var changes = new List<EventEntry>(variables.Count);
+            for (int n = 0; n < variables.Count; ++n) {
                 VariableValue vv = variables[n];
                 changes.Add(new EventEntry() {
                     Key = vv.Variable.Object.LocalObjectID,

@@ -5,6 +5,7 @@
 using NLog;
 using System;
 using System.Threading.Tasks;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Test
 {
@@ -177,9 +178,9 @@ namespace Ifak.Fast.Mediator.Test
 
         private async Task TestHistoryRaw(VariableRef v, Timestamp tStart, Timestamp tEnd, int maxValues, params VTQ[] expectedData) {
 
-            Action<VTTQ[]> test = (vttqs) => {
-                assert(vttqs.Length == expectedData.Length, $"vttqs.Length == {expectedData.Length}");
-                for (int i = 0; i < vttqs.Length; ++i) {
+            Action<VTTQs> test = (vttqs) => {
+                assert(vttqs.Count == expectedData.Length, $"vttqs.Length == {expectedData.Length}");
+                for (int i = 0; i < vttqs.Count; ++i) {
                     assert(vttqs[i].T == expectedData[i].T, $"vttqs[{i}].T == {expectedData[i].T}");
                     assert(vttqs[i].Q == expectedData[i].Q, $"vttqs[{i}].Q == {expectedData[i].Q}");
                     assert(vttqs[i].V == expectedData[i].V, $"vttqs[{i}].V == {expectedData[i].V}");

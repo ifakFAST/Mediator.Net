@@ -13,6 +13,14 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
+using ModuleInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ModuleInfo>;
+using LocationInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.LocationInfo>;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
+using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectValue>;
+using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -206,24 +214,26 @@ namespace Ifak.Fast.Mediator
                                 return m.AllObjects.Any(obj => obj.Variables != null && obj.Variables.Any(v => v.IsNumeric || v.Type == DataType.Bool));
                             };
 
-                            ModuleInfo[] res = core.modules.Select(m => new ModuleInfo() {
+                            ModuleInfos res = core.modules.Select(m => new ModuleInfo() {
                                 ID = m.ID,
                                 Name = m.Name,
                                 Enabled = m.Enabled,
                                 HasNumericVariables = hasNumericVariables(m),
-                            }).ToArray();
+                            }).ToList();
 
                             return Result_OK(res);
                         }
 
                     case GetLocationsReq.ID: {
-                            LocationInfo[] res = core.locations.Select(m => new LocationInfo() {
+
+                            LocationInfos res = core.locations.Select(m => new LocationInfo() {
                                 ID = m.ID,
                                 Name = m.Name,
                                 LongName = m.LongName,
                                 Parent = m.Parent,
                                 Config = m.Config
-                            }).ToArray();
+                            }).ToList();
+
                             return Result_OK(res);
                         }
 
@@ -252,7 +262,7 @@ namespace Ifak.Fast.Mediator
                             var req = (GetAllObjectsReq)request;
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
-                            var res = module.AllObjects;
+                            ObjectInfos res = module.AllObjects;
                             return Result_OK(res);
                         }
 
@@ -261,14 +271,14 @@ namespace Ifak.Fast.Mediator
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             string className = req.ClassName ?? "";
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
-                            var res = module.AllObjects.Where(x => x.ClassName == className).ToArray();
+                            ObjectInfos res = module.AllObjects.Where(x => x.ClassName == className).ToList();
                             return Result_OK(res);
                         }
 
                     case GetObjectsByIDReq.ID: {
                             var req = (GetObjectsByIDReq)request;
                             ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
-                            ObjectInfo[] result = objectIDs.Select(id => {
+                            ObjectInfos result = objectIDs.Select(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 foreach (ObjectInfo inf in module.AllObjects) {
                                     if (inf.ID == id) {
@@ -276,18 +286,18 @@ namespace Ifak.Fast.Mediator
                                     }
                                 }
                                 throw new Exception("No object found with id " + id.ToString());
-                            }).ToArray();
+                            }).ToList();
                             return Result_OK(result);
                         }
 
                     case GetChildrenOfObjectsReq.ID: {
                             var req = (GetChildrenOfObjectsReq)request;
                             ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
-                            ObjectInfo[] result = objectIDs.SelectMany(id => {
+                            ObjectInfos result = objectIDs.SelectMany(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
                                 return module.AllObjects.Where(x => x.Parent.HasValue && x.Parent.Value.Object == id).ToArray();
-                            }).ToArray();
+                            }).ToList();
                             return Result_OK(result);
                         }
 
@@ -300,9 +310,9 @@ namespace Ifak.Fast.Mediator
                                 return types.Any(t => t == type);
                             };
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
-                            var res = module.AllObjects
+                            ObjectInfos res = module.AllObjects
                                 .Where(x => x.Variables != null && x.Variables.Any(varHasType))
-                                .ToArray();
+                                .ToList();
                             return Result_OK(res);
                         }
 
@@ -326,7 +336,7 @@ namespace Ifak.Fast.Mediator
                             }).ToArray();
 
                             ObjectValue[][] allValues = await Task.WhenAll(tasks);
-                            ObjectValue[] allValuesFlat = allValues.SelectMany(x => x).ToArray();
+                            ObjectValues allValuesFlat = allValues.SelectMany(x => x).ToList();
 
                             return Result_OK(allValuesFlat);
                         }
@@ -351,7 +361,7 @@ namespace Ifak.Fast.Mediator
                             }).ToArray();
 
                             MemberValue[][] allValues = await Task.WhenAll(tasks);
-                            MemberValue[] allValuesFlat = allValues.SelectMany(x => x).ToArray();
+                            MemberValues allValuesFlat = allValues.SelectMany(x => x).ToList();
 
                             return Result_OK(allValuesFlat);
                         }
@@ -377,25 +387,27 @@ namespace Ifak.Fast.Mediator
 
                     case ReadVariablesReq.ID: {
                             var req = (ReadVariablesReq)request;
-                            VariableValue[] vvs = DoReadVariables(req.Variables, ignoreMissing: false);
-                            return Result_OK(vvs.Select(vv => vv.Value).ToArray());
+                            VariableValues vvs = DoReadVariables(req.Variables, ignoreMissing: false);
+                            VTQs res = vvs.Select(vv => vv.Value).ToList();
+                            return Result_OK(res);
                         }
 
                     case ReadVariablesIgnoreMissingReq.ID: {
                             var req = (ReadVariablesIgnoreMissingReq)request;
-                            VariableValue[] vvs = DoReadVariables(req.Variables, ignoreMissing: true);
+                            VariableValues vvs = DoReadVariables(req.Variables, ignoreMissing: true);
                             return Result_OK(vvs);
                         }
 
                     case ReadVariablesSyncReq.ID: {
                             var req = (ReadVariablesSyncReq)request;
-                            List<VariableValue> vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
-                            return Result_OK(vvs.Select(vv => vv.Value).ToArray());
+                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
+                            VTQs res = vvs.Select(vv => vv.Value).ToList();
+                            return Result_OK(res);
                         }
 
                     case ReadVariablesSyncIgnoreMissingReq.ID: {
                             var req = (ReadVariablesSyncIgnoreMissingReq)request;
-                            List<VariableValue> vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
+                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
                             return Result_OK(vvs);
                         }
 
@@ -429,10 +441,10 @@ namespace Ifak.Fast.Mediator
                             IList<ObjectInfo> allObj = module.AllObjects;
                             var varRefs = new List<VariableRef>();
                             GetAllVarRefsOfObjTree(allObj, obj, varRefs);
-                            VariableValue[] result = varRefs.Select(vr => {
+                            VariableValues result = varRefs.Select(vr => {
                                 VTQ vtq = module.GetVarValue(vr);
                                 return new VariableValue(vr, vtq);
-                            }).ToArray();
+                            }).ToList();
                             return Result_OK(result);
                         }
 
@@ -571,7 +583,7 @@ namespace Ifak.Fast.Mediator
                             BoundingMethod bounding = req.Bounding;
                             QualityFilter filter = req.Filter;
 
-                            IList<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
+                            List<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
                             return Result_OK(vttqs);
                         }
 
@@ -944,13 +956,13 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        private VariableValue[] DoReadVariables(VariableRef[] variables, bool ignoreMissing) {
+        private VariableValues DoReadVariables(VariableRef[] variables, bool ignoreMissing) {
             if (variables == null) throw new Exception("Missing variables");
-            VariableValue[] res = variables.Where(v => !ignoreMissing || VarExists(v)).Select(variable => {
+            VariableValues res = variables.Where(v => !ignoreMissing || VarExists(v)).Select(variable => {
                 string mod = variable.Object.ModuleID;
                 ModuleState module = ModuleFromIdOrThrow(mod);
                 return VariableValue.Make(variable, module.GetVarValue(variable));
-            }).ToArray();
+            }).ToList();
             return res;
         }
 

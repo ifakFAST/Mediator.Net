@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -119,7 +120,7 @@ namespace Ifak.Fast.Mediator.Calc
         //    }
         //}
 
-        public void UpdateInputValues(VariableRef[] variables, VTQ[] values) {
+        public void UpdateInputValues(VariableRef[] variables, VTQs values) {
             foreach (Config.Input input in CalcConfig.Inputs) {
                 if (input.Variable.HasValue) {
                     VariableRef va = input.Variable.Value;

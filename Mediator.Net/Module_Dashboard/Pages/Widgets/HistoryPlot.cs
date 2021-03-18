@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.Globalization;
 using OfficeOpenXml;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 {
@@ -36,14 +37,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return Task.FromResult(true);
         }
 
-        public class InitResult
-        {
-            public long WindowLeft { get; set; }
-            public long WindowRight { get; set; }
-            public Dictionary<string, ObjInfo> ObjectMap = new Dictionary<string, ObjInfo>();
-            public ModuleInfo[] Modules = new ModuleInfo[0];
-        }
-
         public Task<ReqResult> UiReq_GetItemsData() {
             ObjectRef[] usedObjects = configuration.Items.Select(it => it.Variable.Object).Distinct().ToArray();
             return Common.GetItemsData(Connection, usedObjects);
@@ -56,17 +49,17 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
             int maxDataPoints = configuration.PlotConfig.MaxDataPoints;
-            var listHistories = new List<VTTQ[]>();
+            var listHistories = new List<VTTQs>();
 
             QualityFilter filter = configuration.PlotConfig.FilterByQuality;
 
             foreach (var variable in Variables) {
                 try {
-                    VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, maxDataPoints, BoundingMethod.CompressToN, filter);
+                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, maxDataPoints, BoundingMethod.CompressToN, filter);
                     listHistories.Add(data);
                 }
                 catch (Exception) {
-                    listHistories.Add(new VTTQ[0]);
+                    listHistories.Add(new VTTQs());
                 }
             }
 
@@ -146,31 +139,31 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            var listHistories = new List<VTTQ[]>();
+            var listHistories = new List<VTTQs>();
 
             foreach (var variable in variables) {
                 try {
 
                     const int ChunckSize = 5000;
-                    VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
+                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
 
-                    if (data.Length < ChunckSize) {
+                    if (data.Count < ChunckSize) {
                         listHistories.Add(data);
                     }
                     else {
                         var buffer = new List<VTTQ>(data);
                         do {
-                            Timestamp t = data[data.Length - 1].T.AddMillis(1);
+                            Timestamp t = data[data.Count - 1].T.AddMillis(1);
                             data = await Connection.HistorianReadRaw(variable, t, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
                             buffer.AddRange(data);
                         }
-                        while (data.Length == ChunckSize);
+                        while (data.Count == ChunckSize);
 
-                        listHistories.Add(buffer.ToArray());
+                        listHistories.Add(buffer);
                     }
                 }
                 catch (Exception) {
-                    listHistories.Add(new VTTQ[0]);
+                    listHistories.Add(new VTTQs());
                 }
             }
 
@@ -237,10 +230,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     return;
                 }
 
-                var listHistories = new List<VTTQ[]>();
+                var listHistories = new List<VTTQs>();
 
                 foreach (var variable in Variables) {
-                    VTTQ[] data = await Connection.HistorianReadRaw(variable, tStart, tEnd, 10000, BoundingMethod.TakeFirstN);
+                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, 10000, BoundingMethod.TakeFirstN);
                     listHistories.Add(data);
                 }
 
@@ -261,12 +254,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private (Timestamp left, Timestamp right) GetTimeWindow(TimeRange range, List<VTTQ[]> data) {
+        private (Timestamp left, Timestamp right) GetTimeWindow(TimeRange range, List<VTTQs> data) {
 
             switch (range.Type) {
                 case TimeType.Last:
 
-                    Timestamp? latest = data.Any(x => x.Length > 0) ? data.Where(x => x.Length > 0).Max(vtqs => vtqs.Last().T) : (Timestamp?)null;
+                    Timestamp? latest = data.Any(x => x.Count > 0) ? data.Where(x => x.Count > 0).Max(vtqs => vtqs.Last().T) : (Timestamp?)null;
                     var now = Timestamp.Now.TruncateMilliseconds().AddSeconds(1);
                     var right = latest.HasValue ? Timestamp.MaxOf(now, latest.Value) : now;
                     var left = now - TimeRange.DurationFromTimeRange(range);
@@ -281,7 +274,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQ[]> variables) {
+        private void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables) {
 
             HistReader[] vars = variables.Select(v => new HistReader(v)).ToArray();
 
@@ -340,14 +333,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         class HistReader
         {
-            private readonly VTTQ[] data;
+            private readonly VTTQs data;
             private int idx = 0;
 
-            public HistReader(VTTQ[] data) {
+            public HistReader(VTTQs data) {
                 this.data = data;
             }
 
-            public Timestamp? Time => (idx < data.Length) ? data[idx].T : (Timestamp?)null;
+            public Timestamp? Time => (idx < data.Count) ? data[idx].T : (Timestamp?)null;
 
             public DataValue Value => data[idx].V;
 
@@ -355,7 +348,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 idx += 1;
             }
 
-            public bool HasValue => idx < data.Length;
+            public bool HasValue => idx < data.Count;
         }
 
         abstract class DataRecordArrayWriter

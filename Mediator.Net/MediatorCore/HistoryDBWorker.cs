@@ -105,8 +105,8 @@ namespace Ifak.Fast.Mediator
             public override bool IsReadRequest => false;
         }
 
-        public Task<IList<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
-            var promise = new TaskCompletionSource<IList<VTTQ>>();
+        public Task<List<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
+            var promise = new TaskCompletionSource<List<VTTQ>>();
             if (CheckPrecondition(promise)) {
                 queue.Post(new WI_ReadRaw() {
                     Variable = variable,
@@ -130,7 +130,7 @@ namespace Ifak.Fast.Mediator
             public BoundingMethod Bounding;
             public QualityFilter Filter;
 
-            public TaskCompletionSource<IList<VTTQ>> Promise { get; set; }
+            public TaskCompletionSource<List<VTTQ>> Promise { get; set; }
             public override bool IsReadRequest => true;
         }
 
@@ -323,10 +323,10 @@ namespace Ifak.Fast.Mediator
             try {
                 Channel ch = GetChannelOrNull(read.Variable);
                 if (ch == null) {
-                    promise.SetResult(new VTTQ[0]);
+                    promise.SetResult(new List<VTTQ>(0));
                 }
                 else {
-                    IList<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding), Map(read.Filter));
+                    List<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding), Map(read.Filter));
                     promise.SetResult(res);
                 }
             }

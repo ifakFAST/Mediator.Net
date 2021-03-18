@@ -74,8 +74,8 @@ namespace Ifak.Fast.Mediator.IO
             return readRequests[k];
         }
 
-        public void SetAllResults(RES[] results, Func<RES, ReadRequest, VTQ> f) {
-            for (int i = 0; i < results.Length; ++i) {
+        public void SetAllResults(IList<RES> results, Func<RES, ReadRequest, VTQ> f) {
+            for (int i = 0; i < results.Count; ++i) {
                 RES res = results[i];
                 int k = MapIdx(i);
                 values[k] = f(res, readRequests[k]);

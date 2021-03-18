@@ -266,7 +266,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             };
         }
 
-        public override IList<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
+        public override List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
             long N = CountData(startInclusive, endInclusive, filter);
 
@@ -312,7 +312,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             return res;
         }
 
-        private IList<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count, QualityFilter filter) {
+        private List<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count, QualityFilter filter) {
 
             PreparedStatement statement = stmtRawFirst;
             statement[0] = startInclusive.ToDateTime();

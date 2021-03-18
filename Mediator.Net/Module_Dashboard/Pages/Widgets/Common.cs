@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 {
@@ -36,19 +37,19 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             // ObjectRef[] objects = configuration.Items.Select(it => it.Variable.Object).Distinct().ToArray();
 
-            ObjectInfo[] infos;
+            ObjectInfos infos;
             try {
                 infos = await connection.GetObjectsByID(usedObjects);
             }
             catch (Exception) {
-                infos = new ObjectInfo[usedObjects.Length];
+                infos = new ObjectInfos(usedObjects.Length);
                 for (int i = 0; i < usedObjects.Length; ++i) {
                     ObjectRef obj = usedObjects[i];
                     try {
-                        infos[i] = await connection.GetObjectByID(obj);
+                        infos.Add(await connection.GetObjectByID(obj));
                     }
                     catch (Exception) {
-                        infos[i] = new ObjectInfo(obj, "???", "???");
+                        infos.Add(new ObjectInfo(obj, "???", "???"));
                     }
                 }
             }

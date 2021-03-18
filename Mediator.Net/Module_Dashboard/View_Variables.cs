@@ -54,10 +54,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     ObjectRef rootObj = rootObjInfo.ID;
 
-                    ObjectInfo[] objects = await Connection.GetAllObjects(moduleID);
+                    var objects = await Connection.GetAllObjects(moduleID);
                     SetObjectNameMap(objects);
 
-                    VariableValue[] values = await Connection.ReadAllVariablesOfObjectTree(rootObj);
+                    List<VariableValue> values = await Connection.ReadAllVariablesOfObjectTree(rootObj);
 
                     await Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), rootObj);
 
@@ -72,11 +72,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                         ModuleID = moduleID,
                         ModuleName = modules.FirstOrDefault(m => m.ID == moduleID).Name,
                         Variables = entries,
-                        Locations = locations,
+                        Locations = locations.ToArray(),
                     };
 
                     mapIdx.Clear();
-                    for (int n = 0; n < values.Length; ++n) {
+                    for (int n = 0; n < values.Count; ++n) {
                         mapIdx[values[n].Variable] = n;
                     }
 
@@ -131,7 +131,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             await Context.SendEventToUI("Change", changes);
         }
 
-        private void SetObjectNameMap(ObjectInfo[] objects) {
+        private void SetObjectNameMap(IEnumerable<ObjectInfo> objects) {
             mapObjectToObjectInfo.Clear();
             foreach (var obj in objects) {
                 mapObjectToObjectInfo[obj.ID] = obj;

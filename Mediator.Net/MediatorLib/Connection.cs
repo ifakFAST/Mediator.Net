@@ -6,6 +6,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
+using ModuleInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ModuleInfo>;
+using LocationInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.LocationInfo>;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
+using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectValue>;
+using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -29,12 +37,12 @@ namespace Ifak.Fast.Mediator
         /// <summary>
         /// Returns the modules that the running Mediator instance is composed of (can not change while Mediator is running).
         /// </summary>
-        public abstract Task<ModuleInfo[]> GetModules();
+        public abstract Task<ModuleInfos> GetModules();
 
         /// <summary>
         /// Returns the global list of locations that describes the hierarchy of locations of a plant or facility
         /// </summary>
-        public abstract Task<LocationInfo[]> GetLocations();
+        public abstract Task<LocationInfos> GetLocations();
 
         /// <summary>
         /// Returns the description of the user that is logged in via this connection.
@@ -52,21 +60,21 @@ namespace Ifak.Fast.Mediator
         /// Returns all objects of a specific module.
         /// </summary>
         /// <param name="moduleID">The id of the module</param>
-        public abstract Task<ObjectInfo[]> GetAllObjects(string moduleID);
+        public abstract Task<ObjectInfos> GetAllObjects(string moduleID);
 
         /// <summary>
         /// Returns all objects of a module that have a specific type/class.
         /// </summary>
         /// <param name="moduleID">The id of the module</param>
         /// <param name="className">The class/type name</param>
-        public abstract Task<ObjectInfo[]> GetAllObjectsOfType(string moduleID, string className);
+        public abstract Task<ObjectInfos> GetAllObjectsOfType(string moduleID, string className);
 
         /// <summary>
         /// Returns an object by id (ObjectRef)
         /// </summary>
         /// <param name="objectID">The object id</param>
         public virtual async Task<ObjectInfo> GetObjectByID(ObjectRef objectID) {
-            ObjectInfo[] objects = await GetObjectsByID(objectID);
+            ObjectInfos objects = await GetObjectsByID(objectID);
             return objects[0];
         }
 
@@ -74,13 +82,13 @@ namespace Ifak.Fast.Mediator
         /// Returns objects by id.
         /// </summary>
         /// <param name="objectIDs">The object ids</param>
-        public abstract Task<ObjectInfo[]> GetObjectsByID(params ObjectRef[] objectIDs);
+        public abstract Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs);
 
         /// <summary>
         /// Returns all objects that are direct children of a specific object
         /// </summary>
         /// <param name="objectID">The id of the parent object</param>
-        public virtual async Task<ObjectInfo[]> GetChildrenOfObject(ObjectRef objectID) {
+        public virtual async Task<ObjectInfos> GetChildrenOfObject(ObjectRef objectID) {
             return await GetChildrenOfObjects(objectID);
         }
 
@@ -88,21 +96,21 @@ namespace Ifak.Fast.Mediator
         /// Returns all objects that are direct children of specific objects
         /// </summary>
         /// <param name="objectIDs">The ids of the parent objects</param>
-        public abstract Task<ObjectInfo[]> GetChildrenOfObjects(params ObjectRef[] objectIDs);
+        public abstract Task<ObjectInfos> GetChildrenOfObjects(params ObjectRef[] objectIDs);
 
         /// <summary>
         /// Returns all objects of a module that have at least one variable of a given type
         /// </summary>
         /// <param name="moduleID">The id of the module</param>
         /// <param name="types">The required data type of the variables</param>
-        public abstract Task<ObjectInfo[]> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types);
+        public abstract Task<ObjectInfos> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types);
 
         /// <summary>
         /// Returns an entire object by id.
         /// </summary>
         /// <param name="objectID">The id of the object to return</param>
         public virtual async Task<ObjectValue> GetObjectValueByID(ObjectRef objectID) {
-            ObjectValue[] res = await GetObjectValuesByID(objectID);
+            ObjectValues res = await GetObjectValuesByID(objectID);
             return res[0];
         }
 
@@ -110,7 +118,7 @@ namespace Ifak.Fast.Mediator
         /// Returns entire objects by id.
         /// </summary>
         /// <param name="objectIDs">The ids of the objects to return</param>
-        public abstract Task<ObjectValue[]> GetObjectValuesByID(params ObjectRef[] objectIDs);
+        public abstract Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs);
 
         /// <summary>
         /// Returns the value of an object member.
@@ -118,7 +126,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="objectID">The id of the object</param>
         /// <param name="memberName">The name of the member to return</param>
         public virtual async Task<MemberValue> GetMemberValue(ObjectRef objectID, string memberName) {
-            MemberValue[] values = await GetMemberValues(new MemberRef[] { new MemberRef(objectID, memberName) });
+            MemberValues values = await GetMemberValues(new MemberRef[] { new MemberRef(objectID, memberName) });
             return values[0];
         }
 
@@ -128,7 +136,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="member">The reference to the member to return</param>
         /// <returns></returns>
         public virtual async Task<MemberValue> GetMemberValue(MemberRef member) {
-            MemberValue[] values = await GetMemberValues(new MemberRef[] { member });
+            MemberValues values = await GetMemberValues(new MemberRef[] { member });
             return values[0];
         }
 
@@ -136,7 +144,7 @@ namespace Ifak.Fast.Mediator
         /// Returns the values of object members.
         /// </summary>
         /// <param name="member">The references to members to return</param>
-        public abstract Task<MemberValue[]> GetMemberValues(MemberRef[] member);
+        public abstract Task<MemberValues> GetMemberValues(MemberRef[] member);
 
         /// <summary>
         /// Returns the entire object value of the parent object for a given object id.
@@ -273,7 +281,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variableName">The name of the variable to read</param>
         /// <returns></returns>
         public virtual async Task<VTQ> ReadVariable(ObjectRef objectID, string variableName) {
-            VTQ[] tmp = await ReadVariables(new VariableRef[] { VariableRef.Make(objectID, variableName) });
+            VTQs tmp = await ReadVariables(new VariableRef[] { VariableRef.Make(objectID, variableName) });
             return tmp[0];
         }
 
@@ -283,7 +291,7 @@ namespace Ifak.Fast.Mediator
         /// </summary>
         /// <param name="variable">The variable to read</param>
         public virtual async Task<VTQ> ReadVariable(VariableRef variable) {
-            VTQ[] tmp = await ReadVariables(new VariableRef[] { variable });
+            VTQs tmp = await ReadVariables(new VariableRef[] { variable });
             return tmp[0];
         }
 
@@ -292,14 +300,14 @@ namespace Ifak.Fast.Mediator
         /// Throws an exception if any of the variables does not exist.
         /// </summary>
         /// <param name="variables">The variables to read</param>
-        public abstract Task<VTQ[]> ReadVariables(VariableRef[] variables);
+        public abstract Task<VTQs> ReadVariables(VariableRef[] variables);
 
         /// <summary>
         /// Reads the current value of variables from the Mediator cache.
         /// If any of the variables does not exist, it will be excluded from the result.
         /// </summary>
         /// <param name="variables">The variables to read</param>
-        public abstract Task<VariableValue[]> ReadVariablesIgnoreMissing(VariableRef[] variables);
+        public abstract Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables);
 
         /// <summary>
         /// Reads the current value of a variable directly from the containing module.
@@ -319,7 +327,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variable">The variable to read</param>
         /// <param name="timeout">Optional timeout</param>
         public virtual async Task<VTQ> ReadVariableSync(VariableRef variable, Duration? timeout = null) {
-            VTQ[] tmp = await ReadVariablesSync(new VariableRef[] { variable }, timeout);
+            VTQs tmp = await ReadVariablesSync(new VariableRef[] { variable }, timeout);
             return tmp[0];
         }
 
@@ -330,7 +338,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variables">The variables to read</param>
         /// <param name="timeout">Optional timeout</param>
         /// <returns></returns>
-        public abstract Task<VTQ[]> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null);
+        public abstract Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null);
 
         /// <summary>
         /// Reads the current value of variables directly from the containing module.
@@ -340,13 +348,13 @@ namespace Ifak.Fast.Mediator
         /// <param name="variables">The variables to read</param>
         /// <param name="timeout">Optional timeout</param>
         /// <returns></returns>
-        public abstract Task<VariableValue[]> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null);
+        public abstract Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null);
 
         /// <summary>
         /// Reads the current value of all variables of all objects in the tree of objects defined by the given object reference.
         /// </summary>
         /// <param name="objectID">The object defining the root of the object tree</param>
-        public abstract Task<VariableValue[]> ReadAllVariablesOfObjectTree(ObjectRef objectID);
+        public abstract Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID);
 
         /// <summary>
         /// Writes a new value to a variable without waiting for the receiving module to complete the write request.
@@ -431,7 +439,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="maxValues">The maximum number of data points to return</param>
         /// <param name="bounding">Defines which data points to return when there are more data points in the time interval than maxValues</param>
         /// <param name="filter">Allows to filter the result based on the Quality property of the VTTQs</param>
-        public abstract Task<VTTQ[]> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone);
+        public abstract Task<VTTQs> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone);
 
         /// <summary>
         /// Counts the number of data points in the history of a variable within a certain time interval.

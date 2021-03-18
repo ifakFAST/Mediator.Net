@@ -591,7 +591,7 @@ namespace Ifak.Fast.Mediator
             this.variables.Load();
         }
 
-        public IList<ObjectInfo> AllObjects => allObjects;
+        public List<ObjectInfo> AllObjects => allObjects;
         private List<ObjectInfo> allObjects = new List<ObjectInfo>();
         private Dictionary<ObjectRef, ObjectInfo> mapObjects = new Dictionary<ObjectRef, ObjectInfo>();
 

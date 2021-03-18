@@ -100,7 +100,7 @@ namespace Ifak.Fast.Mediator.EventLog
             Timestamp tStart = range.GetStart();
             Timestamp tEnd = range.GetEnd();
 
-            VTTQ[] data = await Connection.HistorianReadRaw(Var, tStart, tEnd, 10000, BoundingMethod.TakeLastN);
+            var data = await Connection.HistorianReadRaw(Var, tStart, tEnd, 10000, BoundingMethod.TakeLastN);
             var events = data.Select(VTTQ2Event).ToList();
 
             Func<Timestamp, bool> isInRange = t => (t >= tStart && t <= tEnd);
