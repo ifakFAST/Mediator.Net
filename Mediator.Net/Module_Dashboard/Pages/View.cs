@@ -357,25 +357,25 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             public object Content { get; set; }
         }
 
-        public override Task OnVariableValueChanged(VariableValue[] variables) {
+        public override Task OnVariableValueChanged(List<VariableValue> variables) {
             PageState page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnVariableValueChanged(variables);
         }
 
-        public override Task OnConfigChanged(ObjectRef[] changedObjects) {
+        public override Task OnConfigChanged(List<ObjectRef> changedObjects) {
             PageState page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnConfigChanged(changedObjects);
         }
 
-        public override Task OnVariableHistoryChanged(HistoryChange[] changes) {
+        public override Task OnVariableHistoryChanged(List<HistoryChange> changes) {
             PageState page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnVariableHistoryChanged(changes);
         }
 
-        public override Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        public override Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
             PageState page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnAlarmOrEvents(alarmOrEvents);
@@ -547,19 +547,19 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             await Task.WhenAll(listWidgets.Select(w => w.OnDeactivate()));
         }
 
-        public async Task OnVariableValueChanged(VariableValue[] variables) {
+        public async Task OnVariableValueChanged(List<VariableValue> variables) {
             await Task.WhenAll(listWidgets.Select(w => w.OnVariableValueChanged(variables)));
         }
 
-        public async Task OnConfigChanged(ObjectRef[] changedObjects) {
+        public async Task OnConfigChanged(List<ObjectRef> changedObjects) {
             await Task.WhenAll(listWidgets.Select(w => w.OnConfigChanged(changedObjects)));
         }
 
-        public async Task OnVariableHistoryChanged(HistoryChange[] changes) {
+        public async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
             await Task.WhenAll(listWidgets.Select(w => w.OnVariableHistoryChanged(changes)));
         }
 
-        public async Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        public async Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
             await Task.WhenAll(listWidgets.Select(w => w.OnAlarmOrEvents(alarmOrEvents)));
         }
 

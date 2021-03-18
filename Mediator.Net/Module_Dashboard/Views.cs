@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Dashboard
@@ -49,7 +50,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public override Task OnVariableValueChanged(VariableValue[] variables) {
+        public override Task OnVariableValueChanged(List<VariableValue> variables) {
             Console.Out.WriteLine("OnVariableValueChanged " + variables[0].ToString());
             return Context.SendEventToUI("VarChange", variables);
         }

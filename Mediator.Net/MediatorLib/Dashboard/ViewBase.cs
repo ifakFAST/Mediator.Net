@@ -98,13 +98,13 @@ namespace Ifak.Fast.Mediator.Dashboard
             return ReqResult.Bad("Unknown command: " + command);
         }
 
-        public virtual Task OnConfigChanged(ObjectRef[] changedObjects) { return Task.FromResult(true); }
+        public virtual Task OnConfigChanged(List<ObjectRef> changedObjects) { return Task.FromResult(true); }
 
-        public virtual Task OnVariableValueChanged(VariableValue[] variables) { return Task.FromResult(true); }
+        public virtual Task OnVariableValueChanged(List<VariableValue> variables) { return Task.FromResult(true); }
 
-        public virtual Task OnVariableHistoryChanged(HistoryChange[] changes) { return Task.FromResult(true); }
+        public virtual Task OnVariableHistoryChanged(List<HistoryChange> changes) { return Task.FromResult(true); }
 
-        public virtual Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) { return Task.FromResult(true); }
+        public virtual Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) { return Task.FromResult(true); }
 
         Task EventListener.OnConnectionClosed() { return Task.FromResult(true); }
 

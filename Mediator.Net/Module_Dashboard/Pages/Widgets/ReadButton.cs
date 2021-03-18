@@ -2,6 +2,7 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
@@ -37,7 +38,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return ReqResult.OK(param1);
         }
 
-        public override Task OnVariableValueChanged(VariableValue[] variables) {
+        public override Task OnVariableValueChanged(List<VariableValue> variables) {
             if (configuration.Variable.HasValue) {
                 foreach (VariableValue vv in variables) {
                     if (vv.Variable == configuration.Variable.Value) {

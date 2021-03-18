@@ -7,6 +7,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Globalization;
+using System.Collections.Generic;
 
 namespace Ifak.Fast.Mediator.EventLog
 {
@@ -118,7 +119,7 @@ namespace Ifak.Fast.Mediator.EventLog
             return Transform(vttq.V.Object<AggregatedEvent>());
         }
 
-        public async override Task OnVariableHistoryChanged(HistoryChange[] changes) {
+        public async override Task OnVariableHistoryChanged(List<HistoryChange> changes) {
 
             var alarms = await GetActiveAlarms();
             var events = await GetEvents(lastTimeRange, alarms);

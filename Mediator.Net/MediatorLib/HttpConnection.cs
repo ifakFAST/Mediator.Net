@@ -737,22 +737,22 @@ namespace Ifak.Fast.Mediator
 
                 switch (eventName) {
                     case "OnVariableValueChanged": {
-                            VariableValue[] variables = theEvent.Variables.ToArray();
+                            List<VariableValue> variables = theEvent.Variables;
                             return listener.OnVariableValueChanged(variables);
                         }
 
                     case "OnVariableHistoryChanged": {
-                            HistoryChange[] variables = theEvent.Changes.ToArray();
+                            List<HistoryChange> variables = theEvent.Changes;
                             return listener.OnVariableHistoryChanged(variables);
                         }
 
                     case "OnConfigChanged": {
-                            ObjectRef[] changes = theEvent.ChangedObjects.ToArray();
+                            List<ObjectRef> changes = theEvent.ChangedObjects;
                             return listener.OnConfigChanged(changes);
                         }
 
                     case "OnAlarmOrEvent": {
-                            AlarmOrEvent[] alarmOrEvents = theEvent.Events.ToArray();
+                            List<AlarmOrEvent> alarmOrEvents = theEvent.Events;
                             return listener.OnAlarmOrEvents(alarmOrEvents);
                         }
 

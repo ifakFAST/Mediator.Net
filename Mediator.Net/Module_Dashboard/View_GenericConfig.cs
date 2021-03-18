@@ -265,11 +265,11 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        public override async Task OnVariableValueChanged(VariableValue[] variables) {
+        public override async Task OnVariableValueChanged(List<VariableValue> variables) {
 
-            var changes = new List<VarChange>(variables.Length);
+            var changes = new List<VarChange>(variables.Count);
 
-            for (int n = 0; n < variables.Length; ++n) {
+            for (int n = 0; n < variables.Count; ++n) {
                 VariableValue vv = variables[n];
                 mapVariables[vv.Variable] = vv.Value;
                 changes.Add(new VarChange() {

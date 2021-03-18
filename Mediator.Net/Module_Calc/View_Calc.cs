@@ -236,12 +236,12 @@ namespace Ifak.Fast.Mediator.Calc
             return MemberValue.Make(moduleID, id, entry.Key, dataValue);
         }
 
-        public override async Task OnVariableValueChanged(VariableValue[] variables) {
+        public override async Task OnVariableValueChanged(List<VariableValue> variables) {
             var changes = VarValsToEventEntries(variables);
             await Context.SendEventToUI("VarChange", changes);
         }
 
-        private static IList<EventEntry> VarValsToEventEntries(IList<VariableValue> variables) {
+        private static IList<EventEntry> VarValsToEventEntries(List<VariableValue> variables) {
             var changes = new List<EventEntry>(variables.Count);
             for (int n = 0; n < variables.Count; ++n) {
                 VariableValue vv = variables[n];

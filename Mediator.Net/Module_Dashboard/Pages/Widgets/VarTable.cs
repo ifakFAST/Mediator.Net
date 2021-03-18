@@ -156,7 +156,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             });
         }
 
-        public override async Task OnVariableValueChanged(VariableValue[] variables) {
+        public override async Task OnVariableValueChanged(List<VariableValue> variables) {
             if (IsLoaded) {
                 var payload = MakeValues(configuration, variables);
                 if (payload.Length > 0) {
@@ -165,7 +165,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        public override async Task OnVariableHistoryChanged(HistoryChange[] changes) {
+        public override async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
 
             Task[] tasks = configuration
                 .Items

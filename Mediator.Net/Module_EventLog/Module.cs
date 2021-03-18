@@ -117,13 +117,13 @@ namespace Ifak.Fast.Mediator.EventLog
             return vttq.V.Object<AggregatedEvent>();
         }
 
-        public Task OnConfigChanged(ObjectRef[] changedObjects) { return Task.FromResult(true); }
+        public Task OnConfigChanged(List<ObjectRef> changedObjects) { return Task.FromResult(true); }
 
-        public Task OnVariableValueChanged(VariableValue[] variables) { return Task.FromResult(true); }
+        public Task OnVariableValueChanged(List<VariableValue> variables) { return Task.FromResult(true); }
 
-        public Task OnVariableHistoryChanged(HistoryChange[] changes) { return Task.FromResult(true); }
+        public Task OnVariableHistoryChanged(List<HistoryChange> changes) { return Task.FromResult(true); }
 
-        public async Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        public async Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
             foreach (AlarmOrEvent ae in alarmOrEvents) {
                 await OnAlarmOrEvent(ae);
             }

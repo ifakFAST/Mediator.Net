@@ -206,7 +206,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        public override async Task OnVariableHistoryChanged(HistoryChange[] changes) {
+        public override async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
 
             var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
 

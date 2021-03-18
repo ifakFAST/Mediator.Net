@@ -267,7 +267,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return (ViewBase)viewObj;
         }
 
-        async Task EventListener.OnConfigChanged(ObjectRef[] changedObjects) {
+        async Task EventListener.OnConfigChanged(List<ObjectRef> changedObjects) {
             if (currentView != null && !closed) {
                 ViewBase view = currentView;
                 try {
@@ -279,7 +279,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        async Task EventListener.OnVariableValueChanged(VariableValue[] variables) {
+        async Task EventListener.OnVariableValueChanged(List<VariableValue> variables) {
             if (currentView != null && !closed) {
                 ViewBase view = currentView;
                 try {
@@ -291,7 +291,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        async Task EventListener.OnVariableHistoryChanged(HistoryChange[] changes) {
+        async Task EventListener.OnVariableHistoryChanged(List<HistoryChange> changes) {
             if (currentView != null && !closed) {
                 ViewBase view = currentView;
                 try {
@@ -303,7 +303,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        async Task EventListener.OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents) {
+        async Task EventListener.OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
             if (currentView != null && !closed) {
                 ViewBase view = currentView;
                 try {
@@ -324,7 +324,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         Task EventListener.OnConnectionClosed() {
-            Task ignored = Close();
+            _ = Close();
             return Task.FromResult(true);
         }
 

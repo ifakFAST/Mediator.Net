@@ -530,13 +530,13 @@ namespace Ifak.Fast.Mediator
 
     public interface EventListener
     {
-        Task OnConfigChanged(ObjectRef[] changedObjects);
+        Task OnConfigChanged(List<ObjectRef> changedObjects);
 
-        Task OnVariableValueChanged(VariableValue[] variables);
+        Task OnVariableValueChanged(List<VariableValue> variables);
 
-        Task OnVariableHistoryChanged(HistoryChange[] changes);
+        Task OnVariableHistoryChanged(List<HistoryChange> changes);
 
-        Task OnAlarmOrEvents(AlarmOrEvent[] alarmOrEvents);
+        Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents);
 
         Task OnConnectionClosed();
     }
