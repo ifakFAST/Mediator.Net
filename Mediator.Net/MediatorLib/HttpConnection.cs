@@ -767,28 +767,4 @@ namespace Ifak.Fast.Mediator
             }
         }
     }
-
-    public class ErrorResult
-    {
-        [Json.JsonProperty("error")]
-        public string Error { get; set; }
-    }
-
-    public class EventContent
-    {
-        [Json.JsonProperty("event")]
-        public string Event { get; set; }
-
-        [Json.JsonProperty("variables")]
-        public List<VariableValue> Variables { get; set; }
-
-        [Json.JsonProperty("changes")]
-        public List<HistoryChange> Changes { get; set; }
-
-        [Json.JsonProperty("changedObjects")]
-        public List<ObjectRef> ChangedObjects { get; set; }
-
-        [Json.JsonProperty("events")]
-        public List<AlarmOrEvent> Events { get; set; }
-    }
 }

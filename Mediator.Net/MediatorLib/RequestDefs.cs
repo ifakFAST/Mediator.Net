@@ -1,6 +1,7 @@
 ﻿using System;
 using Ifak.Fast.Mediator.Util;
 using Ifak.Fast.Json;
+using System.Collections.Generic;
 
 namespace Ifak.Fast.Mediator
 {
@@ -666,5 +667,37 @@ namespace Ifak.Fast.Mediator
 
         public override int GetID() => ID;
         public override string GetPath() => "Logout";
+    }
+
+
+    //////////////////////////////////////////////////////////////
+
+    public class ErrorResult
+    {
+        [JsonProperty("error")]
+        public string Error { get; set; }
+    }
+
+    public class EventContent
+    {
+        [JsonProperty("event")]
+        public string Event { get; set; }
+
+        [JsonProperty("variables")]
+        public List<VariableValue> Variables { get; set; }
+
+        [JsonProperty("changes")]
+        public List<HistoryChange> Changes { get; set; }
+
+        [JsonProperty("changedObjects")]
+        public List<ObjectRef> ChangedObjects { get; set; }
+
+        [JsonProperty("events")]
+        public List<AlarmOrEvent> Events { get; set; }
+
+        public bool ShouldSerializeVariables() => Variables != null;
+        public bool ShouldSerializeChanges() => Changes != null;
+        public bool ShouldSerializeChangedObjects() => ChangedObjects != null;
+        public bool ShouldSerializeEvents() => Events != null;
     }
 }

@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using Ifak.Fast.Mediator.Util;
-using Ifak.Fast.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -588,7 +587,7 @@ namespace Ifak.Fast.Mediator
                             BoundingMethod bounding = req.Bounding;
                             QualityFilter filter = req.Filter;
 
-                            List<VTTQ> vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
+                            VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
                             return Result_OK(vttqs);
                         }
 
@@ -1150,11 +1149,11 @@ namespace Ifak.Fast.Mediator
 
             foreach (var session in relevantSessions) {
 
-                ObjectRef[] filtered = session.ConfigChangeObjects
+                List<ObjectRef> filtered = session.ConfigChangeObjects
                     .Where(obj => changedObjectsWithAllParents.Contains(obj) || IsInTree(obj, changedObjects, parentMap))
-                    .ToArray();
+                    .ToList();
 
-                if (filtered.Length > 0) {
+                if (filtered.Count > 0) {
                     session.SendEvent_ConfigChanged(filtered);
                 }
             }
@@ -1415,7 +1414,7 @@ namespace Ifak.Fast.Mediator
                     lastTimeVarValues = Timestamp.Now;
                 }
                 else {
-                    var ignored = SendVariables(values);
+                    _ = SendVariables(values);
                 }
             }
 
@@ -1437,11 +1436,11 @@ namespace Ifak.Fast.Mediator
                     lastTimeVarHistory = Timestamp.Now;
                 }
                 else {
-                    var ignored = SendVariableHistory(changes);
+                    _ = SendVariableHistory(changes);
                 }
             }
 
-            public void SendEvent_ConfigChanged(ObjectRef[] changes) {
+            public void SendEvent_ConfigChanged(List<ObjectRef> changes) {
                 if (forceEventBuffering) {
                     foreach (ObjectRef obj in changes) {
                         bufferConfigChanges.Add(obj);
@@ -1449,7 +1448,7 @@ namespace Ifak.Fast.Mediator
                     lastTimeConfigChanged = Timestamp.Now;
                 }
                 else {
-                    var ignored = SendConfigChanged(changes);
+                    _ = SendConfigChanged(changes);
                 }
             }
 
@@ -1465,15 +1464,19 @@ namespace Ifak.Fast.Mediator
                     }
                 }
                 else {
-                    var ignored = SendAlarmOrEvents(new AlarmOrEvent[] { ae });
+                    _ = SendAlarmOrEvents(new List<AlarmOrEvent>() { ae });
                 }
             }
 
-            private async Task SendVariables(IList<VariableValue> values) {
+            private async Task SendVariables(List<VariableValue> values) {
 
                 try {
                     forceEventBuffering = true;
-                    await SendWebSocket("{ \"event\": \"OnVariableValueChanged\", \"variables\": ", values);
+                    var evnt = new EventContent() {
+                        Event = "OnVariableValueChanged",
+                        Variables = values
+                    };
+                    await SendWebSocket(evnt);
                 }
                 finally {
                     forceEventBuffering = false;
@@ -1481,11 +1484,15 @@ namespace Ifak.Fast.Mediator
                 CheckPendingEvents();
             }
 
-            private async Task SendVariableHistory(IList<HistoryChange> values) {
+            private async Task SendVariableHistory(List<HistoryChange> values) {
 
                 try {
                     forceEventBuffering = true;
-                    await SendWebSocket("{ \"event\": \"OnVariableHistoryChanged\", \"changes\": ", values);
+                    var evnt = new EventContent() {
+                        Event = "OnVariableHistoryChanged",
+                        Changes = values
+                    };
+                    await SendWebSocket(evnt);
                 }
                 finally {
                     forceEventBuffering = false;
@@ -1493,11 +1500,15 @@ namespace Ifak.Fast.Mediator
                 CheckPendingEvents();
             }
 
-            private async Task SendConfigChanged(ObjectRef[] changes) {
+            private async Task SendConfigChanged(List<ObjectRef> changes) {
 
                 try {
                     forceEventBuffering = true;
-                    await SendWebSocket("{ \"event\": \"OnConfigChanged\", \"changedObjects\": ", changes);
+                    var evnt = new EventContent() {
+                        Event = "OnConfigChanged",
+                        ChangedObjects = changes
+                    };
+                    await SendWebSocket(evnt);
                 }
                 finally {
                     forceEventBuffering = false;
@@ -1505,11 +1516,15 @@ namespace Ifak.Fast.Mediator
                 CheckPendingEvents();
             }
 
-            private async Task SendAlarmOrEvents(AlarmOrEvent[] events) {
+            private async Task SendAlarmOrEvents(List<AlarmOrEvent> events) {
 
                 try {
                     forceEventBuffering = true;
-                    await SendWebSocket("{ \"event\": \"OnAlarmOrEvent\", \"events\": ", events);
+                    var evnt = new EventContent() {
+                        Event = "OnAlarmOrEvent",
+                        Events = events
+                    };
+                    await SendWebSocket(evnt);
                 }
                 finally {
                     forceEventBuffering = false;
@@ -1526,31 +1541,31 @@ namespace Ifak.Fast.Mediator
 
                 switch (idx) {
                     case 0: {
-                            var nextValues = bufferVarValues.Values.ToArray();
+                            var nextValues = bufferVarValues.Values.ToList();
                             bufferVarValues.Clear();
                             lastTimeVarValues = Timestamp.Empty;
-                            Task ignored = SendVariables(nextValues);
+                            _ = SendVariables(nextValues);
                             break;
                         }
                     case 1: {
-                            var nextValues = bufferVarHistory.Values.ToArray();
+                            var nextValues = bufferVarHistory.Values.ToList();
                             bufferVarHistory.Clear();
                             lastTimeVarHistory = Timestamp.Empty;
-                            Task ignored = SendVariableHistory(nextValues);
+                            _ = SendVariableHistory(nextValues);
                             break;
                         }
                     case 2: {
-                            var nextValues = bufferConfigChanges.ToArray();
+                            var nextValues = bufferConfigChanges.ToList();
                             bufferConfigChanges.Clear();
                             lastTimeConfigChanged = Timestamp.Empty;
-                            Task ignored = SendConfigChanged(nextValues);
+                            _ = SendConfigChanged(nextValues);
                             break;
                         }
                     case 3: {
-                            var nextValues = bufferEvents.ToArray();
+                            var nextValues = bufferEvents.ToList();
                             bufferEvents.Clear();
                             lastTimeEvents = Timestamp.Empty;
-                            Task ignored = SendAlarmOrEvents(nextValues);
+                            _ = SendAlarmOrEvents(nextValues);
                             break;
                         }
                 }
@@ -1581,12 +1596,10 @@ namespace Ifak.Fast.Mediator
                 return minIdx;
             }
 
-            private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-
             private readonly ArraySegment<byte> ackByteBuffer = new ArraySegment<byte>(new byte[32]);
             private readonly MemoryStream streamSend = new MemoryStream(4*1024);
 
-            private async Task SendWebSocket(string msgStart, object content) {
+            private async Task SendWebSocket(EventContent evnt) {
 
                 if (LogoutCompleted) {
                     return;
@@ -1610,13 +1623,7 @@ namespace Ifak.Fast.Mediator
                     stream.Position = 0;
                     stream.SetLength(0);
 
-                    using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
-                        writer.Write(msgStart);
-                        if (content != null) {
-                            StdJson.ObjectToWriter(content, writer);
-                        }
-                        writer.Write("}");
-                    }
+                    StdJson.ObjectToStream(evnt, stream);
 
                     ArraySegment<byte> segment;
                     stream.TryGetBuffer(out segment);
@@ -1665,6 +1672,10 @@ namespace Ifak.Fast.Mediator
 
                 await Task.Delay(interval);
 
+                var evnt = new EventContent() {
+                    Event = "Ping"
+                };
+
                 while (HasEventSocket && !terminating && !LogoutCompleted) {
 
                     Duration x = Timestamp.Now - lastEventActivity;
@@ -1672,7 +1683,7 @@ namespace Ifak.Fast.Mediator
 
                         try {
                             forceEventBuffering = true;
-                            await SendWebSocket("{ \"event\": \"OnPing\" ", null);
+                            await SendWebSocket(evnt);
                         }
                         finally {
                             forceEventBuffering = false;
