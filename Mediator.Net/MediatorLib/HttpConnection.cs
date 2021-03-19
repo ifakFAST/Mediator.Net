@@ -40,7 +40,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener listener = null, int timeoutSeconds = 60) {
-            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})" /*, info.InProcApi*/);
+            var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})", info.InProcApi);
             await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
             return res;
         }
@@ -50,11 +50,11 @@ namespace Ifak.Fast.Mediator
 
         protected EventManager eventManager = null;
         protected string session = null;
-        //private InProcApi inProc = null;
+        private InProcApi inProc = null;
 
-        protected HttpConnection(string host, int port, TimeSpan timeout, string login /*, InProcApi inProc = null*/) {
+        protected HttpConnection(string host, int port, TimeSpan timeout, string login, InProcApi inProc = null) {
 
-            //this.inProc = inProc;
+            this.inProc = inProc;
             this.login = login;
 
             Uri baseUri = new Uri("http://" + host + ":" + port + "/Mediator/");
@@ -102,7 +102,7 @@ namespace Ifak.Fast.Mediator
                 var reqEnablePing = new EnableEventPingReq() {
                     Session = session
                 };
-                await PostJObject(reqEnablePing);
+                await PostVoid(reqEnablePing);
 
                 eventManager = new EventManager(listener);
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
@@ -125,7 +125,7 @@ namespace Ifak.Fast.Mediator
             };
 
             try {
-                await PostJObject(request);
+                await PostVoid(request);
             }
             catch (Exception) {
                 // Console.Error.WriteLine("Exception in " + nameof(HttpConnection) + "." + nameof(Close) + ": " + exp.Message);
@@ -172,50 +172,50 @@ namespace Ifak.Fast.Mediator
 
         public override async Task Ping() {
             var request = MakeSessionRequest<PingReq>();
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableAlarmsAndEvents(Severity minSeverity = Severity.Info) {
             var request = MakeSessionRequest<EnableAlarmsAndEventsReq>();
             request.MinSeverity = minSeverity;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task DisableAlarmsAndEvents() {
             var request = MakeSessionRequest<DisableAlarmsAndEventsReq>();
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableConfigChangedEvents(params ObjectRef[] objects) {
             var request = MakeSessionRequest<EnableConfigChangedEventsReq>();
             request.Objects = objects;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params VariableRef[] variables) {
             var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
             request.Variables = variables;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params ObjectRef[] idsOfEnabledTreeRoots) {
             var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
             request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params VariableRef[] variables) {
             var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
             request.Options = options;
             request.Variables = variables;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params ObjectRef[] idsOfEnabledTreeRoots) {
             var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
             request.Options = options;
             request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task DisableChangeEvents(bool disableVarValueChanges, bool disableVarHistoryChanges, bool disableConfigChanges) {
@@ -223,7 +223,7 @@ namespace Ifak.Fast.Mediator
             request.DisableVarValueChanges = disableVarValueChanges;
             request.DisableVarHistoryChanges = disableVarHistoryChanges;
             request.DisableConfigChanges = disableConfigChanges;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task<User> GetLoginUser() {
@@ -317,13 +317,13 @@ namespace Ifak.Fast.Mediator
         public override async Task HistorianDeleteAllVariablesOfObjectTree(ObjectRef objectID) {
             var request = MakeSessionRequest<HistorianDeleteAllVariablesOfObjectTreeReq>();
             request.ObjectID = objectID;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task HistorianDeleteVariables(params VariableRef[] variables) {
             var request = MakeSessionRequest<HistorianDeleteVariablesReq>();
             request.Variables = variables;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
@@ -347,7 +347,7 @@ namespace Ifak.Fast.Mediator
             request.Variable = variable;
             request.Data = data;
             request.Mode = mode;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override async Task<VTTQs> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
@@ -425,13 +425,13 @@ namespace Ifak.Fast.Mediator
             request.UpdateOrDeleteObjects = updateOrDeleteObjects;
             request.UpdateOrDeleteMembers = updateOrDeleteMembers;
             request.AddArrayElements = addArrayElements;
-            await PostJObject(request);
+            await PostVoid(request);
         }
 
         public override Task WriteVariables(VariableValue[] values) {
             var request = MakeSessionRequest<WriteVariablesReq>();
             request.Values = values;
-            return PostJObject(request);
+            return PostVoid(request);
         }
 
         public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValue[] values) {
@@ -493,11 +493,12 @@ namespace Ifak.Fast.Mediator
 
         #endregion
 
-        protected async Task PostJObject(RequestBase obj) {
+        protected async Task PostVoid(RequestBase obj) {
 
-            //if (inProc != null) {
-            //    return (JObject)await inProc.AddRequest(obj);
-            //}
+            if (inProc != null) {
+                await inProc.AddRequest(obj);
+                return;
+            }
 
             string path = obj.GetPath();
             var payload = new StringContent(StdJson.ObjectToString(obj), Encoding.UTF8);
@@ -507,26 +508,26 @@ namespace Ifak.Fast.Mediator
                 response = await client.PostAsync(path, payload);
             }
             catch (TaskCanceledException exp) {
-                OnConnectionBroken($"PostJObject {path} client.PostAsync TaskCanceled", exp);
+                OnConnectionBroken($"PostVoid {path} client.PostAsync TaskCanceled", exp);
                 throw new ConnectivityException("Time out");
             }
             catch (Exception exp) {
-                OnConnectionBroken($"PostJObject {path} client.PostAsync", exp);
+                OnConnectionBroken($"PostVoid {path} client.PostAsync", exp);
                 throw new ConnectivityException(exp.Message);
             }
 
             using (response) {
                 if (!response.IsSuccessStatusCode) {
-                    await ThrowError(response, $"PostJObject {path}");
+                    await ThrowError(response, $"PostVoid {path}");
                 }
             }
         }
 
         protected async Task<T> Post<T>(RequestBase obj) {
 
-            //if (inProc != null) {
-            //    return (T)await inProc.AddRequest(obj);
-            //}
+            if (inProc != null) {
+                return (T)await inProc.AddRequest(obj);
+            }
 
             string path = obj.GetPath();
             var requestStream = MemoryManager.GetMemoryStream("HttpConnection.Post");

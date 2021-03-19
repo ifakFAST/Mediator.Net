@@ -23,7 +23,7 @@ using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.Variab
 
 namespace Ifak.Fast.Mediator
 {
-    public class HandleClientRequests /* : InProcApi */
+    public class HandleClientRequests : InProcApi
     {
         private static Logger logger = LogManager.GetLogger("HandleClientRequests");
 
@@ -48,7 +48,7 @@ namespace Ifak.Fast.Mediator
 
         public void Start() {
             _ = PurgeExpiredSessions();
-            //_ = ProcessReqLoop();
+            _ = ProcessReqLoop();
         }
 
         private async Task PurgeExpiredSessions() {
@@ -1266,61 +1266,73 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        //public Task<object> AddRequest(RequestBase req) {
-        //    var promise = new TaskCompletionSource<object>();
-        //    ReqItem it = new ReqItem() {
-        //        Req = req,
-        //        Promise = promise
-        //    };
-        //    queue.Post(it);
-        //    return promise.Task;
-        //}
+        public Task<object> AddRequest(RequestBase req) {
+            var promise = new TaskCompletionSource<object>();
+            ReqItem it = new ReqItem() {
+                Req = req,
+                Promise = promise
+            };
+            queue.Post(it);
+            return promise.Task;
+        }
 
-        //public readonly AsyncQueue<ReqItem> queue = new AsyncQueue<ReqItem>();
+        private readonly AsyncQueue<ReqItem> queue = new AsyncQueue<ReqItem>();
 
-        //private async Task ProcessReqLoop() {
+        private async Task ProcessReqLoop() {
 
-        //    while (!terminating) {
+            while (true) {
 
-        //        ReqItem req = await queue.ReceiveAsync();
+                ReqItem req = await queue.ReceiveAsync();
+                // logger.Info($"Got Request {req.Req.GetPath()} Thread: {Thread.CurrentThread.ManagedThreadId}");
 
-        //        var promise = req.Promise;
-        //        try {
-        //            Task<ReqResult> t = Handle(req.Req);
-        //            _ = t.ContinueWith(task => {
-        //                try {
-        //                    ReqResult reqResult = task.Result;
-        //                    // logger.Info($"Got Request {req.ID} {reqResult.ResultCode}" );
-        //                    if (reqResult.ResultCode == ReqRes.OK) {
-        //                        promise.SetResult(reqResult.Obj);
-        //                    }
-        //                    else if (reqResult.ResultCode == ReqRes.Error) {
-        //                        var e = new RequestException(reqResult.Obj as string);
-        //                        promise.SetException(e);
-        //                    }
-        //                    else if (reqResult.ResultCode == ReqRes.ConnectivityErr) {
-        //                        var e = new ConnectivityException(reqResult.Obj as string);
-        //                        promise.SetException(e);
-        //                    }
-        //                }
-        //                catch (Exception exp) {
-        //                    var e = exp.GetBaseException() ?? exp;
-        //                    promise.SetException(e);
-        //                }
-        //            });
-        //        }
-        //        catch (Exception exp) {
-        //            var e = exp.GetBaseException() ?? exp;
-        //            promise.SetException(e);
-        //        }
-        //    }
-        //}
+                if (terminating) {
+                    if (req.Req is LogoutReq) {
+                        req.Promise.SetResult(null);
+                    }
+                    else {
+                        var e = new ConnectivityException($"Can not respond to {req.Req.GetPath()} request because system is shutting down.");
+                        req.Promise.SetException(e);
+                    }
+                    continue;
+                }
 
-        //public struct ReqItem
-        //{
-        //    public RequestBase Req { get; set; }
-        //    public TaskCompletionSource<object> Promise { get; set; }
-        //}
+                var promise = req.Promise;
+                try {
+                    Task<ReqResult> t = Handle(req.Req);
+                    _ = t.ContinueWith(task => {
+                        try {
+                            ReqResult reqResult = task.Result;
+                            // logger.Info($"Completed Request {req.Req.GetPath()} Thread: {Thread.CurrentThread.ManagedThreadId}");
+                            if (reqResult.ResultCode == ReqRes.OK) {
+                                promise.SetResult(reqResult.Obj);
+                            }
+                            else if (reqResult.ResultCode == ReqRes.Error) {
+                                var e = new RequestException(reqResult.Obj as string);
+                                promise.SetException(e);
+                            }
+                            else if (reqResult.ResultCode == ReqRes.ConnectivityErr) {
+                                var e = new ConnectivityException(reqResult.Obj as string);
+                                promise.SetException(e);
+                            }
+                        }
+                        catch (Exception exp) {
+                            var e = exp.GetBaseException() ?? exp;
+                            promise.TrySetException(e);
+                        }
+                    });
+                }
+                catch (Exception exp) {
+                    var e = exp.GetBaseException() ?? exp;
+                    promise.TrySetException(e);
+                }
+            }
+        }
+
+        public struct ReqItem
+        {
+            public RequestBase Req { get; set; }
+            public TaskCompletionSource<object> Promise { get; set; }
+        }
 
         public class SessionInfo
         {
@@ -1673,7 +1685,7 @@ namespace Ifak.Fast.Mediator
                 await Task.Delay(interval);
 
                 var evnt = new EventContent() {
-                    Event = "Ping"
+                    Event = "OnPing"
                 };
 
                 while (HasEventSocket && !terminating && !LogoutCompleted) {

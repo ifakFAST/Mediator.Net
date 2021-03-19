@@ -196,14 +196,14 @@ namespace Ifak.Fast.Mediator
         public NamedValue[] Configuration { get; set; }
         public Config GetConfigReader() => new Config(Configuration);
 
-        //[Json.JsonIgnore]
-        //public InProcApi InProcApi { get; set; }
+        [Json.JsonIgnore]
+        public InProcApi InProcApi { get; set; }
     }
 
-    //public interface InProcApi
-    //{
-    //    Task<object> AddRequest(RequestBase req);
-    //}
+    public interface InProcApi
+    {
+        Task<object> AddRequest(RequestBase req);
+    }
 
     public interface ModuleThread
     {

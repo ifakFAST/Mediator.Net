@@ -203,7 +203,7 @@ namespace Ifak.Fast.Mediator
                     LoginPort = listenPort,
                     DataFolder = GetDataFolder(module.Config),
                     Configuration = configItems.ToArray(),
-                    //InProcApi = reqHandler,
+                    InProcApi = reqHandler,
                 };
                 await module.Instance.Init(initInfo, restoreVariableValues, module, null);
                 ObjectInfo[] allObjs = await module.Instance.GetAllObjects();
