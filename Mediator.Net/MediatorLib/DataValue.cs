@@ -38,6 +38,8 @@ namespace Ifak.Fast.Mediator
 
         public string JSON => jsonOrNull ?? "null";
 
+        public string JsonOrNull => jsonOrNull;
+
         public override string ToString() => JSON;
 
         public override int GetHashCode() => IsEmpty ? 0 : jsonOrNull.GetHashCode();
