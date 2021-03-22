@@ -490,7 +490,7 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     }
                 }
-                notifier.Notify_VariableValuesChanged(listVarValues);
+                notifier.Notify_VariableValuesChanged(listVarValues.ToArray());
 
                 await WriteOutputVars(outputDest);
 

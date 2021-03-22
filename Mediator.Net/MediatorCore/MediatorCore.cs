@@ -678,11 +678,12 @@ namespace Ifak.Fast.Mediator
         private readonly SynchronizationContext syncContext = SynchronizationContext.Current;
 
         public void Notify_VariableValuesChanged(IList<VariableValue> values) {
-            syncContext.Post(delegate (object state) { core.Notify_VariableValuesChanged(this, values.ToArray()); }, null);
+            syncContext.Post(delegate (object state) { core.Notify_VariableValuesChanged(this, values); }, null);
         }
 
         public void Notify_ConfigChanged(IList<ObjectRef> changedObjects) {
-            syncContext.Post(delegate (object state) { core.Notify_ConfigChanged(this, changedObjects.ToArray()); }, null);
+            var changedObjectsArr = changedObjects.ToArray();
+            syncContext.Post(delegate (object state) { core.Notify_ConfigChanged(this, changedObjectsArr); }, null);
         }
 
         public void Notify_AlarmOrEvent(AlarmOrEventInfo alarmOrEventInfo) {
