@@ -404,7 +404,13 @@ namespace Ifak.Fast.Mediator
                     case ReadVariablesIgnoreMissingReq.ID: {
                             var req = (ReadVariablesIgnoreMissingReq)request;
                             VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
-                            return Result_OK(vvs);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            }
+
+                            return Result_OK(vvs, serializer);
                         }
 
                     case ReadVariablesSyncReq.ID: {
@@ -428,7 +434,13 @@ namespace Ifak.Fast.Mediator
                     case ReadVariablesSyncIgnoreMissingReq.ID: {
                             var req = (ReadVariablesSyncIgnoreMissingReq)request;
                             VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
-                            return Result_OK(vvs);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            }
+
+                            return Result_OK(vvs, serializer);
                         }
 
                     case WriteVariablesReq.ID: {
@@ -461,11 +473,20 @@ namespace Ifak.Fast.Mediator
                             IList<ObjectInfo> allObj = module.AllObjects;
                             var varRefs = new List<VariableRef>();
                             GetAllVarRefsOfObjTree(allObj, obj, varRefs);
-                            VariableValues result = varRefs.Select(vr => {
+
+                            VariableValues result = new VariableValues(varRefs.Count);
+                            for (int i = 0; i < varRefs.Count; ++i) {
+                                VariableRef vr = varRefs[i];
                                 VTQ vtq = module.GetVarValue(vr);
-                                return new VariableValue(vr, vtq);
-                            }).ToList();
-                            return Result_OK(result);
+                                result.Add(VariableValue.Make(vr, vtq));
+                            }
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            }
+
+                            return Result_OK(result, serializer);
                         }
 
                     case UpdateConfigReq.ID: {

@@ -365,7 +365,8 @@ namespace Ifak.Fast.Mediator
         public override async Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
             var request = MakeSessionRequest<ReadAllVariablesOfObjectTreeReq>();
             request.ObjectID = objectID;
-            return await Post<VariableValues>(request);
+            request.BinaryMode = 1;
+            return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
         public override async Task<VTQs> ReadVariables(VariableRef[] variables) {
@@ -380,7 +381,8 @@ namespace Ifak.Fast.Mediator
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
             request.Variables = variables;
-            return await Post<VariableValues>(request);
+            request.BinaryMode = 1;
+            return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
         public override async Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
@@ -408,8 +410,9 @@ namespace Ifak.Fast.Mediator
             var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
             request.Variables = variables;
             request.Timeout = timeout;
+            request.BinaryMode = 1;
 
-            Task<VariableValues> task = Post<VariableValues>(request);
+            Task<VariableValues> task = Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
