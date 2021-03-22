@@ -4,6 +4,7 @@
 
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
@@ -125,10 +126,10 @@ namespace Ifak.Fast.Mediator.Test
                     t = Timestamp.Now;
                 }
 
-                var values = new VariableValue[VariablesCount];
+                var values = new List<VariableValue>(VariablesCount);
                 for (int i = 0; i < VariablesCount; ++i) {
                     VTQ vtq = new VTQ(t, Quality.Good, DataValue.FromDouble(i));
-                    values[i] = new VariableValue(GetVarRef("Variable_" + i.ToString()), vtq);
+                    values.Add(new VariableValue(GetVarRef("Variable_" + i.ToString()), vtq));
                 }
                 notifier.Notify_VariableValuesChanged(values);
                 last = t;

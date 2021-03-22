@@ -438,14 +438,14 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        internal void Notify_VariableValuesChanged(ModuleState module, IList<VariableValue> values) {
+        internal void Notify_VariableValuesChanged(ModuleState module, List<VariableValue> values) {
             if (logger.IsDebugEnabled) {
                 logger.Debug("VariableValuesChanged:\n\t" + string.Join("\n\t", values.Select(x => x.ToString())));
             }
             module.UpdateVariableValues(values);
         }
 
-        internal void Notify_ConfigChanged(ModuleState module, IList<ObjectRef> changedObjects) {
+        internal void Notify_ConfigChanged(ModuleState module, List<ObjectRef> changedObjects) {
 
             try {
                 Task<ObjectInfo[]> task = module.Instance.GetAllObjects();
@@ -677,12 +677,12 @@ namespace Ifak.Fast.Mediator
 
         private readonly SynchronizationContext syncContext = SynchronizationContext.Current;
 
-        public void Notify_VariableValuesChanged(IList<VariableValue> values) {
+        public void Notify_VariableValuesChanged(List<VariableValue> values) {
             syncContext.Post(delegate (object state) { core.Notify_VariableValuesChanged(this, values); }, null);
         }
 
-        public void Notify_ConfigChanged(IList<ObjectRef> changedObjects) {
-            var changedObjectsArr = changedObjects.ToArray();
+        public void Notify_ConfigChanged(List<ObjectRef> changedObjects) {
+            var changedObjectsArr = changedObjects.ToList();
             syncContext.Post(delegate (object state) { core.Notify_ConfigChanged(this, changedObjectsArr); }, null);
         }
 

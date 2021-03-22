@@ -1194,7 +1194,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        internal void OnConfigChanged(IList<ObjectRef> changedObjects, Func<ObjectRef, ObjectRef?> parentMap) {
+        internal void OnConfigChanged(List<ObjectRef> changedObjects, Func<ObjectRef, ObjectRef?> parentMap) {
 
             if (terminating) return;
 
@@ -1239,7 +1239,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private bool IsInTree(ObjectRef obj, IList<ObjectRef> treeRoots, Func<ObjectRef, ObjectRef?> parentMap) {
+        private bool IsInTree(ObjectRef obj, List<ObjectRef> treeRoots, Func<ObjectRef, ObjectRef?> parentMap) {
             if (treeRoots.Contains(obj)) return true;
             ObjectRef? parent = parentMap(obj);
             if (parent.HasValue) {

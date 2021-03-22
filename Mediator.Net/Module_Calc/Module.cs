@@ -461,7 +461,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 InputValue[] inputValues = adapter.CurrentInputValues(t);
 
-                VariableValue[] inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToArray();
+                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 StepResult result = await adapter.Instance.Step(t, inputValues);
@@ -490,7 +490,7 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     }
                 }
-                notifier.Notify_VariableValuesChanged(listVarValues.ToArray());
+                notifier.Notify_VariableValuesChanged(listVarValues.ToList());
 
                 await WriteOutputVars(outputDest);
 

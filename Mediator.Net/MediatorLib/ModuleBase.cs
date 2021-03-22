@@ -215,8 +215,8 @@ namespace Ifak.Fast.Mediator
 
     public interface Notifier
     {
-        void Notify_VariableValuesChanged(IList<VariableValue> values);
-        void Notify_ConfigChanged(IList<ObjectRef> changedObjects);
+        void Notify_VariableValuesChanged(List<VariableValue> values);
+        void Notify_ConfigChanged(List<ObjectRef> changedObjects);
         void Notify_AlarmOrEvent(AlarmOrEventInfo eventInfo);
     }
 

@@ -373,7 +373,7 @@ namespace Ifak.Fast.Mediator.Util
                 modelAsString = SerializeModelToString(model);
                 WriteConfigFile(modelFileName, modelAsString);
                 if (notifier != null) {
-                    notifier.Notify_ConfigChanged(changedObjects.ToArray());
+                    notifier.Notify_ConfigChanged(changedObjects.ToList());
                 }
                 return Result.OK;
             }

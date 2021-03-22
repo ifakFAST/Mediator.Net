@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator
 {
@@ -281,24 +282,21 @@ namespace Ifak.Fast.Mediator
             public const byte ID_OnMethodCall = 13;
             public const byte ID_Browse = 14;
 
-            public void Notify_VariableValuesChanged(IList<VariableValue> values) {
-                SendEvent(values, ID_Event_VariableValuesChanged);
+            public void Notify_VariableValuesChanged(List<VariableValue> values) {
+                if (values == null || values.Count == 0) return;
+                connector.SendEvent(ID_Event_VariableValuesChanged, s => BinSeri.VariableValue_Serializer.Serialize(s, values));
             }
 
-            public void Notify_ConfigChanged(IList<ObjectRef> changedObjects) {
-                SendEvent(changedObjects, ID_Event_ConfigChanged);
+            public void Notify_ConfigChanged(List<ObjectRef> changedObjects) {
+                if (changedObjects == null || changedObjects.Count == 0) return;
+                connector.SendEvent(ID_Event_ConfigChanged, s => StdJson.ObjectToStream(changedObjects, s));
             }
 
             public void Notify_AlarmOrEvent(AlarmOrEventInfo eventInfo) {
                 connector.SendEvent(ID_Event_AlarmOrEvent, s => StdJson.ObjectToStream(eventInfo, s));
             }
 
-            private void SendEvent<T>(IList<T> values, byte eventID) {
-                if (values == null || values.Count == 0) return;
-                connector.SendEvent(eventID, s => StdJson.ObjectToStream(values, s));
-            }
-
-            private SingleThreadedAsync.SingleThreadSynchronizationContext syncContext = System.Threading.SynchronizationContext.Current as SingleThreadedAsync.SingleThreadSynchronizationContext;
+            private SingleThreadedAsync.SingleThreadSynchronizationContext syncContext = SynchronizationContext.Current as SingleThreadedAsync.SingleThreadSynchronizationContext;
 
 
             public void Post(Action action) {

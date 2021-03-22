@@ -4,6 +4,7 @@
 
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -143,12 +144,12 @@ namespace Ifak.Fast.Mediator
         private void onEvent(Event evt) {
             switch (evt.Code) {
                 case ExternalModuleHost.ModuleHelper.ID_Event_VariableValuesChanged:
-                    var values = StdJson.ObjectFromUtf8Stream<VariableValue[]>(evt.Payload);
+                    var values = BinSeri.VariableValue_Serializer.Deserialize(evt.Payload);
                     notifier.Notify_VariableValuesChanged(values);
                     break;
 
                 case ExternalModuleHost.ModuleHelper.ID_Event_ConfigChanged:
-                    var objects = StdJson.ObjectFromUtf8Stream<ObjectRef[]>(evt.Payload);
+                    var objects = StdJson.ObjectFromUtf8Stream<List<ObjectRef>>(evt.Payload);
                     notifier.Notify_ConfigChanged(objects);
                     break;
 
