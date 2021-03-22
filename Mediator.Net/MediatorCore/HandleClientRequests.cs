@@ -391,22 +391,38 @@ namespace Ifak.Fast.Mediator
 
                     case ReadVariablesReq.ID: {
                             var req = (ReadVariablesReq)request;
-                            VariableValues vvs = DoReadVariables(req.Variables, ignoreMissing: false);
-                            VTQs res = vvs.Select(vv => vv.Value).ToList();
-                            return Result_OK(res);
+                            VTQs res = DoReadVariables(req.Variables);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs);
+                            }
+
+                            return Result_OK(res, serializer);
                         }
 
                     case ReadVariablesIgnoreMissingReq.ID: {
                             var req = (ReadVariablesIgnoreMissingReq)request;
-                            VariableValues vvs = DoReadVariables(req.Variables, ignoreMissing: true);
+                            VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
                             return Result_OK(vvs);
                         }
 
                     case ReadVariablesSyncReq.ID: {
                             var req = (ReadVariablesSyncReq)request;
                             VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
-                            VTQs res = vvs.Select(vv => vv.Value).ToList();
-                            return Result_OK(res);
+
+                            int N = vvs.Count;
+                            VTQs res = new VTQs(N);
+                            for (int i = 0; i < N;  ++i) {
+                                res.Add(vvs[i].Value);
+                            }
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs);
+                            }
+
+                            return Result_OK(res, serializer);
                         }
 
                     case ReadVariablesSyncIgnoreMissingReq.ID: {
@@ -588,7 +604,13 @@ namespace Ifak.Fast.Mediator
                             QualityFilter filter = req.Filter;
 
                             VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
-                            return Result_OK(vttqs);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.BinaryMode > 0) {
+                                serializer = (obj, stream) => BinSeri.VTTQ_Serializer.Serialize(stream, obj as VTTQs);
+                            }
+
+                            return Result_OK(vttqs, serializer);
                         }
 
                     case HistorianCountReq.ID: {
@@ -890,7 +912,7 @@ namespace Ifak.Fast.Mediator
             return ignoredVars == null ? WriteResult.OK : WriteResult.Failure(ignoredVars);
         }
 
-        private async Task<List<VariableValue>> DoReadVariablesSync(VariableRef[] variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+        private async Task<VariableValues> DoReadVariablesSync(VariableRef[] variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
             if (variables == null) throw new Exception("Missing variables");
 
@@ -960,13 +982,31 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        private VariableValues DoReadVariables(VariableRef[] variables, bool ignoreMissing) {
+        private VTQs DoReadVariables(VariableRef[] variables) {
             if (variables == null) throw new Exception("Missing variables");
-            VariableValues res = variables.Where(v => !ignoreMissing || VarExists(v)).Select(variable => {
+            int N = variables.Length;
+            var res = new VTQs(N);
+            for (int i = 0; i < N; ++i) {
+                VariableRef variable = variables[i];
                 string mod = variable.Object.ModuleID;
                 ModuleState module = ModuleFromIdOrThrow(mod);
-                return VariableValue.Make(variable, module.GetVarValue(variable));
-            }).ToList();
+                res.Add(module.GetVarValue(variable));
+            }
+            return res;
+        }
+
+        private VariableValues DoReadVariablesIgnoreMissing(VariableRef[] variables) {
+            if (variables == null) throw new Exception("Missing variables");
+            int N = variables.Length;
+            var res = new VariableValues(N);
+            for (int i = 0; i < N; ++i) {
+                VariableRef variable = variables[i];
+                if (VarExists(variable)) {
+                    string mod = variable.Object.ModuleID;
+                    ModuleState module = ModuleFromIdOrThrow(mod);
+                    res.Add(VariableValue.Make(variable, module.GetVarValue(variable)));
+                }
+            }
             return res;
         }
 
@@ -1245,8 +1285,8 @@ namespace Ifak.Fast.Mediator
             return ReqResult.OK(null);
         }
 
-        private ReqResult Result_OK(object obj) {
-            return ReqResult.OK(obj);
+        private ReqResult Result_OK(object obj, Action<object, Stream> serializer = null) {
+            return ReqResult.OK(obj, serializer);
         }
 
         private ReqResult Result_BAD(string errMsg) {
@@ -1718,8 +1758,14 @@ namespace Ifak.Fast.Mediator
 
     public sealed class ReqResult : IDisposable {
 
-        public static ReqResult OK(object obj) {
-            return new ReqResult(ReqRes.OK, 200, obj);
+        private Action<object, Stream> serializer = (o, s) => StdJson.ObjectToStream(o, s);
+
+        public static ReqResult OK(object obj, Action<object, Stream> serializer = null) {
+            var res = new ReqResult(ReqRes.OK, 200, obj, serializer: serializer);
+            if (serializer != null) {
+                res.ContentType = "application/octet-stream";
+            }
+            return res;
         }
 
         public static ReqResult Err(string errMsg) {
@@ -1733,11 +1779,14 @@ namespace Ifak.Fast.Mediator
             return new ReqResult(ReqRes.ConnectivityErr, 400, errMsg, new MemoryStream(bytes));
         }
 
-        private ReqResult(ReqRes resRes, int statusCode, object obj, MemoryStream memStream = null) {
+        private ReqResult(ReqRes resRes, int statusCode, object obj, MemoryStream memStream = null, Action<object, Stream> serializer = null) {
             StatusCode = statusCode;
             ResultCode = resRes;
             Obj = obj;
             this.memStream = memStream;
+            if (serializer != null) {
+                this.serializer = serializer;
+            }
         }
 
         public object Obj { get; private set; }
@@ -1753,7 +1802,7 @@ namespace Ifak.Fast.Mediator
                 }
                 var res = MemoryManager.GetMemoryStream("HandleClientRequests.Result_OK");
                 try {
-                    StdJson.ObjectToStream(Obj, res);
+                    serializer(Obj, res);
                     res.Seek(0, SeekOrigin.Begin);
                 }
                 catch (Exception) {
@@ -1768,6 +1817,8 @@ namespace Ifak.Fast.Mediator
         public ReqRes ResultCode { get; private set; }
 
         public int StatusCode { get; private set; }
+
+        public string ContentType { get; private set; } = "application/json";
 
         public string AsString() => Encoding.UTF8.GetString(Bytes.ToArray());
 

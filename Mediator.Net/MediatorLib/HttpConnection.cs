@@ -358,7 +358,8 @@ namespace Ifak.Fast.Mediator
             request.MaxValues = maxValues;
             request.Bounding = bounding;
             request.Filter = filter;
-            return await Post<VTTQs>(request);
+            request.BinaryMode = 1;
+            return await Post<VTTQs>(request, binaryDeserializer: BinSeri.VTTQ_Serializer.Deserialize);
         }
 
         public override async Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
@@ -371,7 +372,8 @@ namespace Ifak.Fast.Mediator
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesReq>();
             request.Variables = variables;
-            return await Post<VTQs>(request);
+            request.BinaryMode = 1;
+            return await Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
         }
 
         public override async Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables) {
@@ -386,7 +388,8 @@ namespace Ifak.Fast.Mediator
             var request = MakeSessionRequest<ReadVariablesSyncReq>();
             request.Variables = variables;
             request.Timeout = timeout;
-            Task<VTQs> task = Post<VTQs>(request);
+            request.BinaryMode = 1;
+            Task<VTQs> task = Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
                     return await task;
@@ -523,7 +526,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        protected async Task<T> Post<T>(RequestBase obj) {
+        protected async Task<T> Post<T>(RequestBase obj, Func<Stream, T> binaryDeserializer = null) {
 
             if (inProc != null) {
                 return (T)await inProc.AddRequest(obj);
@@ -560,9 +563,15 @@ namespace Ifak.Fast.Mediator
             using (response) {
                 if (response.IsSuccessStatusCode) {
                     try {
-                        Stream stream = await response.Content.ReadAsStreamAsync();
-                        using (var reader = new StreamReader(stream, Encoding.UTF8)) {
-                            return StdJson.ObjectFromReader<T>(reader);
+                        using (Stream stream = await response.Content.ReadAsStreamAsync()) {
+                            if (binaryDeserializer != null && IsBinaryContentType(response.Content)) {
+                                return binaryDeserializer(stream);
+                            }
+                            else {
+                                using (var reader = new StreamReader(stream, Encoding.UTF8)) {
+                                    return StdJson.ObjectFromReader<T>(reader);
+                                }
+                            }
                         }
                     }
                     catch (TaskCanceledException exp) {
@@ -578,6 +587,15 @@ namespace Ifak.Fast.Mediator
                     await ThrowError(response, $"Post<T> {path}");
                     return default(T); // never come here
                 }
+            }
+        }
+
+        private static bool IsBinaryContentType(HttpContent content) {
+            try {
+                return content.Headers.ContentType.MediaType == "application/octet-stream";
+            }
+            catch (Exception) {
+                return true;
             }
         }
 

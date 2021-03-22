@@ -9,12 +9,12 @@ namespace Ifak.Fast.Mediator.BinSeri
         internal const byte Code = 89;
         private const byte Version = 1;
 
-        public static void Serialize(Stream stream, List<VTTQ> vtqs, bool asVTQ = false) {
+        public static void Serialize(Stream stream, List<VTTQ> vtqs) {
 
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true)) {
 
                 int N = vtqs.Count;
-                writer.Write(asVTQ ? VTQ_Serializer.Code : Code);
+                writer.Write(Code);
                 writer.Write(Version);
                 writer.Write(N);
                 if (N == 0) return;
@@ -125,40 +125,39 @@ namespace Ifak.Fast.Mediator.BinSeri
                         }
                     }
 
-                    if (!asVTQ) {
-                        long absTimeDiffDB = System.Math.Abs(timeDBDiff);
-                        if (absTimeDiffDB <= 0x3F) {
-                            int diffControl = (int)absTimeDiffDB;
-                            if (timeDBDiff < 0) {
-                                diffControl |= 0x40;
-                            }
+
+                    long absTimeDiffDB = System.Math.Abs(timeDBDiff);
+                    if (absTimeDiffDB <= 0x3F) {
+                        int diffControl = (int)absTimeDiffDB;
+                        if (timeDBDiff < 0) {
+                            diffControl |= 0x40;
+                        }
+                        writer.Write((byte)diffControl);
+                    }
+                    else {
+                        int diffControl = 0x80;
+                        if (timeDBDiff < 0) {
+                            diffControl |= 0x40;
+                        }
+                        if (absTimeDiffDB <= byte.MaxValue) {
+                            // 1 Byte
                             writer.Write((byte)diffControl);
+                            writer.Write((byte)absTimeDiffDB);
+                        }
+                        else if (absTimeDiffDB <= ushort.MaxValue) {
+                            diffControl |= 0x10; // 2 Byte
+                            writer.Write((byte)diffControl);
+                            writer.Write((ushort)absTimeDiffDB);
+                        }
+                        else if (absTimeDiffDB <= uint.MaxValue) {
+                            diffControl |= 0x20; // 4 Byte
+                            writer.Write((byte)diffControl);
+                            writer.Write((uint)absTimeDiffDB);
                         }
                         else {
-                            int diffControl = 0x80;
-                            if (timeDBDiff < 0) {
-                                diffControl |= 0x40;
-                            }
-                            if (absTimeDiffDB <= byte.MaxValue) {
-                                // 1 Byte
-                                writer.Write((byte)diffControl);
-                                writer.Write((byte)absTimeDiffDB);
-                            }
-                            else if (absTimeDiffDB <= ushort.MaxValue) {
-                                diffControl |= 0x10; // 2 Byte
-                                writer.Write((byte)diffControl);
-                                writer.Write((ushort)absTimeDiffDB);
-                            }
-                            else if (absTimeDiffDB <= uint.MaxValue) {
-                                diffControl |= 0x20; // 4 Byte
-                                writer.Write((byte)diffControl);
-                                writer.Write((uint)absTimeDiffDB);
-                            }
-                            else {
-                                diffControl |= 0x30; // 8 Byte
-                                writer.Write((byte)diffControl);
-                                writer.Write((long)absTimeDiffDB);
-                            }
+                            diffControl |= 0x30; // 8 Byte
+                            writer.Write((byte)diffControl);
+                            writer.Write((long)absTimeDiffDB);
                         }
                     }
 

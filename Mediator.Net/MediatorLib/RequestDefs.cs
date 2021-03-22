@@ -147,6 +147,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("variables")]
         public VariableRef[] Variables { get; set; }
+
+        [JsonProperty("bin")]
+        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class ReadVariablesIgnoreMissingReq : RequestBase
@@ -172,6 +175,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
+
+        [JsonProperty("bin")]
+        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
     }
@@ -505,6 +511,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("filter")]
         public QualityFilter Filter { get; set; } = QualityFilter.ExcludeNone;
+
+        [JsonProperty("bin")]
+        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class HistorianCountReq : RequestBase

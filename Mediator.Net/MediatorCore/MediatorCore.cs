@@ -371,7 +371,7 @@ namespace Ifak.Fast.Mediator
 
                     response.StatusCode = result.StatusCode;
                     response.ContentLength = result.Bytes.Length;
-                    response.ContentType = "application/json";
+                    response.ContentType = result.ContentType;
 
                     try {
                         await result.Bytes.CopyToAsync(response.Body);
