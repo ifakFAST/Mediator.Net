@@ -7,266 +7,273 @@ namespace Ifak.Fast.Mediator.BinSeri
     public static class VTTQ_Serializer
     {
         internal const byte Code = 89;
-        private const byte Version = 1;
 
-        public static void Serialize(Stream stream, List<VTTQ> vtqs) {
-
+        public static void Serialize(Stream stream, List<VTTQ> vtqs, byte binaryVersion) {
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true)) {
+                Serialize(writer, vtqs, binaryVersion);
+            }
+        }
 
-                int N = vtqs.Count;
-                writer.Write(Code);
-                writer.Write(Version);
-                writer.Write(N);
-                if (N == 0) return;
+        public static void Serialize(BinaryWriter writer, List<VTTQ> vtqs, byte binaryVersion) {
 
-                long timeBase = vtqs[0].T.JavaTicks;
-                long diffBase = N == 1 ? 0 : vtqs[1].T.JavaTicks - timeBase;
-                string valBase = vtqs[0].V.JSON;
+            int N = vtqs.Count;
+            writer.Write(binaryVersion);
+            writer.Write(Code);
+            writer.Write(N);
+            if (N == 0) return;
 
-                timeBase -= diffBase;
-                writer.Write(timeBase);
-                writer.Write(diffBase);
-                writer.Write(valBase);
+            long timeBase = vtqs[0].T.JavaTicks;
+            long diffBase = N == 1 ? 0 : vtqs[1].T.JavaTicks - timeBase;
+            string valBase = vtqs[0].V.JSON;
 
-                byte[] codeTable = Common.mCodeTable;
+            timeBase -= diffBase;
+            writer.Write(timeBase);
+            writer.Write(diffBase);
+            writer.Write(valBase);
 
-                for (int k = 0; k < N; ++k) {
+            byte[] codeTable = Common.mCodeTable;
 
-                    VTTQ vtq = vtqs[k];
+            for (int k = 0; k < N; ++k) {
 
-                    int control = (int)vtq.Q;
-                    long time = vtq.T.JavaTicks;
-                    long timeDBDiff = vtq.T_DB.JavaTicks - time;
-                    string val = vtq.V.JsonOrNull ?? "";
-                    long diff = time - timeBase;
+                VTTQ vtq = vtqs[k];
 
-                    int valLen = val.Length;
-                    int bytesComapctVal = (valLen + 1) / 2;
+                int control = (int)vtq.Q;
+                long time = vtq.T.JavaTicks;
+                long timeDBDiff = vtq.T_DB.JavaTicks - time;
+                string val = vtq.V.JsonOrNull ?? "";
+                long diff = time - timeBase;
 
-                    bool compactStr = true;
-                    bool writeStr = true;
+                int valLen = val.Length;
+                int bytesComapctVal = (valLen + 1) / 2;
 
-                    if (val == valBase) {
-                        control |= 0x04;
-                        writeStr = false;
-                    }
-                    else {
+                bool compactStr = true;
+                bool writeStr = true;
 
-                        if (bytesComapctVal > 0xFF) {
-                            compactStr = false;
-                            control |= 0x08;
-                        }
-                        else {
-                            for (int i = 0; i < valLen; i++) {
-                                int c = val[i];
-                                if ((c & 0xFF80) != 0 || codeTable[c] == 0xFF) {
-                                    compactStr = false;
-                                    control |= 0x08;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (diff == diffBase) {
-                        control |= 0x10;
-                        writer.Write((byte)control);
-                    }
-                    else {
-
-                        if (diff % 1000L == 0) {
-                            control |= 0x20;
-                            diff /= 1000L;
-                        }
-
-                        if (diff <= sbyte.MaxValue && diff >= sbyte.MinValue) {
-                            // 1 Byte
-                            writer.Write((byte)control);
-                            writer.Write((sbyte)diff);
-                        }
-                        else if (diff <= short.MaxValue && diff >= short.MinValue) {
-                            control |= 0x40; // 2 Byte
-                            writer.Write((byte)control);
-                            writer.Write((short)diff);
-                        }
-                        else if (diff <= int.MaxValue && diff >= int.MinValue) {
-                            control |= 0x80; // 4 Byte
-                            writer.Write((byte)control);
-                            writer.Write((int)diff);
-                        }
-                        else {
-                            control |= 0xC0; // 8 Byte
-                            writer.Write((byte)control);
-                            writer.Write(diff);
-                        }
-                    }
-
-                    if (writeStr) {
-
-                        if (compactStr) {
-
-                            writer.Write((byte)bytesComapctVal);
-
-                            for (int i = 0; i < valLen; i += 2) {
-                                char c0 = val[i];
-                                int x = (codeTable[c0] << 4);
-                                if (i + 1 < valLen) {
-                                    char c1 = val[i + 1];
-                                    x |= codeTable[c1];
-                                }
-                                else {
-                                    x |= 0x0F;
-                                }
-                                writer.Write((byte)x);
-                            }
-                        }
-                        else {
-                            writer.Write(val);
-                        }
-                    }
-
-
-                    long absTimeDiffDB = System.Math.Abs(timeDBDiff);
-                    if (absTimeDiffDB <= 0x3F) {
-                        int diffControl = (int)absTimeDiffDB;
-                        if (timeDBDiff < 0) {
-                            diffControl |= 0x40;
-                        }
-                        writer.Write((byte)diffControl);
-                    }
-                    else {
-                        int diffControl = 0x80;
-                        if (timeDBDiff < 0) {
-                            diffControl |= 0x40;
-                        }
-                        if (absTimeDiffDB <= byte.MaxValue) {
-                            // 1 Byte
-                            writer.Write((byte)diffControl);
-                            writer.Write((byte)absTimeDiffDB);
-                        }
-                        else if (absTimeDiffDB <= ushort.MaxValue) {
-                            diffControl |= 0x10; // 2 Byte
-                            writer.Write((byte)diffControl);
-                            writer.Write((ushort)absTimeDiffDB);
-                        }
-                        else if (absTimeDiffDB <= uint.MaxValue) {
-                            diffControl |= 0x20; // 4 Byte
-                            writer.Write((byte)diffControl);
-                            writer.Write((uint)absTimeDiffDB);
-                        }
-                        else {
-                            diffControl |= 0x30; // 8 Byte
-                            writer.Write((byte)diffControl);
-                            writer.Write((long)absTimeDiffDB);
-                        }
-                    }
-
-                    timeBase = time;
-                    diffBase = diff;
-                    valBase = val;
+                if (val == valBase) {
+                    control |= 0x04;
+                    writeStr = false;
                 }
+                else {
+
+                    if (bytesComapctVal > 0xFF) {
+                        compactStr = false;
+                        control |= 0x08;
+                    }
+                    else {
+                        for (int i = 0; i < valLen; i++) {
+                            int c = val[i];
+                            if ((c & 0xFF80) != 0 || codeTable[c] == 0xFF) {
+                                compactStr = false;
+                                control |= 0x08;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (diff == diffBase) {
+                    control |= 0x10;
+                    writer.Write((byte)control);
+                }
+                else {
+
+                    if (diff % 1000L == 0) {
+                        control |= 0x20;
+                        diff /= 1000L;
+                    }
+
+                    if (diff <= sbyte.MaxValue && diff >= sbyte.MinValue) {
+                        // 1 Byte
+                        writer.Write((byte)control);
+                        writer.Write((sbyte)diff);
+                    }
+                    else if (diff <= short.MaxValue && diff >= short.MinValue) {
+                        control |= 0x40; // 2 Byte
+                        writer.Write((byte)control);
+                        writer.Write((short)diff);
+                    }
+                    else if (diff <= int.MaxValue && diff >= int.MinValue) {
+                        control |= 0x80; // 4 Byte
+                        writer.Write((byte)control);
+                        writer.Write((int)diff);
+                    }
+                    else {
+                        control |= 0xC0; // 8 Byte
+                        writer.Write((byte)control);
+                        writer.Write(diff);
+                    }
+                }
+
+                if (writeStr) {
+
+                    if (compactStr) {
+
+                        writer.Write((byte)bytesComapctVal);
+
+                        for (int i = 0; i < valLen; i += 2) {
+                            char c0 = val[i];
+                            int x = (codeTable[c0] << 4);
+                            if (i + 1 < valLen) {
+                                char c1 = val[i + 1];
+                                x |= codeTable[c1];
+                            }
+                            else {
+                                x |= 0x0F;
+                            }
+                            writer.Write((byte)x);
+                        }
+                    }
+                    else {
+                        writer.Write(val);
+                    }
+                }
+
+
+                long absTimeDiffDB = System.Math.Abs(timeDBDiff);
+                if (absTimeDiffDB <= 0x3F) {
+                    int diffControl = (int)absTimeDiffDB;
+                    if (timeDBDiff < 0) {
+                        diffControl |= 0x40;
+                    }
+                    writer.Write((byte)diffControl);
+                }
+                else {
+                    int diffControl = 0x80;
+                    if (timeDBDiff < 0) {
+                        diffControl |= 0x40;
+                    }
+                    if (absTimeDiffDB <= byte.MaxValue) {
+                        // 1 Byte
+                        writer.Write((byte)diffControl);
+                        writer.Write((byte)absTimeDiffDB);
+                    }
+                    else if (absTimeDiffDB <= ushort.MaxValue) {
+                        diffControl |= 0x10; // 2 Byte
+                        writer.Write((byte)diffControl);
+                        writer.Write((ushort)absTimeDiffDB);
+                    }
+                    else if (absTimeDiffDB <= uint.MaxValue) {
+                        diffControl |= 0x20; // 4 Byte
+                        writer.Write((byte)diffControl);
+                        writer.Write((uint)absTimeDiffDB);
+                    }
+                    else {
+                        diffControl |= 0x30; // 8 Byte
+                        writer.Write((byte)diffControl);
+                        writer.Write((long)absTimeDiffDB);
+                    }
+                }
+
+                timeBase = time;
+                diffBase = diff;
+                valBase = val;
             }
         }
 
         public static List<VTTQ> Deserialize(Stream stream) {
-
             using (var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true)) {
+                return Deserialize(reader);
+            }
+        }
 
-                if (reader.ReadByte() != Code) throw new IOException("Failed to deserialize VTTQ[]: Wrong start byte");
-                if (reader.ReadByte() != Version) throw new IOException("Failed to deserialize VTTQ[]: Wrong version byte");
+        public static List<VTTQ> Deserialize(BinaryReader reader) {
 
-                int N = reader.ReadInt32();
-                var res = new List<VTTQ>(N);
+            int binaryVersion = reader.ReadByte();
+            if (binaryVersion == 0) throw new IOException("Failed to deserialize VTTQ[]: Version byte is zero");
+            if (binaryVersion > Common.CurrentBinaryVersion) throw new IOException("Failed to deserialize VTTQ[]: Wrong version byte");
+            if (reader.ReadByte() != Code) throw new IOException("Failed to deserialize VTTQ[]: Wrong start byte");
 
-                if (N == 0) return res;
+            int N = reader.ReadInt32();
+            var res = new List<VTTQ>(N);
 
-                long timeBase = reader.ReadInt64();
-                long diffBase = reader.ReadInt64();
-                string valBase = reader.ReadString();
+            if (N == 0) return res;
 
-                char[] buffer = new char[255];
-                char[] mapCode2Char = Common.mapCode2Char;
+            long timeBase = reader.ReadInt64();
+            long diffBase = reader.ReadInt64();
+            string valBase = reader.ReadString();
 
-                for (int k = 0; k < N; ++k) {
+            char[] buffer = new char[255];
+            char[] mapCode2Char = Common.mapCode2Char;
 
-                    int control = reader.ReadByte();
+            for (int k = 0; k < N; ++k) {
 
-                    Quality q = (Quality)(control & 0x03);
-                    long time = timeBase;
-                    long diff = diffBase;
-                    string val = valBase;
+                int control = reader.ReadByte();
 
-                    if ((control & 0x10) == 0) {
+                Quality q = (Quality)(control & 0x03);
+                long time = timeBase;
+                long diff = diffBase;
+                string val = valBase;
 
-                        long diffFactor = ((control & 0x20) == 0) ? 1 : 1000;
+                if ((control & 0x10) == 0) {
 
-                        int codeByteCount = (control & 0xC0) >> 6;
-                        if (codeByteCount == 0) {
-                            diff = diffFactor * reader.ReadSByte();
-                        }
-                        else if (codeByteCount == 1) {
-                            diff = diffFactor * reader.ReadInt16();
-                        }
-                        else if (codeByteCount == 2) {
-                            diff = diffFactor * reader.ReadInt32();
-                        }
-                        else if (codeByteCount == 3) {
-                            diff = diffFactor * reader.ReadInt64();
-                        }
+                    long diffFactor = ((control & 0x20) == 0) ? 1 : 1000;
+
+                    int codeByteCount = (control & 0xC0) >> 6;
+                    if (codeByteCount == 0) {
+                        diff = diffFactor * reader.ReadSByte();
                     }
-                    time += diff;
-
-                    if ((control & 0x04) == 0) {
-
-                        if ((control & 0x08) == 0) {
-                            int countBytes = reader.ReadByte();
-                            int j = 0;
-                            for (int i = 0; i < countBytes; i++) {
-                                int b = reader.ReadByte();
-                                int b0 = (0xF0 & b) >> 4;
-                                int b1 = (0x0F & b);
-                                buffer[j++] = mapCode2Char[b0];
-                                if (b1 == 0x0F) break;
-                                buffer[j++] = mapCode2Char[b1];
-                            }
-                            val = new string(buffer, 0, j);
-                        }
-                        else {
-                            val = reader.ReadString();
-                        }
+                    else if (codeByteCount == 1) {
+                        diff = diffFactor * reader.ReadInt16();
                     }
+                    else if (codeByteCount == 2) {
+                        diff = diffFactor * reader.ReadInt32();
+                    }
+                    else if (codeByteCount == 3) {
+                        diff = diffFactor * reader.ReadInt64();
+                    }
+                }
+                time += diff;
 
-                    long diffDB = 0;
-                    int diffControl = reader.ReadByte();
-                    if ((diffControl & 0x80) == 0) {
-                        int abs = diffControl & 0x3F;
-                        diffDB = (diffControl & 0x40) == 0 ? abs : -abs;
+                if ((control & 0x04) == 0) {
+
+                    if ((control & 0x08) == 0) {
+                        int countBytes = reader.ReadByte();
+                        int j = 0;
+                        for (int i = 0; i < countBytes; i++) {
+                            int b = reader.ReadByte();
+                            int b0 = (0xF0 & b) >> 4;
+                            int b1 = (0x0F & b);
+                            buffer[j++] = mapCode2Char[b0];
+                            if (b1 == 0x0F) break;
+                            buffer[j++] = mapCode2Char[b1];
+                        }
+                        val = new string(buffer, 0, j);
                     }
                     else {
-                        long diffFactor = (diffControl & 0x40) == 0 ? 1 : -1;
-                        int codeByteCount = (diffControl & 0x30) >> 4;
-                        if (codeByteCount == 0) {
-                            diffDB = diffFactor * reader.ReadByte();
-                        }
-                        else if (codeByteCount == 1) {
-                            diffDB = diffFactor * reader.ReadUInt16();
-                        }
-                        else if (codeByteCount == 2) {
-                            diffDB = diffFactor * reader.ReadUInt32();
-                        }
-                        else if (codeByteCount == 3) {
-                            diffDB = diffFactor * reader.ReadInt64();
-                        }
+                        val = reader.ReadString();
                     }
-
-                    res.Add(VTTQ.Make(DataValue.FromJSON(val), Timestamp.FromJavaTicks(time), Timestamp.FromJavaTicks(time + diffDB), q));
-
-                    timeBase = time;
-                    diffBase = diff;
-                    valBase = val;
                 }
-                return res;
+
+                long diffDB = 0;
+                int diffControl = reader.ReadByte();
+                if ((diffControl & 0x80) == 0) {
+                    int abs = diffControl & 0x3F;
+                    diffDB = (diffControl & 0x40) == 0 ? abs : -abs;
+                }
+                else {
+                    long diffFactor = (diffControl & 0x40) == 0 ? 1 : -1;
+                    int codeByteCount = (diffControl & 0x30) >> 4;
+                    if (codeByteCount == 0) {
+                        diffDB = diffFactor * reader.ReadByte();
+                    }
+                    else if (codeByteCount == 1) {
+                        diffDB = diffFactor * reader.ReadUInt16();
+                    }
+                    else if (codeByteCount == 2) {
+                        diffDB = diffFactor * reader.ReadUInt32();
+                    }
+                    else if (codeByteCount == 3) {
+                        diffDB = diffFactor * reader.ReadInt64();
+                    }
+                }
+
+                res.Add(VTTQ.Make(DataValue.FromJSON(val), Timestamp.FromJavaTicks(time), Timestamp.FromJavaTicks(time + diffDB), q));
+
+                timeBase = time;
+                diffBase = diff;
+                valBase = val;
             }
+            return res;
         }
     }
 }

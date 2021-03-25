@@ -154,6 +154,9 @@ namespace Ifak.Fast.Mediator
                         var response = new LoginResponse() {
                             Session = session,
                             Challenge = challenge,
+                            MediatorVersion = VersionInfo.ifakFAST_Str(),
+                            BinaryVersion = BinSeri.Common.CurrentBinaryVersion,
+                            BinMethods = RequestDefinitions.Definitions.Where(x => x.IsBinSerializable).Select(x => x.NumericID).ToArray(),
                         };
 
                         sessions[session] = new SessionInfo(session, challenge, origin, password, TerminateSession);
@@ -176,8 +179,15 @@ namespace Ifak.Fast.Mediator
                             sessions.Remove(session);
                             return Result_BAD("Invalid password");
                         }
+
+                        if (req.SelectedBinaryVersion < 0 || req.SelectedBinaryVersion > BinSeri.Common.CurrentBinaryVersion) {
+                            sessions.Remove(session);
+                            return Result_BAD("Invalid binary version");
+                        }
+
                         info.Valid = true;
                         info.UpdateLastActivity();
+                        info.BinaryVersion = req.SelectedBinaryVersion;
 
                         var response = new AuthenticateResponse() {
                             Session = session,
@@ -394,8 +404,8 @@ namespace Ifak.Fast.Mediator
                             VTQs res = DoReadVariables(req.Variables);
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
                             }
 
                             return Result_OK(res, serializer);
@@ -406,8 +416,8 @@ namespace Ifak.Fast.Mediator
                             VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
                             }
 
                             return Result_OK(vvs, serializer);
@@ -424,8 +434,8 @@ namespace Ifak.Fast.Mediator
                             }
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
                             }
 
                             return Result_OK(res, serializer);
@@ -436,8 +446,8 @@ namespace Ifak.Fast.Mediator
                             VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
                             }
 
                             return Result_OK(vvs, serializer);
@@ -482,8 +492,8 @@ namespace Ifak.Fast.Mediator
                             }
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
                             }
 
                             return Result_OK(result, serializer);
@@ -627,8 +637,8 @@ namespace Ifak.Fast.Mediator
                             VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
 
                             Action<object, Stream> serializer = null;
-                            if (req.BinaryMode > 0) {
-                                serializer = (obj, stream) => BinSeri.VTTQ_Serializer.Serialize(stream, obj as VTTQs);
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VTTQ_Serializer.Serialize(stream, obj as VTTQs, info.BinaryVersion);
                             }
 
                             return Result_OK(vttqs, serializer);
@@ -807,20 +817,25 @@ namespace Ifak.Fast.Mediator
             sessions.Remove(sessionID);
         }
 
-        private async Task<ReqResult> DoWriteVariablesSync(VariableValue[] values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+        private async Task<ReqResult> DoWriteVariablesSync(VariableValues values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
             if (values == null) throw new Exception("Missing values");
 
             VariableError[] ignoredVars = null;
             if (ignoreMissing) {
-                VariableValue[] filteredValues = values.Where(VarExists).ToArray();
-                if (filteredValues.Length < values.Length) {
+                VariableValues filteredValues = values.Where(VarExists).ToList();
+                if (filteredValues.Count < values.Count) {
                     ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, $"Variable {v.Variable.ToString()} does not exist.")).ToArray();
                 }
                 values = filteredValues;
             }
 
-            List<string> moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToList();
+            var set = new HashSet<string>();
+            for (int i = 0; i < values.Count; ++i) {
+                set.Add(values[i].Variable.Object.ModuleID);
+            }
+            string[] moduleIDs = set.ToArray();
+
             if (!ignoreMissing) {
                 foreach (string moduleID in moduleIDs) {
                     ModuleState module = ModuleFromIdOrThrow(moduleID);
@@ -887,18 +902,23 @@ namespace Ifak.Fast.Mediator
             return Result_OK(writeResult);
         }
 
-        private async Task<WriteResult> DoWriteVariables(VariableValue[] values, SessionInfo info, bool ignoreMissing) {
+        private async Task<WriteResult> DoWriteVariables(VariableValues values, SessionInfo info, bool ignoreMissing) {
             if (values == null) throw new Exception("Missing values");
 
             VariableError[] ignoredVars = null;
             if (ignoreMissing) {
-                VariableValue[] filteredValues = values.Where(VarExists).ToArray();
-                if (filteredValues.Length < values.Length) {
-                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, $"Variable {v.Variable.ToString()} does not exist.")).ToArray();
+                VariableValues filteredValues = values.Where(VarExists).ToList();
+                if (filteredValues.Count < values.Count) {
+                    ignoredVars = values.Where(VarMissing).Select(v => new VariableError(v.Variable, $"Variable {v.Variable} does not exist.")).ToArray();
                 }
                 values = filteredValues;
             }
-            string[] moduleIDs = values.Select(x => x.Variable.Object.ModuleID).Distinct().ToArray();
+
+            var set = new HashSet<string>();
+            for (int i = 0; i < values.Count; ++i) {
+                set.Add(values[i].Variable.Object.ModuleID);
+            }
+            string[] moduleIDs = set.ToArray();
 
             if (!ignoreMissing) {
                 foreach (string moduleID in moduleIDs) {
@@ -1400,6 +1420,8 @@ namespace Ifak.Fast.Mediator
             public string ID { get; set; }
             public bool terminating = false;
             public bool eventPingEnabled = false;
+
+            public byte BinaryVersion { get; set; }
 
             private Timestamp lastActivity = Timestamp.Now;
             private Timestamp lastEventActivity = Timestamp.Now;

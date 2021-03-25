@@ -20,6 +20,7 @@ using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberVa
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator
 {
@@ -27,6 +28,11 @@ namespace Ifak.Fast.Mediator
     {
         private string login = "";
         private Timestamp tLogin = Timestamp.Now;
+        private byte binaryVersion;
+        private readonly bool[] MapBinaryMessages = new bool[64];
+
+        private readonly MediaTypeWithQualityHeaderValue mediaJSON = new MediaTypeWithQualityHeaderValue("application/json");
+        private readonly MediaTypeWithQualityHeaderValue mediaBinary = new MediaTypeWithQualityHeaderValue("application/octet-stream");
 
         public static async Task<Connection> ConnectWithUserLogin(string host, int port, string login, string password, string[] roles = null, EventListener listener = null, int timeoutSeconds = 20) {
 
@@ -62,8 +68,6 @@ namespace Ifak.Fast.Mediator
             client = new HttpClient();
             client.Timeout = timeout;
             client.BaseAddress = baseUri;
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
         protected async Task DoConnectAndLogin(string login, string password, bool isModule, string[] roles, EventListener listener) {
@@ -77,9 +81,9 @@ namespace Ifak.Fast.Mediator
                 reqLogin.Login = login;
                 reqLogin.Roles = roles;
             }
+            reqLogin.MediatorVersion = VersionInfo.ifakFAST_Str();
 
             LoginResponse loginResponse = await Post<LoginResponse>(reqLogin);
-
             string session = loginResponse.Session;
             string challenge = loginResponse.Challenge;
             if (string.IsNullOrEmpty(session) || string.IsNullOrEmpty(challenge))
@@ -87,9 +91,18 @@ namespace Ifak.Fast.Mediator
 
             long hash = ClientDefs.strHash(password + challenge + password + session);
 
+            binaryVersion = Math.Min(loginResponse.BinaryVersion, BinSeri.Common.CurrentBinaryVersion);
+
+            foreach (int id in loginResponse.BinMethods) {
+                if (id >= 0 && id < MapBinaryMessages.Length) {
+                    MapBinaryMessages[id] = true;
+                }
+            }
+
             var reqAuth = new AuthenticateReq() {
                 Session = session,
-                Hash = hash
+                Hash = hash,
+                SelectedBinaryVersion = binaryVersion,
             };
 
             AuthenticateResponse authResponse = await Post<AuthenticateResponse>(reqAuth);
@@ -358,14 +371,12 @@ namespace Ifak.Fast.Mediator
             request.MaxValues = maxValues;
             request.Bounding = bounding;
             request.Filter = filter;
-            request.BinaryMode = 1;
             return await Post<VTTQs>(request, binaryDeserializer: BinSeri.VTTQ_Serializer.Deserialize);
         }
 
         public override async Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
             var request = MakeSessionRequest<ReadAllVariablesOfObjectTreeReq>();
             request.ObjectID = objectID;
-            request.BinaryMode = 1;
             return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
@@ -373,7 +384,6 @@ namespace Ifak.Fast.Mediator
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesReq>();
             request.Variables = variables;
-            request.BinaryMode = 1;
             return await Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
         }
 
@@ -381,7 +391,6 @@ namespace Ifak.Fast.Mediator
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
             request.Variables = variables;
-            request.BinaryMode = 1;
             return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
@@ -390,7 +399,6 @@ namespace Ifak.Fast.Mediator
             var request = MakeSessionRequest<ReadVariablesSyncReq>();
             request.Variables = variables;
             request.Timeout = timeout;
-            request.BinaryMode = 1;
             Task<VTQs> task = Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
             if (timeout.HasValue) {
                 if (task == await Task.WhenAny(task, Task.Delay(timeout.Value.ToTimeSpan()))) {
@@ -410,7 +418,6 @@ namespace Ifak.Fast.Mediator
             var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
             request.Variables = variables;
             request.Timeout = timeout;
-            request.BinaryMode = 1;
 
             Task<VariableValues> task = Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
             if (timeout.HasValue) {
@@ -436,19 +443,19 @@ namespace Ifak.Fast.Mediator
 
         public override Task WriteVariables(VariableValue[] values) {
             var request = MakeSessionRequest<WriteVariablesReq>();
-            request.Values = values;
+            request.Values = values.ToList(); // TODO!!
             return PostVoid(request);
         }
 
         public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValue[] values) {
             var request = MakeSessionRequest<WriteVariablesIgnoreMissingReq>();
-            request.Values = values;
+            request.Values = values.ToList(); // TODO!!
             return Post<WriteResult>(request);
         }
 
         public override async Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null) {
             var request = MakeSessionRequest<WriteVariablesSyncReq>();
-            request.Values = values;
+            request.Values = values.ToList(); // TODO!!
             request.Timeout = timeout;
             Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {
@@ -466,7 +473,7 @@ namespace Ifak.Fast.Mediator
 
         public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null) {
             var request = MakeSessionRequest<WriteVariablesSyncIgnoreMissingReq>();
-            request.Values = values;
+            request.Values = values.ToList(); // TODO!!!
             request.Timeout = timeout;
             Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {
@@ -503,29 +510,9 @@ namespace Ifak.Fast.Mediator
 
             if (inProc != null) {
                 await inProc.AddRequest(obj);
-                return;
             }
-
-            string path = obj.GetPath();
-            var payload = new StringContent(StdJson.ObjectToString(obj), Encoding.UTF8);
-
-            HttpResponseMessage response;
-            try {
-                response = await client.PostAsync(path, payload);
-            }
-            catch (TaskCanceledException exp) {
-                OnConnectionBroken($"PostVoid {path} client.PostAsync TaskCanceled", exp);
-                throw new ConnectivityException("Time out");
-            }
-            catch (Exception exp) {
-                OnConnectionBroken($"PostVoid {path} client.PostAsync", exp);
-                throw new ConnectivityException(exp.Message);
-            }
-
-            using (response) {
-                if (!response.IsSuccessStatusCode) {
-                    await ThrowError(response, $"PostVoid {path}");
-                }
+            else {
+                await PostInternal<bool>(obj, binaryDeserializer: null, expectReturn: false);
             }
         }
 
@@ -534,11 +521,28 @@ namespace Ifak.Fast.Mediator
             if (inProc != null) {
                 return (T)await inProc.AddRequest(obj);
             }
+            else {
+                return await PostInternal(obj, binaryDeserializer, expectReturn: true);
+            }
+        }
 
+        protected async Task<T> PostInternal<T>(RequestBase obj, Func<Stream, T> binaryDeserializer, bool expectReturn) {
+
+            MediaTypeHeaderValue contentType;
             string path = obj.GetPath();
             var requestStream = MemoryManager.GetMemoryStream("HttpConnection.Post");
             try {
-                StdJson.ObjectToStream(obj, requestStream);
+
+                if (obj is BinSerializable bin && MapBinaryMessages[obj.GetID()]) {
+                    using (var writer = new BinaryWriter(requestStream, Encoding.UTF8, leaveOpen: true)) {
+                        bin.BinSerialize(writer, binaryVersion);
+                    }
+                    contentType = mediaBinary;
+                }
+                else {
+                    StdJson.ObjectToStream(obj, requestStream);
+                    contentType = mediaJSON;
+                }
                 requestStream.Seek(0, SeekOrigin.Begin);
             }
             catch (Exception) {
@@ -549,9 +553,9 @@ namespace Ifak.Fast.Mediator
             HttpResponseMessage response = null;
 
             using (var payload = new StreamContent(requestStream)) {
-
+                payload.Headers.ContentType = contentType;
                 try {
-                    response = await client.PostAsync(path, payload);
+                    response = await PostAsync(path, payload, acceptBinary: binaryDeserializer != null);
                 }
                 catch (TaskCanceledException exp) {
                     OnConnectionBroken($"Post<T> {path} client.PostAsync TaskCanceled", exp);
@@ -564,26 +568,33 @@ namespace Ifak.Fast.Mediator
             }
 
             using (response) {
+
                 if (response.IsSuccessStatusCode) {
-                    try {
-                        using (Stream stream = await response.Content.ReadAsStreamAsync()) {
-                            if (binaryDeserializer != null && IsBinaryContentType(response.Content)) {
-                                return binaryDeserializer(stream);
-                            }
-                            else {
-                                using (var reader = new StreamReader(stream, Encoding.UTF8)) {
-                                    return StdJson.ObjectFromReader<T>(reader);
+
+                    if (expectReturn) {
+                        try {
+                            using (Stream stream = await response.Content.ReadAsStreamAsync()) {
+                                if (binaryDeserializer != null && IsBinaryContentType(response.Content)) {
+                                    return binaryDeserializer(stream);
+                                }
+                                else {
+                                    using (var reader = new StreamReader(stream, Encoding.UTF8)) {
+                                        return StdJson.ObjectFromReader<T>(reader);
+                                    }
                                 }
                             }
                         }
+                        catch (TaskCanceledException exp) {
+                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync TaskCanceled", exp);
+                            throw new ConnectivityException("Time out");
+                        }
+                        catch (Exception exp) {
+                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync", exp);
+                            throw new ConnectivityException(exp.Message);
+                        }
                     }
-                    catch (TaskCanceledException exp) {
-                        OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync TaskCanceled", exp);
-                        throw new ConnectivityException("Time out");
-                    }
-                    catch (Exception exp) {
-                        OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync", exp);
-                        throw new ConnectivityException(exp.Message);
+                    else {
+                        return default(T);
                     }
                 }
                 else {
@@ -593,13 +604,18 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        private Task<HttpResponseMessage> PostAsync(string requestUri, HttpContent content, bool acceptBinary) {
+            HttpRequestMessage msg = new HttpRequestMessage(HttpMethod.Post, new Uri(requestUri, UriKind.Relative));
+            msg.Content = content;
+            msg.Headers.Accept.Add(mediaJSON);
+            if (acceptBinary) {
+                msg.Headers.Accept.Add(mediaBinary);
+            }
+            return client.SendAsync(msg);
+        }
+
         private static bool IsBinaryContentType(HttpContent content) {
-            try {
-                return content.Headers.ContentType.MediaType == "application/octet-stream";
-            }
-            catch (Exception) {
-                return true;
-            }
+            return content.Headers.ContentType.MediaType == "application/octet-stream";
         }
 
         protected async Task ThrowError(HttpResponseMessage response, string context) {

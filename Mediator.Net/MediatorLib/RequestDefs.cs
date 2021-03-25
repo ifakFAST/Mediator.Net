@@ -1,7 +1,11 @@
 ﻿using System;
-using Ifak.Fast.Mediator.Util;
-using Ifak.Fast.Json;
 using System.Collections.Generic;
+using System.IO;
+using Ifak.Fast.Json;
+using Ifak.Fast.Mediator.BinSeri;
+using Ifak.Fast.Mediator.Util;
+
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -10,8 +14,13 @@ namespace Ifak.Fast.Mediator
         public int NumericID { get; private set; }
         public string HttpPath { get; private set; }
         public Type ReqType { get; private set; }
+        public bool IsBinSerializable { get; private set; }
+
+        public RequestBase MakeRequestObject() => makeObj();
 
         private ReqDef() { }
+
+        private Func<RequestBase> makeObj;
 
         public static ReqDef Make<T>() where T : RequestBase, new() {
             T t = new T();
@@ -21,6 +30,8 @@ namespace Ifak.Fast.Mediator
                 NumericID = id,
                 HttpPath = "/Mediator/" + path,
                 ReqType = typeof(T),
+                IsBinSerializable = t is BinSerializable,
+                makeObj = () => new T(),
             };
         }
     }
@@ -86,10 +97,42 @@ namespace Ifak.Fast.Mediator
         );
     }
 
+    public interface BinSerializable
+    {
+        void BinSerialize(BinaryWriter writer, byte binaryVersion);
+        void BinDeserialize(BinaryReader reader);
+    }
+
     public abstract class RequestBase
     {
+        protected const byte MemberUndefined = 0;
+        protected const byte MemberPresent = 1;
+        protected const byte MemberNull = 2;
+
         [JsonProperty("session")]
         public string Session { get; set; }
+
+        [JsonIgnore]
+        public bool ReturnBinaryResponse { get; set; }
+
+        protected void BaseBinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (string.IsNullOrEmpty(Session)) throw new Exception($"Failed to serialize {GetType().Name}: Session may not be null or empty");
+            writer.Write(binaryVersion);
+            writer.Write((byte)GetID());
+            writer.Write(MemberPresent);
+            writer.Write(Session);
+        }
+
+        protected byte BaseBinDeserialize(BinaryReader reader) {
+            byte binaryVersion = reader.ReadByte();
+            if (binaryVersion == 0) throw new IOException($"Failed to deserialize {GetType().Name}: Version byte is zero");
+            if (binaryVersion > Common.CurrentBinaryVersion) throw new IOException($"Failed to deserialize {GetType().Name}: Wrong version byte");
+            if (GetID() != reader.ReadByte()) throw new Exception($"Failed to deserialize {GetType().Name}: Wrong ID");
+            if (MemberPresent == reader.ReadByte()) { // Session != null
+                Session = reader.ReadString();
+            }
+            return binaryVersion;
+        }
 
         public abstract int GetID();
         public abstract string GetPath();
@@ -110,6 +153,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("roles")]
         public string[] Roles { get; set; }
+
+        [JsonProperty("version")]
+        public string MediatorVersion { get; set; } = ""; // introduced with version 1.4
     }
 
     public class LoginResponse
@@ -119,6 +165,15 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("challenge")]
         public string Challenge { get; set; }
+
+        [JsonProperty("version")]
+        public string MediatorVersion { get; set; } = ""; // introduced with version 1.4
+
+        [JsonProperty("bin_ver")]
+        public byte BinaryVersion { get; set; } = 0; // the maximum binary version supported by Mediator
+
+        [JsonProperty("bin_methods")]
+        public int[] BinMethods { get; set; } // the ids of those methods that may be requested in binary format
     }
 
     public class AuthenticateReq : RequestBase
@@ -130,6 +185,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("hash")]
         public long Hash { get; set; }
+
+        [JsonProperty("bin_ver")]
+        public byte SelectedBinaryVersion { get; set; } = 0;  // the binary version chosen by client
     }
 
     public class AuthenticateResponse
@@ -147,9 +205,6 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("variables")]
         public VariableRef[] Variables { get; set; }
-
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class ReadVariablesIgnoreMissingReq : RequestBase
@@ -161,9 +216,6 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("variables")]
         public VariableRef[] Variables { get; set; }
-
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class ReadVariablesSyncReq : RequestBase
@@ -178,9 +230,6 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
-
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
     }
@@ -198,9 +247,6 @@ namespace Ifak.Fast.Mediator
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
 
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
-
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
     }
 
@@ -212,10 +258,10 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariables";
 
         [JsonProperty("values")]
-        public VariableValue[] Values { get; set; }
+        public VariableValues Values { get; set; }
     }
 
-    public class WriteVariablesIgnoreMissingReq : RequestBase
+    public class WriteVariablesIgnoreMissingReq : RequestBase, BinSerializable
     {
         public const int ID = 8;
 
@@ -223,10 +269,24 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesIgnoreMissing";
 
         [JsonProperty("values")]
-        public VariableValue[] Values { get; set; }
+        public VariableValues Values { get; set; }
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableValue_Serializer.Serialize(writer, Values, binaryVersion);
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Values = VariableValue_Serializer.Deserialize(reader);
+            }
+        }
     }
 
-    public class WriteVariablesSyncReq : RequestBase
+    public class WriteVariablesSyncReq : RequestBase, BinSerializable
     {
         public const int ID = 9;
 
@@ -234,12 +294,38 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesSync";
 
         [JsonProperty("values")]
-        public VariableValue[] Values { get; set; }
+        public VariableValues Values { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+
+            writer.Write(MemberPresent);
+            VariableValue_Serializer.Serialize(writer, Values, binaryVersion);
+
+            writer.Write(Timeout.HasValue ? MemberPresent : MemberNull);
+            if (Timeout.HasValue) {
+                writer.Write((long)Timeout.Value.TotalMilliseconds);
+            }
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Values = VariableValue_Serializer.Deserialize(reader);
+            }
+            byte timeOutState = reader.ReadByte();
+            if (MemberPresent == timeOutState) {
+                Timeout = Duration.FromMilliseconds(reader.ReadInt64());
+            } else if (MemberNull == timeOutState) {
+                Timeout = null;
+            }
+        }
     }
 
     public class WriteVariablesSyncIgnoreMissingReq : RequestBase
@@ -250,7 +336,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesSyncIgnoreMissing";
 
         [JsonProperty("values")]
-        public VariableValue[] Values { get; set; }
+        public VariableValues Values { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
@@ -267,9 +353,6 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("objectID")]
         public ObjectRef ObjectID { get; set; }
-
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class GetModulesReq : RequestBase
@@ -520,9 +603,6 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("filter")]
         public QualityFilter Filter { get; set; } = QualityFilter.ExcludeNone;
-
-        [JsonProperty("bin")]
-        public int BinaryMode { get; set; } = 0; // 0 = JSON, 1 = CompactBinary format
     }
 
     public class HistorianCountReq : RequestBase

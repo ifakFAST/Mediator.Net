@@ -24,15 +24,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return CSharpCode2Assembly(code, new Assembly[0]);
         }
 
-        static string GetVersionifakFAST() {
-            Version v = typeof(Timestamp).Assembly.GetName().Version;
-            if (v == null) return "0";
-            return v.ToString(fieldCount: 3).Trim();
-        }
-
         public static CompileResult CSharpCode2Assembly(string code, IList<Assembly> refAssemblies) {
 
-            string version = GetVersionifakFAST();
+            string version = Util.VersionInfo.ifakFAST_Str();
 
             string hash = GetHash(code);
             string tempDir = Path.Combine(Path.GetTempPath(), "ifakFAST", version);

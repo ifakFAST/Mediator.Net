@@ -363,7 +363,7 @@ namespace Ifak.Fast.Mediator
 
                 //logger.Info("Client request: " + request.Path);
 
-                RequestBase obj = await GetRequestObject(request, reqDef.ReqType);
+                RequestBase obj = await GetRequestObject(request, reqDef);
 
                 using (ReqResult result = await reqHandler.Handle(obj)) {
 
@@ -387,14 +387,36 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private async Task<RequestBase> GetRequestObject(HttpRequest request, Type t) {
+        private async Task<RequestBase> GetRequestObject(HttpRequest request, ReqDef def) {
+
+            const string mediaBinary = "application/octet-stream";
 
             using (var memoryStream = MemoryManager.GetMemoryStream("HandleClientRequest")) {
+
                 using (var body = request.Body) {
                     await body.CopyToAsync(memoryStream).ConfigureAwait(false);
                 }
                 memoryStream.Seek(0, SeekOrigin.Begin);
-                return (RequestBase)StdJson.ObjectFromUtf8Stream(memoryStream, t);
+
+                RequestBase ret;
+
+                bool binaryRequest = request.ContentType == mediaBinary;
+                if (binaryRequest) {
+                    ret = def.MakeRequestObject();
+                    using (var reader = new BinaryReader(memoryStream, Encoding.UTF8, leaveOpen: false)) {
+                        BinSerializable x = (BinSerializable)ret;
+                        x.BinDeserialize(reader);
+                    }
+                }
+                else {
+                    ret = (RequestBase)StdJson.ObjectFromUtf8Stream(memoryStream, def.ReqType);
+                }
+
+                var accept = request.Headers["Accept"];
+                bool binaryResponse = accept.Any(a => a.Contains(mediaBinary));
+                ret.ReturnBinaryResponse = binaryResponse;
+
+                return ret;
             }
         }
 

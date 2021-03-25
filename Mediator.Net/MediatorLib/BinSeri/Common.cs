@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Ifak.Fast.Mediator.BinSeri
 {
-    internal static class Common
+    public static class Common
     {
+        public const byte CurrentBinaryVersion = 1;
+
         internal static readonly char[] mapCode2Char = new char[] {
             '0', // 0
             '1', // 1

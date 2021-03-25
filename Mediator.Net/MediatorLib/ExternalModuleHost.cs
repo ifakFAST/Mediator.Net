@@ -284,7 +284,7 @@ namespace Ifak.Fast.Mediator
 
             public void Notify_VariableValuesChanged(List<VariableValue> values) {
                 if (values == null || values.Count == 0) return;
-                connector.SendEvent(ID_Event_VariableValuesChanged, s => BinSeri.VariableValue_Serializer.Serialize(s, values));
+                connector.SendEvent(ID_Event_VariableValuesChanged, s => BinSeri.VariableValue_Serializer.Serialize(s, values, BinSeri.Common.CurrentBinaryVersion));
             }
 
             public void Notify_ConfigChanged(List<ObjectRef> changedObjects) {
