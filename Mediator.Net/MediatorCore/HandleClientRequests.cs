@@ -953,15 +953,19 @@ namespace Ifak.Fast.Mediator
             return ignoredVars == null ? WriteResult.OK : WriteResult.Failure(ignoredVars);
         }
 
-        private async Task<VariableValues> DoReadVariablesSync(VariableRef[] variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+        private async Task<VariableValues> DoReadVariablesSync(List<VariableRef> variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
             if (variables == null) throw new Exception("Missing variables");
 
-            if (ignoreMissing) {
-                variables = variables.Where(VarExists).ToArray();
+            if (ignoreMissing && !variables.All(VarExists)) {
+                variables = variables.Where(VarExists).ToList();
             }
 
-            List<string> moduleIDs = variables.Select(x => x.Object.ModuleID).Distinct().ToList();
+            var set = new HashSet<string>();
+            for (int i = 0; i < variables.Count; ++i) {
+                set.Add(variables[i].Object.ModuleID);
+            }
+            List<string> moduleIDs = set.ToList();
 
             if (!ignoreMissing) {
                 foreach (string moduleID in moduleIDs) {
@@ -1010,7 +1014,7 @@ namespace Ifak.Fast.Mediator
 
             VTQ[][] res = await Task.WhenAll(tasks);
             int[] ii = new int[moduleIDs.Count];
-            var result = new List<VariableValue>(variables.Length);
+            var result = new VariableValues(variables.Count);
             foreach (VariableRef vref in variables) {
                 string mid = vref.Object.ModuleID;
                 int mIdx = moduleIDs.IndexOf(mid);
@@ -1023,9 +1027,9 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        private VTQs DoReadVariables(VariableRef[] variables) {
+        private VTQs DoReadVariables(List<VariableRef> variables) {
             if (variables == null) throw new Exception("Missing variables");
-            int N = variables.Length;
+            int N = variables.Count;
             var res = new VTQs(N);
             for (int i = 0; i < N; ++i) {
                 VariableRef variable = variables[i];
@@ -1036,9 +1040,9 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        private VariableValues DoReadVariablesIgnoreMissing(VariableRef[] variables) {
+        private VariableValues DoReadVariablesIgnoreMissing(List<VariableRef> variables) {
             if (variables == null) throw new Exception("Missing variables");
-            int N = variables.Length;
+            int N = variables.Count;
             var res = new VariableValues(N);
             for (int i = 0; i < N; ++i) {
                 VariableRef variable = variables[i];

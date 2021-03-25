@@ -6,6 +6,7 @@ using Ifak.Fast.Mediator.BinSeri;
 using Ifak.Fast.Mediator.Util;
 
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -196,7 +197,7 @@ namespace Ifak.Fast.Mediator
         public string Session { get; set; }
     }
 
-    public class ReadVariablesReq : RequestBase
+    public class ReadVariablesReq : RequestBase, BinSerializable
     {
         public const int ID = 3;
 
@@ -204,10 +205,24 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariables";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRefs Variables { get; set; }
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableRef_Serializer.Serialize(writer, Variables, binaryVersion);
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Variables = VariableRef_Serializer.Deserialize(reader);
+            }
+        }
     }
 
-    public class ReadVariablesIgnoreMissingReq : RequestBase
+    public class ReadVariablesIgnoreMissingReq : RequestBase, BinSerializable
     {
         public const int ID = 4;
 
@@ -215,10 +230,24 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesIgnoreMissing";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRefs Variables { get; set; }
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableRef_Serializer.Serialize(writer, Variables, binaryVersion);
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Variables = VariableRef_Serializer.Deserialize(reader);
+            }
+        }
     }
 
-    public class ReadVariablesSyncReq : RequestBase
+    public class ReadVariablesSyncReq : RequestBase, BinSerializable
     {
         public const int ID = 5;
 
@@ -226,15 +255,40 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesSync";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRefs Variables { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableRef_Serializer.Serialize(writer, Variables, binaryVersion);
+            writer.Write(Timeout.HasValue ? MemberPresent : MemberNull);
+            if (Timeout.HasValue) {
+                writer.Write((long)Timeout.Value.TotalMilliseconds);
+            }
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Variables = VariableRef_Serializer.Deserialize(reader);
+            }
+            byte timeOutState = reader.ReadByte();
+            if (MemberPresent == timeOutState) {
+                Timeout = Duration.FromMilliseconds(reader.ReadInt64());
+            }
+            else if (MemberNull == timeOutState) {
+                Timeout = null;
+            }
+        }
     }
 
-    public class ReadVariablesSyncIgnoreMissingReq : RequestBase
+    public class ReadVariablesSyncIgnoreMissingReq : RequestBase, BinSerializable
     {
         public const int ID = 6;
 
@@ -242,15 +296,40 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesSyncIgnoreMissing";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRefs Variables { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableRef_Serializer.Serialize(writer, Variables, binaryVersion);
+            writer.Write(Timeout.HasValue ? MemberPresent : MemberNull);
+            if (Timeout.HasValue) {
+                writer.Write((long)Timeout.Value.TotalMilliseconds);
+            }
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Variables = VariableRef_Serializer.Deserialize(reader);
+            }
+            byte timeOutState = reader.ReadByte();
+            if (MemberPresent == timeOutState) {
+                Timeout = Duration.FromMilliseconds(reader.ReadInt64());
+            }
+            else if (MemberNull == timeOutState) {
+                Timeout = null;
+            }
+        }
     }
 
-    public class WriteVariablesReq : RequestBase
+    public class WriteVariablesReq : RequestBase, BinSerializable
     {
         public const int ID = 7;
 
@@ -259,6 +338,20 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("values")]
         public VariableValues Values { get; set; }
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+            writer.Write(MemberPresent);
+            VariableValue_Serializer.Serialize(writer, Values, binaryVersion);
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Values = VariableValue_Serializer.Deserialize(reader);
+            }
+        }
     }
 
     public class WriteVariablesIgnoreMissingReq : RequestBase, BinSerializable
@@ -328,7 +421,7 @@ namespace Ifak.Fast.Mediator
         }
     }
 
-    public class WriteVariablesSyncIgnoreMissingReq : RequestBase
+    public class WriteVariablesSyncIgnoreMissingReq : RequestBase, BinSerializable
     {
         public const int ID = 10;
 
@@ -342,6 +435,33 @@ namespace Ifak.Fast.Mediator
         public Duration? Timeout { get; set; }
 
         public bool ShouldSerializeTimeout() => Timeout.HasValue;
+
+        public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
+            if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
+            BaseBinSerialize(writer, binaryVersion);
+
+            writer.Write(MemberPresent);
+            VariableValue_Serializer.Serialize(writer, Values, binaryVersion);
+
+            writer.Write(Timeout.HasValue ? MemberPresent : MemberNull);
+            if (Timeout.HasValue) {
+                writer.Write((long)Timeout.Value.TotalMilliseconds);
+            }
+        }
+
+        public void BinDeserialize(BinaryReader reader) {
+            BaseBinDeserialize(reader);
+            if (MemberPresent == reader.ReadByte()) {
+                Values = VariableValue_Serializer.Deserialize(reader);
+            }
+            byte timeOutState = reader.ReadByte();
+            if (MemberPresent == timeOutState) {
+                Timeout = Duration.FromMilliseconds(reader.ReadInt64());
+            }
+            else if (MemberNull == timeOutState) {
+                Timeout = null;
+            }
+        }
     }
 
     public class ReadAllVariablesOfObjectTreeReq : RequestBase

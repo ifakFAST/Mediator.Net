@@ -383,21 +383,21 @@ namespace Ifak.Fast.Mediator
         public override async Task<VTQs> ReadVariables(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesReq>();
-            request.Variables = variables;
+            request.Variables = variables.ToList(); // TODO !!!
             return await Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
         }
 
         public override async Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
-            request.Variables = variables;
+            request.Variables = variables.ToList(); // TODO !!!
             return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
         public override async Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncReq>();
-            request.Variables = variables;
+            request.Variables = variables.ToList(); // TODO !!!
             request.Timeout = timeout;
             Task<VTQs> task = Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
             if (timeout.HasValue) {
@@ -416,7 +416,7 @@ namespace Ifak.Fast.Mediator
         public override async Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
-            request.Variables = variables;
+            request.Variables = variables.ToList(); // TODO !!!
             request.Timeout = timeout;
 
             Task<VariableValues> task = Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
