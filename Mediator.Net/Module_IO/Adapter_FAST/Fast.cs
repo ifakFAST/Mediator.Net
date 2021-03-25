@@ -138,18 +138,18 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             }
 
             var readHelper = new ReadManager<VariableRef, VariableValue>(items, readRequest => mapId2Info[readRequest.ID].VarRef);
-            VariableRef[] dataItemsToRead = readHelper.GetRefs();
+            List<VariableRef> dataItemsToRead = readHelper.GetRefsList();
 
             try {
                 List<VariableValue> readResponse = await connection.ReadVariablesSyncIgnoreMissing(dataItemsToRead);
 
-                if (readResponse.Count == dataItemsToRead.Length) {
+                if (readResponse.Count == dataItemsToRead.Count) {
                     readHelper.SetAllResults(readResponse, (vv, request) => vv.Value);
                     return readHelper.values;
                 }
                 else {
                     var badDataItems = new List<DataItem>();
-                    for (int i = 0; i < dataItemsToRead.Length; ++i) {
+                    for (int i = 0; i < dataItemsToRead.Count; ++i) {
                         VariableRef v = dataItemsToRead[i];
                         try {
                             VariableValue value = readResponse.First(rr => rr.Variable == v);
@@ -210,7 +210,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             });
 
             try {
-                var dataItemsToWrite = writeMan.GetRefs();
+                var dataItemsToWrite = writeMan.GetRefsList();
                 WriteResult res = await connection.WriteVariablesSyncIgnoreMissing(dataItemsToWrite, timeout);
                 if (!res.IsOK()) {
                     writeMan.AddWriteErrors(res.FailedVariables, failedVar => {

@@ -14,6 +14,7 @@ using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectVa
 using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -281,7 +282,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variableName">The name of the variable to read</param>
         /// <returns></returns>
         public virtual async Task<VTQ> ReadVariable(ObjectRef objectID, string variableName) {
-            VTQs tmp = await ReadVariables(new VariableRef[] { VariableRef.Make(objectID, variableName) });
+            VTQs tmp = await ReadVariables(new VariableRefs { VariableRef.Make(objectID, variableName) });
             return tmp[0];
         }
 
@@ -291,7 +292,7 @@ namespace Ifak.Fast.Mediator
         /// </summary>
         /// <param name="variable">The variable to read</param>
         public virtual async Task<VTQ> ReadVariable(VariableRef variable) {
-            VTQs tmp = await ReadVariables(new VariableRef[] { variable });
+            VTQs tmp = await ReadVariables(new VariableRefs { variable });
             return tmp[0];
         }
 
@@ -300,14 +301,14 @@ namespace Ifak.Fast.Mediator
         /// Throws an exception if any of the variables does not exist.
         /// </summary>
         /// <param name="variables">The variables to read</param>
-        public abstract Task<VTQs> ReadVariables(VariableRef[] variables);
+        public abstract Task<VTQs> ReadVariables(VariableRefs variables);
 
         /// <summary>
         /// Reads the current value of variables from the Mediator cache.
         /// If any of the variables does not exist, it will be excluded from the result.
         /// </summary>
         /// <param name="variables">The variables to read</param>
-        public abstract Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables);
+        public abstract Task<VariableValues> ReadVariablesIgnoreMissing(VariableRefs variables);
 
         /// <summary>
         /// Reads the current value of a variable directly from the containing module.
@@ -327,7 +328,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variable">The variable to read</param>
         /// <param name="timeout">Optional timeout</param>
         public virtual async Task<VTQ> ReadVariableSync(VariableRef variable, Duration? timeout = null) {
-            VTQs tmp = await ReadVariablesSync(new VariableRef[] { variable }, timeout);
+            VTQs tmp = await ReadVariablesSync(new VariableRefs { variable }, timeout);
             return tmp[0];
         }
 
@@ -338,7 +339,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variables">The variables to read</param>
         /// <param name="timeout">Optional timeout</param>
         /// <returns></returns>
-        public abstract Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null);
+        public abstract Task<VTQs> ReadVariablesSync(VariableRefs variables, Duration? timeout = null);
 
         /// <summary>
         /// Reads the current value of variables directly from the containing module.
@@ -348,7 +349,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variables">The variables to read</param>
         /// <param name="timeout">Optional timeout</param>
         /// <returns></returns>
-        public abstract Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null);
+        public abstract Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRefs variables, Duration? timeout = null);
 
         /// <summary>
         /// Reads the current value of all variables of all objects in the tree of objects defined by the given object reference.
@@ -364,7 +365,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variableName">The name of the variable to write</param>
         /// <param name="value">The new value</param>
         public virtual async Task WriteVariable(ObjectRef objectID, string variableName, VTQ value) {
-            await WriteVariables(new VariableValue[] { VariableValue.Make(objectID, variableName, value) });
+            await WriteVariables(new VariableValues { VariableValue.Make(objectID, variableName, value) });
         }
 
         /// <summary>
@@ -374,7 +375,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="variable">The reference to the variable to write</param>
         /// <param name="value">The new value</param>
         public virtual async Task WriteVariable(VariableRef variable, VTQ value) {
-            await WriteVariables(new VariableValue[] { VariableValue.Make(variable, value) });
+            await WriteVariables(new VariableValues { VariableValue.Make(variable, value) });
         }
 
         /// <summary>
@@ -382,7 +383,7 @@ namespace Ifak.Fast.Mediator
         /// When any of the variables does not exist, an exception is thrown and no value is written.
         /// </summary>
         /// <param name="values">The new variable values</param>
-        public abstract Task WriteVariables(params VariableValue[] values);
+        public abstract Task WriteVariables(VariableValues values);
 
         /// <summary>
         /// Writes new values to variables without waiting for the receiving module to complete the write request.
@@ -390,7 +391,7 @@ namespace Ifak.Fast.Mediator
         /// for each missing variable.
         /// </summary>
         /// <param name="values">The new variable values</param>
-        public abstract Task<WriteResult> WriteVariablesIgnoreMissing(params VariableValue[] values);
+        public abstract Task<WriteResult> WriteVariablesIgnoreMissing(VariableValues values);
 
         /// <summary>
         /// Writes a new value to a variable waiting for the receiving module to complete the write request.
@@ -402,7 +403,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="value">The new value</param>
         /// <param name="timeout">Optional timeout</param>
         public virtual async Task<Result> WriteVariableSync(ObjectRef objectID, string variableName, VTQ value, Duration? timeout = null) {
-            WriteResult res = await WriteVariablesSync(new VariableValue[] { VariableValue.Make(objectID, variableName, value) }, timeout);
+            WriteResult res = await WriteVariablesSync(new VariableValues { VariableValue.Make(objectID, variableName, value) }, timeout);
             if (res.Failed()) return Result.Failure(res.FailedVariables[0].Error);
             return Result.OK;
         }
@@ -414,7 +415,7 @@ namespace Ifak.Fast.Mediator
         /// </summary>
         /// <param name="values">The new variable values</param>
         /// <param name="timeout">Optional timeout</param>
-        public abstract Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null);
+        public abstract Task<WriteResult> WriteVariablesSync(VariableValues values, Duration? timeout = null);
 
         /// <summary>
         /// Writes new values to variables waiting for the receiving module to complete the write request.
@@ -424,7 +425,7 @@ namespace Ifak.Fast.Mediator
         /// </summary>
         /// <param name="values">The new variable values</param>
         /// <param name="timeout">Optional timeout</param>
-        public abstract Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null);
+        public abstract Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValues values, Duration? timeout = null);
 
         #endregion
 

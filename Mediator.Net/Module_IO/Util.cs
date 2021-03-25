@@ -69,6 +69,8 @@ namespace Ifak.Fast.Mediator.IO
 
         public REF[] GetRefs() => refs.ToArray();
 
+        public List<REF> GetRefsList() => refs;
+
         public ReadRequest GetReadRequest(int i) {
             int k = MapIdx(i);
             return readRequests[k];
@@ -117,6 +119,8 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         public REF[] GetRefs() => refs.ToArray();
+
+        public List<REF> GetRefsList() => refs;
 
         public DataItemValue GetWriteRequest(int i) {
             int k = MapIdx(i);

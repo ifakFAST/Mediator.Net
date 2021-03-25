@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -19,8 +20,7 @@ using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectVa
 using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
-using System.Collections.Generic;
-using System.Linq;
+using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
 
 namespace Ifak.Fast.Mediator
 {
@@ -380,24 +380,24 @@ namespace Ifak.Fast.Mediator
             return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
-        public override async Task<VTQs> ReadVariables(VariableRef[] variables) {
+        public override async Task<VTQs> ReadVariables(VariableRefs variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesReq>();
-            request.Variables = variables.ToList(); // TODO !!!
+            request.Variables = variables;
             return await Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
         }
 
-        public override async Task<VariableValues> ReadVariablesIgnoreMissing(VariableRef[] variables) {
+        public override async Task<VariableValues> ReadVariablesIgnoreMissing(VariableRefs variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesIgnoreMissingReq>();
-            request.Variables = variables.ToList(); // TODO !!!
+            request.Variables = variables;
             return await Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
         }
 
-        public override async Task<VTQs> ReadVariablesSync(VariableRef[] variables, Duration? timeout = null) {
+        public override async Task<VTQs> ReadVariablesSync(VariableRefs variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncReq>();
-            request.Variables = variables.ToList(); // TODO !!!
+            request.Variables = variables;
             request.Timeout = timeout;
             Task<VTQs> task = Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
             if (timeout.HasValue) {
@@ -413,10 +413,10 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public override async Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRef[] variables, Duration? timeout = null) {
+        public override async Task<VariableValues> ReadVariablesSyncIgnoreMissing(VariableRefs variables, Duration? timeout = null) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<ReadVariablesSyncIgnoreMissingReq>();
-            request.Variables = variables.ToList(); // TODO !!!
+            request.Variables = variables;
             request.Timeout = timeout;
 
             Task<VariableValues> task = Post<VariableValues>(request, binaryDeserializer: BinSeri.VariableValue_Serializer.Deserialize);
@@ -441,21 +441,21 @@ namespace Ifak.Fast.Mediator
             await PostVoid(request);
         }
 
-        public override Task WriteVariables(VariableValue[] values) {
+        public override Task WriteVariables(VariableValues values) {
             var request = MakeSessionRequest<WriteVariablesReq>();
-            request.Values = values.ToList(); // TODO!!
+            request.Values = values;
             return PostVoid(request);
         }
 
-        public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValue[] values) {
+        public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValues values) {
             var request = MakeSessionRequest<WriteVariablesIgnoreMissingReq>();
-            request.Values = values.ToList(); // TODO!!
+            request.Values = values;
             return Post<WriteResult>(request);
         }
 
-        public override async Task<WriteResult> WriteVariablesSync(VariableValue[] values, Duration? timeout = null) {
+        public override async Task<WriteResult> WriteVariablesSync(VariableValues values, Duration? timeout = null) {
             var request = MakeSessionRequest<WriteVariablesSyncReq>();
-            request.Values = values.ToList(); // TODO!!
+            request.Values = values;
             request.Timeout = timeout;
             Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {
@@ -471,9 +471,9 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValue[] values, Duration? timeout = null) {
+        public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValues values, Duration? timeout = null) {
             var request = MakeSessionRequest<WriteVariablesSyncIgnoreMissingReq>();
-            request.Values = values.ToList(); // TODO!!!
+            request.Values = values;
             request.Timeout = timeout;
             Task<WriteResult> task = Post<WriteResult>(request);
             if (timeout.HasValue) {

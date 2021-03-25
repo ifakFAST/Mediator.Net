@@ -120,7 +120,7 @@ namespace Ifak.Fast.Mediator.Calc
         //    }
         //}
 
-        public void UpdateInputValues(VariableRef[] variables, VTQs values) {
+        public void UpdateInputValues(List<VariableRef> variables, VTQs values) {
             foreach (Config.Input input in CalcConfig.Inputs) {
                 if (input.Variable.HasValue) {
                     VariableRef va = input.Variable.Value;

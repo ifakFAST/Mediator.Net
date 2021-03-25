@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -419,10 +420,9 @@ namespace Ifak.Fast.Mediator.Calc
 
             await adapter.WaitUntil(t);
 
-            Config.Input[] inputs = new Config.Input[0];
-            VariableRef[] inputVars = new VariableRef[0];
+            var inputs = new List<Config.Input>();
+            var inputVars = new List<VariableRef>();
 
-            var listVarValues = new List<VariableValue>(32);
             //var listVarValueTimer = new List<VariableValue>(1);
 
             //var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -430,19 +430,12 @@ namespace Ifak.Fast.Mediator.Calc
 
                 //sw.Restart();
 
-                int N_In = adapter.CalcConfig.Inputs.Count(inp => inp.Variable.HasValue);
-
-                if (N_In != inputs.Length) {
-                    inputs = new Config.Input[N_In];
-                    inputVars = new VariableRef[N_In];
-                }
-
-                int i = 0;
+                inputs.Clear();
+                inputVars.Clear();
                 foreach (Config.Input inp in adapter.CalcConfig.Inputs) {
                     if (inp.Variable.HasValue) {
-                        inputs[i] = inp;
-                        inputVars[i] = inp.Variable.Value;
-                        i++;
+                        inputs.Add(inp);
+                        inputVars.Add(inp.Variable.Value);
                     }
                 }
 
@@ -470,8 +463,7 @@ namespace Ifak.Fast.Mediator.Calc
                 StateValue[] stateValues = result.State ?? new StateValue[0];
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
-
-                listVarValues.Clear();
+                var listVarValues = new List<VariableValue>(outValues.Length + stateValues.Length);
                 foreach (OutputValue v in outValues) {
                     var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value);
                     listVarValues.Add(vv);
@@ -490,7 +482,7 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     }
                 }
-                notifier.Notify_VariableValuesChanged(listVarValues.ToList());
+                notifier.Notify_VariableValuesChanged(listVarValues);
 
                 await WriteOutputVars(outputDest);
 
@@ -511,7 +503,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private async Task WriteOutputVars(List<VariableValue> outputDest) {
             try {
-                await connection.WriteVariablesIgnoreMissing(outputDest.ToArray()); // TODO Report invalid var refs
+                await connection.WriteVariablesIgnoreMissing(outputDest); // TODO Report invalid var refs
             }
             catch (Exception exp) {
 
@@ -538,7 +530,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
-        private async Task<VTQs> ReadInputVars(CalcInstance adapter, IList<Config.Input> inputs, VariableRef[] inputVars, Timestamp now) {
+        private async Task<VTQs> ReadInputVars(CalcInstance adapter, List<Config.Input> inputs, List<VariableRef> inputVars, Timestamp now) {
             try {
                 return await connection.ReadVariables(inputVars);
             }

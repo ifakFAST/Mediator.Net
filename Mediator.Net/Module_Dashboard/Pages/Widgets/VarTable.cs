@@ -39,7 +39,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public async Task<ReqResult> UiReq_LoadData() {
 
-            List<VariableValue> values = await Connection.ReadVariablesIgnoreMissing(Variables);
+            List<VariableValue> values = await Connection.ReadVariablesIgnoreMissing(Variables.ToList());
 
             var items = MakeValues(configuration, values);
 
