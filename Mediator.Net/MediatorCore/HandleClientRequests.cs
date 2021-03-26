@@ -234,6 +234,106 @@ namespace Ifak.Fast.Mediator
 
                 switch (numID) {
 
+                    case ReadVariablesReq.ID: {
+                            var req = (ReadVariablesReq)request;
+                            VTQs res = DoReadVariables(req.Variables);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
+                            }
+
+                            return Result_OK(res, serializer);
+                        }
+
+                    case ReadVariablesIgnoreMissingReq.ID: {
+                            var req = (ReadVariablesIgnoreMissingReq)request;
+                            VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                            }
+
+                            return Result_OK(vvs, serializer);
+                        }
+
+                    case ReadVariablesSyncReq.ID: {
+                            var req = (ReadVariablesSyncReq)request;
+                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
+
+                            int N = vvs.Count;
+                            VTQs res = new VTQs(N);
+                            for (int i = 0; i < N; ++i) {
+                                res.Add(vvs[i].Value);
+                            }
+
+                            Action<object, Stream> serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
+                            }
+
+                            return Result_OK(res, serializer);
+                        }
+
+                    case ReadVariablesSyncIgnoreMissingReq.ID: {
+                            var req = (ReadVariablesSyncIgnoreMissingReq)request;
+                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
+
+                            Action<object, Stream> serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                            }
+
+                            return Result_OK(vvs, serializer);
+                        }
+
+                    case WriteVariablesReq.ID: {
+                            var req = (WriteVariablesReq)request;
+                            await DoWriteVariables(req.Values, info, ignoreMissing: false);
+                            return Result_OK();
+                        }
+
+                    case WriteVariablesIgnoreMissingReq.ID: {
+                            var req = (WriteVariablesIgnoreMissingReq)request;
+                            WriteResult res = await DoWriteVariables(req.Values, info, ignoreMissing: true);
+                            return Result_OK(res);
+                        }
+
+                    case WriteVariablesSyncReq.ID: {
+                            var req = (WriteVariablesSyncReq)request;
+                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: false);
+                        }
+
+                    case WriteVariablesSyncIgnoreMissingReq.ID: {
+                            var req = (WriteVariablesSyncIgnoreMissingReq)request;
+                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: true);
+                        }
+
+                    case ReadAllVariablesOfObjectTreeReq.ID: {
+                            var req = (ReadAllVariablesOfObjectTreeReq)request;
+                            ObjectRef obj = req.ObjectID;
+                            string mod = obj.ModuleID;
+                            ModuleState module = ModuleFromIdOrThrow(mod);
+                            IList<ObjectInfo> allObj = module.AllObjects;
+                            var varRefs = new List<VariableRef>();
+                            GetAllVarRefsOfObjTree(allObj, obj, varRefs);
+
+                            VariableValues result = new VariableValues(varRefs.Count);
+                            for (int i = 0; i < varRefs.Count; ++i) {
+                                VariableRef vr = varRefs[i];
+                                VTQ vtq = module.GetVarValue(vr);
+                                result.Add(VariableValue.Make(vr, vtq));
+                            }
+
+                            Action<object, Stream> serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                            }
+
+                            return Result_OK(result, serializer);
+                        }
+
                     case GetModulesReq.ID: {
 
                             Func<ModuleState, bool> hasNumericVariables = (m) => {
@@ -409,106 +509,6 @@ namespace Ifak.Fast.Mediator
                                 }
                             }
                             return Result_BAD("No object found with id " + objectID);
-                        }
-
-                    case ReadVariablesReq.ID: {
-                            var req = (ReadVariablesReq)request;
-                            VTQs res = DoReadVariables(req.Variables);
-
-                            Action<object, Stream> serializer = null;
-                            if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
-                            }
-
-                            return Result_OK(res, serializer);
-                        }
-
-                    case ReadVariablesIgnoreMissingReq.ID: {
-                            var req = (ReadVariablesIgnoreMissingReq)request;
-                            VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
-
-                            Action<object, Stream> serializer = null;
-                            if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
-                            }
-
-                            return Result_OK(vvs, serializer);
-                        }
-
-                    case ReadVariablesSyncReq.ID: {
-                            var req = (ReadVariablesSyncReq)request;
-                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: false);
-
-                            int N = vvs.Count;
-                            VTQs res = new VTQs(N);
-                            for (int i = 0; i < N;  ++i) {
-                                res.Add(vvs[i].Value);
-                            }
-
-                            Action<object, Stream> serializer = null;
-                            if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
-                            }
-
-                            return Result_OK(res, serializer);
-                        }
-
-                    case ReadVariablesSyncIgnoreMissingReq.ID: {
-                            var req = (ReadVariablesSyncIgnoreMissingReq)request;
-                            VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
-
-                            Action<object, Stream> serializer = null;
-                            if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
-                            }
-
-                            return Result_OK(vvs, serializer);
-                        }
-
-                    case WriteVariablesReq.ID: {
-                            var req = (WriteVariablesReq)request;
-                            await DoWriteVariables(req.Values, info, ignoreMissing: false);
-                            return Result_OK();
-                        }
-
-                    case WriteVariablesIgnoreMissingReq.ID: {
-                            var req = (WriteVariablesIgnoreMissingReq)request;
-                            WriteResult res = await DoWriteVariables(req.Values, info, ignoreMissing: true);
-                            return Result_OK(res);
-                        }
-
-                    case WriteVariablesSyncReq.ID: {
-                            var req = (WriteVariablesSyncReq)request;
-                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: false);
-                        }
-
-                    case WriteVariablesSyncIgnoreMissingReq.ID: {
-                            var req = (WriteVariablesSyncIgnoreMissingReq)request;
-                            return await DoWriteVariablesSync(req.Values, req.Timeout, info, ignoreMissing: true);
-                        }
-
-                    case ReadAllVariablesOfObjectTreeReq.ID: {
-                            var req = (ReadAllVariablesOfObjectTreeReq)request;
-                            ObjectRef obj = req.ObjectID;
-                            string mod = obj.ModuleID;
-                            ModuleState module = ModuleFromIdOrThrow(mod);
-                            IList<ObjectInfo> allObj = module.AllObjects;
-                            var varRefs = new List<VariableRef>();
-                            GetAllVarRefsOfObjTree(allObj, obj, varRefs);
-
-                            VariableValues result = new VariableValues(varRefs.Count);
-                            for (int i = 0; i < varRefs.Count; ++i) {
-                                VariableRef vr = varRefs[i];
-                                VTQ vtq = module.GetVarValue(vr);
-                                result.Add(VariableValue.Make(vr, vtq));
-                            }
-
-                            Action<object, Stream> serializer = null;
-                            if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
-                            }
-
-                            return Result_OK(result, serializer);
                         }
 
                     case UpdateConfigReq.ID: {
