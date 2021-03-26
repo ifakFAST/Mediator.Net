@@ -173,6 +173,9 @@ namespace Ifak.Fast.Mediator
         [JsonProperty("bin_ver")]
         public byte BinaryVersion { get; set; } = 0; // the maximum binary version supported by Mediator
 
+        [JsonProperty("event_ver")]
+        public byte EventDataVersion { get; set; } = 0; // the maximum version for event data format supported by Mediator
+
         [JsonProperty("bin_methods")]
         public int[] BinMethods { get; set; } // the ids of those methods that may be requested in binary format
     }
@@ -189,6 +192,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("bin_ver")]
         public byte SelectedBinaryVersion { get; set; } = 0;  // the binary version chosen by client
+
+        [JsonProperty("event_ver")]
+        public byte SelectedEventDataVersion { get; set; } = 0;  // the event data format version chosen by client
     }
 
     public class AuthenticateResponse
@@ -896,10 +902,19 @@ namespace Ifak.Fast.Mediator
         public string Error { get; set; }
     }
 
+    public enum EventType
+    {
+        OnVariableValueChanged = 0,
+        OnVariableHistoryChanged = 1,
+        OnConfigChanged = 2,
+        OnAlarmOrEvent = 3,
+        OnPing = 4
+    }
+
     public class EventContent
     {
         [JsonProperty("event")]
-        public string Event { get; set; }
+        public EventType Event { get; set; }
 
         [JsonProperty("variables")]
         public List<VariableValue> Variables { get; set; }

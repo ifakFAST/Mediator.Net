@@ -21,6 +21,7 @@ using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberVa
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
+using Ifak.Fast.Mediator.BinSeri;
 
 namespace Ifak.Fast.Mediator
 {
@@ -29,10 +30,13 @@ namespace Ifak.Fast.Mediator
         private string login = "";
         private Timestamp tLogin = Timestamp.Now;
         private byte binaryVersion;
+
         private readonly bool[] MapBinaryMessages = new bool[64];
 
         private readonly MediaTypeWithQualityHeaderValue mediaJSON = new MediaTypeWithQualityHeaderValue("application/json");
         private readonly MediaTypeWithQualityHeaderValue mediaBinary = new MediaTypeWithQualityHeaderValue("application/octet-stream");
+
+        public const byte CurrentEventDataFormatVersion = 1;
 
         public static async Task<Connection> ConnectWithUserLogin(string host, int port, string login, string password, string[] roles = null, EventListener listener = null, int timeoutSeconds = 20) {
 
@@ -92,10 +96,13 @@ namespace Ifak.Fast.Mediator
             long hash = ClientDefs.strHash(password + challenge + password + session);
 
             binaryVersion = Math.Min(loginResponse.BinaryVersion, BinSeri.Common.CurrentBinaryVersion);
+            byte eventDataVersion = Math.Min(loginResponse.EventDataVersion, CurrentEventDataFormatVersion);
 
-            foreach (int id in loginResponse.BinMethods) {
-                if (id >= 0 && id < MapBinaryMessages.Length) {
-                    MapBinaryMessages[id] = true;
+            if (loginResponse.BinMethods != null) {
+                foreach (int id in loginResponse.BinMethods) {
+                    if (id >= 0 && id < MapBinaryMessages.Length) {
+                        MapBinaryMessages[id] = true;
+                    }
                 }
             }
 
@@ -103,6 +110,7 @@ namespace Ifak.Fast.Mediator
                 Session = session,
                 Hash = hash,
                 SelectedBinaryVersion = binaryVersion,
+                SelectedEventDataVersion = eventDataVersion,
             };
 
             AuthenticateResponse authResponse = await Post<AuthenticateResponse>(reqAuth);
@@ -117,7 +125,7 @@ namespace Ifak.Fast.Mediator
                 };
                 await PostVoid(reqEnablePing);
 
-                eventManager = new EventManager(listener);
+                eventManager = new EventManager(listener, eventDataVersion);
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
             }
         }
@@ -654,12 +662,14 @@ namespace Ifak.Fast.Mediator
         public class EventManager
         {
             protected readonly EventListener listener;
+            private byte dataVersion;
 
             protected CancellationTokenSource webSocketCancel;
             protected ClientWebSocket webSocket;
 
-            public EventManager(EventListener listener) {
+            public EventManager(EventListener listener, byte dataVersion) {
                 this.listener = listener;
+                this.dataVersion = dataVersion;
             }
 
             public async Task StartWebSocket(string session, Uri wsUri, Action<string, Exception> notifyConnectionBroken) {
@@ -706,11 +716,17 @@ namespace Ifak.Fast.Mediator
 
                     stream.Seek(0, SeekOrigin.Begin);
 
-                    if (result.MessageType == WebSocketMessageType.Text) {
+                    var msgType = result.MessageType;
 
-                        EventContent eventObj = null;
-                        using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
-                            eventObj = StdJson.ObjectFromReader<EventContent>(reader);
+                    if (msgType == WebSocketMessageType.Binary || msgType == WebSocketMessageType.Text) {
+
+                        EventContent eventObj;
+
+                        if (dataVersion == 1) {
+                            eventObj = ReadBinaryEventContent(stream);
+                        }
+                        else {
+                            eventObj = ObjectFromJsonStream<EventContent>(stream);
                         }
 
                         try {
@@ -750,6 +766,12 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
+            private T ObjectFromJsonStream<T>(Stream stream) {
+                using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
+                    return StdJson.ObjectFromReader<T>(reader);
+                }
+            }
+
             private async Task CloseSocket() {
                 try {
                     await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
@@ -771,36 +793,94 @@ namespace Ifak.Fast.Mediator
 
             protected Task DispatchEvent(EventContent theEvent) {
 
-                string eventName = theEvent.Event;
+                if (theEvent == null) return Task.FromResult(true); ;
 
-                switch (eventName) {
-                    case "OnVariableValueChanged": {
+                switch (theEvent.Event) {
+
+                    case EventType.OnVariableValueChanged: {
                             List<VariableValue> variables = theEvent.Variables;
                             return listener.OnVariableValueChanged(variables);
                         }
 
-                    case "OnVariableHistoryChanged": {
+                    case EventType.OnVariableHistoryChanged: {
                             List<HistoryChange> variables = theEvent.Changes;
                             return listener.OnVariableHistoryChanged(variables);
                         }
 
-                    case "OnConfigChanged": {
+                    case EventType.OnConfigChanged: {
                             List<ObjectRef> changes = theEvent.ChangedObjects;
                             return listener.OnConfigChanged(changes);
                         }
 
-                    case "OnAlarmOrEvent": {
+                    case EventType.OnAlarmOrEvent: {
                             List<AlarmOrEvent> alarmOrEvents = theEvent.Events;
                             return listener.OnAlarmOrEvents(alarmOrEvents);
                         }
 
-                    case "OnPing": {
+                    case EventType.OnPing: {
                             return Task.FromResult(true);
                         }
 
                     default:
-                        Console.Error.WriteLine("Unknown event: " + eventName);
+                        Console.Error.WriteLine("Unknown event: " + theEvent.Event);
                         return Task.FromResult(true);
+                }
+            }
+
+            private EventContent ReadBinaryEventContent(Stream stream) {
+
+                int eventFormatVersion = stream.ReadByte();
+                if (eventFormatVersion != 1) {
+                    Console.Error.WriteLine($"ReadBinaryEventContent: Invalid event format version: {eventFormatVersion}");
+                    return null;
+                }
+                int binVer = stream.ReadByte();
+                if (binVer < 1 || binVer > Common.CurrentBinaryVersion) {
+                    Console.Error.WriteLine($"ReadBinaryEventContent: Invalid binary version: {binVer}");
+                    return null;
+                }
+                int eventID = stream.ReadByte();
+                if (eventID < 0 || eventID > (int)EventType.OnPing) {
+                    Console.Error.WriteLine($"ReadBinaryEventContent: Invalid event id: {eventID}");
+                    return null;
+                }
+                EventType what = (EventType)eventID;
+
+                // Console.WriteLine($"Binary Event {what}");
+
+                switch (what) {
+
+                    case EventType.OnVariableValueChanged:
+                        return new EventContent() {
+                            Event = what,
+                            Variables = VariableValue_Serializer.Deserialize(stream),
+                        };
+
+                    case EventType.OnVariableHistoryChanged:
+                        return new EventContent() {
+                            Event = what,
+                            Changes = ObjectFromJsonStream<List<HistoryChange>>(stream),
+                        };
+
+                    case EventType.OnConfigChanged:
+                        return new EventContent() {
+                            Event = what,
+                            ChangedObjects = ObjectFromJsonStream<List<ObjectRef>>(stream),
+                        };
+
+                    case EventType.OnAlarmOrEvent:
+                        return new EventContent() {
+                            Event = what,
+                            Events = ObjectFromJsonStream<List<AlarmOrEvent>>(stream),
+                        };
+
+                    case EventType.OnPing:
+                        return new EventContent() {
+                            Event = what,
+                        };
+
+                    default:
+                        return null;
                 }
             }
         }

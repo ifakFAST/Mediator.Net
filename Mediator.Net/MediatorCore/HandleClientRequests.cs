@@ -20,6 +20,7 @@ using ObjectValues = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectVa
 using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using Ifak.Fast.Mediator.BinSeri;
 
 namespace Ifak.Fast.Mediator
 {
@@ -157,6 +158,7 @@ namespace Ifak.Fast.Mediator
                             MediatorVersion = VersionInfo.ifakFAST_Str(),
                             BinaryVersion = BinSeri.Common.CurrentBinaryVersion,
                             BinMethods = RequestDefinitions.Definitions.Where(x => x.IsBinSerializable).Select(x => x.NumericID).ToArray(),
+                            EventDataVersion = HttpConnection.CurrentEventDataFormatVersion,
                         };
 
                         sessions[session] = new SessionInfo(session, challenge, origin, password, TerminateSession);
@@ -185,9 +187,15 @@ namespace Ifak.Fast.Mediator
                             return Result_BAD("Invalid binary version");
                         }
 
+                        if (req.SelectedEventDataVersion < 0 || req.SelectedEventDataVersion > HttpConnection.CurrentEventDataFormatVersion) {
+                            sessions.Remove(session);
+                            return Result_BAD("Invalid event data version");
+                        }
+
                         info.Valid = true;
                         info.UpdateLastActivity();
                         info.BinaryVersion = req.SelectedBinaryVersion;
+                        info.EventDataVersion = req.SelectedEventDataVersion;
 
                         var response = new AuthenticateResponse() {
                             Session = session,
@@ -215,6 +223,10 @@ namespace Ifak.Fast.Mediator
             SessionInfo info = sessions[session];
             if (!info.Valid) return Result_ConnectivityErr("Invalid session");
             info.UpdateLastActivity();
+
+            if (info.BinaryVersion < 1) {
+                request.ReturnBinaryResponse = false;
+            }
 
             try {
 
@@ -1426,6 +1438,7 @@ namespace Ifak.Fast.Mediator
             public bool eventPingEnabled = false;
 
             public byte BinaryVersion { get; set; }
+            public byte EventDataVersion { get; set; }
 
             private Timestamp lastActivity = Timestamp.Now;
             private Timestamp lastEventActivity = Timestamp.Now;
@@ -1572,7 +1585,7 @@ namespace Ifak.Fast.Mediator
                 try {
                     forceEventBuffering = true;
                     var evnt = new EventContent() {
-                        Event = "OnVariableValueChanged",
+                        Event = EventType.OnVariableValueChanged,
                         Variables = values
                     };
                     await SendWebSocket(evnt);
@@ -1588,7 +1601,7 @@ namespace Ifak.Fast.Mediator
                 try {
                     forceEventBuffering = true;
                     var evnt = new EventContent() {
-                        Event = "OnVariableHistoryChanged",
+                        Event = EventType.OnVariableHistoryChanged,
                         Changes = values
                     };
                     await SendWebSocket(evnt);
@@ -1604,7 +1617,7 @@ namespace Ifak.Fast.Mediator
                 try {
                     forceEventBuffering = true;
                     var evnt = new EventContent() {
-                        Event = "OnConfigChanged",
+                        Event = EventType.OnConfigChanged,
                         ChangedObjects = changes
                     };
                     await SendWebSocket(evnt);
@@ -1620,7 +1633,7 @@ namespace Ifak.Fast.Mediator
                 try {
                     forceEventBuffering = true;
                     var evnt = new EventContent() {
-                        Event = "OnAlarmOrEvent",
+                        Event = EventType.OnAlarmOrEvent,
                         Events = events
                     };
                     await SendWebSocket(evnt);
@@ -1722,13 +1735,21 @@ namespace Ifak.Fast.Mediator
                     stream.Position = 0;
                     stream.SetLength(0);
 
-                    StdJson.ObjectToStream(evnt, stream);
+                    WebSocketMessageType type;
+                    if (EventDataVersion == 1) {
+                        type = WebSocketMessageType.Binary;
+                        WriteBinaryEventContent(evnt, stream, BinaryVersion);
+                    }
+                    else {
+                        type = WebSocketMessageType.Text;
+                        StdJson.ObjectToStream(evnt, stream);
+                    }
 
                     ArraySegment<byte> segment;
                     stream.TryGetBuffer(out segment);
 
                     try {
-                        await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                        await socket.SendAsync(segment, type, true, CancellationToken.None);
                     }
                     catch (Exception exp) {
                         if (LogoutCompleted || terminating) return;
@@ -1765,6 +1786,35 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
+            private void WriteBinaryEventContent(EventContent evt, Stream stream, byte binaryVersion) {
+
+                stream.WriteByte(1); // event data format
+                stream.WriteByte(binaryVersion);
+                stream.WriteByte((byte)evt.Event);
+
+                switch (evt.Event) {
+
+                    case EventType.OnVariableValueChanged:
+                        VariableValue_Serializer.Serialize(stream, evt.Variables, binaryVersion);
+                        break;
+
+                    case EventType.OnVariableHistoryChanged:
+                        StdJson.ObjectToStream(evt.Changes, stream);
+                        break;
+
+                    case EventType.OnConfigChanged:
+                        StdJson.ObjectToStream(evt.ChangedObjects, stream);
+                        break;
+
+                    case EventType.OnAlarmOrEvent:
+                        StdJson.ObjectToStream(evt.Events, stream);
+                        break;
+
+                    case EventType.OnPing:
+                        break;
+                }
+            }
+
             private async Task PingTask() {
 
                 TimeSpan interval = TimeSpan.FromMinutes(1);
@@ -1772,7 +1822,7 @@ namespace Ifak.Fast.Mediator
                 await Task.Delay(interval);
 
                 var evnt = new EventContent() {
-                    Event = "OnPing"
+                    Event = EventType.OnPing
                 };
 
                 while (HasEventSocket && !terminating && !LogoutCompleted) {
