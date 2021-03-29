@@ -147,9 +147,10 @@ namespace Ifak.Fast.Mediator
     public class LoginReq : RequestBase
     {
         public const int ID = 1;
+        public const string Path = "Login";
 
         public override int GetID() => ID;
-        public override string GetPath() => "Login";
+        public override string GetPath() => Path;
 
         [JsonProperty("moduleID")]
         public string? ModuleID { get; set; } = null;

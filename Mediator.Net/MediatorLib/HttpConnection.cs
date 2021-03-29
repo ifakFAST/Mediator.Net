@@ -159,20 +159,23 @@ namespace Ifak.Fast.Mediator
             _ = Close();
         }
 
-        protected void OnConnectionBroken(string context, Exception? exp) {
+        protected void OnConnectionBroken(string context, string path, Exception? exp) {
 
             this.session = null;
 
-            ReportConnectionBroken(login, tLogin, context, exp);
+            ReportConnectionBroken(login, tLogin, context, path, exp);
 
             eventManager?.Close();
             eventManager = null;
             client.Dispose();
         }
 
-        private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, Exception? exp) {
+        private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, string path, Exception? exp) {
 
             if (context.Contains("request because system is shutting down.")) {
+                return;
+            }
+            if (path == LoginReq.Path) {
                 return;
             }
 
@@ -566,11 +569,11 @@ namespace Ifak.Fast.Mediator
                     response = await PostAsync(path, payload, acceptBinary: binaryDeserializer != null);
                 }
                 catch (TaskCanceledException exp) {
-                    OnConnectionBroken($"Post<T> {path} client.PostAsync TaskCanceled", exp);
+                    OnConnectionBroken($"Post<T> {path} client.PostAsync TaskCanceled", path, exp);
                     throw new ConnectivityException("Time out");
                 }
                 catch (Exception exp) {
-                    OnConnectionBroken($"Post<T> {path} client.PostAsync", exp);
+                    OnConnectionBroken($"Post<T> {path} client.PostAsync", path, exp);
                     throw new ConnectivityException(exp.Message);
                 }
             }
@@ -593,11 +596,11 @@ namespace Ifak.Fast.Mediator
                             }
                         }
                         catch (TaskCanceledException exp) {
-                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync TaskCanceled", exp);
+                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync TaskCanceled", path, exp);
                             throw new ConnectivityException("Time out");
                         }
                         catch (Exception exp) {
-                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync", exp);
+                            OnConnectionBroken($"Post<T> {path} response.Content.ReadAsStreamAsync", path, exp);
                             throw new ConnectivityException(exp.Message);
                         }
                     }
@@ -606,7 +609,7 @@ namespace Ifak.Fast.Mediator
                     }
                 }
                 else {
-                    await ThrowError(response, $"Post<T> {path}");
+                    await ThrowError(response, $"Post<T> {path}", path);
                     return default!; // never come here
                 }
             }
@@ -626,7 +629,7 @@ namespace Ifak.Fast.Mediator
             return content.Headers.ContentType.MediaType == "application/octet-stream";
         }
 
-        protected async Task ThrowError(HttpResponseMessage response, string context) {
+        protected async Task ThrowError(HttpResponseMessage response, string context, string path) {
 
             string? content = null;
             try {
@@ -642,7 +645,7 @@ namespace Ifak.Fast.Mediator
 
             if (errObj == null || errObj.Error == null) {
                 string errMsg = content == null || string.IsNullOrWhiteSpace(content) ? response.StatusCode.ToString() : content;
-                OnConnectionBroken($"ThrowError {context} '{errMsg}'", null);
+                OnConnectionBroken($"ThrowError {context} '{errMsg}'", path, null);
                 throw new ConnectivityException(errMsg);
             }
             else {
@@ -672,7 +675,7 @@ namespace Ifak.Fast.Mediator
                 this.dataVersion = dataVersion;
             }
 
-            public async Task StartWebSocket(string session, Uri wsUri, Action<string, Exception?> notifyConnectionBroken) {
+            public async Task StartWebSocket(string session, Uri wsUri, Action<string, string, Exception?> notifyConnectionBroken) {
 
                 webSocketCancel = new CancellationTokenSource();
                 webSocket = new ClientWebSocket();
@@ -686,7 +689,7 @@ namespace Ifak.Fast.Mediator
                 _ = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
             }
 
-            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, Exception?> notifyConnectionBroken) {
+            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, string, Exception?> notifyConnectionBroken) {
 
                 ClientWebSocket webSocket = this.webSocket!;
 
@@ -707,7 +710,7 @@ namespace Ifak.Fast.Mediator
                         catch (Exception exp) {
                             _ = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
-                                notifyConnectionBroken("ReadWebSocketForEvents ReceiveAsync", exp);
+                                notifyConnectionBroken("ReadWebSocketForEvents ReceiveAsync", "", exp);
                             }
                             _ = listener.OnConnectionClosed();
                             return;
@@ -751,7 +754,7 @@ namespace Ifak.Fast.Mediator
                         catch (Exception exp) {
                             _ = CloseSocket(); // no need to wait for completion
                             if (!cancelToken.IsCancellationRequested) {
-                                notifyConnectionBroken("ReadWebSocketForEvents SendAsync(ok)", exp);
+                                notifyConnectionBroken("ReadWebSocketForEvents SendAsync(ok)", "", exp);
                             }
                             _ = listener.OnConnectionClosed();
                             return;
@@ -760,7 +763,7 @@ namespace Ifak.Fast.Mediator
                     else if (result.MessageType == WebSocketMessageType.Close) {
                         await CloseSocket();
                         if (!cancelToken.IsCancellationRequested) {
-                            notifyConnectionBroken($"ReadWebSocketForEvents Close message received '{result.CloseStatusDescription}'", null);
+                            notifyConnectionBroken($"ReadWebSocketForEvents Close message received '{result.CloseStatusDescription}'", "", null);
                         }
                         await listener.OnConnectionClosed();
                         return;
