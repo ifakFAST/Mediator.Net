@@ -42,7 +42,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public Widget() { }
 
-        public Widget(string id, string type, string width = "", string height = "", JObject config = null) {
+        public Widget(string id, string type, string width = "", string height = "", JObject? config = null) {
             ID = id;
             Type = type;
             Width = width;
@@ -71,7 +71,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
     public static class ConfigFromHistoryPlot
     {
-        public static Config Convert(View_HistoryPlots.ViewConfig c) {
+        public static Config Convert(View_HistoryPlots.ViewConfig? c) {
+            if (c == null) return new Config();
             return new Config() {
                 Pages = c.Tabs.Select(tab => PageFromTab(tab, c.DataExport)).ToArray()
             };

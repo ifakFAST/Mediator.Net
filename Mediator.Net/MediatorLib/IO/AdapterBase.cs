@@ -70,7 +70,7 @@ namespace Ifak.Fast.Mediator.IO
         /// </summary>
         /// <param name="idOrNull">The id of the DataItem for browsing the Address</param>
         /// <returns></returns>
-        public abstract Task<string[]> BrowseDataItemAddress(string idOrNull);
+        public abstract Task<string[]> BrowseDataItemAddress(string? idOrNull);
 
         /// <summary>
         /// Called by the IO module to shutdown this Adapter instance.
@@ -198,11 +198,11 @@ namespace Ifak.Fast.Mediator.IO
 
     public struct WriteDataItemsResult
     {
-        private WriteDataItemsResult(FailedDataItemWrite[] failures) {
+        private WriteDataItemsResult(FailedDataItemWrite[]? failures) {
             FailedDataItems = failures;
         }
 
-        public FailedDataItemWrite[] FailedDataItems { get; private set; }
+        public FailedDataItemWrite[]? FailedDataItems { get; set; }
 
         public bool IsOK() => FailedDataItems == null || FailedDataItems.Length == 0;
 

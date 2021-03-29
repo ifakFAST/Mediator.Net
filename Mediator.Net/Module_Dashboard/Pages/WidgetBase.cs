@@ -17,12 +17,25 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         Task SaveWidgetConfiguration(object newConfig);
     }
 
+    public class EmptyWidgetContext : WidgetContext
+    {
+        public Task SaveWidgetConfiguration(object newConfig) {
+            throw new InvalidOperationException("SaveViewConfiguration on empty WidgetContext");
+        }
+
+        public Task SendEventToUI(string eventName, object payload) {
+            throw new InvalidOperationException("SendEventToUI on empty WidgetContext");
+        }
+    }
+
     public abstract class WidgetBaseWithConfig<CONFIG> : WidgetBase where CONFIG : class
     {
-        public CONFIG Config { get; private set; }
+        private CONFIG? config;
+
+        public CONFIG Config => config!;
 
         protected override void SetConfig(object config) {
-            Config = config as CONFIG;
+            this.config = (CONFIG)config;
         }
 
         protected override Type ConfigType => typeof(CONFIG);
@@ -30,8 +43,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
     public abstract class WidgetBase: EventListener
     {
-        protected Connection Connection { get; set; }
-        protected WidgetContext Context { get; set; }
+        protected Connection Connection { get; set; } = new ClosedConnection();
+        protected WidgetContext Context { get; set; } = new EmptyWidgetContext();
 
         public abstract string DefaultHeight { get; }
         public abstract string DefaultWidth { get; }
@@ -43,7 +56,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             Connection = connection;
             Context = context;
 
-            object objConfig = widget.Config.ToObject(ConfigType);
+            object objConfig = widget.Config.ToObject(ConfigType)!;
             widget.Config = StdJson.ObjectToJObject(objConfig);
             SetConfig(objConfig);
 
@@ -60,8 +73,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
                 ParameterInfo[] parameters = m.GetParameters();
 
-                UIReqDelegate theDelegate = (object[] args) => {
-                    return (Task<ReqResult>)m.Invoke(this, args);
+                UIReqDelegate theDelegate = (object?[] args) => {
+                    return (Task<ReqResult>)m.Invoke(this, args)!;
                 };
 
                 UiReqPara[] uiReqParameters = parameters.Select(MakeParameter).ToArray();
@@ -76,18 +89,17 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         public virtual Task OnDeactivate() => Task.FromResult(true);
 
         private static UiReqPara MakeParameter(ParameterInfo p) {
-            return new UiReqPara() {
-                Name = p.Name,
-                Type = p.ParameterType,
-                HasDefaultValue = p.HasDefaultValue,
-                DefaultValue = p.HasDefaultValue ? p.DefaultValue : null
-            };
+            return new UiReqPara(
+                name: p.Name ?? "",
+                type: p.ParameterType,
+                hasDefaultValue: p.HasDefaultValue,
+                defaultValue: p.HasDefaultValue ? p.DefaultValue : null);
         }
 
         protected virtual string RequestMethodNamePrefix => "UiReq_";
 
         protected Dictionary<string, UiReqMethod> mapUiReqMethods = new Dictionary<string, UiReqMethod>();
-        public delegate Task<ReqResult> UIReqDelegate(object[] paras);
+        public delegate Task<ReqResult> UIReqDelegate(object?[] paras);
 
         public virtual async Task<ReqResult> OnUiRequestAsync(string command, JObject parameters) {
 
@@ -103,7 +115,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                     }
                 }
 
-                object[] paramValues = method.Parameters.Select(p => p.Value).ToArray();
+                object?[] paramValues = method.Parameters.Select(p => p.Value).ToArray();
                 return await method.TheDelegate(paramValues);
             }
 
@@ -134,8 +146,15 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             public string Name { get; set; }
             public Type Type { get; set; }
             public bool HasDefaultValue { get; set; }
-            public object DefaultValue { get; set; }
-            public object Value { get; set; }
+            public object? DefaultValue { get; set; }
+            public object? Value { get; set; }
+
+            public UiReqPara(string name, Type type, bool hasDefaultValue, object? defaultValue) {
+                Name = name;
+                Type = type;
+                HasDefaultValue = hasDefaultValue;
+                DefaultValue = defaultValue;
+            }
         }
 
         public virtual Task OnConfigChanged(List<ObjectRef> changedObjects) { return Task.FromResult(true); }

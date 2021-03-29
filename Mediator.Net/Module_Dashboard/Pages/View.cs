@@ -20,20 +20,20 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         private Config configuration = new Config();
         private readonly Dictionary<string, PageState> Pages = new Dictionary<string, PageState>();
 
-        private PageState activePage = null;
+        private PageState? activePage = null;
         private ImmutableDictionary<string, Type> widgetTypes = ImmutableDictionary<string, Type>.Empty;
 
         public override Task OnActivate() {
 
             if (Config.NonEmpty) {
-                configuration = Config.Object<Config>();
+                configuration = Config.Object<Config>() ?? new Config();
                 // configuration = Example.Get();
             }
 
             widgetTypes = Reflect
                 .GetAllNonAbstractSubclasses(typeof(WidgetBase))
                 .Where(t => t.GetCustomAttribute<IdentifyWidget>() != null)
-                .ToImmutableDictionary(t => t.GetCustomAttribute<IdentifyWidget>().ID);
+                .ToImmutableDictionary(t => t.GetCustomAttribute<IdentifyWidget>()!.ID);
 
             foreach (var page in configuration.Pages) {
                 Pages[page.ID] = new PageState(page, Connection, widgetTypes, this);
@@ -117,8 +117,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             CheckActivePage(pageID);
 
-            string pageCopy = StdJson.ObjectToString(activePage.Page);
-            var page = StdJson.ObjectFromString<Page>(pageCopy);
+            string pageCopy = StdJson.ObjectToString(activePage!.Page);
+            var page = StdJson.ObjectFromString<Page>(pageCopy)!;
 
             page.ID = newPageID;
             page.Name = title;
@@ -136,7 +136,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigPageRename(string pageID, string title) {
             CheckActivePage(pageID);
-            activePage.Page.Name = title;
+            activePage!.Page.Name = title;
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK();
@@ -187,7 +187,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigInsertRow(string pageID, int row, bool below) {
             CheckActivePage(pageID);
-            activePage.ConfigInsertRow(row, below);
+            activePage!.ConfigInsertRow(row, below);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -195,7 +195,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigMoveRow(string pageID, int row, bool down) {
             CheckActivePage(pageID);
-            activePage.ConfigMoveRow(row, down);
+            activePage!.ConfigMoveRow(row, down);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -203,7 +203,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigRemoveRow(string pageID, int row) {
             CheckActivePage(pageID);
-            activePage.ConfigRemoveRow(row);
+            activePage!.ConfigRemoveRow(row);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -211,7 +211,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigInsertCol(string pageID, int row, int col, bool right) {
             CheckActivePage(pageID);
-            activePage.ConfigInsertCol(row, col, right);
+            activePage!.ConfigInsertCol(row, col, right);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -219,7 +219,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigMoveCol(string pageID, int row, int col, bool right) {
             CheckActivePage(pageID);
-            activePage.ConfigMoveCol(row, col, right);
+            activePage!.ConfigMoveCol(row, col, right);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -227,7 +227,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigRemoveCol(string pageID, int row, int col) {
             CheckActivePage(pageID);
-            activePage.ConfigRemoveCol(row, col);
+            activePage!.ConfigRemoveCol(row, col);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -235,7 +235,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigSetColWidth(string pageID, int row, int col, ColumnWidth width) {
             CheckActivePage(pageID);
-            activePage.ConfigSetColWidth(row, col, width);
+            activePage!.ConfigSetColWidth(row, col, width);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -243,7 +243,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigWidgetAdd(string pageID, int row, int col, string type, string id) {
             CheckActivePage(pageID);
-            activePage.ConfigWidgetAdd(row, col, type, id);
+            activePage!.ConfigWidgetAdd(row, col, type, id);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -251,7 +251,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigWidgetDelete(string pageID, string widgetID) {
             CheckActivePage(pageID);
-            await activePage.ConfigWidgetDelete(widgetID);
+            await activePage!.ConfigWidgetDelete(widgetID);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -259,7 +259,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigWidgetMove(string pageID, int row, int col, int widget, bool down) {
             CheckActivePage(pageID);
-            activePage.ConfigWidgetMove(row, col, widget, down);
+            activePage!.ConfigWidgetMove(row, col, widget, down);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -267,7 +267,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigWidgetSetHeight(string pageID, int row, int col, int widget, string newHeight) {
             CheckActivePage(pageID);
-            activePage.ConfigWidgetSetHeight(row, col, widget, newHeight);
+            activePage!.ConfigWidgetSetHeight(row, col, widget, newHeight);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -275,7 +275,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_ConfigWidgetSetWidth(string pageID, int row, int col, int widget, string newWidth) {
             CheckActivePage(pageID);
-            activePage.ConfigWidgetSetWidth(row, col, widget, newWidth);
+            activePage!.ConfigWidgetSetWidth(row, col, widget, newWidth);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -340,12 +340,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         }
 
         internal Task SendWidgetEventToUI(string pageID, string widgetID, string eventName, object payload) {
-            var msg = new EventMsg() {
-                PageID = pageID,
-                WidgetID = widgetID,
-                EventName = eventName,
-                Content = payload
-            };
+            var msg = new EventMsg(pageID, widgetID, eventName, payload);
             return Context.SendEventToUI("WidgetEvent", msg);
         }
 
@@ -355,28 +350,35 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             public string WidgetID { get; set; }
             public string EventName { get; set; }
             public object Content { get; set; }
+
+            public EventMsg(string pageID, string widgetID, string eventName, object content) {
+                PageID = pageID;
+                WidgetID = widgetID;
+                EventName = eventName;
+                Content = content;
+            }
         }
 
         public override Task OnVariableValueChanged(List<VariableValue> variables) {
-            PageState page = activePage;
+            PageState? page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnVariableValueChanged(variables);
         }
 
         public override Task OnConfigChanged(List<ObjectRef> changedObjects) {
-            PageState page = activePage;
+            PageState? page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnConfigChanged(changedObjects);
         }
 
         public override Task OnVariableHistoryChanged(List<HistoryChange> changes) {
-            PageState page = activePage;
+            PageState? page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnVariableHistoryChanged(changes);
         }
 
         public override Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
-            PageState page = activePage;
+            PageState? page = activePage;
             if (page == null) { return Task.FromResult(true); }
             return page.OnAlarmOrEvents(alarmOrEvents);
         }
@@ -413,7 +415,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 throw new Exception($"Unknown widget type '{strType}'");
             }
             Type type = widgetTypes[strType];
-            object widgetObj = Activator.CreateInstance(type);
+            object? widgetObj = Activator.CreateInstance(type);
+            if (widgetObj == null) throw new Exception($"Failed to create widget instance of type {type}");
             WidgetBase widgetInst = (WidgetBase)widgetObj;
             widgetInst.OnInit(connection, new WidgetContextImpl(Page, widget, view), widget);
             widgetMap[widget.ID] = widgetInst;
@@ -605,7 +608,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                     }
                 }
             }
-            return null;
+            throw new Exception($"Failed to find column of Widget '{widgetID}'");
         }
     }
 }

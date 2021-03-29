@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -25,12 +24,15 @@ namespace Ifak.Fast.Mediator.Calc
 
         private static async Task Loop(TcpConnectorSlave connector, CalculationBase module) {
 
-            Process parentProcess = null;
+            Process? parentProcess = null;
             using (Request request = await connector.ReceiveRequest(5000)) {
                 if (request.Code != AdapterMsg.ID_ParentInfo) {
                     throw new Exception("Missing ParentInfo request");
                 }
-                ParentInfoMsg info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload);
+                ParentInfoMsg? info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload);
+                if (info == null) {
+                    throw new Exception("ParentInfoMsg is null");
+                }
                 parentProcess = Process.GetProcessById(info.PID);
                 connector.SendResponseSuccess(request.RequestID, s => { });
             }
@@ -154,21 +156,9 @@ namespace Ifak.Fast.Mediator.Calc
                 return exp.Message + "\n" + exp.StackTrace;
             }
 
-            private static T Deserialize<T>(MemoryStream stream) => StdJson.ObjectFromUtf8Stream<T>(stream);
+            private static T Deserialize<T>(MemoryStream stream) => StdJson.ObjectFromUtf8Stream<T>(stream) ?? throw new Exception("Unexpected null value");
 
-            private static readonly byte[] EmptyArray = new byte[] { (byte)'[', (byte)']' };
-
-            private void SerializeArray<T>(T[] array, Stream output) {
-                if (array == null || array.Length == 0) {
-                    output.WriteByte((byte)'[');
-                    output.WriteByte((byte)']');
-                }
-                else {
-                    StdJson.ObjectToStream(array, output);
-                }
-            }
-
-            private void SerializeObject<T>(T obj, Stream output) {
+            private void SerializeObject<T>(T obj, Stream output) where T: notnull {
                 StdJson.ObjectToStream(obj, output);
             }
 
@@ -178,11 +168,6 @@ namespace Ifak.Fast.Mediator.Calc
 
             public void Notify_NeedRestart(string reason) {
 				Environment.Exit(1);
-            }
-
-            private void SendEvent<T>(IList<T> values, byte eventID) {
-                if (values == null || values.Count == 0) return;
-                connector.SendEvent(eventID, s => StdJson.ObjectToStream(values, s));
             }
         }
     }

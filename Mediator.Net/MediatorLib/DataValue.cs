@@ -13,9 +13,9 @@ namespace Ifak.Fast.Mediator
     [Ifak.Fast.Json.JsonConverter(typeof(DataValueConverter))]
     public struct DataValue : IEquatable<DataValue>, IXmlSerializable
     {
-        private string jsonOrNull;
+        private string? jsonOrNull;
 
-        private DataValue(string s) {
+        private DataValue(string? s) {
             jsonOrNull = s;
         }
 
@@ -38,95 +38,95 @@ namespace Ifak.Fast.Mediator
 
         public string JSON => jsonOrNull ?? "null";
 
-        public string JsonOrNull => jsonOrNull;
+        public string? JsonOrNull => jsonOrNull;
 
         public override string ToString() => JSON;
 
-        public override int GetHashCode() => IsEmpty ? 0 : jsonOrNull.GetHashCode();
+        public override int GetHashCode() => IsEmpty ? 0 : jsonOrNull!.GetHashCode();
 
         public static readonly DataValue Empty = new DataValue(null);
 
         public static DataValue FromEnum(Enum v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromEnumArray(Enum[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromEnumArray(Enum[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromByte(byte v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromByteArray(byte[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromByteArray(byte[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromSByte(sbyte v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromSByteArray(sbyte[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromSByteArray(sbyte[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromShort(short v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromShortArray(short[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromShortArray(short[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromUShort(ushort v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromUShortArray(ushort[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromUShortArray(ushort[]? v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromString(string v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromString(string? v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromStringArray(string[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromStringArray(string[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromFloat(float v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromFloatArray(float[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromFloatArray(float[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromDouble(double v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromDoubleArray(double[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromDoubleArray(double[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromDecimal(decimal v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromDecimalArray(decimal[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromDecimalArray(decimal[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromLong(long v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromLongArray(long[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromLongArray(long[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromULong(ulong v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromULongArray(ulong[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromULongArray(ulong[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromInt(int v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromIntArray(int[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromIntArray(int[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromUInt(uint v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromUIntArray(uint[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromUIntArray(uint[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromBool(bool v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromBoolArray(bool[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromBoolArray(bool[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromDuration(Duration v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromDurationArray(Duration[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromDurationArray(Duration[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromLocationRef(LocationRef v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromLocationRefArray(LocationRef[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromLocationRefArray(LocationRef[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromTimestamp(Timestamp v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromTimestampArray(Timestamp[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromTimestampArray(Timestamp[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromLocalDateTime(LocalDateTime v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromLocalDateTimeArray(LocalDateTime[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromLocalDateTimeArray(LocalDateTime[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromLocalDate(LocalDate v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromLocalDateArray(LocalDate[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromLocalDateArray(LocalDate[]? v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromLocalTime(LocalTime v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromLocalTimeArray(LocalTime[] v) => FromJSON(StdJson.ValueToString(v));
+        public static DataValue FromLocalTimeArray(LocalTime[]? v) => FromJSON(StdJson.ValueToString(v));
 
-        public static DataValue FromObject(object obj, bool indented = false) => FromJSON(StdJson.ObjectToString(obj, indented: indented));
+        public static DataValue FromObject(object? obj, bool indented = false) => FromJSON(StdJson.ObjectToString(obj, indented: indented));
 
         public static DataValue FromJSON(string json) => string.IsNullOrWhiteSpace(json) || json == "null" ? new DataValue(null) : new DataValue(json);
 
@@ -207,7 +207,10 @@ namespace Ifak.Fast.Mediator
             return new DataValue(null);
         }
 
-        public object GetValue(DataType dt, int dimension) {
+        public object? GetValue(DataType dt, int dimension) {
+
+            if (IsEmpty) return null;
+
             if (dimension == 1) {
                 switch (dt) {
                     case DataType.Bool: return this.GetBool();
@@ -222,18 +225,18 @@ namespace Ifak.Fast.Mediator
                     case DataType.Float32: return this.GetFloat();
                     case DataType.Float64: return this.GetDouble();
                     case DataType.String: return this.GetString();
-                    case DataType.ObjectRef: return ObjectRef.FromEncodedString(this.GetString());
-                    case DataType.LocationRef: return LocationRef.FromLocationID(this.GetString());
+                    case DataType.ObjectRef: return ObjectRef.FromEncodedString(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not an ObjectRef"));
+                    case DataType.LocationRef: return LocationRef.FromLocationID(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a LocationRef"));
                     case DataType.URI: return new Uri(this.GetString());
                     case DataType.Enum: return this.GetString();
                     case DataType.JSON: return this;
                     case DataType.Guid: return Guid.Parse(this.GetString());
                     case DataType.NamedValue: return this.Object<NamedValue>();
-                    case DataType.LocalDate: return LocalDate.FromISO8601(this.GetString());
-                    case DataType.LocalTime: return LocalTime.FromISO8601(this.GetString());
-                    case DataType.LocalDateTime: return LocalDateTime.FromISO8601(this.GetString());
-                    case DataType.Timestamp: return Timestamp.FromISO8601(this.GetString());
-                    case DataType.Duration: return Duration.Parse(this.GetString());
+                    case DataType.LocalDate: return LocalDate.FromISO8601(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a LocalDate"));
+                    case DataType.LocalTime: return LocalTime.FromISO8601(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a LocalTime"));
+                    case DataType.LocalDateTime: return LocalDateTime.FromISO8601(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a LocalDateTime"));
+                    case DataType.Timestamp: return Timestamp.FromISO8601(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a Timestamp"));
+                    case DataType.Duration: return Duration.Parse(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a Duration"));
                     case DataType.Struct: return jsonOrNull;
                 }
             }
@@ -297,7 +300,12 @@ namespace Ifak.Fast.Mediator
             return DataType.Struct;
         }
 
-        public bool IsArray => !string.IsNullOrEmpty(jsonOrNull) && (jsonOrNull[0] == '[' || FirstNonWhitespace(jsonOrNull) == '[');
+        public bool IsArray {
+            get {
+                string json = JSON;
+                return !string.IsNullOrEmpty(json) && (json[0] == '[' || FirstNonWhitespace(json) == '[');
+            }
+        }
 
         public int ArrayLength {
             get {
@@ -309,9 +317,9 @@ namespace Ifak.Fast.Mediator
 
         public bool IsBool => jsonOrNull == "true" || jsonOrNull == "false";
 
-        public T Object<T>() => StdJson.ObjectFromString<T>(jsonOrNull);
+        public T? Object<T>() => StdJson.ObjectFromString<T>(jsonOrNull);
 
-        public object Object(Type t) => StdJson.ObjectFromString(t, jsonOrNull);
+        public object? Object(Type t) => StdJson.ObjectFromString(t, jsonOrNull);
 
         public void PopulateObject(object obj) {
             StdJson.PopulateObject(jsonOrNull, obj);
@@ -319,77 +327,89 @@ namespace Ifak.Fast.Mediator
 
         public double? AsDouble() {
             try {
-                return StdJson.ToDouble(jsonOrNull);
+                return StdJson.ToDouble(jsonOrNull!);
             }
             catch (Exception) {
                 if (jsonOrNull == "true") return 1;
                 if (jsonOrNull == "false") return 0;
                 if (jsonOrNull == null) return null;
                 try {
-                    return StdJson.ToDoubleArrayAcceptingBools(jsonOrNull)[0];
+                    return StdJson.ToDoubleArrayAcceptingBools(jsonOrNull)![0];
                 }
                 catch (Exception) { }
             }
             return null;
         }
 
-        public double GetDouble() => IsEmpty ? throw new SerializationException("DataValue.GetDouble(): value is empty (null)") : StdJson.ToDouble(jsonOrNull);
+        public double GetDouble() => IsEmpty ? throw new SerializationException("DataValue.GetDouble(): value is empty (null)") : StdJson.ToDouble(jsonOrNull!);
 
-        public double[] GetDoubleArray() => StdJson.ToDoubleArray(jsonOrNull);
+        public double[]? GetDoubleArray() => StdJson.ToDoubleArray(jsonOrNull);
 
-        public float GetFloat() => IsEmpty ? throw new SerializationException("DataValue.GetFloat(): value is empty (null)") : StdJson.ToFloat(jsonOrNull);
+        public float GetFloat() => IsEmpty ? throw new SerializationException("DataValue.GetFloat(): value is empty (null)") : StdJson.ToFloat(jsonOrNull!);
 
-        public float[] GetFloatArray() => StdJson.ToFloatArray(jsonOrNull);
+        public float[]? GetFloatArray() => StdJson.ToFloatArray(jsonOrNull);
 
-        public decimal GetDecimal() => IsEmpty ? throw new SerializationException("DataValue.GetDecimal(): value is empty (null)") : StdJson.ToDecimal(jsonOrNull);
+        public decimal GetDecimal() => IsEmpty ? throw new SerializationException("DataValue.GetDecimal(): value is empty (null)") : StdJson.ToDecimal(jsonOrNull!);
 
-        public decimal[] GetDecimalArray() => StdJson.ToDecimalArray(jsonOrNull);
+        public decimal[]? GetDecimalArray() => StdJson.ToDecimalArray(jsonOrNull);
 
-        public short GetShort() => IsEmpty ? throw new SerializationException("DataValue.GetShort(): value is empty (null)") : StdJson.ToShort(jsonOrNull);
+        public short GetShort() => IsEmpty ? throw new SerializationException("DataValue.GetShort(): value is empty (null)") : StdJson.ToShort(jsonOrNull!);
 
-        public short[] GetShortArray() => StdJson.ToShortArray(jsonOrNull);
+        public short[]? GetShortArray() => StdJson.ToShortArray(jsonOrNull);
 
-        public ushort GetUShort() => IsEmpty ? throw new SerializationException("DataValue.GetUShort(): value is empty (null)") : StdJson.ToUShort(jsonOrNull);
+        public ushort GetUShort() => IsEmpty ? throw new SerializationException("DataValue.GetUShort(): value is empty (null)") : StdJson.ToUShort(jsonOrNull!);
 
-        public ushort[] GetUShortArray() => StdJson.ToUShortArray(jsonOrNull);
+        public ushort[]? GetUShortArray() => StdJson.ToUShortArray(jsonOrNull);
 
-        public int GetInt() => IsEmpty ? throw new SerializationException("DataValue.GetInt(): value is empty (null)") : StdJson.ToInt(jsonOrNull);
+        public int GetInt() => IsEmpty ? throw new SerializationException("DataValue.GetInt(): value is empty (null)") : StdJson.ToInt(jsonOrNull!);
 
-        public int[] GetIntArray() => StdJson.ToIntArray(jsonOrNull);
+        public int[]? GetIntArray() => StdJson.ToIntArray(jsonOrNull);
 
-        public uint GetUInt() => IsEmpty ? throw new SerializationException("DataValue.GetUInt(): value is empty (null)") : StdJson.ToUInt(jsonOrNull);
+        public uint GetUInt() => IsEmpty ? throw new SerializationException("DataValue.GetUInt(): value is empty (null)") : StdJson.ToUInt(jsonOrNull!);
 
-        public uint[] GetUIntArray() => StdJson.ToUIntArray(jsonOrNull);
+        public uint[]? GetUIntArray() => StdJson.ToUIntArray(jsonOrNull);
 
-        public long GetLong() => IsEmpty ? throw new SerializationException("DataValue.GetLong(): value is empty (null)") : StdJson.ToLong(jsonOrNull);
+        public long GetLong() => IsEmpty ? throw new SerializationException("DataValue.GetLong(): value is empty (null)") : StdJson.ToLong(jsonOrNull!);
 
-        public long[] GetLongArray() => StdJson.ToLongArray(jsonOrNull);
+        public long[]? GetLongArray() => StdJson.ToLongArray(jsonOrNull);
 
-        public ulong GetULong() => IsEmpty ? throw new SerializationException("DataValue.GetULong(): value is empty (null)") : StdJson.ToULong(jsonOrNull);
+        public ulong GetULong() => IsEmpty ? throw new SerializationException("DataValue.GetULong(): value is empty (null)") : StdJson.ToULong(jsonOrNull!);
 
-        public ulong[] GetULongArray() => StdJson.ToULongArray(jsonOrNull);
+        public ulong[]? GetULongArray() => StdJson.ToULongArray(jsonOrNull);
 
-        public bool GetBool() => IsEmpty ? throw new SerializationException("DataValue.GetBool(): value is empty (null)") : StdJson.ToBool(jsonOrNull);
+        public bool GetBool() => IsEmpty ? throw new SerializationException("DataValue.GetBool(): value is empty (null)") : StdJson.ToBool(jsonOrNull!);
 
-        public bool[] GetBoolArray() => StdJson.ToBoolArray(jsonOrNull);
+        public bool[]? GetBoolArray() => StdJson.ToBoolArray(jsonOrNull);
 
-        public string GetString() => StdJson.ObjectFromString<string>(jsonOrNull);
+        public string? GetString() => StdJson.ObjectFromString<string>(jsonOrNull);
 
-        public string[] GetStringArray() => StdJson.ObjectFromString<string[]>(jsonOrNull);
+        public string[]? GetStringArray() => StdJson.ObjectFromString<string[]>(jsonOrNull);
 
-        public byte GetByte() => IsEmpty ? throw new SerializationException("DataValue.GetByte(): value is empty (null)") : StdJson.ToByte(jsonOrNull);
+        public byte GetByte() => IsEmpty ? throw new SerializationException("DataValue.GetByte(): value is empty (null)") : StdJson.ToByte(jsonOrNull!);
 
-        public byte[] GetByteArray() => StdJson.ToByteArray(jsonOrNull);
+        public byte[]? GetByteArray() => StdJson.ToByteArray(jsonOrNull);
 
-        public sbyte GetSByte() => IsEmpty ? throw new SerializationException("DataValue.GetSByte(): value is empty (null)") : StdJson.ToSByte(jsonOrNull);
+        public sbyte GetSByte() => IsEmpty ? throw new SerializationException("DataValue.GetSByte(): value is empty (null)") : StdJson.ToSByte(jsonOrNull!);
 
-        public sbyte[] GetSByteArray() => StdJson.ToSByteArray(jsonOrNull);
+        public sbyte[]? GetSByteArray() => StdJson.ToSByteArray(jsonOrNull);
 
-        public T GetEnum<T>() => StdJson.ObjectFromString<T>(jsonOrNull);
+        public T? GetEnum<T>() => StdJson.ObjectFromString<T>(jsonOrNull);
 
-        public T[] GetEnumArray<T>() => StdJson.ObjectFromString<T[]>(jsonOrNull);
+        public T[]? GetEnumArray<T>() => StdJson.ObjectFromString<T[]>(jsonOrNull);
 
-        public Timestamp GetTimestamp() => IsEmpty ? throw new SerializationException("DataValue.GetTimestamp(): value is empty (null)") : Timestamp.FromISO8601(GetString());
+        public Timestamp GetTimestamp() {
+            if (IsEmpty) throw new SerializationException("DataValue.GetTimestamp(): value is empty (null)");
+            string? str = GetString();
+            if (str == null) throw new SerializationException("DataValue.GetTimestamp(): value is not a string");
+            return Timestamp.FromISO8601(str);
+        }
+
+        public Timestamp? GetTimestampOrNull() {
+            if (IsEmpty) return null;
+            string? str = GetString();
+            if (str == null) return null;
+            return Timestamp.FromISO8601(str);
+        }
 
         private static char FirstNonWhitespace(string str) {
             for (int i = 0; i < str.Length; ++i) {
@@ -399,7 +419,7 @@ namespace Ifak.Fast.Mediator
             return ' ';
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
             string s = reader.ReadElementContentAsString();

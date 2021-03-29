@@ -5,6 +5,8 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>Ifak.Fast.Mediator.Calc</RootNamespace>
     <StartupObject>Ifak.Fast.Mediator.Calc.Program</StartupObject>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

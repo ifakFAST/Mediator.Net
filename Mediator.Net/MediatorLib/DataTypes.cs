@@ -11,6 +11,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Ifak.Fast.Mediator
 {
@@ -128,7 +129,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +302,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public static implicit operator TimeSpan(Duration d) => d.ToTimeSpan();
     }
@@ -481,7 +482,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -592,7 +593,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -682,7 +683,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -796,7 +797,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -863,7 +864,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -900,7 +901,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
             name = reader["name"];
@@ -958,7 +959,7 @@ namespace Ifak.Fast.Mediator
 
     public struct Result : IEquatable<Result> {
 
-        private Result(bool ok, string error) {
+        private Result(bool ok, string? error) {
             IsOK = ok;
             Error = error;
         }
@@ -973,7 +974,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public bool IsOK { get; set; }
-        public string Error { get; set; } // only used when IsOK == false
+        public string? Error { get; set; } // only used when IsOK == false
 
         public bool Failed() => !IsOK;
 
@@ -997,7 +998,7 @@ namespace Ifak.Fast.Mediator
 
     public struct Result<T> : IEquatable<Result<T>>
     {
-        private Result(bool ok, T value, string error) {
+        private Result(bool ok, T? value, string? error) {
             IsOK = ok;
             Value = value;
             Error = error;
@@ -1005,15 +1006,15 @@ namespace Ifak.Fast.Mediator
 
         public static Result<T> OK(T value) => new Result<T>(true, value, null);
 
-        public static Result<T> Failure(string errMsg) => new Result<T>(false, default(T), errMsg ?? "?");
+        public static Result<T> Failure(string errMsg) => new Result<T>(false, default, errMsg ?? "?");
 
         public bool IsOK { get; set; }
-        public string Error { get; set; } // only used when IsOK == false
-        public T Value { get; set; }      // only used when IsOK == true
+        public string? Error { get; set; } // only used when IsOK == false
+        public T? Value { get; set; }      // only used when IsOK == true
 
         public bool Failed() => !IsOK;
 
-        public bool Equals(Result<T> other) => IsOK == other.IsOK && ((Failed() && Error == other.Error) || (IsOK && Value.Equals(other.Value)));
+        public bool Equals(Result<T> other) => IsOK == other.IsOK && ((Failed() && Error == other.Error) || (IsOK && Value!.Equals(other.Value)));
 
         public override bool Equals(object obj) {
             if (obj is Result<T>) {

@@ -17,14 +17,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
     [Identify("OPC UA")]
     public class OPC_UA : AdapterBase
     {
-        private ApplicationDescription appDescription;
+        private ApplicationDescription appDescription = new ApplicationDescription();
         //private ICertificateStore certificateStore;
-        private UaTcpSessionChannel connection;
+        private UaTcpSessionChannel? connection;
 
         private readonly ILoggerFactory loggerFactory = new LoggerFactory();
 
-        private Adapter config;
-        private AdapterCallback callback;
+        private Adapter? config;
+        private AdapterCallback? callback;
         private Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
 
         public override bool SupportsScheduledReading => true;
@@ -66,7 +66,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 return true;
             }
 
-            if (string.IsNullOrEmpty(config.Address)) return false;
+            if (config == null || string.IsNullOrEmpty(config.Address)) return false;
 
             try {
 
@@ -75,8 +75,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     ProfileUris = new[] { TransportProfileUris.UaTcpTransport }
                 };
 
-                GetEndpointsResponse endpoints = await UaTcpDiscoveryService.GetEndpointsAsync(getEndpointsRequest);
-                EndpointDescription[] noSecurityEndpoints = endpoints.Endpoints.Where(e => e.SecurityPolicyUri == SecurityPolicyUris.None).ToArray();
+                GetEndpointsResponse endpointsResponse = await UaTcpDiscoveryService.GetEndpointsAsync(getEndpointsRequest);
+                EndpointDescription?[] endpoints = endpointsResponse.Endpoints ?? new EndpointDescription[0];
+                EndpointDescription[] noSecurityEndpoints = endpoints
+                    .Where(e => e != null && e.SecurityPolicyUri == SecurityPolicyUris.None)
+                    .Cast<EndpointDescription>()
+                    .ToArray();
 
                 var (endpoint, userIdentity) = FirstEndpointWithLogin(noSecurityEndpoints);
 
@@ -113,19 +117,26 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     };
                     TranslateBrowsePathsToNodeIdsResponse resp = await connection.TranslateBrowsePathsToNodeIdsAsync(req);
 
-                    if (resp.Results.Length != nodesNeedingResolve.Length) {
+                    if (resp.Results == null || resp.Results.Length != nodesNeedingResolve.Length) {
                         LogWarn("Mismatch", "TranslateBrowsePathsToNodeIds failed");
                     }
                     else {
                         for (int i = 0; i < resp.Results.Length; ++i) {
-                            BrowsePathResult x = resp.Results[i];
-                            if (StatusCode.IsGood(x.StatusCode) && x.Targets.Length > 0) {
-                                NodeId id = x.Targets[0].TargetId.NodeId;
-                                nodesNeedingResolve[i].Node = id;
-                                PrintLine($"Resolved item '{nodesNeedingResolve[i].Name}' => {id}");
+                            BrowsePathResult? x = resp.Results[i];
+                            if (x != null && StatusCode.IsGood(x.StatusCode) && x.Targets != null && x.Targets.Length > 0) {
+                                BrowsePathTarget? target = x.Targets[0];
+                                if (target != null && target.TargetId != null) {
+                                    NodeId id = target.TargetId.NodeId;
+                                    nodesNeedingResolve[i].Node = id;
+                                    PrintLine($"Resolved item '{nodesNeedingResolve[i].Name}' => {id}");
+                                }
+                                else {
+                                    PrintLine($"Could not resolve item '{nodesNeedingResolve[i].Name}': StatusCode: {x.StatusCode}");
+                                }
                             }
                             else {
-                                PrintLine($"Could not resolve item '{nodesNeedingResolve[i].Name}': StatusCode: {x.StatusCode.ToString()}");
+                                string statusCode = x == null ? "?" : x.StatusCode.ToString();
+                                PrintLine($"Could not resolve item '{nodesNeedingResolve[i].Name}': StatusCode: {statusCode}");
                             }
                         }
                     }
@@ -140,11 +151,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
         }
 
-        private (EndpointDescription, IUserIdentity) FirstEndpointWithLogin(EndpointDescription[] endpoints) {
+        private (EndpointDescription?, IUserIdentity?) FirstEndpointWithLogin(EndpointDescription[] endpoints) {
+
+            if (config == null) return (null, null);
 
             foreach (var endpoint in endpoints) {
 
-                foreach (var policy in endpoint.UserIdentityTokens) {
+                foreach (var policy in CleanNulls(endpoint.UserIdentityTokens)) {
 
                     if (policy.TokenType == UserTokenType.Anonymous && !config.Login.HasValue) {
                         return (endpoint, new AnonymousIdentity());
@@ -158,8 +171,19 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return (null, null);
         }
 
+        private static IEnumerable<T> CleanNulls<T>(IEnumerable<T?>? items) where T: class {
+            if (items == null) {
+                yield break;
+            }
+            foreach (var item in items) {
+                if (item != null) {
+                    yield return item;
+                }
+            }
+        }
+
         private async Task CloseChannel() {
-            UaTcpSessionChannel connection = this.connection;
+            UaTcpSessionChannel? connection = this.connection;
             if (connection == null) return;
             this.connection = null;
             try {
@@ -178,7 +202,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
             bool connected = await TryConnect();
-            if (!connected) {
+            if (!connected || connection == null) {
                 return GetBadVTQs(items);
             }
 
@@ -248,86 +272,86 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 case VariantType.Float:
 
                     if (array)
-                        return DataValue.FromFloatArray((float[])v);
+                        return DataValue.FromFloatArray((float[]?)v);
                     else
                         return DataValue.FromFloat((float)v);
 
                 case VariantType.Double:
 
                     if (array)
-                        return DataValue.FromDoubleArray((double[])v);
+                        return DataValue.FromDoubleArray((double[]?)v);
                     else
                         return DataValue.FromDouble((double)v);
 
                 case VariantType.Boolean:
 
                     if (array)
-                        return DataValue.FromBoolArray((bool[])v);
+                        return DataValue.FromBoolArray((bool[]?)v);
                     else
                         return DataValue.FromBool((bool)v);
 
                 case VariantType.Int64:
 
                     if (array)
-                        return DataValue.FromLongArray((long[])v);
+                        return DataValue.FromLongArray((long[]?)v);
                     else
                         return DataValue.FromLong((long)v);
 
                 case VariantType.UInt64:
 
                     if (array)
-                        return DataValue.FromULongArray((ulong[])v);
+                        return DataValue.FromULongArray((ulong[]?)v);
                     else
                         return DataValue.FromULong((ulong)v);
 
                 case VariantType.Int32:
 
                     if (array)
-                        return DataValue.FromIntArray((int[])v);
+                        return DataValue.FromIntArray((int[]?)v);
                     else
                         return DataValue.FromInt((int)v);
 
                 case VariantType.UInt32:
 
                     if (array)
-                        return DataValue.FromUIntArray((uint[])v);
+                        return DataValue.FromUIntArray((uint[]?)v);
                     else
                         return DataValue.FromUInt((uint)v);
 
                 case VariantType.Int16:
 
                     if (array)
-                        return DataValue.FromShortArray((short[])v);
+                        return DataValue.FromShortArray((short[]?)v);
                     else
                         return DataValue.FromShort((short)v);
 
                 case VariantType.UInt16:
 
                     if (array)
-                        return DataValue.FromUShortArray((ushort[])v);
+                        return DataValue.FromUShortArray((ushort[]?)v);
                     else
                         return DataValue.FromUShort((ushort)v);
 
                 case VariantType.SByte:
 
                     if (array)
-                        return DataValue.FromSByteArray((sbyte[])v);
+                        return DataValue.FromSByteArray((sbyte[]?)v);
                     else
                         return DataValue.FromSByte((sbyte)v);
 
                 case VariantType.Byte:
 
                     if (array)
-                        return DataValue.FromByteArray((byte[])v);
+                        return DataValue.FromByteArray((byte[]?)v);
                     else
                         return DataValue.FromByte((byte)v);
 
                 case VariantType.String:
 
                     if (array)
-                        return DataValue.FromStringArray((string[])v);
+                        return DataValue.FromStringArray((string[]?)v);
                     else
-                        return DataValue.FromString((string)v);
+                        return DataValue.FromString((string?)v);
 
                 case VariantType.Null: return lastValue;
 
@@ -360,7 +384,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             int N = values.Count;
 
             bool connected = await TryConnect();
-            if (!connected) {
+            if (!connected || connection == null) {
                 var failed = new FailedDataItemWrite[N];
                 for (int i = 0; i < N; ++i) {
                     DataItemValue request = values[i];
@@ -369,7 +393,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 return WriteDataItemsResult.Failure(failed);
             }
 
-            List<FailedDataItemWrite> listFailed = null;
+            List<FailedDataItemWrite>? listFailed = null;
 
             var dataItemsToWrite = new List<WriteValue>(N);
             for (int i = 0; i < N; ++i) {
@@ -413,7 +437,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         private static WriteValue MakeWriteValue(NodeId item, DataValue value, DataType type, int dimension) {
 
-            object v = value.GetValue(type, dimension);
+            object? v = value.GetValue(type, dimension);
             var dv = new Workstation.ServiceModel.Ua.DataValue(v);
 
             return new WriteValue() {
@@ -427,7 +451,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return Task.FromResult(new string[0]);
         }
 
-        public override async Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override async Task<string[]> BrowseDataItemAddress(string? idOrNull) {
 
             if (connection == null) {
                 return new string[0];
@@ -450,13 +474,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result) {
 
             var children = await BrowseTree(parent.ID);
+            if (children == null || connection == null) return;
             foreach (ReferenceDescription item in children) {
+                if (item.NodeId == null) continue;
                 NodeId id = ExpandedNodeId.ToNodeId(item.NodeId, connection.NamespaceUris);
-                if (item.NodeClass == NodeClass.Object && id.NamespaceIndex != 0) {
+                if (item.NodeClass == NodeClass.Object && id.NamespaceIndex != 0 && item.BrowseName != null) {
                     var nodeObject = new BrowseNode(id, item.BrowseName, parent);
                     await BrowseEntireTree(nodeObject, result);
                 }
-                else if (item.NodeClass == NodeClass.Variable && id.NamespaceIndex != 0) {
+                else if (item.NodeClass == NodeClass.Variable && id.NamespaceIndex != 0 && item.BrowseName != null) {
                     var nodeVariable = new BrowseNode(id, item.BrowseName, parent);
                     if (result.All(n => n.ID != id)) {
                         result.Add(nodeVariable);
@@ -466,6 +492,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private async Task<IList<ReferenceDescription>> BrowseTree(NodeId tree) {
+
+            if (connection == null) return new ReferenceDescription[0];
 
             var browseRequest = new BrowseRequest {
                 NodesToBrowse = new[] {
@@ -483,26 +511,29 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             var rds = new List<ReferenceDescription>();
             BrowseResponse browseResponse = await connection.BrowseAsync(browseRequest);
-            rds.AddRange(browseResponse.Results.Where(result => result.References != null).SelectMany(result => result.References));
+            Workstation.ServiceModel.Ua.BrowseResult[] results = CleanNulls(browseResponse.Results).ToArray();
+            rds.AddRange(results.SelectMany(result => CleanNulls(result.References)));
 
-            var continuationPoints = browseResponse.Results.Select(br => br.ContinuationPoint).Where(cp => cp != null).ToArray();
+            var continuationPoints = results.Select(br => br.ContinuationPoint).Where(cp => cp != null).ToArray();
 
             while (continuationPoints.Length > 0 && connection != null) {
 
                 var browseNextRequest = new BrowseNextRequest { ContinuationPoints = continuationPoints, ReleaseContinuationPoints = false };
                 var browseNextResponse = await connection.BrowseNextAsync(browseNextRequest);
-                rds.AddRange(browseNextResponse.Results.Where(result => result.References != null).SelectMany(result => result.References));
-                continuationPoints = browseNextResponse.Results.Select(br => br.ContinuationPoint).Where(cp => cp != null).ToArray();
+                Workstation.ServiceModel.Ua.BrowseResult[] nextResults = CleanNulls(browseNextResponse.Results).ToArray();
+                rds.AddRange(nextResults.SelectMany(result => CleanNulls(result.References)));
+                continuationPoints = nextResults.Select(br => br.ContinuationPoint).Where(cp => cp != null).ToArray();
             }
 
             return rds;
         }
 
         private void PrintLine(string msg) {
-            Console.WriteLine(config.Name + ": " + msg);
+            string name = config?.Name ?? "";
+            Console.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarn(string type, string msg, string dataItem = null, string details = null) {
+        private void LogWarn(string type, string msg, string? dataItem = null, string? details = null) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
@@ -513,7 +544,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 AffectedDataItems = string.IsNullOrEmpty(dataItem) ? new string[0] : new string[] { dataItem }
             };
 
-            callback.Notify_AlarmOrEvent(ae);
+            callback?.Notify_AlarmOrEvent(ae);
         }
     }
 
@@ -523,10 +554,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         public string Name { get; }
         public DataType Type { get; }
         public int Dimension { get; }
-        public NodeId Node { get; set; }
+        public NodeId? Node { get; set; }
 
-        public RelativePath RelativePath { get; }
-        public NodeId StartingNode { get; }
+        public RelativePath RelativePath { get; } = new RelativePath();
+        public NodeId StartingNode { get; } = NodeId.Null;
 
         public const char Separator = '/';
         private const string Objects = "Objects/";
@@ -590,9 +621,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
     {
         public NodeId ID { get; set; }
         public QualifiedName BrowseName { get; set; }
-        public BrowseNode Parent { get; set; }
+        public BrowseNode? Parent { get; set; }
 
-        public BrowseNode(NodeId id, QualifiedName browseName, BrowseNode parent = null) {
+        public BrowseNode(NodeId id, QualifiedName browseName, BrowseNode? parent = null) {
             ID = id;
             BrowseName = browseName;
             Parent = parent;

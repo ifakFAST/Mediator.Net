@@ -14,8 +14,8 @@ namespace Ifak.Fast.Mediator.Test
     {
         private Logger log = LogManager.GetLogger("TestDB");
 
-        private Connection con = null;
-        private Notifier notifier = null;
+        private Connection? con = null;
+        private Notifier? notifier = null;
         private string moduleID = "";
         private const int VariablesCount = 1000;
 
@@ -60,6 +60,7 @@ namespace Ifak.Fast.Mediator.Test
 
         private async Task TestHistorianModify() {
 
+            if (con == null) throw new Exception("con == null");
             log.Info($"TestHistorianModify");
 
             var varA = GetVarRef("Variable_0");
@@ -112,6 +113,8 @@ namespace Ifak.Fast.Mediator.Test
 
         private async Task TestHistorianManyVariables() {
 
+            if (con == null) throw new Exception("con == null");
+
             TimeCode timer = new TimeCode(log);
 
             Timestamp tStart = Timestamp.Now;
@@ -131,7 +134,7 @@ namespace Ifak.Fast.Mediator.Test
                     VTQ vtq = new VTQ(t, Quality.Good, DataValue.FromDouble(i));
                     values.Add(new VariableValue(GetVarRef("Variable_" + i.ToString()), vtq));
                 }
-                notifier.Notify_VariableValuesChanged(values);
+                notifier!.Notify_VariableValuesChanged(values);
                 last = t;
             }
 
@@ -173,11 +176,14 @@ namespace Ifak.Fast.Mediator.Test
         }
 
         private async Task ExpectCount(VariableRef v, long c) {
+            if (con == null) throw new Exception("con == null");
             long count = await con.HistorianCount(v, Timestamp.Empty, Timestamp.Max);
             assert(count == c, $"count == {c}");
         }
 
         private async Task TestHistoryRaw(VariableRef v, Timestamp tStart, Timestamp tEnd, int maxValues, params VTQ[] expectedData) {
+
+            if (con == null) throw new Exception("con == null");
 
             Action<VTTQs> test = (vttqs) => {
                 assert(vttqs.Count == expectedData.Length, $"vttqs.Length == {expectedData.Length}");

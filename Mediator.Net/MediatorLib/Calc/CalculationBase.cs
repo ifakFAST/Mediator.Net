@@ -15,19 +15,19 @@ namespace Ifak.Fast.Mediator.Calc
 
     public class InitParameter
     {
-        public Calculation Calculation { get; set; }
-        public StateValue[] LastState { get; set; }
-        public OutputValue[] LastOutput { get; set; }
-        public string ConfigFolder { get; set; }
-        public string DataFolder { get; set; }
-        public NamedValue[] ModuleConfig { get; set; }
+        public Calculation Calculation { get; set; } = new Calculation();
+        public StateValue[] LastState { get; set; } = new StateValue[0];
+        public OutputValue[] LastOutput { get; set; } = new OutputValue[0];
+        public string ConfigFolder { get; set; } = "";
+        public string DataFolder { get; set; } = "";
+        public NamedValue[] ModuleConfig { get; set; } = new NamedValue[0];
     }
 
     public class InitResult
     {
-        public InputDef[] Inputs { get; set; }
-        public OutputDef[] Outputs { get; set; }
-        public StateDef[] States { get; set; }
+        public InputDef[] Inputs { get; set; } = new InputDef[0];
+        public OutputDef[] Outputs { get; set; } = new OutputDef[0];
+        public StateDef[] States { get; set; } = new StateDef[0];
         public bool ExternalStatePersistence { get; set; }
     }
 
@@ -68,7 +68,7 @@ namespace Ifak.Fast.Mediator.Calc
 
     public class InputValue
     {
-        public string InputID { get; set; }
+        public string InputID { get; set; } = "";
         public VTQ Value { get; set; }
         public VariableRef? AttachedVariable { get; set; }
         public override string ToString() => InputID + " = " + Value.ToString();
@@ -76,22 +76,22 @@ namespace Ifak.Fast.Mediator.Calc
 
     public class OutputValue
     {
-        public string OutputID { get; set; }
+        public string OutputID { get; set; } = "";
         public VTQ Value { get; set; }
         public override string ToString() => OutputID + " = " + Value.ToString();
     }
 
     public class StateValue
     {
-        public string StateID { get; set; }
+        public string StateID { get; set; } = "";
         public DataValue Value { get; set; }
         public override string ToString() => StateID + " = " + Value.ToString();
     }
 
     public class StepResult
     {
-        public OutputValue[] Output { get; set; }
-        public StateValue[] State { get; set; }
+        public OutputValue[] Output { get; set; } = new OutputValue[0];
+        public StateValue[] State { get; set; } = new StateValue[0];
     }
 
     public interface AdapterCallback

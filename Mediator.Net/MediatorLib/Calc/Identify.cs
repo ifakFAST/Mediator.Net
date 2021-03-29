@@ -13,6 +13,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         public Identify(string id) {
             ID = id;
+            DefinitionLabel = "";
         }
 
         public Identify(string id, bool showWindowVisible, bool showDefinition, string definitionLabel, bool definitionIsCode) {

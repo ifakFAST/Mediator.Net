@@ -5,7 +5,6 @@
 using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 
@@ -27,15 +26,20 @@ namespace Ifak.Fast.Mediator.Calc
                 throw new Exception($"No adapter type '{CalcConfig.Type}' found.");
             }
             Type type = mapAdapterTypes[CalcConfig.Type];
-            CalculationBase rawAdapter = (CalculationBase)Activator.CreateInstance(type);
-            Instance = new SingleThreadCalculation(rawAdapter);
+            CalculationBase? rawAdapter = (CalculationBase?)Activator.CreateInstance(type);
+            if (rawAdapter == null) throw new Exception($"Failed to create instance of calculation adapter {type}");
+            instance = new SingleThreadCalculation(rawAdapter);
             State = State.Created;
             LastError = "";
         }
 
-        public SingleThreadCalculation Instance { get; set; }
+        public SingleThreadCalculation? Instance => instance;
 
-        public string LastError { get; set; }
+        public void SetInstanceNull() {
+            instance = null;
+        }
+
+        public string LastError { get; set; } = "";
 
         public bool IsRestarting = false;
 
@@ -47,7 +51,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private string originalConfigWithoutIO = "";
 
-        public Config.Calculation CalcConfig { get; private set; }
+        public Config.Calculation CalcConfig { get; private set; } = new Config.Calculation();
 
         public Duration ScaledCycle() {
             long cycleTimeScaledMS = (long)(CalcConfig.Cycle.TotalMilliseconds / CalcConfig.RealTimeScale);
@@ -170,11 +174,12 @@ namespace Ifak.Fast.Mediator.Calc
 
         private List<OutputValue> lastOutputValues = new List<OutputValue>();
         private List<StateValue> lastStateValues = new List<StateValue>();
+        private SingleThreadCalculation? instance;
 
         public OutputValue[] LastOutputValues => lastOutputValues.ToArray();
         public StateValue[] LastStateValues => lastStateValues.ToArray();
 
-        public Task RunLoopTask { get; internal set; }
+        public Task? RunLoopTask { get; internal set; }
 
         public bool RunLoopRunning => RunLoopTask != null && !RunLoopTask.IsCompleted;
 

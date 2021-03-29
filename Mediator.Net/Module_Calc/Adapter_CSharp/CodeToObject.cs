@@ -42,7 +42,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             Type typeScriptClass;
             try {
                 Assembly assembly = Assembly.LoadFrom(assemblyFileName);
-                typeScriptClass = assembly.GetType(className, throwOnError: true, ignoreCase: false);
+                typeScriptClass = assembly.GetType(className, throwOnError: true, ignoreCase: false) ?? throw new Exception("assembly.GetType returned null");
             }
             catch (Exception e) {
                 Exception exp = e.GetBaseException() ?? e;
@@ -51,7 +51,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             object obj;
             try {
-                obj = Activator.CreateInstance(typeScriptClass);
+                obj = Activator.CreateInstance(typeScriptClass) ?? throw new Exception("Activator.CreateInstance returned null");
             }
             catch (Exception e) {
                 Exception exp = e.GetBaseException() ?? e;
@@ -64,7 +64,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private void Print(CompileResult compileRes, string name) {
             var buffer = new StringBuilder();
             string assemblyFileName = Path.GetFileName(compileRes.AssemblyFileName);
-            string assemblyDir = Path.GetDirectoryName(compileRes.AssemblyFileName);
+            string assemblyDir = Path.GetDirectoryName(compileRes.AssemblyFileName) ?? "";
             if (compileRes.IsUsingCachedAssembly) {
                 buffer.AppendLine($"Script {name}: Using cached assembly");
                 buffer.AppendLine($"   Directory: {assemblyDir}");

@@ -15,7 +15,7 @@ namespace Ifak.Fast.Mediator.EventLog
 {
     public class Module : ModelObjectModule<EventLogConfig>, EventListener
     {
-        private Connection connection = null;
+        private Connection connection = new ClosedConnection();
         private List<AggregatedEvent> aggregatedWarningsAndAlarms = new List<AggregatedEvent>(1000);
         private Timestamp latestUsedTimestamp = Timestamp.Now.AddHours(-1);
         private bool running = false;
@@ -42,9 +42,7 @@ namespace Ifak.Fast.Mediator.EventLog
         private VariableRef GetVar() => VariableRef.Make(moduleID, "Root", "LastEvent");
 
         public async override Task InitAbort() {
-            if (connection != null) {
-                await connection.Close();
-            }
+            await connection.Close();
         }
 
         public override async Task Run(Func<bool> shutdown) {
@@ -65,7 +63,7 @@ namespace Ifak.Fast.Mediator.EventLog
             }
 
             running = false;
-            var ignored = connection.Close();
+             _ = connection.Close();
         }
 
         private async Task KeepSessionAlive() {
@@ -92,10 +90,11 @@ namespace Ifak.Fast.Mediator.EventLog
 
             while (true) {
 
-                var data = await connection.HistorianReadRaw(varRef, Timestamp.Empty, t, 1000, BoundingMethod.TakeLastN);
+                List<VTTQ> data = await connection.HistorianReadRaw(varRef, Timestamp.Empty, t, 1000, BoundingMethod.TakeLastN);
 
-                var events = data.Select(VTTQ2AggregatedEvent)
-                    .Where(ev => ev.IsWarningOrAlarm() && ev.State != EventState.Reset && !(ev.State == EventState.Ack && ev.ReturnedToNormal))
+                List<AggregatedEvent> events = data.Select(VTTQ2AggregatedEvent)
+                    .Where(ev => ev != null && ev.IsWarningOrAlarm() && ev.State != EventState.Reset && !(ev.State == EventState.Ack && ev.ReturnedToNormal))
+                    .Cast<AggregatedEvent>()
                     .ToList();
 
                 if (events.Count == 0) break;
@@ -113,7 +112,7 @@ namespace Ifak.Fast.Mediator.EventLog
             }
         }
 
-        private static AggregatedEvent VTTQ2AggregatedEvent(VTTQ vttq) {
+        private static AggregatedEvent? VTTQ2AggregatedEvent(VTTQ vttq) {
             return vttq.V.Object<AggregatedEvent>();
         }
 
@@ -136,7 +135,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 return;
             }
 
-            AggregatedEvent aggEvent = null;
+            AggregatedEvent? aggEvent = null;
 
             for (int i = aggregatedWarningsAndAlarms.Count - 1; i >= 0; i--) {
                 var e = aggregatedWarningsAndAlarms[i];
@@ -184,7 +183,7 @@ namespace Ifak.Fast.Mediator.EventLog
         private void NotifyAlarm(AlarmOrEvent alarm) {
             foreach(var no in model.MailNotificationSettings.Notifications) {
                 if (no.Enabled && SourceMatch(no.Sources, alarm)) {
-                    Task ignored = SendMail(alarm, no, model.MailNotificationSettings.SmtpSettings);
+                    _ = SendMail(alarm, no, model.MailNotificationSettings.SmtpSettings);
                 }
             }
         }

@@ -93,7 +93,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="updateOrDeleteObjects">The objects to change or delete</param>
         /// <param name="updateOrDeleteMembers">The members to change or delete</param>
         /// <param name="addArrayElements">The new elements to add to an array member</param>
-        public virtual Task<Result> UpdateConfig(Origin origin, ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements) {
+        public virtual Task<Result> UpdateConfig(Origin origin, ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             return Task.FromResult(Result.Failure("UpdateConfig not implemented by module"));
         }
 
@@ -152,7 +152,7 @@ namespace Ifak.Fast.Mediator
         public bool HasMore { get; set; } = false;
         public int? ContinueID { get; set; } = null;
 
-        public DataValue[] Values { get; set; } = new DataValue[0];
+        public DataValue[] Values { get; set; } = Array.Empty<DataValue>();
     }
 
     public struct Origin : IEquatable<Origin>
@@ -202,7 +202,7 @@ namespace Ifak.Fast.Mediator
 
     public interface InProcApi
     {
-        Task<object> AddRequest(RequestBase req);
+        Task<object?> AddRequest(RequestBase req);
     }
 
     public interface ModuleThread
@@ -292,11 +292,11 @@ namespace Ifak.Fast.Mediator
 
     public struct WriteResult
     {
-        private WriteResult(VariableError[] failures) {
+        private WriteResult(VariableError[]? failures) {
             FailedVariables = failures;
         }
 
-        public VariableError[] FailedVariables { get; set; }
+        public VariableError[]? FailedVariables { get; set; }
 
         public bool IsOK() => FailedVariables == null || FailedVariables.Length == 0;
 
@@ -346,7 +346,7 @@ namespace Ifak.Fast.Mediator
     public class InitOrThrowMsg : ModuleMsg
     {
         public ModuleInitInfo InitInfo { get; set; }
-        public VariableValue[] RestoreVariableValues { get; set; }
+        public VariableValue[] RestoreVariableValues { get; set; } = new VariableValue[0];
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_InitOrThrow;
     }
@@ -373,7 +373,7 @@ namespace Ifak.Fast.Mediator
 
     public class GetObjectsByIDMsg : ModuleMsg
     {
-        public ObjectRef[] IDs { get; set; }
+        public ObjectRef[] IDs { get; set; } = Array.Empty<ObjectRef>();
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_GetObjectsByID;
     }
@@ -385,14 +385,14 @@ namespace Ifak.Fast.Mediator
 
     public class GetObjectValuesByIDMsg : ModuleMsg
     {
-        public ObjectRef[] ObjectIDs { get; set; }
+        public ObjectRef[] ObjectIDs { get; set; } = Array.Empty<ObjectRef>();
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_GetObjectValuesByID;
     }
 
     public class GetMemberValuesMsg : ModuleMsg
     {
-        public MemberRef[] Member { get; set; }
+        public MemberRef[] Member { get; set; } = Array.Empty<MemberRef>();
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_GetMemberValues;
     }
@@ -400,9 +400,9 @@ namespace Ifak.Fast.Mediator
     public class UpdateConfigMsg : ModuleMsg
     {
         public Origin Origin { get; set; }
-        public ObjectValue[] UpdateOrDeleteObjects { get; set; }
-        public MemberValue[] UpdateOrDeleteMembers { get; set; }
-        public AddArrayElement[] AddArrayElements { get; set; }
+        public ObjectValue[]? UpdateOrDeleteObjects { get; set; }
+        public MemberValue[]? UpdateOrDeleteMembers { get; set; }
+        public AddArrayElement[]? AddArrayElements { get; set; }
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_UpdateConfig;
     }
@@ -410,7 +410,7 @@ namespace Ifak.Fast.Mediator
     public class ReadVariablesMsg : ModuleMsg
     {
         public Origin Origin { get; set; }
-        public VariableRef[] Variables { get; set; }
+        public VariableRef[] Variables { get; set; } = Array.Empty<VariableRef>();
         public Duration? Timeout { get; set; } = null;
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_ReadVariables;
@@ -419,7 +419,7 @@ namespace Ifak.Fast.Mediator
     public class WriteVariablesMsg : ModuleMsg
     {
         public Origin Origin { get; set; }
-        public VariableValue[] Values { get; set; }
+        public VariableValue[] Values { get; set; } = Array.Empty<VariableValue>();
         public Duration? Timeout { get; set; } = null;
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_WriteVariables;
@@ -429,7 +429,7 @@ namespace Ifak.Fast.Mediator
     {
         public Origin Origin { get; set; }
         public string Method { get; set; } = "";
-        public NamedValue[] Parameters { get; set; } = new NamedValue[0];
+        public NamedValue[] Parameters { get; set; } = Array.Empty<NamedValue>();
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_OnMethodCall;
     }

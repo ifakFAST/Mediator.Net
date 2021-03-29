@@ -28,7 +28,7 @@ namespace Ifak.Fast.Mediator.Calc
             VTQ a = inputValues[0].Value;
             VTQ b = inputValues[1].Value;
 
-            float res = (float)(a.V.AsDouble() + b.V.AsDouble());
+            float res = (float)(a.V.AsDouble()! + b.V.AsDouble()!);
             Thread.Sleep(100);
 
             VTQ r = VTQ.Make(res, t, GetWorstOf(a.Q, b.Q));

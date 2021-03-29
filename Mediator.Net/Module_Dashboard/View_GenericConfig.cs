@@ -28,7 +28,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public override Task OnActivate() {
 
             if (Config.NonEmpty) {
-                configuration = Config.Object<ViewConfig>();
+                configuration = Config.Object<ViewConfig>() ?? new ViewConfig();
             }
 
             return Task.FromResult(true);
@@ -37,7 +37,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public override async Task<ReqResult> OnUiRequestAsync(string command, DataValue parameters) {
 
             bool hasModuleID = !(configuration == null || string.IsNullOrEmpty(configuration.ModuleID));
-            string moduleID = hasModuleID ? configuration.ModuleID : "IO";
+            string moduleID = hasModuleID ? configuration!.ModuleID : "IO";
 
             switch (command) {
 
@@ -101,7 +101,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "GetObject": {
 
-                        GetObjectParams pars = parameters.Object<GetObjectParams>();
+                        GetObjectParams pars = parameters.Object<GetObjectParams>() ?? throw new Exception("GetObjectParams is null");
                         var values = await GetObjectMembers(pars.ID, pars.Type);
 
                         ClassInfo info = objTypes[pars.Type];
@@ -121,7 +121,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "Save": {
 
-                        SaveParams saveParams = parameters.Object<SaveParams>();
+                        SaveParams saveParams = parameters.Object<SaveParams>() ?? throw new Exception("SaveParams is null");
 
                         foreach (var m in saveParams.Members) {
                             Console.WriteLine(m.Name + " => " + m.Value);
@@ -143,7 +143,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "Delete": {
 
-                        ObjectRef obj = ObjectRef.FromEncodedString(parameters.GetString());
+                        ObjectRef obj = ObjectRef.FromEncodedString(parameters.GetString() ?? "");
                         await Connection.UpdateConfig(ObjectValue.Make(obj, DataValue.Empty));
 
                         objects = await Connection.GetAllObjects(moduleID);
@@ -153,7 +153,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "AddObject": {
 
-                        AddObjectParams addParams = parameters.Object<AddObjectParams>();
+                        AddObjectParams addParams = parameters.Object<AddObjectParams>() ?? throw new Exception("AddObjectParams is null");
                         ObjectRef objParent = ObjectRef.FromEncodedString(addParams.ParentObjID);
                         DataValue dataValue = DataValue.FromObject(new {
                             ID = addParams.NewObjID,
@@ -178,7 +178,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "DragDrop": {
 
-                        DragDropParams dropParams = parameters.Object<DragDropParams>();
+                        DragDropParams dropParams = parameters.Object<DragDropParams>() ?? throw new Exception("DragDropParams is null");
 
                         ObjectRef obj = ObjectRef.FromEncodedString(dropParams.FromID);
                         ObjectValue objValue = await Connection.GetObjectValueByID(obj);
@@ -198,7 +198,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "WriteVariable": {
 
-                        var write = parameters.Object<WriteVariable_Params>();
+                        var write = parameters.Object<WriteVariable_Params>() ?? throw new Exception("WriteVariable_Params is null");
                         VTQ vtq = new VTQ(Timestamp.Now, Quality.Good, DataValue.FromJSON(write.V));
                         await Connection.WriteVariable(ObjectRef.FromEncodedString(write.ObjID), write.Var, vtq);
                         return ReqResult.OK();
@@ -206,7 +206,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "MoveObject": {
 
-                        var move = parameters.Object<MoveObject_Params>();
+                        var move = parameters.Object<MoveObject_Params>() ?? throw new Exception("MoveObject_Params is null");
                         bool up = move.Up;
 
                         ObjectRef obj = ObjectRef.FromEncodedString(move.ObjID);
@@ -247,7 +247,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "Browse": {
 
-                        var browse = parameters.Object<Browse_Params>();
+                        var browse = parameters.Object<Browse_Params>() ?? throw new Exception("Browse_Params is null");
 
                         var m = MemberRef.Make(ObjectRef.FromEncodedString(browse.ObjID), browse.Member);
                         BrowseResult res = await Connection.BrowseObjectMemberValues(m);
@@ -255,7 +255,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     }
                 case "GetNewID": {
-                        string type = parameters.GetString();
+                        string type = parameters.GetString() ?? throw new Exception("Type parameter is null");
                         string id = GetObjectID(type);
                         return ReqResult.OK(id);
                     }
@@ -303,7 +303,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     defaultValue = m.DefaultValue.Value.JSON;
                 }
                 else if (m.Type == DataType.Struct) {
-                    defaultValue = StdJson.ObjectToString(GetStructDefaultValue(m), indented: true, ignoreShouldSerializeMembers: false);
+                    defaultValue = StdJson.ObjectToString(GetStructDefaultValue(m)!, indented: true, ignoreShouldSerializeMembers: false);
                     //Console.WriteLine("=> " + m.Name + ": " + defaultValue);
                 }
                 else if (m.Type == DataType.LocationRef && rootLocation.HasValue) {
@@ -333,7 +333,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         private StructMember[] ResolveStruct(SimpleMember m) {
-            if (m.Type != DataType.Struct) return null;
+            if (m.Type != DataType.Struct) return new StructMember[0];
             string structName = m.TypeConstraints;
             StructInfo structInfo = structTypes[structName];
             return structInfo.Member.Select(sm => new StructMember() {
@@ -347,7 +347,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }).ToArray();
         }
 
-        private JObject GetStructDefaultValue(SimpleMember m) {
+        private JObject? GetStructDefaultValue(SimpleMember m) {
             if (m.Type != DataType.Struct) return null;
             string structName = m.TypeConstraints;
             StructInfo structInfo = structTypes[structName];
@@ -369,7 +369,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         private string[] ResolveEnum(SimpleMember m) {
-            if (m.Type != DataType.Enum) return null;
+            if (m.Type != DataType.Enum) return new string[0];
             string enumName = m.TypeConstraints;
             EnumInfo enumInfo = enumTypes[enumName];
             return enumInfo.Values.Select(ev => ev.Description).ToArray();
@@ -405,87 +405,87 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class ObjectMember
         {
-            public string Key { get; set; }
-            public string Name { get; set; }
-            public string Type { get; set; }
+            public string Key { get; set; } = "";
+            public string Name { get; set; } = "";
+            public string Type { get; set; } = "";
             public bool IsScalar { get; set; }
             public bool IsOption { get; set; }
             public bool IsArray { get; set; }
             public string Category { get; set; } = "";
             public bool Browseable { get; set; }
             public string[] BrowseValues { get; set; } = new string[0];
-            public JToken Value { get; set; }
-            public JToken ValueOriginal { get; set; }
-            public string[] EnumValues { get; set; }
-            public StructMember[] StructMembers { get; set; }
-            public string DefaultValue { get; set; }
+            public JToken Value { get; set; } = new JObject();
+            public JToken ValueOriginal { get; set; } = new JObject();
+            public string[] EnumValues { get; set; } = new string[0];
+            public StructMember[] StructMembers { get; set; } = new StructMember[0];
+            public string DefaultValue { get; set; } = "";
         }
 
         public class StructMember
         {
-            public string Name { get; set; }
-            public string Type { get; set; }
+            public string Name { get; set; } = "";
+            public string Type { get; set; } = "";
             public bool IsScalar { get; set; }
             public bool IsOption { get; set; }
             public bool IsArray { get; set; }
-            public string[] EnumValues { get; set; }
-            public StructMember[] StructMembers { get; set; }
+            public string[] EnumValues { get; set; } = new string[0];
+            public StructMember[] StructMembers { get; set; } = new StructMember[0];
         }
 
         //////////////////////////////////////////
 
         public class GetObjectParams
         {
-            public string ID { get; set; }
-            public string Type { get; set; }
+            public string ID { get; set; } = "";
+            public string Type { get; set; } = "";
         }
 
         public class SaveParams
         {
-            public string ID { get; set; }
-            public string Type { get; set; }
-            public SaveMember[] Members { get; set; }
+            public string ID { get; set; } = "";
+            public string Type { get; set; } = "";
+            public SaveMember[] Members { get; set; } = new SaveMember[0];
         }
 
         public class SaveMember
         {
-            public string Name { get; set; }
-            public string Value { get; set; }
+            public string Name { get; set; } = "";
+            public string Value { get; set; } = "";
         }
 
         public class AddObjectParams
         {
-            public string ParentObjID { get; set; }
-            public string ParentMember { get; set; }
-            public string NewObjID { get; set; }
-            public string NewObjType { get; set; }
-            public string NewObjName { get; set; }
+            public string ParentObjID { get; set; } = "";
+            public string ParentMember { get; set; } = "";
+            public string NewObjID { get; set; } = "";
+            public string NewObjType { get; set; } = "";
+            public string NewObjName { get; set; } = "";
         }
 
         public class DragDropParams
         {
-            public string FromID { get; set; }
-            public string ToID { get; set; }
-            public string ToArray { get; set; }
+            public string FromID { get; set; } = "";
+            public string ToID { get; set; } = "";
+            public string ToArray { get; set; } = "";
         }
 
         public class WriteVariable_Params
         {
-            public string ObjID { get; set; }
-            public string Var { get; set; }
-            public string V { get; set; }
+            public string ObjID { get; set; } = "";
+            public string Var { get; set; } = "";
+            public string V { get; set; } = "";
         }
 
         public class MoveObject_Params
         {
-            public string ObjID { get; set; }
+            public string ObjID { get; set; } = "";
             public bool Up { get; set; }
         }
 
         public class Browse_Params
         {
-            public string ObjID { get; set; }
-            public string Member { get; set; }
+            public string ObjID { get; set; } = "";
+            public string Member { get; set; } = "";
         }
 
         public class ChildType
@@ -496,7 +496,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private TreeNode TransformModel(ObjectInfos objects) {
 
-            ObjectInfo rootObjInfo = null;
+            ObjectInfo? rootObjInfo = null;
             var objectsChildren = new Dictionary<ObjectRef, List<ObjectInfo>>();
 
             foreach (ObjectInfo obj in objects) {
@@ -513,11 +513,13 @@ namespace Ifak.Fast.Mediator.Dashboard
                 }
             }
 
+            if (rootObjInfo == null) throw new Exception("No root object found");
+
             return MapObjectInfo2TreeNode(rootObjInfo, null, objectsChildren);
         }
 
-        private TreeNode MapObjectInfo2TreeNode(ObjectInfo obj, List<ObjectInfo> siblings, Dictionary<ObjectRef, List<ObjectInfo>> map) {
-            List<TreeNode> children = null;
+        private TreeNode MapObjectInfo2TreeNode(ObjectInfo obj, List<ObjectInfo>? siblings, Dictionary<ObjectRef, List<ObjectInfo>> map) {
+            List<TreeNode> children;
             if (map.ContainsKey(obj.ID)) {
                 var ch = map[obj.ID];
                 children = ch.Select(n => MapObjectInfo2TreeNode(n, ch, map)).ToList();
@@ -549,7 +551,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 var p = obj.Parent.Value;
                 idx = p.Index;
                 string mem = p.Name;
-                count = siblings.Count(sib => sib.Parent.Value.Name == mem);
+                count = siblings.Count(sib => sib.Parent!.Value.Name == mem);
             }
 
             return new TreeNode() {
@@ -566,7 +568,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class ViewConfig
         {
-            public string ModuleID { get; set; }
+            public string ModuleID { get; set; } = "";
         }
     }
 
@@ -584,7 +586,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
     public class VariableVal
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
         public bool Struct { get; set; }
         public int Dim { get; set; }
         public DataValue V { get; set; }
@@ -594,8 +596,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
     public class VarChange
     {
-        public string ObjectID { get; set; }
-        public string VarName { get; set; }
+        public string ObjectID { get; set; } = "";
+        public string VarName { get; set; } = "";
         public DataValue V { get; set; }
         public Timestamp T { get; set; }
         public Quality Q { get; set; }

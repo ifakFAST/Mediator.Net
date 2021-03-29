@@ -14,11 +14,11 @@ namespace Ifak.Fast.Mediator
 {
     public class ExternalModule : ModuleBase
     {
-        private Process process = null;
-        private TcpConnectorMaster connection = null;
+        private Process? process = null;
+        private TcpConnectorMaster? connection = null;
         private Logger logger = LogManager.GetLogger("ExternalModule");
-        private Task taskReceive;
-        private Notifier notifier;
+        private Task? taskReceive;
+        private Notifier? notifier;
         private string moduleName = "?";
 
         private string ReplaceReleaseOrDebug(string str) {
@@ -135,7 +135,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
             finally {
-                connection.Close("Init abort");
+                connection?.Close("Init abort");
                 StopProcess(process);
                 process = null;
             }
@@ -145,17 +145,21 @@ namespace Ifak.Fast.Mediator
             switch (evt.Code) {
                 case ExternalModuleHost.ModuleHelper.ID_Event_VariableValuesChanged:
                     var values = BinSeri.VariableValue_Serializer.Deserialize(evt.Payload);
-                    notifier.Notify_VariableValuesChanged(values);
+                    notifier?.Notify_VariableValuesChanged(values);
                     break;
 
                 case ExternalModuleHost.ModuleHelper.ID_Event_ConfigChanged:
                     var objects = StdJson.ObjectFromUtf8Stream<List<ObjectRef>>(evt.Payload);
-                    notifier.Notify_ConfigChanged(objects);
+                    if (objects != null) {
+                        notifier?.Notify_ConfigChanged(objects);
+                    }
                     break;
 
                 case ExternalModuleHost.ModuleHelper.ID_Event_AlarmOrEvent:
                     var ae = StdJson.ObjectFromUtf8Stream<AlarmOrEventInfo>(evt.Payload);
-                    notifier.Notify_AlarmOrEvent(ae);
+                    if (ae != null) {
+                        notifier?.Notify_AlarmOrEvent(ae);
+                    }
                     break;
 
                 default:
@@ -172,7 +176,7 @@ namespace Ifak.Fast.Mediator
 
                 var taskRun = SendVoidRequest(new RunMsg());
 
-                while (!shutdown() && !taskRun.IsCompleted && !taskReceive.IsCompleted) {
+                while (!shutdown() && !taskRun.IsCompleted && taskReceive != null && !taskReceive.IsCompleted) {
                     await Task.Delay(TimeSpan.FromMilliseconds(100));
                 }
 
@@ -180,7 +184,7 @@ namespace Ifak.Fast.Mediator
                     closeReason = $"External module {moduleName} returned from Run unexpectedly.";
                     logger.Warn(closeReason);
                 }
-                else if (taskReceive.IsFaulted || process.HasExited) {
+                else if (taskReceive == null || taskReceive.IsFaulted || process == null || process.HasExited) {
                     Thread.Sleep(500); // no need for async wait here
                     closeReason = $"External module {moduleName} terminated unexpectedly.";
                     throw new Exception(closeReason);
@@ -194,7 +198,7 @@ namespace Ifak.Fast.Mediator
 
                     while (!taskRun.IsCompleted) {
 
-                        if (taskShutdown.IsFaulted || process.HasExited) {
+                        if (taskShutdown.IsFaulted || process == null || process.HasExited) {
                             logger.Warn("External module terminated unexpectedly during shutdown.");
                             break;
                         }
@@ -214,7 +218,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
             finally {
-                connection.Close(closeReason);
+                connection?.Close(closeReason);
                 StopProcess(process);
                 process = null;
             }
@@ -262,7 +266,7 @@ namespace Ifak.Fast.Mediator
             return await SendRequest<VTQ[]>(msg);
         }
 
-        public override async Task<Result> UpdateConfig(Origin origin, ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements) {
+        public override async Task<Result> UpdateConfig(Origin origin, ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             var msg = new UpdateConfigMsg() {
                Origin = origin,
                UpdateOrDeleteObjects = updateOrDeleteObjects,
@@ -303,9 +307,10 @@ namespace Ifak.Fast.Mediator
         #region Helper
 
         private async Task<T> SendRequest<T>(ModuleMsg requestMsg) {
+            if (connection == null) { throw new Exception("ExternalModule.SendRequest: connection is null"); }
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
-                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload);
+                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload!) ?? throw new Exception($"ExternalModule.SendRequest {requestMsg.GetType().Name}: returned result is null");
                 }
                 else {
                     throw new Exception(res.ErrorMsg);
@@ -314,6 +319,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private async Task SendVoidRequest(ModuleMsg requestMsg) {
+            if (connection == null) return;
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
                     return;
@@ -349,7 +355,7 @@ namespace Ifak.Fast.Mediator
         private static void StartStreamReadThread(StreamReader reader, Action<string> onGotLine) {
             var thread = new Thread(() => {
                 while (true) {
-                    string line = reader.ReadLine();
+                    string? line = reader.ReadLine();
                     if (line == null) {
                         return;
                     }
@@ -362,7 +368,7 @@ namespace Ifak.Fast.Mediator
             thread.Start();
         }
 
-        private void StopProcess(Process p) {
+        private void StopProcess(Process? p) {
             if (p == null || p.HasExited) return;
             try {
                 p.Kill();

@@ -12,7 +12,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 {
     public sealed class ReqResult : IDisposable
     {
-        public ReqResult(int statusCode, MemoryStream bytes, string contentType = null) {
+        public ReqResult(int statusCode, MemoryStream bytes, string? contentType = null) {
             StatusCode = statusCode;
             Bytes = bytes ?? throw new ArgumentNullException("bytes");
             ContentType = contentType ?? "application/json";
@@ -40,7 +40,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return new ReqResult(200, new MemoryStream(0));
         }
 
-        public static ReqResult OK(object obj, bool ignoreShouldSerializeMembers = false, string contentType = null) {
+        public static ReqResult OK(object obj, bool ignoreShouldSerializeMembers = false, string? contentType = null) {
 
             if (typeof(Task).IsAssignableFrom(obj.GetType())) {
                 throw new Exception("ReqResult.OK: obj may not be a Task!");
@@ -80,9 +80,9 @@ namespace Ifak.Fast.Mediator.Dashboard
         /// <summary>
         /// The optional name of the icon to use in the dashboard, e.g. "bubble_chart", "mdi-tilde"
         /// </summary>
-        public string Icon { get; set; }
+        public string? Icon { get; set; }
 
-        public Identify(string id, string bundle, string path, string icon = null) {
+        public Identify(string id, string bundle, string path, string? icon = null) {
             ID = id;
             Bundle = bundle;
             Path = path;

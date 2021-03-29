@@ -74,7 +74,7 @@ namespace Ifak.Fast.Mediator
         /// <summary>
         /// Can be specified with the Mediator.Category attribute.
         /// </summary>
-        public string Category { get; set; }
+        public string Category { get; set; } = "";
     }
 
     public class ObjectMember
@@ -114,9 +114,9 @@ namespace Ifak.Fast.Mediator
 
     public class EnumValue {
 
-        public EnumValue(string name, string description = null) {
+        public EnumValue(string name, string? description = null) {
             Name = name ?? throw new ArgumentNullException(nameof(name), nameof(name) + "may not be null");
-            Description = string.IsNullOrEmpty(description) ? name : description;
+            Description = description == null || string.IsNullOrEmpty(description) ? name : description;
         }
 
         public string Name { get; set; } = "";

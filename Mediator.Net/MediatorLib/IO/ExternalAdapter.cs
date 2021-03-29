@@ -13,11 +13,11 @@ namespace Ifak.Fast.Mediator.IO
 {
     public abstract class ExternalAdapter : AdapterBase
     {
-        protected AdapterCallback callback = null;
+        protected AdapterCallback? callback = null;
 
-        private Process process = null;
-        private Task taskReceive = null;
-        private TcpConnectorMaster connection = null;
+        private Process? process = null;
+        private Task? taskReceive = null;
+        private TcpConnectorMaster? connection = null;
         private bool shutdown = false;
         protected abstract string GetCommand(Config config);
         protected abstract string GetArgs(Config config);
@@ -60,10 +60,7 @@ namespace Ifak.Fast.Mediator.IO
                 var parentInfo = new ParentInfoMsg() { PID = Process.GetCurrentProcess().Id };
                 Task ignored = SendVoidRequest(parentInfo);
 
-                var initMsg = new InititializeMsg() {
-                    Adapter = adapter,
-                    ItemInfos = itemInfos
-                };
+                var initMsg = new InititializeMsg(adapter, itemInfos);
 
                 Task<Group[]> tInit = SendRequest<Group[]>(initMsg);
 
@@ -99,15 +96,15 @@ namespace Ifak.Fast.Mediator.IO
 
         private async Task Supervise() {
 
-            while (!shutdown && !taskReceive.IsCompleted && !process.HasExited) {
+            while (!shutdown && taskReceive != null && !taskReceive.IsCompleted && process != null && !process.HasExited) {
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
             if (shutdown || process == null) return;
 
-            if (taskReceive.IsFaulted || process.HasExited) {
+            if (taskReceive == null || taskReceive.IsFaulted || process.HasExited) {
                 Thread.Sleep(500); // no need for async wait here
-                callback.Notify_NeedRestart($"External adapter {adapterName} terminated unexpectedly.");
+                callback?.Notify_NeedRestart($"External adapter {adapterName} terminated unexpectedly.");
             }
         }
 
@@ -134,7 +131,7 @@ namespace Ifak.Fast.Mediator.IO
             return await SendRequest<string[]>(msg);
         }
 
-        public override async Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override async Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             var msg = new BrowseDataItemAddressMsg() {
                 IdOrNull = idOrNull
             };
@@ -174,7 +171,7 @@ namespace Ifak.Fast.Mediator.IO
                 }
             }
             finally {
-                connection.Close("Shutdown");
+                connection?.Close("Shutdown");
                 StopProcess(process);
                 process = null;
             }
@@ -184,12 +181,16 @@ namespace Ifak.Fast.Mediator.IO
             switch (evt.Code) {
                 case AdapterMsg.ID_Event_AlarmOrEvent:
                     var alarm = StdJson.ObjectFromUtf8Stream<AdapterAlarmOrEvent>(evt.Payload);
-                    callback.Notify_AlarmOrEvent(alarm);
+                    if (alarm != null) {
+                        callback?.Notify_AlarmOrEvent(alarm);
+                    }
                     break;
 
                 case AdapterMsg.ID_Event_DataItemsChanged:
                     var items = StdJson.ObjectFromUtf8Stream<DataItemValue[]>(evt.Payload);
-                    callback.Notify_DataItemsChanged(items);
+                    if (items != null) {
+                        callback?.Notify_DataItemsChanged(items);
+                    }
                     break;
 
                 default:
@@ -199,9 +200,10 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         private async Task<T> SendRequest<T>(AdapterMsg requestMsg) {
+            if (connection == null) { throw new Exception("ExternalAdapter.SendRequest: connection is null"); }
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
-                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload);
+                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload!) ?? throw new Exception($"ExternalAdapter.SendRequest {requestMsg.GetType().Name}: returned result is null");
                 }
                 else {
                     throw new Exception(res.ErrorMsg);
@@ -210,6 +212,7 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         private async Task SendVoidRequest(AdapterMsg requestMsg) {
+            if (connection == null) { return; }
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
                     return;
@@ -255,7 +258,7 @@ namespace Ifak.Fast.Mediator.IO
             thread.Start();
         }
 
-        private void StopProcess(Process p) {
+        private void StopProcess(Process? p) {
             if (p == null || p.HasExited) return;
             try {
                 p.Kill();
@@ -291,16 +294,26 @@ namespace Ifak.Fast.Mediator.IO
 
     internal class InititializeMsg : AdapterMsg
     {
-        public Adapter Adapter { get; set; }
-        public DataItemInfo[] ItemInfos { get; set; }
+        public Adapter Adapter { get; private set; }
+        public DataItemInfo[] ItemInfos { get; private set; }
 
         public override byte GetMessageCode() => ID_Initialize;
+
+        public InititializeMsg(Adapter adapter, DataItemInfo[] itemInfos) {
+            Adapter = adapter;
+            ItemInfos = itemInfos;
+        }
+
+        public InititializeMsg() {
+            Adapter = new Adapter();
+            ItemInfos = Array.Empty<DataItemInfo>();
+        }
     }
 
     internal class ReadDataItemsMsg : AdapterMsg
     {
-        public string Group { get; set; }
-        public IList<ReadRequest> Items { get; set; }
+        public string Group { get; set; } = "";
+        public IList<ReadRequest> Items { get; set; } = Array.Empty<ReadRequest>();
         public Duration? Timeout { get; set; }
 
         public override byte GetMessageCode() => ID_ReadDataItems;
@@ -308,8 +321,8 @@ namespace Ifak.Fast.Mediator.IO
 
     internal class WriteDataItemsMsg : AdapterMsg
     {
-        public string Group { get; set; }
-        public IList<DataItemValue> Values { get; set; }
+        public string Group { get; set; } = "";
+        public IList<DataItemValue> Values { get; set; } = Array.Empty<DataItemValue>();
         public Duration? Timeout { get; set; }
 
         public override byte GetMessageCode() => ID_WriteDataItems;
@@ -322,7 +335,7 @@ namespace Ifak.Fast.Mediator.IO
 
     internal class BrowseDataItemAddressMsg : AdapterMsg
     {
-        public string IdOrNull { get; set; }
+        public string? IdOrNull { get; set; }
 
         public override byte GetMessageCode() => ID_BrowseDataItemAddress;
     }

@@ -17,16 +17,27 @@ namespace Ifak.Fast.Mediator.Dashboard
         Task SaveViewConfiguration(DataValue newConfig);
     }
 
+    public class EmptyViewContext : ViewContext
+    {
+        public Task SaveViewConfiguration(DataValue newConfig) {
+            throw new InvalidOperationException("SaveViewConfiguration on empty ViewContext");
+        }
+
+        public Task SendEventToUI(string eventName, object payload) {
+            throw new InvalidOperationException("SendEventToUI on empty ViewContext");
+        }
+    }
+
     public abstract class ViewBase : EventListener
     {
         public DataValue Config { get; set; }
-        protected Connection Connection { get; set; }
-        protected ViewContext Context { get; set; }
+        protected Connection Connection { get; set; } = new ClosedConnection();
+        protected ViewContext Context { get; set; } = new EmptyViewContext();
 
         protected virtual string RequestMethodNamePrefix => "UiReq_";
 
         protected Dictionary<string, UiReqMethod> mapUiReqMethods = new Dictionary<string, UiReqMethod>();
-        public delegate Task<ReqResult> UIReqDelegate(object[] paras);
+        public delegate Task<ReqResult> UIReqDelegate(object?[] paras);
 
         public virtual Task OnInit(Connection connection, ViewContext context, DataValue config) {
             Connection = connection;
@@ -46,8 +57,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 ParameterInfo[] parameters = m.GetParameters();
 
-                UIReqDelegate theDelegate = (object[] args) => {
-                    return (Task<ReqResult>)m.Invoke(this, args);
+                UIReqDelegate theDelegate = (object?[] args) => {
+                    return (Task<ReqResult>)m.Invoke(this, args)!;
                 };
 
                 UiReqPara[] uiReqParameters = parameters.Select(MakeParameter).ToArray();
@@ -60,12 +71,11 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         private static UiReqPara MakeParameter(ParameterInfo p) {
-            return new UiReqPara() {
-                Name = p.Name,
-                Type = p.ParameterType,
-                HasDefaultValue = p.HasDefaultValue,
-                DefaultValue = p.HasDefaultValue ? p.DefaultValue : null
-            };
+            return new UiReqPara(
+                name: p.Name,
+                type: p.ParameterType,
+                hasDefaultValue: p.HasDefaultValue,
+                defaultValue: p.HasDefaultValue ? p.DefaultValue : null);
         }
 
         public virtual Task<NaviAugmentation?> GetNaviAugmentation() => Task.FromResult((NaviAugmentation?)null);
@@ -91,7 +101,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     }
                 }
 
-                object[] paramValues = method.Parameters.Select(p => p.Value).ToArray();
+                object?[] paramValues = method.Parameters.Select(p => p.Value).ToArray();
                 return await method.TheDelegate(paramValues);
             }
 
@@ -129,11 +139,18 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class UiReqPara
         {
-            public string Name { get; set; }
-            public Type Type { get; set; }
-            public bool HasDefaultValue { get; set; }
-            public object DefaultValue { get; set; }
-            public object Value { get; set; }
+            public string Name { get; private set; }
+            public Type Type { get; private set; }
+            public bool HasDefaultValue { get; private set; }
+            public object? DefaultValue { get; private set; }
+            public object? Value { get; set; }
+
+            public UiReqPara(string name, Type type, bool hasDefaultValue, object? defaultValue) {
+                Name = name;
+                Type = type;
+                HasDefaultValue = hasDefaultValue;
+                DefaultValue = defaultValue;
+            }
         }
     }
 

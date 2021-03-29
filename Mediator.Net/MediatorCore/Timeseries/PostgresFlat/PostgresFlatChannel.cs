@@ -108,7 +108,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public override VTTQ? GetLatest() => GetLatest(null);
 
-        protected VTTQ? GetLatest(DbTransaction transaction) {
+        protected VTTQ? GetLatest(DbTransaction? transaction) {
 
             using (var reader = stmtLast.ExecuteReader(transaction)) {
                 if (reader.Read()) {
@@ -241,7 +241,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             });
         }
 
-        public override Func<PrepareContext, string> PrepareAppend(VTQ data) {
+        public override Func<PrepareContext, string?> PrepareAppend(VTQ data) {
 
             return (PrepareContext ctx) => {
 
@@ -270,7 +270,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
             long N = CountData(startInclusive, endInclusive, filter);
 
-            PreparedStatement statement = null;
+            PreparedStatement statement;
 
             switch (bounding) {
                 case BoundingMethod.TakeFirstN:
@@ -286,6 +286,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                         return ReadData(startInclusive, endInclusive, maxValues, BoundingMethod.TakeFirstN, filter);
                     else
                         return ReadDataCompressed(startInclusive, endInclusive, maxValues, N, filter);
+                default:
+                    throw new Exception($"Unknown BoundingMethod: {bounding}");
             }
 
             statement[0] = startInclusive.ToDateTime();
@@ -440,7 +442,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private readonly string sql;
         private readonly int countParameters;
 
-        private DbCommand command = null;
+        private DbCommand? command = null;
         private static readonly string[] indices = new string[] { "1", "2", "3", "4"};
         private NpgsqlDbType[] types;
 
@@ -474,7 +476,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             }
         }
 
-        internal int ExecuteNonQuery(DbTransaction transaction = null) {
+        internal int ExecuteNonQuery(DbTransaction? transaction = null) {
             var command = GetCommand();
             if (transaction != null) {
                 command.Transaction = transaction;
@@ -482,7 +484,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             return command.ExecuteNonQuery();
         }
 
-        internal object ExecuteScalar(DbTransaction transaction = null) {
+        internal object ExecuteScalar(DbTransaction? transaction = null) {
             var command = GetCommand();
             if (transaction != null) {
                 command.Transaction = transaction;
@@ -490,7 +492,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             return command.ExecuteScalar();
         }
 
-        internal DbDataReader ExecuteReader(DbTransaction transaction = null) {
+        internal DbDataReader ExecuteReader(DbTransaction? transaction = null) {
             var command = GetCommand();
             if (transaction != null) {
                 command.Transaction = transaction;

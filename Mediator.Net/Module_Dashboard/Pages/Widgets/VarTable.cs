@@ -63,21 +63,21 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 VTQ vtq = vv.Value;
                 double? value = vtq.V.AsDouble();
 
-                string warning = null;
-                string alarm = null;
+                string? warning = null;
+                string? alarm = null;
                 if (value.HasValue) {
                     var v = value.Value;
                     if (IsBelow(v, it.AlarmBelow)) {
-                        alarm = $"Value is below alarm limit {it.AlarmBelow.Value}";
+                        alarm = $"Value is below alarm limit {it.AlarmBelow!.Value}";
                     }
                     else if (IsAbove(v, it.AlarmAbove)) {
-                        alarm = $"Value is above alarm limit {it.AlarmAbove.Value}";
+                        alarm = $"Value is above alarm limit {it.AlarmAbove!.Value}";
                     }
                     else if (IsBelow(v, it.WarnBelow)) {
-                        warning = $"Value is below warn limit {it.WarnBelow.Value}";
+                        warning = $"Value is below warn limit {it.WarnBelow!.Value}";
                     }
                     else if (IsAbove(v, it.WarnAbove)) {
-                        warning = $"Value is above warn limit {it.WarnAbove.Value}";
+                        warning = $"Value is above warn limit {it.WarnAbove!.Value}";
                     }
                 }
 
@@ -182,7 +182,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp start = end - it.TrendFrame;
             var vttqs = await Connection.HistorianReadRaw(it.Variable, start, end, 120, BoundingMethod.CompressToN, QualityFilter.ExcludeBad);
 
-            double[] values = vttqs.Where(v => v.V.AsDouble().HasValue).Select(v => v.V.AsDouble().Value).ToArray();
+            double[] values = vttqs.Where(v => v.V.AsDouble().HasValue).Select(v => v.V.AsDouble()!.Value).ToArray();
 
             string trend;
             switch (values.Length) {
@@ -276,7 +276,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         public string Unit { get; set; } = "";
         public string Time { get; set; } = "";
         public string Trend { get; set; } = "";
-        public string Warning { get; set; } = null;
-        public string Alarm { get; set; } = null;
+        public string? Warning { get; set; } = null;
+        public string? Alarm { get; set; } = null;
     }
 }

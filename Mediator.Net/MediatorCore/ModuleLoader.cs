@@ -21,10 +21,10 @@ namespace Ifak.Fast.Mediator
                 typeof(Ifak.Fast.Mediator.EventLog.Module),
             };
 
-            Type t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
+            Type? t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
 
             if (t != null) {
-                return (ModuleBase)Activator.CreateInstance(t);
+                return (ModuleBase)(Activator.CreateInstance(t) ?? throw new Exception($"CreateInstance of module type '{t}' returned null"));
             }
 
             assemblyName = assemblyName.Trim();
@@ -41,19 +41,19 @@ namespace Ifak.Fast.Mediator
                 fullAssemblyFile = Path.GetFullPath(assemblyName);
             }
             else {
-                fullAssemblyFile = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, assemblyName));
+                fullAssemblyFile = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? "", assemblyName));
             }
 
             t = LoadTypeFromAssemblyFile(fullAssemblyFile, typeName);
 
             if (t != null) {
-                return (ModuleBase)Activator.CreateInstance(t);
+                return (ModuleBase)(Activator.CreateInstance(t) ?? throw new Exception($"CreateInstance of module type '{t}' returned null"));
             }
 
             throw new Exception($"Module type '{typeName}' not found in assembly {fullAssemblyFile}.");
         }
 
-        private static Type LoadTypeFromAssemblyFile(string fileName, string typeName) {
+        private static Type? LoadTypeFromAssemblyFile(string fileName, string typeName) {
             try {
                 Type baseClass = typeof(ModuleBase);
 
@@ -63,7 +63,7 @@ namespace Ifak.Fast.Mediator
 
                 return loader.LoadDefaultAssembly()
                     .GetExportedTypes()
-                    .FirstOrDefault(t => t.IsSubclassOf(baseClass) && !t.IsAbstract && t.FullName.Equals(typeName, StringComparison.InvariantCultureIgnoreCase));
+                    .FirstOrDefault(t => t.IsSubclassOf(baseClass) && !t.IsAbstract && typeName.Equals(t.FullName, StringComparison.InvariantCultureIgnoreCase));
             }
             catch (Exception exp) {
                 Console.Error.WriteLine($"Failed to load module types from assembly '{fileName}': {exp.Message}");

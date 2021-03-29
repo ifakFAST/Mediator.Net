@@ -54,7 +54,7 @@ namespace Ifak.Fast.Mediator.Timeseries
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public abstract Func<PrepareContext, string> PrepareAppend(VTQ data);
+        public abstract Func<PrepareContext, string?> PrepareAppend(VTQ data);
 
         public abstract VTTQ? GetLatest();
 

@@ -81,7 +81,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             }
         }
 
-        public override Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             string[] names = Enumerable.Range(1, 21).SelectMany(SensorVariables).ToArray();
             return Task.FromResult(names);
         }

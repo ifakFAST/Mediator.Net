@@ -29,7 +29,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
         public override async Task<NaviAugmentation?> GetNaviAugmentation() {
             DataValue res = await Connection.CallMethod(Module, "GetActiveAlarms");
-            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>();
+            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? new AggregatedEvent[0];
             bool anyAlarm = errors.Any(err => err.Severity == Severity.Alarm && !err.ReturnedToNormal);
             bool anyWarn  = errors.Any(err => err.Severity == Severity.Warning && !err.ReturnedToNormal);
             if (anyWarn || anyAlarm) {
@@ -50,7 +50,8 @@ namespace Ifak.Fast.Mediator.EventLog
 
                 case "Load": {
 
-                        var time = parameters.Object<TimeRange>();
+                        TimeRange? time = parameters.Object<TimeRange>();
+                        if (time == null) throw new Exception("TimeRange is null");
 
                         var alarms = await GetActiveAlarms();
                         var events = await GetEvents(time, alarms);
@@ -67,7 +68,8 @@ namespace Ifak.Fast.Mediator.EventLog
 
                 case "AckReset": {
 
-                        var para = parameters.Object<AckResetParams>();
+                        AckResetParams? para = parameters.Object<AckResetParams>();
+                        if (para == null) throw new Exception("AckResetParams is null");
                         string method = para.Ack ? "Ack" : "Reset";
                         var comment = new NamedValue("Comment", para.Comment);
                         var keys = new NamedValue("Keys", string.Join(';', para.Timestamps.Select(x => x.ToString(CultureInfo.InvariantCulture))));
@@ -90,9 +92,9 @@ namespace Ifak.Fast.Mediator.EventLog
             }
         }
 
-        private async Task<ActiveError[]> GetActiveAlarms () {
+        private async Task<ActiveError[]> GetActiveAlarms() {
             DataValue res = await Connection.CallMethod(Module, "GetActiveAlarms");
-            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>();
+            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? new AggregatedEvent[0];
             return errors.Select(Transform).Reverse().ToArray();
         }
 
@@ -102,7 +104,7 @@ namespace Ifak.Fast.Mediator.EventLog
             Timestamp tEnd = range.GetEnd();
 
             var data = await Connection.HistorianReadRaw(Var, tStart, tEnd, 10000, BoundingMethod.TakeLastN);
-            var events = data.Select(VTTQ2Event).ToList();
+            var events = data.Select(VTTQ2Event).Where(x => x != null).Cast<ActiveError>().ToList();
 
             Func<Timestamp, bool> isInRange = t => (t >= tStart && t <= tEnd);
 
@@ -115,8 +117,10 @@ namespace Ifak.Fast.Mediator.EventLog
             return (x >= rangeStart && x <= rangeEnd);
         }
 
-        private static ActiveError VTTQ2Event(VTTQ vttq) {
-            return Transform(vttq.V.Object<AggregatedEvent>());
+        private static ActiveError? VTTQ2Event(VTTQ vttq) {
+            AggregatedEvent? evt = vttq.V.Object<AggregatedEvent>();
+            if (evt == null) return null;
+            return Transform(evt);
         }
 
         public async override Task OnVariableHistoryChanged(List<HistoryChange> changes) {
@@ -194,8 +198,8 @@ namespace Ifak.Fast.Mediator.EventLog
     public class ActiveError
     {
         public long T { get; set; }
-        public string TimeFirstLocal { get; set; }
-        public string TimeLastLocal { get; set; }
+        public string TimeFirstLocal { get; set; } = "";
+        public string TimeLastLocal { get; set; } = "";
         public string TimeAckLocal { get; set; } = "";
         public string TimeResetLocal { get; set; } = "";
         public string TimeRTNLocal { get; set; } = "";
@@ -226,8 +230,8 @@ namespace Ifak.Fast.Mediator.EventLog
     public class AckResetParams
     {
         public bool Ack { get; set; }
-        public string Comment { get; set; }
-        public long[] Timestamps { get; set; }
-        public TimeRange TimeRange { get; set; }
+        public string Comment { get; set; } = "";
+        public long[] Timestamps { get; set; } = new long[0];
+        public TimeRange TimeRange { get; set; } = new TimeRange();
     }
 }

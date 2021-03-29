@@ -91,7 +91,7 @@ namespace Ifak.Fast.Mediator
                 await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, "A websocket is already assigned to this session", CancellationToken.None);
                 return;
             }
-            var tcs = new TaskCompletionSource<object>();
+            var tcs = new TaskCompletionSource<object?>();
             info.SetEventSocket(socket, tcs);
             await tcs.Task;
         }
@@ -106,8 +106,8 @@ namespace Ifak.Fast.Mediator
 
                         var req = (LoginReq)request;
                         string password = "";
-                        string moduleID = req.ModuleID;
-                        bool isModuleSession = moduleID != null;
+                        string? moduleID = req.ModuleID;
+                        bool isModuleSession = moduleID != null && moduleID != "";
 
                         var origin = new Origin();
 
@@ -118,14 +118,14 @@ namespace Ifak.Fast.Mediator
                                 return Result_BAD($"Invalid login (unknown module id {moduleID})");
                             }
                             origin.Type = OriginType.Module;
-                            origin.ID = moduleID;
+                            origin.ID = moduleID!;
                             origin.Name = module.Name;
                             password = module.Password;
                         }
                         else {
 
-                            string login = req.Login;
-                            string[] roles = req.Roles;
+                            string login = req.Login ?? "";
+                            string[] roles = req.Roles ?? new string[0];
 
                             User user = core.userManagement.Users.FirstOrDefault(u => u.Login == login);
 
@@ -238,9 +238,9 @@ namespace Ifak.Fast.Mediator
                             var req = (ReadVariablesReq)request;
                             VTQs res = DoReadVariables(req.Variables);
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
+                                serializer = (obj, stream) => VTQ_Serializer.Serialize(stream, (VTQs)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(res, serializer);
@@ -250,9 +250,9 @@ namespace Ifak.Fast.Mediator
                             var req = (ReadVariablesIgnoreMissingReq)request;
                             VariableValues vvs = DoReadVariablesIgnoreMissing(req.Variables);
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                                serializer = (obj, stream) => VariableValue_Serializer.Serialize(stream, (VariableValues)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(vvs, serializer);
@@ -268,9 +268,9 @@ namespace Ifak.Fast.Mediator
                                 res.Add(vvs[i].Value);
                             }
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VTQ_Serializer.Serialize(stream, obj as VTQs, info.BinaryVersion);
+                                serializer = (obj, stream) => VTQ_Serializer.Serialize(stream, (VTQs)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(res, serializer);
@@ -280,9 +280,9 @@ namespace Ifak.Fast.Mediator
                             var req = (ReadVariablesSyncIgnoreMissingReq)request;
                             VariableValues vvs = await DoReadVariablesSync(req.Variables, req.Timeout, info, ignoreMissing: true);
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                                serializer = (obj, stream) => VariableValue_Serializer.Serialize(stream, (VariableValues)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(vvs, serializer);
@@ -326,9 +326,9 @@ namespace Ifak.Fast.Mediator
                                 result.Add(VariableValue.Make(vr, vtq));
                             }
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VariableValue_Serializer.Serialize(stream, obj as VariableValues, info.BinaryVersion);
+                                serializer = (obj, stream) => VariableValue_Serializer.Serialize(stream, (VariableValues)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(result, serializer);
@@ -542,7 +542,7 @@ namespace Ifak.Fast.Mediator
                             }
 
                             if (res.IsOK) return Result_OK();
-                            return Result_BAD(res.Error);
+                            return Result_BAD(res.Error ?? "UpdateConfig failed");
                         }
 
                     case EnableVariableValueChangedEventsReq.ID: {
@@ -648,9 +648,9 @@ namespace Ifak.Fast.Mediator
 
                             VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
 
-                            Action<object, Stream> serializer = null;
+                            Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
-                                serializer = (obj, stream) => BinSeri.VTTQ_Serializer.Serialize(stream, obj as VTTQs, info.BinaryVersion);
+                                serializer = (obj, stream) => VTTQ_Serializer.Serialize(stream, (VTTQs)obj, info.BinaryVersion);
                             }
 
                             return Result_OK(vttqs, serializer);
@@ -685,8 +685,12 @@ namespace Ifak.Fast.Mediator
                             var req = (HistorianModifyReq)request;
 
                             VariableRef variable = req.Variable;
-                            VTQ[] data = req.Data;
+                            VTQ[]? data = req.Data;
                             ModifyMode mode = req.Mode;
+
+                            if (data == null) {
+                                return Result_BAD("Missing data");
+                            }
 
                             await core.history.HistorianModify(variable, data, mode);
                             return Result_OK();
@@ -733,7 +737,7 @@ namespace Ifak.Fast.Mediator
 
                             string moduleID   = req.ModuleID;
                             string methodName = req.MethodName;
-                            NamedValue[] parameters = req.Parameters;
+                            NamedValue[] parameters = req.Parameters ?? new NamedValue[0];
 
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
                             Result<DataValue> res = await RestartOnExp(module, m => m.OnMethodCall(info.Origin, methodName, parameters));
@@ -741,7 +745,7 @@ namespace Ifak.Fast.Mediator
                             if (res.IsOK)
                                 return Result_OK(res.Value);
                             else
-                                return Result_BAD(res.Error);
+                                return Result_BAD(res.Error ?? $"MethodCall '{methodName}' failed");
                         }
 
                     case BrowseObjectMemberValuesReq.ID: {
@@ -800,7 +804,7 @@ namespace Ifak.Fast.Mediator
             session.LogoutCompleted = true;
             sessions.Remove(session.ID);
             if (session.HasEventSocket) {
-                session.EventSocketTCS.TrySetResult(null);
+                session.EventSocketTCS?.TrySetResult(null);
                 session.SetEventSocket(null, null);
             }
         }
@@ -810,16 +814,16 @@ namespace Ifak.Fast.Mediator
             if (session.HasEventSocket) {
                 Task tt = SendClose(session.EventSocket, reason);
                 tt.ContinueOnMainThread(t => {
-                    session.EventSocketTCS.TrySetResult(null);
+                    session.EventSocketTCS?.TrySetResult(null);
                     session.SetEventSocket(null, null);
                 });
             }
             _ = RemoveSessionDelayed(session.ID);
         }
 
-        private async Task SendClose(WebSocket eventSocket, string reason) {
+        private async Task SendClose(WebSocket? eventSocket, string reason) {
             try {
-                await eventSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, reason, CancellationToken.None);
+                await eventSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, reason, CancellationToken.None);
             }
             catch (Exception) { }
         }
@@ -829,11 +833,11 @@ namespace Ifak.Fast.Mediator
             sessions.Remove(sessionID);
         }
 
-        private async Task<ReqResult> DoWriteVariablesSync(VariableValues values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+        private async Task<ReqResult> DoWriteVariablesSync(VariableValues? values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
             if (values == null) throw new Exception("Missing values");
 
-            VariableError[] ignoredVars = null;
+            VariableError[]? ignoredVars = null;
             if (ignoreMissing) {
                 VariableValues filteredValues = values.Where(VarExists).ToList();
                 if (filteredValues.Count < values.Count) {
@@ -862,7 +866,7 @@ namespace Ifak.Fast.Mediator
                 int count = module.UpdateVariableValues(moduleValues);
                 maxBufferCount = Math.Max(maxBufferCount, count);
                 VariableValue[] filtereModuleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
-                VariableError[] writableErrors = null;
+                VariableError[]? writableErrors = null;
                 if (filtereModuleValues.Length < moduleValues.Length) {
                     VariableValue[] removedModuleValues = moduleValues.Where(vv => !(module.GetVarDescription(vv.Variable)?.Writable ?? false)).ToArray();
                     moduleValues = filtereModuleValues;
@@ -914,10 +918,10 @@ namespace Ifak.Fast.Mediator
             return Result_OK(writeResult);
         }
 
-        private async Task<WriteResult> DoWriteVariables(VariableValues values, SessionInfo info, bool ignoreMissing) {
+        private async Task<WriteResult> DoWriteVariables(VariableValues? values, SessionInfo info, bool ignoreMissing) {
             if (values == null) throw new Exception("Missing values");
 
-            VariableError[] ignoredVars = null;
+            VariableError[]? ignoredVars = null;
             if (ignoreMissing) {
                 VariableValues filteredValues = values.Where(VarExists).ToList();
                 if (filteredValues.Count < values.Count) {
@@ -965,7 +969,7 @@ namespace Ifak.Fast.Mediator
             return ignoredVars == null ? WriteResult.OK : WriteResult.Failure(ignoredVars);
         }
 
-        private async Task<VariableValues> DoReadVariablesSync(List<VariableRef> variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
+        private async Task<VariableValues> DoReadVariablesSync(List<VariableRef>? variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
             if (variables == null) throw new Exception("Missing variables");
 
@@ -990,7 +994,7 @@ namespace Ifak.Fast.Mediator
             Task<VTQ[]>[] tasks = moduleIDs.Select(moduleID => {
                 ModuleState module = ModuleFromIdOrThrow(moduleID);
                 VariableRef[] moduleVars = variables.Where(v => v.Object.ModuleID == moduleID).ToArray();
-                if (moduleVars.All(v => module.GetVarDescription(v).SyncReadable)) {
+                if (moduleVars.All(v => module.GetVarDescription(v)!.SyncReadable)) {
                     return RestartOnExp(module, m => m.ReadVariables(info.Origin, moduleVars, timeout));
                 }
                 else {
@@ -999,7 +1003,7 @@ namespace Ifak.Fast.Mediator
                     var syncVars = new List<VariableRef>(moduleVars.Length - 1);
                     for (int i = 0; i < moduleVars.Length; ++i) {
                         VariableRef v = moduleVars[i];
-                        if (module.GetVarDescription(v).SyncReadable) {
+                        if (module.GetVarDescription(v)!.SyncReadable) {
                             listIdx.Add(i);
                             syncVars.Add(v);
                         }
@@ -1039,7 +1043,7 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        private VTQs DoReadVariables(List<VariableRef> variables) {
+        private VTQs DoReadVariables(List<VariableRef>? variables) {
             if (variables == null) throw new Exception("Missing variables");
             int N = variables.Count;
             var res = new VTQs(N);
@@ -1052,7 +1056,7 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        private VariableValues DoReadVariablesIgnoreMissing(List<VariableRef> variables) {
+        private VariableValues DoReadVariablesIgnoreMissing(List<VariableRef>? variables) {
             if (variables == null) throw new Exception("Missing variables");
             int N = variables.Count;
             var res = new VariableValues(N);
@@ -1084,7 +1088,7 @@ namespace Ifak.Fast.Mediator
             res.ContinueOnMainThread(tt => {
 
                 if (tt.IsFaulted) {
-                    Exception exp = tt.Exception.GetBaseException() ?? tt.Exception;
+                    Exception exp = tt.Exception!.GetBaseException() ?? tt.Exception;
                     if (!(exp is NoRestartException)) {
                         var ignored = core.RestartModule(ms, exp.Message);
                     }
@@ -1122,7 +1126,7 @@ namespace Ifak.Fast.Mediator
 
                 if (session.HasEventSocket) {
 
-                    var filtered = new List<VariableValue>(values.Count);
+                    var filtered = new VariableValues(values.Count);
 
                     for (int i = 0; i < values.Count; ++i) {
                         VariableValue v = values[i].Value;
@@ -1136,7 +1140,7 @@ namespace Ifak.Fast.Mediator
                         }
                         bool ok = sub.HasValue && (sub.Value.Mode == ListenMode.AllUpdates || values[i].PreviousValue.V != v.Value.V || values[i].PreviousValue.Q != v.Value.Q);
                         if (ok) {
-                            if (sub.Value.SendValueWithEvent) {
+                            if (sub!.Value.SendValueWithEvent) {
                                 filtered.Add(v);
                             }
                             else {
@@ -1168,8 +1172,8 @@ namespace Ifak.Fast.Mediator
                 Timestamp minT = Timestamp.Max;
                 Timestamp maxT = Timestamp.Empty;
 
-                VariableValuePrev minVal = null;
-                VariableValuePrev maxVal = null;
+                VariableValuePrev? minVal = null;
+                VariableValuePrev? maxVal = null;
 
                 foreach (VariableValuePrev v in group) {
                     Timestamp time = v.Value.Value.T;
@@ -1182,7 +1186,7 @@ namespace Ifak.Fast.Mediator
                         minVal = v;
                     }
                 }
-                resValues[i] = new VariableValuePrev(maxVal.Value, minVal.PreviousValue);
+                resValues[i] = new VariableValuePrev(maxVal!.Value, minVal!.PreviousValue);
             }
             return resValues;
         }
@@ -1191,8 +1195,8 @@ namespace Ifak.Fast.Mediator
 
             if (terminating) return;
 
-            string modID = null;
-            Func<ObjectRef, ObjectRef?> parentMap = null;
+            string? modID = null;
+            Func<ObjectRef, ObjectRef?>? parentMap = null;
 
             foreach (var session in sessions.Values) {
 
@@ -1215,7 +1219,7 @@ namespace Ifak.Fast.Mediator
                                 parentMap = module.GetObjectParent;
                             }
 
-                            ok = checkObjectInTree(vr.Object, session.VariablesHistoryChangedEventTrees, parentMap);
+                            ok = checkObjectInTree(vr.Object, session.VariablesHistoryChangedEventTrees, parentMap!);
                         }
 
                         if (ok) {
@@ -1342,7 +1346,7 @@ namespace Ifak.Fast.Mediator
             return ReqResult.OK(null);
         }
 
-        private ReqResult Result_OK(object obj, Action<object, Stream> serializer = null) {
+        private ReqResult Result_OK(object obj, Action<object, Stream>? serializer = null) {
             return ReqResult.OK(obj, serializer);
         }
 
@@ -1363,8 +1367,8 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        public Task<object> AddRequest(RequestBase req) {
-            var promise = new TaskCompletionSource<object>();
+        public Task<object?> AddRequest(RequestBase req) {
+            var promise = new TaskCompletionSource<object?>();
             ReqItem it = new ReqItem() {
                 Req = req,
                 Promise = promise
@@ -1404,11 +1408,11 @@ namespace Ifak.Fast.Mediator
                                 promise.SetResult(reqResult.Obj);
                             }
                             else if (reqResult.ResultCode == ReqRes.Error) {
-                                var e = new RequestException(reqResult.Obj as string);
+                                var e = new RequestException((reqResult.Obj as string) ?? "RequestException");
                                 promise.SetException(e);
                             }
                             else if (reqResult.ResultCode == ReqRes.ConnectivityErr) {
-                                var e = new ConnectivityException(reqResult.Obj as string);
+                                var e = new ConnectivityException((reqResult.Obj as string) ?? "ConnectivityException");
                                 promise.SetException(e);
                             }
                         }
@@ -1428,7 +1432,7 @@ namespace Ifak.Fast.Mediator
         public struct ReqItem
         {
             public RequestBase Req { get; set; }
-            public TaskCompletionSource<object> Promise { get; set; }
+            public TaskCompletionSource<object?> Promise { get; set; }
         }
 
         public class SessionInfo
@@ -1464,10 +1468,10 @@ namespace Ifak.Fast.Mediator
 
             public bool LogoutCompleted { get; set; } = false;
 
-            public WebSocket EventSocket { get; set; }
-            public TaskCompletionSource<object> EventSocketTCS { get; set; }
+            public WebSocket? EventSocket { get; set; }
+            public TaskCompletionSource<object?>? EventSocketTCS { get; set; }
 
-            public void SetEventSocket(WebSocket socket, TaskCompletionSource<object> eventSocketTCS) {
+            public void SetEventSocket(WebSocket? socket, TaskCompletionSource<object?>? eventSocketTCS) {
                 EventSocket = socket;
                 EventSocketTCS = eventSocketTCS;
                 if (socket != null && eventPingEnabled) {
@@ -1717,7 +1721,7 @@ namespace Ifak.Fast.Mediator
                     return;
                 }
 
-                WebSocket socket = EventSocket;
+                WebSocket? socket = EventSocket;
                 if (socket == null) { return; }
 
                 if (socket.State != WebSocketState.Open) {
@@ -1795,19 +1799,19 @@ namespace Ifak.Fast.Mediator
                 switch (evt.Event) {
 
                     case EventType.OnVariableValueChanged:
-                        VariableValue_Serializer.Serialize(stream, evt.Variables, binaryVersion);
+                        VariableValue_Serializer.Serialize(stream, evt.Variables!, binaryVersion);
                         break;
 
                     case EventType.OnVariableHistoryChanged:
-                        StdJson.ObjectToStream(evt.Changes, stream);
+                        StdJson.ObjectToStream(evt.Changes!, stream);
                         break;
 
                     case EventType.OnConfigChanged:
-                        StdJson.ObjectToStream(evt.ChangedObjects, stream);
+                        StdJson.ObjectToStream(evt.ChangedObjects!, stream);
                         break;
 
                     case EventType.OnAlarmOrEvent:
-                        StdJson.ObjectToStream(evt.Events, stream);
+                        StdJson.ObjectToStream(evt.Events!, stream);
                         break;
 
                     case EventType.OnPing:
@@ -1857,7 +1861,7 @@ namespace Ifak.Fast.Mediator
 
         private Action<object, Stream> serializer = (o, s) => StdJson.ObjectToStream(o, s);
 
-        public static ReqResult OK(object obj, Action<object, Stream> serializer = null) {
+        public static ReqResult OK(object? obj, Action<object, Stream>? serializer = null) {
             var res = new ReqResult(ReqRes.OK, 200, obj, serializer: serializer);
             if (serializer != null) {
                 res.ContentType = "application/octet-stream";
@@ -1876,7 +1880,7 @@ namespace Ifak.Fast.Mediator
             return new ReqResult(ReqRes.ConnectivityErr, 400, errMsg, new MemoryStream(bytes));
         }
 
-        private ReqResult(ReqRes resRes, int statusCode, object obj, MemoryStream memStream = null, Action<object, Stream> serializer = null) {
+        private ReqResult(ReqRes resRes, int statusCode, object? obj, MemoryStream? memStream = null, Action<object, Stream>? serializer = null) {
             StatusCode = statusCode;
             ResultCode = resRes;
             Obj = obj;
@@ -1886,9 +1890,9 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public object Obj { get; private set; }
+        public object? Obj { get; private set; }
 
-        private MemoryStream memStream;
+        private MemoryStream? memStream;
 
         public MemoryStream Bytes {
             get {

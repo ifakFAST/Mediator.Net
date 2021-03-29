@@ -14,7 +14,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC
 
         protected override string GetCommand(Mediator.Config config) {
 
-            string baseDir = Path.GetDirectoryName(GetType().Assembly.Location);
+            string baseDir = Path.GetDirectoryName(GetType().Assembly.Location) ?? "";
 
             string local = Path.Combine(baseDir, @"OPC\OPC_Adapter.exe");
             if (File.Exists(local)) {

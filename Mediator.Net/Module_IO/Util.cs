@@ -76,11 +76,14 @@ namespace Ifak.Fast.Mediator.IO
             return readRequests[k];
         }
 
-        public void SetAllResults(IList<RES> results, Func<RES, ReadRequest, VTQ> f) {
+        public void SetAllResults(IList<RES?>? results, Func<RES, ReadRequest, VTQ> f) {
+            if (results == null) return;
             for (int i = 0; i < results.Count; ++i) {
-                RES res = results[i];
-                int k = MapIdx(i);
-                values[k] = f(res, readRequests[k]);
+                RES? res = results[i];
+                if (res != null) {
+                    int k = MapIdx(i);
+                    values[k] = f(res, readRequests[k]);
+                }
             }
         }
 
@@ -127,7 +130,8 @@ namespace Ifak.Fast.Mediator.IO
             return writeRequests[k];
         }
 
-        public void AddWriteErrors(RES[] results, Func<RES, FailedDataItemWrite> f) {
+        public void AddWriteErrors(RES[]? results, Func<RES, FailedDataItemWrite> f) {
+            if (results == null) return;
             for (int i = 0; i < results.Length; ++i) {
                 RES res = results[i];
                 failures.Add(f(res));

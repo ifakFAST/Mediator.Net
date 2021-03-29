@@ -14,11 +14,11 @@ namespace Ifak.Fast.Mediator
     {
         public ObjectInfo() { }
 
-        public ObjectInfo(ObjectRef id, string name, string className, MemberRefIdx? parent = null, Variable[] variables = null, LocationRef? location = null) {
+        public ObjectInfo(ObjectRef id, string name, string className, MemberRefIdx? parent = null, Variable[]? variables = null, LocationRef? location = null) {
             ID = id;
             Name = name ?? throw new ArgumentNullException(nameof(name), nameof(name) + " may not be null");
             ClassName = className ?? throw new ArgumentNullException(nameof(className), nameof(className) + " may not be null");
-            Variables = variables ?? new Variable[0];
+            Variables = variables ?? Array.Empty<Variable>();
             Parent = parent;
             Location = location;
         }
@@ -33,11 +33,11 @@ namespace Ifak.Fast.Mediator
 
         public MemberRefIdx? Parent { get; set; } = null;
 
-        public Variable[] Variables { get; set; } = new Variable[0];
+        public Variable[] Variables { get; set; } = Array.Empty<Variable>();
 
         public override string ToString() => Name + " " + ID.ToString() + " (" + ClassName + ")";
 
-        public bool Equals(ObjectInfo other) {
+        public bool Equals(ObjectInfo? other) {
             if (ReferenceEquals(other, null)) return false;
             if (ReferenceEquals(other, this)) return true;
             return
@@ -53,12 +53,12 @@ namespace Ifak.Fast.Mediator
 
         public override int GetHashCode() => ID.GetHashCode();
 
-        public static bool operator==(ObjectInfo lhs, ObjectInfo rhs) {
+        public static bool operator==(ObjectInfo? lhs, ObjectInfo? rhs) {
             if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
             return lhs.Equals(rhs);
         }
 
-        public static bool operator!=(ObjectInfo lhs, ObjectInfo rhs) => !(lhs == rhs);
+        public static bool operator!=(ObjectInfo? lhs, ObjectInfo? rhs) => !(lhs == rhs);
     }
 
     public sealed class Variable : IEquatable<Variable>
@@ -132,7 +132,7 @@ namespace Ifak.Fast.Mediator
 
         public override string ToString() => Name ?? "";
 
-        public bool Equals(Variable other) {
+        public bool Equals(Variable? other) {
             if (ReferenceEquals(other, null)) return false;
             if (ReferenceEquals(other, this)) return true;
             return
@@ -150,12 +150,12 @@ namespace Ifak.Fast.Mediator
 
         public override int GetHashCode() => (Name ?? "").GetHashCode();
 
-        public static bool operator ==(Variable lhs, Variable rhs) {
+        public static bool operator ==(Variable? lhs, Variable? rhs) {
             if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
             return lhs.Equals(rhs);
         }
 
-        public static bool operator !=(Variable lhs, Variable rhs) => !(lhs == rhs);
+        public static bool operator !=(Variable? lhs, Variable? rhs) => !(lhs == rhs);
     }
 
     public struct History : IEquatable<History>, IXmlSerializable
@@ -195,7 +195,7 @@ namespace Ifak.Fast.Mediator
 
         public override int GetHashCode() => Mode.GetHashCode();
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public bool ShouldSerializeInterval() => Interval.HasValue;
 
@@ -299,7 +299,7 @@ namespace Ifak.Fast.Mediator
         public ObjectRef Object { get; set; }
         public DataValue Value { get; set; }
 
-        public T ToObject<T>() => Value.Object<T>();
+        public T? ToObject<T>() => Value.Object<T>();
 
         public override string ToString() => Object.ToString() + "=" + Value.ToString();
 
@@ -355,7 +355,7 @@ namespace Ifak.Fast.Mediator
 
         public override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
             Object = ObjectRef.FromEncodedString(reader["object"]);

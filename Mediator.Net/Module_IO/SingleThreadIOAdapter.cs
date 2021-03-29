@@ -66,7 +66,7 @@ namespace Ifak.Fast.Mediator.IO
             return promise.Task;
         }
 
-        public override Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             if (!isStarted) throw new Exception("BrowseDataItemAddress requires prior Initialize!");
             var promise = new TaskCompletionSource<string[]>();
             queue.Post(new WorkItem(MethodID.BrowseDataItemAddress, promise, idOrNull));
@@ -101,9 +101,9 @@ namespace Ifak.Fast.Mediator.IO
 
                     case MethodID.Init: {
 
-                            var promise = (TaskCompletionSource<Group[]>)it.Promise;
+                            var promise = (TaskCompletionSource<Group[]>)it.Promise!;
                             try {
-                                var groups = await adapter.Initialize((Adapter)it.Param1, (AdapterCallback)it.Param2, (DataItemInfo[])it.Param3);
+                                var groups = await adapter.Initialize((Adapter)it.Param1!, (AdapterCallback)it.Param2!, (DataItemInfo[])it.Param3!);
                                 promise.SetResult(groups);
                             }
                             catch (Exception exp) {
@@ -125,9 +125,9 @@ namespace Ifak.Fast.Mediator.IO
 
                     case MethodID.ReadDataItems: {
 
-                            var promise = (TaskCompletionSource<VTQ[]>)it.Promise;
+                            var promise = (TaskCompletionSource<VTQ[]>)it.Promise!;
                             try {
-                                var values = await adapter.ReadDataItems((string)it.Param1, (IList<ReadRequest>)it.Param2, (Duration?)it.Param3);
+                                var values = await adapter.ReadDataItems((string)it.Param1!, (IList<ReadRequest>)it.Param2!, (Duration?)it.Param3!);
                                 promise.SetResult(values);
                             }
                             catch (Exception exp) {
@@ -138,9 +138,9 @@ namespace Ifak.Fast.Mediator.IO
 
                     case MethodID.WriteDataItems: {
 
-                            var promise = (TaskCompletionSource<WriteDataItemsResult>)it.Promise;
+                            var promise = (TaskCompletionSource<WriteDataItemsResult>)it.Promise!;
                             try {
-                                WriteDataItemsResult res = await adapter.WriteDataItems((string)it.Param1, (IList<DataItemValue>)it.Param2, (Duration?)it.Param3);
+                                WriteDataItemsResult res = await adapter.WriteDataItems((string)it.Param1!, (IList<DataItemValue>)it.Param2!, (Duration?)it.Param3!);
                                 promise.SetResult(res);
                             }
                             catch (Exception exp) {
@@ -151,9 +151,9 @@ namespace Ifak.Fast.Mediator.IO
 
                     case MethodID.BrowseDataItemAddress: {
 
-                            var promise = (TaskCompletionSource<string[]>)it.Promise;
+                            var promise = (TaskCompletionSource<string[]>)it.Promise!;
                             try {
-                                string[] res = await adapter.BrowseDataItemAddress((string)it.Param1);
+                                string[] res = await adapter.BrowseDataItemAddress((string)it.Param1!);
                                 promise.SetResult(res);
                             }
                             catch (Exception exp) {
@@ -164,7 +164,7 @@ namespace Ifak.Fast.Mediator.IO
 
                     case MethodID.BrowseAdapterAddress: {
 
-                            var promise = (TaskCompletionSource<string[]>)it.Promise;
+                            var promise = (TaskCompletionSource<string[]>)it.Promise!;
                             try {
                                 string[] res = await adapter.BrowseAdapterAddress();
                                 promise.SetResult(res);
@@ -176,7 +176,7 @@ namespace Ifak.Fast.Mediator.IO
                         }
 
                     case MethodID.Shutdown: {
-                            var promise = (TaskCompletionSource<bool>)it.Promise;
+                            var promise = (TaskCompletionSource<bool>)it.Promise!;
                             try {
                                 await adapter.Shutdown();
                                 promise.SetResult(true);
@@ -192,7 +192,7 @@ namespace Ifak.Fast.Mediator.IO
 
         private class WorkItem
         {
-            public WorkItem(MethodID methode, object promise, object param1 = null, object param2 = null, object param3 = null) {
+            public WorkItem(MethodID methode, object? promise, object? param1 = null, object? param2 = null, object? param3 = null) {
                 Methode = methode;
                 Promise = promise;
                 Param1 = param1;
@@ -201,10 +201,10 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             public MethodID Methode { get; set; }
-            public object Promise { get; set; }
-            public object Param1 { get; set; }
-            public object Param2 { get; set; }
-            public object Param3 { get; set; }
+            public object? Promise { get; set; }
+            public object? Param1 { get; set; }
+            public object? Param2 { get; set; }
+            public object? Param3 { get; set; }
         }
 
         enum MethodID

@@ -9,11 +9,11 @@ namespace Ifak.Fast.Mediator.Calc
 {
     public abstract class ExternalAdapter : CalculationBase
     {
-        protected AdapterCallback callback = null;
+        protected AdapterCallback? callback = null;
 
-        private Process process = null;
-        private Task taskReceive = null;
-        private TcpConnectorMaster connection = null;
+        private Process? process = null;
+        private Task? taskReceive = null;
+        private TcpConnectorMaster? connection = null;
         private bool shutdown = false;
         protected abstract string GetCommand(Config config);
         protected abstract string GetArgs(Config config);
@@ -98,15 +98,15 @@ namespace Ifak.Fast.Mediator.Calc
 
         private async Task Supervise() {
 
-            while (!shutdown && !taskReceive.IsCompleted && !process.HasExited) {
+            while (!shutdown && taskReceive != null && !taskReceive.IsCompleted && process != null && !process.HasExited) {
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
 
             if (shutdown || process == null) return;
 
-            if (taskReceive.IsFaulted || process.HasExited) {
+            if (taskReceive == null || taskReceive.IsFaulted || process.HasExited) {
                 Thread.Sleep(500); // no need for async wait here
-                callback.Notify_NeedRestart($"External adapter {adapterName} terminated unexpectedly.");
+                callback?.Notify_NeedRestart($"External adapter {adapterName} terminated unexpectedly.");
             }
         }
 
@@ -151,7 +151,7 @@ namespace Ifak.Fast.Mediator.Calc
                 }
             }
             finally {
-                connection.Close("Shutdown");
+                connection?.Close("Shutdown");
                 StopProcess(process);
                 process = null;
             }
@@ -161,7 +161,9 @@ namespace Ifak.Fast.Mediator.Calc
             switch (evt.Code) {
                 case AdapterMsg.ID_Event_AlarmOrEvent:
                     var alarm = StdJson.ObjectFromUtf8Stream<AdapterAlarmOrEvent>(evt.Payload);
-                    callback.Notify_AlarmOrEvent(alarm);
+                    if (alarm != null) {
+                        callback?.Notify_AlarmOrEvent(alarm);
+                    }
                     break;
 
                 default:
@@ -171,9 +173,10 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private async Task<T> SendRequest<T>(AdapterMsg requestMsg) {
+            if (connection == null) { throw new Exception("ExternalAdapter.SendRequest: connection is null"); }
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
-                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload);
+                    return StdJson.ObjectFromUtf8Stream<T>(res.SuccessPayload!) ?? throw new Exception($"ExternalAdapter.SendRequest {requestMsg.GetType().Name}: returned result is null");
                 }
                 else {
                     throw new Exception(res.ErrorMsg);
@@ -182,6 +185,7 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private async Task SendVoidRequest(AdapterMsg requestMsg) {
+            if (connection == null) { return; }
             using (Response res = await connection.SendRequest(requestMsg.GetMessageCode(), stream => StdJson.ObjectToStream(requestMsg, stream))) {
                 if (res.Success) {
                     return;
@@ -227,7 +231,7 @@ namespace Ifak.Fast.Mediator.Calc
             thread.Start();
         }
 
-        private void StopProcess(Process p) {
+        private void StopProcess(Process? p) {
             if (p == null || p.HasExited) return;
             try {
                 p.Kill();
@@ -259,7 +263,7 @@ namespace Ifak.Fast.Mediator.Calc
 
     internal class InititializeMsg : AdapterMsg
     {
-        public InitParameter Parameter { get; set; }
+        public InitParameter Parameter { get; set; } = new InitParameter();
 
         public override byte GetMessageCode() => ID_Initialize;
     }
@@ -268,7 +272,7 @@ namespace Ifak.Fast.Mediator.Calc
     {
         public Timestamp Time { get; set; }
 
-        public InputValue[] InputValues { get; set; }
+        public InputValue[] InputValues { get; set; } = new InputValue[0];
 
         public override byte GetMessageCode() => ID_Step;
     }

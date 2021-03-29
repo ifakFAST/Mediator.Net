@@ -34,7 +34,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public override async Task OnActivate() {
 
             if (Config.NonEmpty) {
-                configuration = Config.Object<ViewConfig>();
+                configuration = Config.Object<ViewConfig>() ?? new ViewConfig();
             }
 
             tabStates = GetInitialTabStates(configuration);
@@ -62,7 +62,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "Init": {
 
-                        var para = parameters.Object<InitParams>();
+                        var para = parameters.Object<InitParams>() ?? throw new Exception("InitParams is null");
                         var (windowLeft, windowRight) = GetTimeWindow(para.TimeRange, new List<VTTQs>());
 
                         var res = new LoadHistoryResult();
@@ -114,7 +114,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "LoadTabData": {
 
-                        var para = parameters.Object<LoadHistoryParams>();
+                        var para = parameters.Object<LoadHistoryParams>() ?? throw new Exception("LoadHistoryParams is null");
 
                         TabState tabState = tabStates.FirstOrDefault(ts => ts.TabName == para.TabName);
                         if (tabState == null) {
@@ -165,7 +165,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "DownloadFile": {
 
-                        var para = parameters.Object<DownloadDataFileParams>();
+                        var para = parameters.Object<DownloadDataFileParams>() ?? throw new Exception("DownloadDataFileParams is null");
                         TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
                         QualityFilter filter = tabConfig.PlotConfig.FilterByQuality;
 
@@ -242,7 +242,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "SaveItems": {
 
-                        var para = parameters.Object<SaveItemsParams>();
+                        var para = parameters.Object<SaveItemsParams>() ?? throw new Exception("SaveItemsParams is null");
 
                         TabState tabState = tabStates.First(ts => ts.TabName == para.TabName);
 
@@ -272,7 +272,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "SavePlot": {
 
-                        var para = parameters.Object<SavePlotParams>();
+                        var para = parameters.Object<SavePlotParams>() ?? throw new Exception("SavePlotParams is null");
 
                         TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
 
@@ -297,7 +297,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "DeleteTab": {
 
-                        var para = parameters.Object<DeleteTabParams>();
+                        var para = parameters.Object<DeleteTabParams>() ?? throw new Exception("DeleteTabParams is null");
 
                         configuration.Tabs = configuration.Tabs.Where(t => t.Name != para.TabName).ToArray();
 
@@ -310,7 +310,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "RenameTab": {
 
-                        var para = parameters.Object<RenameTabParams>();
+                        var para = parameters.Object<RenameTabParams>() ?? throw new Exception("RenameTabParams is null");
 
                         if (para.NewName != para.TabName && configuration.Tabs.Any(t => t.Name == para.NewName)) throw new Exception("Tab name already exists!");
 
@@ -331,7 +331,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "AddTab": {
 
-                        var para = parameters.Object<AddTabParams>();
+                        var para = parameters.Object<AddTabParams>() ?? throw new Exception("AddTabParams is null");
                         var (windowLeft, windowRight) = GetTimeWindow(para.TimeRange, new List<VTTQs>());
 
                         if (configuration.Tabs.Any(t => t.Name == para.NewName)) throw new Exception("Tab name already exists!");
@@ -367,7 +367,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "MoveLeft": {
 
-                        var para = parameters.Object<MoveTabParams>();
+                        var para = parameters.Object<MoveTabParams>() ?? throw new Exception("MoveTabParams is null");
 
                         int i = configuration.Tabs.ToList().FindIndex(t => t.Name == para.TabName);
                         if (i <= 0) throw new Exception("Can't move left");
@@ -385,7 +385,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "MoveRight": {
 
-                        var para = parameters.Object<MoveTabParams>();
+                        var para = parameters.Object<MoveTabParams>() ?? throw new Exception("MoveTabParams is null");
 
                         int i = configuration.Tabs.ToList().FindIndex(t => t.Name == para.TabName);
                         if (i >= configuration.Tabs.Length - 1) throw new Exception("Can't move right");
@@ -403,7 +403,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "ReadModuleObjects": {
 
-                        var pars = parameters.Object<ReadModuleObjectsParams>();
+                        var pars = parameters.Object<ReadModuleObjectsParams>() ?? throw new Exception("ReadModuleObjectsParams is null");
 
                         ObjectInfos objects;
 
@@ -961,8 +961,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class ModuleInfo
         {
-            public string ID { get; set; }
-            public string Name { get; set; }
+            public string ID { get; set; } = "";
+            public string Name { get; set; } = "";
         }
 
         public class ObjInfo
@@ -987,7 +987,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public DyGraphOptions Options { get; set; } = new DyGraphOptions();
             public string[] HistoryData { get; set; } = new string[0];
 
-            public TabConfig Configuration { get; set; }
+            public TabConfig Configuration { get; set; } = new TabConfig();
         }
 
         public class DyGraphOptions
@@ -1014,7 +1014,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public bool drawGrid { get; set; } = true;
             public bool includeZero { get; set; } = false;
 
-            public int[] gridLinePattern { get; set; } = null;
+            public int[]? gridLinePattern { get; set; } = null;
         }
 
         public class SeriesInfo

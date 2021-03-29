@@ -14,7 +14,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
     {
         private static Logger logger = LogManager.GetLogger("PostgresFlatTimeseriesDB");
 
-        protected Npgsql.NpgsqlConnection connection = null;
+        protected Npgsql.NpgsqlConnection? connection = null;
 
         public PostgresFlatTimeseriesDB() {
             // Npgsql.Logging.NpgsqlLogManager.Provider = new Npgsql.Logging.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel.Debug, true);
@@ -22,7 +22,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public override bool IsOpen => connection != null;
 
-        public override void Open(string name, string connectionString, string[] settings = null) {
+        public override void Open(string name, string connectionString, string[]? settings = null) {
 
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
 
@@ -54,10 +54,10 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         private void CheckDbChannelInfoOrCreate() {
-            using (var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, varID SERIAL UNIQUE, primary key (obj, var));", connection)) {
+            using (var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, varID SERIAL UNIQUE, primary key (obj, var));", connection!)) {
                 command.ExecuteNonQuery();
             }
-            using (var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_data (varID INTEGER REFERENCES channel_defs(varID), time timestamp, diffDB INTEGER NOT NULL, quality smallint NOT NULL, data TEXT NOT NULL, primary key (varID, time));", connection)) {
+            using (var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_data (varID INTEGER REFERENCES channel_defs(varID), time timestamp, diffDB INTEGER NOT NULL, quality smallint NOT NULL, data TEXT NOT NULL, primary key (varID, time));", connection!)) {
                 command.ExecuteNonQuery();
             }
         }
@@ -67,7 +67,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             if (!IsOpen) return;
 
             try {
-                connection.Close();
+                connection!.Close();
             }
             catch (Exception exp) {
                 logger.Warn(exp, "Closing database failed: " + exp.Message);
@@ -88,7 +88,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             CheckDbOpen();
             ChannelEntry? entry = GetChannelDescription(objectID, variable);
             if (!entry.HasValue) throw new ArgumentException($"No channel found with obj={objectID} avr={variable}");
-            return new PostgresFlatChannel(connection, entry.Value.MakeInfo(), entry.Value.VarID, $"{objectID}.{variable}");
+            return new PostgresFlatChannel(connection!, entry.Value.MakeInfo(), entry.Value.VarID, $"{objectID}.{variable}");
         }
 
         public override bool RemoveChannel(string objectID, string variable) {
@@ -97,10 +97,10 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             ChannelEntry? entry = GetChannelDescription(objectID, variable);
             if (!entry.HasValue) return false;
 
-            var ch = GetChannel(objectID, variable) as PostgresFlatChannel;
+            var ch = (PostgresFlatChannel)GetChannel(objectID, variable);
             ch.DeleteAll();
 
-            using (var command = Factory.MakeCommand($"DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
+            using (var command = Factory.MakeCommand($"DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection!)) {
                 command.Parameters.Add(Factory.MakeParameter("obj", objectID));
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 command.ExecuteNonQuery();
@@ -113,7 +113,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             CheckDbOpen();
             var res = new List<ChannelInfo>();
 
-            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection)) {
+            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection!)) {
                 using (var reader = command.ExecuteReader()) {
                     while (reader.Read()) {
                         string obj = (string)reader["obj"];
@@ -128,6 +128,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         public override Channel[] CreateChannels(ChannelInfo[] channels) {
+            CheckDbOpen();
             const int Chunck = 500;
             var res = new List<Channel>(channels.Length);
             for (int i = 0; i < channels.Length; i += Chunck) {
@@ -140,7 +141,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public Channel[] DoCreateChannels(Span<ChannelInfo> channels) {
 
-            using (var transaction = connection.BeginTransaction()) {
+            using (var transaction = connection!.BeginTransaction()) {
 
                 try {
 
@@ -181,11 +182,12 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             }
         }
 
-        public override string[] BatchExecute(Func<PrepareContext, string>[] updateActions) {
+        public override string[] BatchExecute(Func<PrepareContext, string?>[] updateActions) {
 
+            CheckDbOpen();
             Timestamp timeDb = Timestamp.Now;
 
-            using (var transaction = connection.BeginTransaction()) {
+            using (var transaction = connection!.BeginTransaction()) {
 
                 try {
 
@@ -193,7 +195,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                     var context = new PostgresContext(timeDb, transaction);
 
                     foreach (var action in updateActions) {
-                        string error = action(context);
+                        string? error = action(context);
                         if (error != null) {
                             errors.Add(error);
                         }
@@ -223,7 +225,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
             ConnectionState state;
             try {
-                state = connection.FullState;
+                state = connection!.FullState;
             }
             catch (Exception exp) {
                 state = ConnectionState.Broken;
@@ -233,10 +235,10 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             if (state.HasFlag(ConnectionState.Broken) || state == ConnectionState.Closed) {
                 logger.Warn($"CheckDbOpen: Connection to PostgresDB is {state}. Trying to reopen...");
                 try {
-                    connection.Close();
+                    connection!.Close();
                 }
                 catch (Exception) { }
-                connection.Open();
+                connection!.Open();
                 logger.Info("CheckDbOpen: Reopening connection to PostgresDB succeeded. ");
             }
         }
@@ -250,7 +252,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                 return mapEnt;
             }
 
-            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
+            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs WHERE obj = @obj AND var = @var", connection!)) {
                 command.Parameters.Add(Factory.MakeParameter("obj", objectID));
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 using (var reader = command.ExecuteReader()) {

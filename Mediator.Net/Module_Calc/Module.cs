@@ -23,9 +23,9 @@ namespace Ifak.Fast.Mediator.Calc
         private readonly Dictionary<string, Type> mapAdapterTypes = new Dictionary<string, Type>();
         private readonly List<Identify> adapterTypesAttribute = new List<Identify>();
         private ModuleInitInfo initInfo;
-        private ModuleThread moduleThread = null;
-        private Connection connection = null;
-        private Mediator.Config moduleConfig = null;
+        private ModuleThread? moduleThread = null;
+        private Connection connection = new ClosedConnection();
+        private Mediator.Config moduleConfig = new Mediator.Config(new NamedValue[0]);
         private bool moduleShutdown = false;
 
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
@@ -63,7 +63,7 @@ namespace Ifak.Fast.Mediator.Calc
             adapterTypesAttribute.Clear();
             mapAdapterTypes.Clear();
             foreach (Type type in adapterTypes) {
-                Identify id = type.GetCustomAttribute<Identify>();
+                Identify? id = type.GetCustomAttribute<Identify>();
                 if (id != null) {
                     mapAdapterTypes[id.ID] = type;
                     adapterTypesAttribute.Add(id);
@@ -161,13 +161,16 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private async Task InitAdapter(CalcInstance adapter) {
+            if (adapter.Instance == null) {
+                throw new Exception("InitAdapter: instance is null");
+            }
             Calculation info = adapter.CalcConfig.ToCalculation();
             try {
                 var initParams = new InitParameter() {
                     Calculation = info,
                     LastOutput = adapter.LastOutputValues,
                     LastState = adapter.LastStateValues,
-                    ConfigFolder = Path.GetDirectoryName(base.modelFileName),
+                    ConfigFolder = Path.GetDirectoryName(base.modelFileName) ?? "",
                     DataFolder = initInfo.DataFolder,
                     ModuleConfig = moduleConfig.ToNamedValues()
                 };
@@ -334,7 +337,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Log_Warn("CalcShutdownError", "ShutdownCalc exception: " + exp.Message);
             }
             adapter.State = State.ShutdownCompleted;
-            adapter.Instance = null;
+            adapter.SetInstanceNull();
         }
 
         private bool running = false;
@@ -403,7 +406,7 @@ namespace Ifak.Fast.Mediator.Calc
             var ignored1 = readTask.ContinueOnMainThread(t => {
 
                 if (t.IsFaulted && !moduleShutdown && adapter.State == State.Running) {
-                    Exception exp = t.Exception.GetBaseException() ?? t.Exception;
+                    Exception exp = t.Exception!.GetBaseException() ?? t.Exception;
                     Task ignored2 = RestartAdapter(adapter, "Run loop exception: " + exp.Message + "\n" + exp.StackTrace, critical: true);
                 }
             });
@@ -422,6 +425,8 @@ namespace Ifak.Fast.Mediator.Calc
 
             var inputs = new List<Config.Input>();
             var inputVars = new List<VariableRef>();
+
+            var notifier = this.notifier!;
 
             //var listVarValueTimer = new List<VariableValue>(1);
 
@@ -457,7 +462,11 @@ namespace Ifak.Fast.Mediator.Calc
                 List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
                 notifier.Notify_VariableValuesChanged(inValues);
 
-                StepResult result = await adapter.Instance.Step(t, inputValues);
+                var instance = adapter.Instance;
+                if (instance == null || adapter.State != State.Running) {
+                    break;
+                }
+                StepResult result = await instance.Step(t, inputValues);
 
                 OutputValue[] outValues = result.Output ?? new OutputValue[0];
                 StateValue[] stateValues = result.State ?? new StateValue[0];
@@ -658,7 +667,7 @@ namespace Ifak.Fast.Mediator.Calc
             Log_Event(Severity.Info, type, msg);
         }
 
-        private void Log_ReturnToNormal(string type, string msg, ObjectRef[] affectedObjects = null) {
+        private void Log_ReturnToNormal(string type, string msg, ObjectRef[]? affectedObjects = null) {
             Log_Event(Severity.Info, type, msg, affectedObjects: affectedObjects, returnToNormal: true);
         }
 
@@ -670,11 +679,11 @@ namespace Ifak.Fast.Mediator.Calc
             Log_Event(Severity.Alarm, type, msg, null, details, affectedObjects);
         }
 
-        private void Log_Warn(string type, string msg, Origin? initiator = null, ObjectRef[] affectedObjects = null) {
+        private void Log_Warn(string type, string msg, Origin? initiator = null, ObjectRef[]? affectedObjects = null) {
             Log_Event(Severity.Warning, type, msg, initiator, "", affectedObjects);
         }
 
-        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "", ObjectRef[] affectedObjects = null, bool returnToNormal = false) {
+        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "", ObjectRef[]? affectedObjects = null, bool returnToNormal = false) {
 
             var ae = new AlarmOrEventInfo() {
                 Time = Timestamp.Now,
@@ -687,12 +696,12 @@ namespace Ifak.Fast.Mediator.Calc
                 Initiator = initiator
             };
 
-            notifier.Notify_AlarmOrEvent(ae);
+            notifier!.Notify_AlarmOrEvent(ae);
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
         public void Notify_NeedRestart(string reason, Calculation adapter) {
-            moduleThread.Post(Do_Notify_NeedRestart, reason, adapter);
+            moduleThread?.Post(Do_Notify_NeedRestart, reason, adapter);
         }
 
         private void Do_Notify_NeedRestart(string reason, Calculation adapter) {
@@ -702,7 +711,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         // This will be called from a different Thread, therefore post it to the main thread!
         public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter) {
-            moduleThread.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
+            moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
         }
 
         private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter) {
@@ -718,7 +727,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Initiator = null
             };
 
-            notifier.Notify_AlarmOrEvent(ae);
+            notifier!.Notify_AlarmOrEvent(ae);
         }
     }
 

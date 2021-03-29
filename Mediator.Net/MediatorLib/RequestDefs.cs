@@ -19,7 +19,13 @@ namespace Ifak.Fast.Mediator
 
         public RequestBase MakeRequestObject() => makeObj();
 
-        private ReqDef() { }
+        private ReqDef(int numID, string path, Type reqType, bool isBinSerializable, Func<RequestBase> makeObjFun) {
+            NumericID = numID;
+            HttpPath = path;
+            ReqType = reqType;
+            IsBinSerializable = isBinSerializable;
+            makeObj = makeObjFun;
+        }
 
         private Func<RequestBase> makeObj;
 
@@ -27,13 +33,12 @@ namespace Ifak.Fast.Mediator
             T t = new T();
             int id = t.GetID();
             string path = t.GetPath();
-            return new ReqDef() {
-                NumericID = id,
-                HttpPath = "/Mediator/" + path,
-                ReqType = typeof(T),
-                IsBinSerializable = t is BinSerializable,
-                makeObj = () => new T(),
-            };
+            return new ReqDef(
+                numID: id,
+                path: "/Mediator/" + path,
+                reqType: typeof(T),
+                isBinSerializable: t is BinSerializable,
+                makeObjFun: () => new T());
         }
     }
 
@@ -111,7 +116,7 @@ namespace Ifak.Fast.Mediator
         protected const byte MemberNull = 2;
 
         [JsonProperty("session")]
-        public string Session { get; set; }
+        public string Session { get; set; } = "";
 
         [JsonIgnore]
         public bool ReturnBinaryResponse { get; set; }
@@ -147,13 +152,13 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "Login";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string? ModuleID { get; set; } = null;
 
         [JsonProperty("login")]
-        public string Login { get; set; }
+        public string? Login { get; set; } = null;
 
         [JsonProperty("roles")]
-        public string[] Roles { get; set; }
+        public string[]? Roles { get; set; }
 
         [JsonProperty("version")]
         public string MediatorVersion { get; set; } = ""; // introduced with version 1.4
@@ -162,10 +167,10 @@ namespace Ifak.Fast.Mediator
     public class LoginResponse
     {
         [JsonProperty("session")]
-        public string Session { get; set; }
+        public string Session { get; set; } = "";
 
         [JsonProperty("challenge")]
-        public string Challenge { get; set; }
+        public string Challenge { get; set; } = "";
 
         [JsonProperty("version")]
         public string MediatorVersion { get; set; } = ""; // introduced with version 1.4
@@ -177,7 +182,7 @@ namespace Ifak.Fast.Mediator
         public byte EventDataVersion { get; set; } = 0; // the maximum version for event data format supported by Mediator
 
         [JsonProperty("bin_methods")]
-        public int[] BinMethods { get; set; } // the ids of those methods that may be requested in binary format
+        public int[]? BinMethods { get; set; } // the ids of those methods that may be requested in binary format
     }
 
     public class AuthenticateReq : RequestBase
@@ -200,7 +205,7 @@ namespace Ifak.Fast.Mediator
     public class AuthenticateResponse
     {
         [JsonProperty("session")]
-        public string Session { get; set; }
+        public string Session { get; set; } = "";
     }
 
     public class ReadVariablesReq : RequestBase, BinSerializable
@@ -211,7 +216,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariables";
 
         [JsonProperty("variables")]
-        public VariableRefs Variables { get; set; }
+        public VariableRefs? Variables { get; set; }
 
         public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
             if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
@@ -236,7 +241,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesIgnoreMissing";
 
         [JsonProperty("variables")]
-        public VariableRefs Variables { get; set; }
+        public VariableRefs? Variables { get; set; }
 
         public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
             if (Variables == null) throw new Exception($"Failed to serialize {GetType().Name}: Variables may not be null!");
@@ -261,7 +266,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesSync";
 
         [JsonProperty("variables")]
-        public VariableRefs Variables { get; set; }
+        public VariableRefs? Variables { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
@@ -302,7 +307,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "ReadVariablesSyncIgnoreMissing";
 
         [JsonProperty("variables")]
-        public VariableRefs Variables { get; set; }
+        public VariableRefs? Variables { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
@@ -343,7 +348,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariables";
 
         [JsonProperty("values")]
-        public VariableValues Values { get; set; }
+        public VariableValues? Values { get; set; }
 
         public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
             if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
@@ -368,7 +373,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesIgnoreMissing";
 
         [JsonProperty("values")]
-        public VariableValues Values { get; set; }
+        public VariableValues? Values { get; set; }
 
         public void BinSerialize(BinaryWriter writer, byte binaryVersion) {
             if (Values == null) throw new Exception($"Failed to serialize {GetType().Name}: Values may not be null!");
@@ -393,7 +398,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesSync";
 
         [JsonProperty("values")]
-        public VariableValues Values { get; set; }
+        public VariableValues? Values { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
@@ -435,7 +440,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "WriteVariablesSyncIgnoreMissing";
 
         [JsonProperty("values")]
-        public VariableValues Values { get; set; }
+        public VariableValues? Values { get; set; }
 
         [JsonProperty("timeout")]
         public Duration? Timeout { get; set; }
@@ -513,7 +518,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetRootObject";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
     }
 
     public class GetAllObjectsReq : RequestBase
@@ -524,7 +529,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetAllObjects";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
     }
 
     public class GetAllObjectsOfTypeReq : RequestBase
@@ -535,10 +540,10 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetAllObjectsOfType";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
 
         [JsonProperty("className")]
-        public string ClassName { get; set; }
+        public string ClassName { get; set; } = "";
     }
 
     public class GetObjectsByIDReq : RequestBase
@@ -549,7 +554,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetObjectsByID";
 
         [JsonProperty("objectIDs")]
-        public ObjectRef[] ObjectIDs { get; set; }
+        public ObjectRef[]? ObjectIDs { get; set; }
     }
 
     public class GetChildrenOfObjectsReq : RequestBase
@@ -560,7 +565,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetChildrenOfObjects";
 
         [JsonProperty("objectIDs")]
-        public ObjectRef[] ObjectIDs { get; set; }
+        public ObjectRef[]? ObjectIDs { get; set; }
     }
 
     public class GetAllObjectsWithVariablesOfTypeReq : RequestBase
@@ -571,10 +576,10 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetAllObjectsWithVariablesOfType";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
 
         [JsonProperty("types")]
-        public DataType[] Types { get; set; }
+        public DataType[]? Types { get; set; }
     }
 
     public class GetObjectValuesByIDReq : RequestBase
@@ -585,7 +590,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetObjectValuesByID";
 
         [JsonProperty("objectIDs")]
-        public ObjectRef[] ObjectIDs { get; set; }
+        public ObjectRef[]? ObjectIDs { get; set; }
     }
 
     public class GetMemberValuesReq : RequestBase
@@ -596,7 +601,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetMemberValues";
 
         [JsonProperty("member")]
-        public MemberRef[] Member { get; set; }
+        public MemberRef[]? Member { get; set; }
     }
 
     public class GetParentOfObjectReq : RequestBase
@@ -618,13 +623,13 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "UpdateConfig";
 
         [JsonProperty("updateOrDeleteObjects")]
-        public ObjectValue[] UpdateOrDeleteObjects { get; set; }
+        public ObjectValue[]? UpdateOrDeleteObjects { get; set; }
 
         [JsonProperty("updateOrDeleteMembers")]
-        public MemberValue[] UpdateOrDeleteMembers { get; set; }
+        public MemberValue[]? UpdateOrDeleteMembers { get; set; }
 
         [JsonProperty("addArrayElements")]
-        public AddArrayElement[] AddArrayElements { get; set; }
+        public AddArrayElement[]? AddArrayElements { get; set; }
     }
 
     public class EnableVariableValueChangedEventsReq : RequestBase
@@ -638,10 +643,10 @@ namespace Ifak.Fast.Mediator
         public SubOptions Options { get; set; }
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRef[]? Variables { get; set; }
 
         [JsonProperty("idsOfEnabledTreeRoots")]
-        public ObjectRef[] IdsOfEnabledTreeRoots { get; set; }
+        public ObjectRef[]? IdsOfEnabledTreeRoots { get; set; }
     }
 
     public class EnableVariableHistoryChangedEventsReq : RequestBase
@@ -652,10 +657,10 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "EnableVariableHistoryChangedEvents";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRef[]? Variables { get; set; }
 
         [JsonProperty("idsOfEnabledTreeRoots")]
-        public ObjectRef[] IdsOfEnabledTreeRoots { get; set; }
+        public ObjectRef[]? IdsOfEnabledTreeRoots { get; set; }
     }
 
     public class EnableConfigChangedEventsReq : RequestBase
@@ -666,7 +671,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "EnableConfigChangedEvents";
 
         [JsonProperty("objects")]
-        public ObjectRef[] Objects { get; set; }
+        public ObjectRef[]? Objects { get; set; }
     }
 
     public class DisableChangeEventsReq : RequestBase
@@ -779,7 +784,7 @@ namespace Ifak.Fast.Mediator
         public VariableRef Variable { get; set; }
 
         [JsonProperty("data")]
-        public VTQ[] Data { get; set; }
+        public VTQ[]? Data { get; set; }
 
         [JsonProperty("mode")]
         public ModifyMode Mode { get; set; }
@@ -804,7 +809,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "HistorianDeleteVariables";
 
         [JsonProperty("variables")]
-        public VariableRef[] Variables { get; set; }
+        public VariableRef[]? Variables { get; set; }
     }
 
     public class HistorianGetLatestTimestampDBReq : RequestBase
@@ -832,13 +837,13 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "CallMethod";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
 
         [JsonProperty("methodName")]
-        public string MethodName { get; set; }
+        public string MethodName { get; set; } = "";
 
         [JsonProperty("parameters")]
-        public NamedValue[] Parameters { get; set; }
+        public NamedValue[]? Parameters { get; set; }
     }
 
     public class BrowseObjectMemberValuesReq : RequestBase
@@ -863,7 +868,7 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "GetMetaInfos";
 
         [JsonProperty("moduleID")]
-        public string ModuleID { get; set; }
+        public string ModuleID { get; set; } = "";
 
         [JsonProperty("continueID")]
         public int? ContinueID { get; set; }
@@ -899,7 +904,7 @@ namespace Ifak.Fast.Mediator
     public class ErrorResult
     {
         [JsonProperty("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = "";
     }
 
     public enum EventType
@@ -917,16 +922,16 @@ namespace Ifak.Fast.Mediator
         public EventType Event { get; set; }
 
         [JsonProperty("variables")]
-        public List<VariableValue> Variables { get; set; }
+        public List<VariableValue>? Variables { get; set; }
 
         [JsonProperty("changes")]
-        public List<HistoryChange> Changes { get; set; }
+        public List<HistoryChange>? Changes { get; set; }
 
         [JsonProperty("changedObjects")]
-        public List<ObjectRef> ChangedObjects { get; set; }
+        public List<ObjectRef>? ChangedObjects { get; set; }
 
         [JsonProperty("events")]
-        public List<AlarmOrEvent> Events { get; set; }
+        public List<AlarmOrEvent>? Events { get; set; }
 
         public bool ShouldSerializeVariables() => Variables != null;
         public bool ShouldSerializeChanges() => Changes != null;

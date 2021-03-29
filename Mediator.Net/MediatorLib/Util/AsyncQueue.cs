@@ -12,7 +12,7 @@ namespace Ifak.Fast.Mediator.Util
         private readonly Queue<T> buffer = new Queue<T>();
         private readonly object sync = new object();
 
-        private TaskCompletionSource<T> promise = null;
+        private TaskCompletionSource<T>? promise = null;
 
         public void Post(T item) {
             lock (sync) {

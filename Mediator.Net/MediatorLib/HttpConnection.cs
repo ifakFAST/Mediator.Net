@@ -38,7 +38,7 @@ namespace Ifak.Fast.Mediator
 
         public const byte CurrentEventDataFormatVersion = 1;
 
-        public static async Task<Connection> ConnectWithUserLogin(string host, int port, string login, string password, string[] roles = null, EventListener listener = null, int timeoutSeconds = 20) {
+        public static async Task<Connection> ConnectWithUserLogin(string host, int port, string login, string password, string[]? roles = null, EventListener? listener = null, int timeoutSeconds = 20) {
 
             if (host == null) throw new ArgumentNullException(nameof(host));
             if (login == null) throw new ArgumentNullException(nameof(login));
@@ -49,7 +49,7 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener listener = null, int timeoutSeconds = 60) {
+        public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener? listener = null, int timeoutSeconds = 60) {
             var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})", info.InProcApi);
             await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
             return res;
@@ -58,11 +58,11 @@ namespace Ifak.Fast.Mediator
         protected readonly HttpClient client;
         protected readonly Uri wsUri;
 
-        protected EventManager eventManager = null;
-        protected string session = null;
-        private InProcApi inProc = null;
+        protected EventManager? eventManager = null;
+        protected string? session = null;
+        private InProcApi? inProc = null;
 
-        protected HttpConnection(string host, int port, TimeSpan timeout, string login, InProcApi inProc = null) {
+        protected HttpConnection(string host, int port, TimeSpan timeout, string login, InProcApi? inProc = null) {
 
             this.inProc = inProc;
             this.login = login;
@@ -74,7 +74,7 @@ namespace Ifak.Fast.Mediator
             client.BaseAddress = baseUri;
         }
 
-        protected async Task DoConnectAndLogin(string login, string password, bool isModule, string[] roles, EventListener listener) {
+        protected async Task DoConnectAndLogin(string login, string password, bool isModule, string[]? roles, EventListener? listener) {
 
             var reqLogin = new LoginReq();
 
@@ -83,7 +83,7 @@ namespace Ifak.Fast.Mediator
             }
             else {
                 reqLogin.Login = login;
-                reqLogin.Roles = roles;
+                reqLogin.Roles = roles ?? new string[0];
             }
             reqLogin.MediatorVersion = VersionInfo.ifakFAST_Str();
 
@@ -134,7 +134,7 @@ namespace Ifak.Fast.Mediator
 
         public override async Task Close() {
 
-            string session = this.session;
+            string? session = this.session;
             if (session == null) return;
             this.session = null;
 
@@ -159,7 +159,7 @@ namespace Ifak.Fast.Mediator
             _ = Close();
         }
 
-        protected void OnConnectionBroken(string context, Exception exp) {
+        protected void OnConnectionBroken(string context, Exception? exp) {
 
             this.session = null;
 
@@ -170,7 +170,7 @@ namespace Ifak.Fast.Mediator
             client.Dispose();
         }
 
-        private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, Exception exp) {
+        private static void ReportConnectionBroken(string login, Timestamp tLogin, string context, Exception? exp) {
 
             if (context.Contains("request because system is shutting down.")) {
                 return;
@@ -441,7 +441,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public override async Task UpdateConfig(ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements) {
+        public override async Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             var request = MakeSessionRequest<UpdateConfigReq>();
             request.UpdateOrDeleteObjects = updateOrDeleteObjects;
             request.UpdateOrDeleteMembers = updateOrDeleteMembers;
@@ -524,17 +524,17 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        protected async Task<T> Post<T>(RequestBase obj, Func<Stream, T> binaryDeserializer = null) {
+        protected async Task<T> Post<T>(RequestBase obj, Func<Stream, T>? binaryDeserializer = null) {
 
             if (inProc != null) {
-                return (T)await inProc.AddRequest(obj);
+                return (T)(await inProc.AddRequest(obj))!;
             }
             else {
                 return await PostInternal(obj, binaryDeserializer, expectReturn: true);
             }
         }
 
-        protected async Task<T> PostInternal<T>(RequestBase obj, Func<Stream, T> binaryDeserializer, bool expectReturn) {
+        protected async Task<T> PostInternal<T>(RequestBase obj, Func<Stream, T>? binaryDeserializer, bool expectReturn) {
 
             MediaTypeHeaderValue contentType;
             string path = obj.GetPath();
@@ -558,7 +558,7 @@ namespace Ifak.Fast.Mediator
                 throw;
             }
 
-            HttpResponseMessage response = null;
+            HttpResponseMessage response;
 
             using (var payload = new StreamContent(requestStream)) {
                 payload.Headers.ContentType = contentType;
@@ -587,7 +587,7 @@ namespace Ifak.Fast.Mediator
                                 }
                                 else {
                                     using (var reader = new StreamReader(stream, Encoding.UTF8)) {
-                                        return StdJson.ObjectFromReader<T>(reader);
+                                        return StdJson.ObjectFromReader<T>(reader) ?? throw new Exception("Unexpected null return value");
                                     }
                                 }
                             }
@@ -602,12 +602,12 @@ namespace Ifak.Fast.Mediator
                         }
                     }
                     else {
-                        return default(T);
+                        return default!;
                     }
                 }
                 else {
                     await ThrowError(response, $"Post<T> {path}");
-                    return default(T); // never come here
+                    return default!; // never come here
                 }
             }
         }
@@ -628,20 +628,20 @@ namespace Ifak.Fast.Mediator
 
         protected async Task ThrowError(HttpResponseMessage response, string context) {
 
-            string content = null;
+            string? content = null;
             try {
                 content = await response.Content.ReadAsStringAsync();
             }
             catch (Exception) {}
 
-            ErrorResult errObj = null;
+            ErrorResult? errObj = null;
             try {
                 errObj = StdJson.ObjectFromString<ErrorResult>(content);
             }
             catch (Exception) {}
 
             if (errObj == null || errObj.Error == null) {
-                string errMsg = string.IsNullOrWhiteSpace(content) ? response.StatusCode.ToString() : content;
+                string errMsg = content == null || string.IsNullOrWhiteSpace(content) ? response.StatusCode.ToString() : content;
                 OnConnectionBroken($"ThrowError {context} '{errMsg}'", null);
                 throw new ConnectivityException(errMsg);
             }
@@ -655,7 +655,7 @@ namespace Ifak.Fast.Mediator
         private T MakeSessionRequest<T>() where T: RequestBase, new() {
             if (IsClosed) throw new ConnectivityException(ConnectionClosedMessage);
             T t = new T();
-            t.Session = session;
+            t.Session = session ?? "";
             return t;
         }
 
@@ -664,15 +664,15 @@ namespace Ifak.Fast.Mediator
             protected readonly EventListener listener;
             private byte dataVersion;
 
-            protected CancellationTokenSource webSocketCancel;
-            protected ClientWebSocket webSocket;
+            protected CancellationTokenSource? webSocketCancel;
+            protected ClientWebSocket? webSocket;
 
             public EventManager(EventListener listener, byte dataVersion) {
                 this.listener = listener;
                 this.dataVersion = dataVersion;
             }
 
-            public async Task StartWebSocket(string session, Uri wsUri, Action<string, Exception> notifyConnectionBroken) {
+            public async Task StartWebSocket(string session, Uri wsUri, Action<string, Exception?> notifyConnectionBroken) {
 
                 webSocketCancel = new CancellationTokenSource();
                 webSocket = new ClientWebSocket();
@@ -686,7 +686,9 @@ namespace Ifak.Fast.Mediator
                 _ = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
             }
 
-            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, Exception> notifyConnectionBroken) {
+            protected async Task ReadWebSocketForEvents(CancellationToken cancelToken, Action<string, Exception?> notifyConnectionBroken) {
+
+                ClientWebSocket webSocket = this.webSocket!;
 
                 byte[] bytesOK = new byte[] { (byte)'O', (byte)'K' };
                 ArraySegment<byte> ok = new ArraySegment<byte>(bytesOK);
@@ -720,7 +722,7 @@ namespace Ifak.Fast.Mediator
 
                     if (msgType == WebSocketMessageType.Binary || msgType == WebSocketMessageType.Text) {
 
-                        EventContent eventObj;
+                        EventContent? eventObj;
 
                         if (dataVersion == 1) {
                             eventObj = ReadBinaryEventContent(stream);
@@ -766,7 +768,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            private T ObjectFromJsonStream<T>(Stream stream) {
+            private T? ObjectFromJsonStream<T>(Stream stream) {
                 using (var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true)) {
                     return StdJson.ObjectFromReader<T>(reader);
                 }
@@ -774,7 +776,7 @@ namespace Ifak.Fast.Mediator
 
             private async Task CloseSocket() {
                 try {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    await webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 }
                 catch (Exception) { }
             }
@@ -791,29 +793,29 @@ namespace Ifak.Fast.Mediator
                 webSocketCancel = null;
             }
 
-            protected Task DispatchEvent(EventContent theEvent) {
+            protected Task DispatchEvent(EventContent? theEvent) {
 
                 if (theEvent == null) return Task.FromResult(true); ;
 
                 switch (theEvent.Event) {
 
                     case EventType.OnVariableValueChanged: {
-                            List<VariableValue> variables = theEvent.Variables;
+                            List<VariableValue> variables = theEvent.Variables ?? new VariableValues();
                             return listener.OnVariableValueChanged(variables);
                         }
 
                     case EventType.OnVariableHistoryChanged: {
-                            List<HistoryChange> variables = theEvent.Changes;
+                            List<HistoryChange> variables = theEvent.Changes ?? new List<HistoryChange>();
                             return listener.OnVariableHistoryChanged(variables);
                         }
 
                     case EventType.OnConfigChanged: {
-                            List<ObjectRef> changes = theEvent.ChangedObjects;
+                            List<ObjectRef> changes = theEvent.ChangedObjects ?? new List<ObjectRef>();
                             return listener.OnConfigChanged(changes);
                         }
 
                     case EventType.OnAlarmOrEvent: {
-                            List<AlarmOrEvent> alarmOrEvents = theEvent.Events;
+                            List<AlarmOrEvent> alarmOrEvents = theEvent.Events ?? new List<AlarmOrEvent>();
                             return listener.OnAlarmOrEvents(alarmOrEvents);
                         }
 
@@ -827,7 +829,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            private EventContent ReadBinaryEventContent(Stream stream) {
+            private EventContent? ReadBinaryEventContent(Stream stream) {
 
                 int eventFormatVersion = stream.ReadByte();
                 if (eventFormatVersion != 1) {

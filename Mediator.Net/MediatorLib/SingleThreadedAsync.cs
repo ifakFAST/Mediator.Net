@@ -40,18 +40,16 @@ namespace Ifak.Fast.Mediator
         internal sealed class SingleThreadSynchronizationContext : SynchronizationContext
         {
             /// <summary>The queue of work items.</summary>
-            private readonly BlockingCollection<KeyValuePair<SendOrPostCallback, object>> m_queue =
-                new BlockingCollection<KeyValuePair<SendOrPostCallback, object>>();
-            /// <summary>The processing thread.</summary>
-            private readonly Thread m_thread = Thread.CurrentThread;
+            private readonly BlockingCollection<KeyValuePair<SendOrPostCallback, object?>> m_queue =
+                new BlockingCollection<KeyValuePair<SendOrPostCallback, object?>>();
 
             /// <summary>Dispatches an asynchronous message to the synchronization context.</summary>
             /// <param name="d">The System.Threading.SendOrPostCallback delegate to call.</param>
             /// <param name="state">The object passed to the delegate.</param>
-            public override void Post(SendOrPostCallback d, object state) {
+            public override void Post(SendOrPostCallback d, object? state) {
                 if (d == null) throw new ArgumentNullException("d");
                 if (!m_queue.IsAddingCompleted) {
-                    m_queue.Add(new KeyValuePair<SendOrPostCallback, object>(d, state));
+                    m_queue.Add(new KeyValuePair<SendOrPostCallback, object?>(d, state));
                 }
             }
 
@@ -64,7 +62,7 @@ namespace Ifak.Fast.Mediator
             public void RunOnCurrentThread() {
                 foreach (var workItem in m_queue.GetConsumingEnumerable()) {
                     SendOrPostCallback f = workItem.Key;
-                    object param = workItem.Value;
+                    object? param = workItem.Value;
                     f(param);
                 }
             }

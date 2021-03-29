@@ -75,7 +75,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                             var promise = (TaskCompletionSource<InitResult>)it.Promise;
                             try {
-                                InitResult res = await adapter.Initialize((InitParameter)it.Param1, (AdapterCallback)it.Param2);
+                                InitResult res = await adapter.Initialize((InitParameter)it.Param1!, (AdapterCallback)it.Param2!);
                                 promise.SetResult(res);
                             }
                             catch (Exception exp) {
@@ -88,7 +88,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                             var promise = (TaskCompletionSource<StepResult>)it.Promise;
                             try {
-                                var result = await adapter.Step((Timestamp)it.Param1, (InputValue[])it.Param2);
+                                var result = await adapter.Step((Timestamp)it.Param1!, (InputValue[])it.Param2!);
                                 promise.SetResult(result);
                             }
                             catch (Exception exp) {
@@ -114,7 +114,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private class WorkItem
         {
-            public WorkItem(MethodID methode, object promise, object param1 = null, object param2 = null, object param3 = null) {
+            public WorkItem(MethodID methode, object promise, object? param1 = null, object? param2 = null, object? param3 = null) {
                 Methode = methode;
                 Promise = promise;
                 Param1 = param1;
@@ -124,9 +124,9 @@ namespace Ifak.Fast.Mediator.Calc
 
             public MethodID Methode { get; set; }
             public object Promise { get; set; }
-            public object Param1 { get; set; }
-            public object Param2 { get; set; }
-            public object Param3 { get; set; }
+            public object? Param1 { get; set; }
+            public object? Param2 { get; set; }
+            public object? Param3 { get; set; }
         }
 
         private enum MethodID

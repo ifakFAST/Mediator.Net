@@ -52,7 +52,7 @@ namespace Ifak.Fast.Mediator
             return settings_Indent_UseShouldSerializeMembers;
         }
 
-        public static string ObjectToString(object value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
+        public static string ObjectToString(object? value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
             return JsonConvert.SerializeObject(value, GetSettings(indented, ignoreShouldSerializeMembers));
         }
 
@@ -63,105 +63,105 @@ namespace Ifak.Fast.Mediator
 
         public static string ValueToString(bool value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(bool[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(bool[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(char value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(char[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(char[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(Enum value) => value == null ? "null" : ValueToString(value.ToString());
 
-        public static string ValueToString(Enum[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(Enum[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(int value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(int[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(int[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(short value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(short[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(short[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(ushort value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(ushort[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(ushort[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(uint value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(uint[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(uint[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(long value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(long[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(long[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(ulong value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(ulong[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(ulong[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(float value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(float[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(float[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(double value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(double[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(double[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(decimal value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(decimal[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(decimal[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(byte value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(byte[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(byte[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(sbyte value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(sbyte[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(sbyte[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(Guid value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(Guid[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(Guid[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(TimeSpan value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(TimeSpan[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(TimeSpan[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(Uri value) => JsonConvert.ToString(value);
 
-        public static string ValueToString(Uri[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(Uri[]? array) => ArrayToString(array, ValueToString);
 
-        public static string ValueToString(string value) => value == null ? "null" : JsonConvert.ToString(value);
+        public static string ValueToString(string? value) => value == null ? "null" : JsonConvert.ToString(value);
 
-        public static string ValueToString(string[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(string[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(ObjectRef value) => JsonConvert.ToString(value.ToEncodedString());
 
-        public static string ValueToString(ObjectRef[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(ObjectRef[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(LocalDate value) => JsonConvert.ToString(value.ToString());
 
-        public static string ValueToString(LocalDate[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(LocalDate[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(LocalTime value) => JsonConvert.ToString(value.ToString());
 
-        public static string ValueToString(LocalTime[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(LocalTime[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(LocalDateTime value) => JsonConvert.ToString(value.ToString());
 
-        public static string ValueToString(LocalDateTime[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(LocalDateTime[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(Timestamp value) => JsonConvert.ToString(value.ToString());
 
-        public static string ValueToString(Timestamp[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(Timestamp[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(Duration value) => JsonConvert.ToString(value.ToString());
 
-        public static string ValueToString(Duration[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(Duration[]? array) => ArrayToString(array, ValueToString);
 
         public static string ValueToString(LocationRef value) => JsonConvert.ToString(value.LocationID);
 
-        public static string ValueToString(LocationRef[] array) => ArrayToString(array, ValueToString);
+        public static string ValueToString(LocationRef[]? array) => ArrayToString(array, ValueToString);
 
-        private static string ArrayToString<T>(T[] array, Func<T, string> f) {
+        private static string ArrayToString<T>(T[]? array, Func<T, string> f) {
             if (array == null) return "null";
             if (array.Length == 0) return "[]";
             var res = new StringBuilder(256);
@@ -199,8 +199,8 @@ namespace Ifak.Fast.Mediator
         public static bool ObjectsDeepEqual(object a, object b) {
 
             if (a is System.Collections.ICollection && b is System.Collections.ICollection) {
-                int countA = (a as System.Collections.ICollection).Count;
-                int countB = (b as System.Collections.ICollection).Count;
+                int countA = (a as System.Collections.ICollection)!.Count;
+                int countB = (b as System.Collections.ICollection)!.Count;
                 if (countA != countB) return false;
             }
 
@@ -223,54 +223,53 @@ namespace Ifak.Fast.Mediator
         }
 
         public static bool ToBool(string s) {
-            bool res = false;
-            if (bool.TryParse(s, out res)) return res;
+            if (bool.TryParse(s, out bool res)) return res;
             double v = 0.0;
             if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v)) return v != 0.0;
             return bool.Parse(s);
         }
 
-        public static bool[] ToBoolArray(string s) => ToPrimitiveArray(s, ToBool);
+        public static bool[]? ToBoolArray(string? s) => ToPrimitiveArray(s, ToBool);
 
         public static byte ToByte(string s) => byte.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static byte[] ToByteArray(string s) => ToPrimitiveArray(s, ToByte);
+        public static byte[]? ToByteArray(string? s) => ToPrimitiveArray(s, ToByte);
 
         public static sbyte ToSByte(string s) => sbyte.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static sbyte[] ToSByteArray(string s) => ToPrimitiveArray(s, ToSByte);
+        public static sbyte[]? ToSByteArray(string? s) => ToPrimitiveArray(s, ToSByte);
 
         public static short ToShort(string s) => short.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static short[] ToShortArray(string s) => ToPrimitiveArray(s, ToShort);
+        public static short[]? ToShortArray(string? s) => ToPrimitiveArray(s, ToShort);
 
         public static ushort ToUShort(string s) => ushort.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static ushort[] ToUShortArray(string s) => ToPrimitiveArray(s, ToUShort);
+        public static ushort[]? ToUShortArray(string? s) => ToPrimitiveArray(s, ToUShort);
 
         public static int ToInt(string s) => int.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static int[] ToIntArray(string s) => ToPrimitiveArray(s, ToInt);
+        public static int[]? ToIntArray(string? s) => ToPrimitiveArray(s, ToInt);
 
         public static uint ToUInt(string s) => uint.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static uint[] ToUIntArray(string s) => ToPrimitiveArray(s, ToUInt);
+        public static uint[]? ToUIntArray(string? s) => ToPrimitiveArray(s, ToUInt);
 
         public static long ToLong(string s) => long.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static long[] ToLongArray(string s) => ToPrimitiveArray(s, ToLong);
+        public static long[]? ToLongArray(string? s) => ToPrimitiveArray(s, ToLong);
 
         public static ulong ToULong(string s) => ulong.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static ulong[] ToULongArray(string s) => ToPrimitiveArray(s, ToULong);
+        public static ulong[]? ToULongArray(string? s) => ToPrimitiveArray(s, ToULong);
 
         public static float ToFloat(string s) => float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static float[] ToFloatArray(string s) => ToPrimitiveArray(s, ToFloat);
+        public static float[]? ToFloatArray(string? s) => ToPrimitiveArray(s, ToFloat);
 
         public static double ToDouble(string s) => double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
-        public static double[] ToDoubleArray(string s) => ToPrimitiveArray(s, ToDouble);
+        public static double[]? ToDoubleArray(string? s) => ToPrimitiveArray(s, ToDouble);
 
         public static double ToDoubleAcceptingBool(string s) {
             try {
@@ -283,14 +282,14 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public static double[] ToDoubleArrayAcceptingBools(string s) => ToPrimitiveArray(s, ToDoubleAcceptingBool);
+        public static double[]? ToDoubleArrayAcceptingBools(string? s) => ToPrimitiveArray(s, ToDoubleAcceptingBool);
 
         public static decimal ToDecimal(string s) => decimal.Parse(s, CultureInfo.InvariantCulture);
 
-        public static decimal[] ToDecimalArray(string s) => ToPrimitiveArray(s, ToDecimal);
+        public static decimal[]? ToDecimalArray(string? s) => ToPrimitiveArray(s, ToDecimal);
 
 
-        private static T[] ToPrimitiveArray<T>(string str, Func<string,T> parseNumber) where T : struct {
+        private static T[]? ToPrimitiveArray<T>(string? str, Func<string,T> parseNumber) where T : struct {
 
             if (str == null || str == "null") return null;
 
@@ -369,39 +368,39 @@ namespace Ifak.Fast.Mediator
             return result;
         }
 
-        public static T ObjectFromString<T>(string json) {
+        public static T? ObjectFromString<T>(string? json) {
             json = json ?? "null";
             return JsonConvert.DeserializeObject<T>(json, settings_NoIndent_UseShouldSerializeMembers);
         }
 
-        public static object ObjectFromString(Type t, string json) {
+        public static object? ObjectFromString(Type t, string? json) {
             json = json ?? "null";
             return JsonConvert.DeserializeObject(json, t, settings_NoIndent_UseShouldSerializeMembers);
         }
 
-        public static T ObjectFromReader<T>(TextReader reader) {
+        public static T? ObjectFromReader<T>(TextReader reader) {
             var serializer = JsonSerializer.CreateDefault(settings_NoIndent_UseShouldSerializeMembers);
-            return (T)serializer.Deserialize(reader, typeof(T));
+            return (T?)serializer.Deserialize(reader, typeof(T));
         }
 
-        public static object ObjectFromReader(TextReader reader, Type t) {
+        public static object? ObjectFromReader(TextReader reader, Type t) {
             var serializer = JsonSerializer.CreateDefault(settings_NoIndent_UseShouldSerializeMembers);
             return serializer.Deserialize(reader, t);
         }
 
-        public static T ObjectFromUtf8Stream<T>(Stream stream) {
+        public static T? ObjectFromUtf8Stream<T>(Stream stream) {
             using (var reader = new StreamReader(stream, Encoding.UTF8)) {
                 return ObjectFromReader<T>(reader);
             }
         }
 
-        public static object ObjectFromUtf8Stream(Stream stream, Type t) {
+        public static object? ObjectFromUtf8Stream(Stream stream, Type t) {
             using (var reader = new StreamReader(stream, Encoding.UTF8)) {
                 return ObjectFromReader(reader, t);
             }
         }
 
-        public static T ObjectFromJToken<T>(JToken jToken) {
+        public static T? ObjectFromJToken<T>(JToken jToken) {
             return jToken.ToObject<T>();
         }
 
@@ -419,7 +418,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public static JToken JTokenFromString(string json) {
+        public static JToken JTokenFromString(string? json) {
             json = json ?? "null";
             return JTokenFromReader(new StringReader(json));
         }
@@ -437,7 +436,7 @@ namespace Ifak.Fast.Mediator
             return JObjectFromReader(new StringReader(json));
         }
 
-        public static void PopulateObject(string json, object obj) {
+        public static void PopulateObject(string? json, object obj) {
             json = json ?? "null";
             JsonConvert.PopulateObject(json, obj, settings_NoIndent_UseShouldSerializeMembers);
         }
@@ -447,9 +446,9 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(Timestamp);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
             if (reader.Value == null) return null;
-            string str = reader.Value as string;
+            string? str = reader.Value as string;
             if (str != null) {
                 return Timestamp.FromISO8601(str);
             }
@@ -457,8 +456,8 @@ namespace Ifak.Fast.Mediator
             return Timestamp.FromDateTime(dt);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            Timestamp ts = (Timestamp)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            Timestamp ts = (Timestamp)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -467,9 +466,9 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalDateTime);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
             if (reader.Value == null) return null;
-            string str = reader.Value as string;
+            string? str = reader.Value as string;
             if (str != null) {
                 return LocalDateTime.FromISO8601(str);
             }
@@ -477,8 +476,8 @@ namespace Ifak.Fast.Mediator
             return LocalDateTime.FromDateTime(dt);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            LocalDateTime ts = (LocalDateTime)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            LocalDateTime ts = (LocalDateTime)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -487,9 +486,9 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalDate);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
             if (reader.Value == null) return null;
-            string str = reader.Value as string;
+            string? str = reader.Value as string;
             if (str != null) {
                 return LocalDate.FromISO8601(str);
             }
@@ -497,8 +496,8 @@ namespace Ifak.Fast.Mediator
             return LocalDate.FromDateTime(dt);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            LocalDate ts = (LocalDate)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            LocalDate ts = (LocalDate)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -507,9 +506,9 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(LocalTime);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
             if (reader.Value == null) return null;
-            string str = reader.Value as string;
+            string? str = reader.Value as string;
             if (str != null) {
                 return LocalTime.FromISO8601(str);
             }
@@ -517,8 +516,8 @@ namespace Ifak.Fast.Mediator
             return LocalTime.FromDateTime(dt);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            LocalTime ts = (LocalTime)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            LocalTime ts = (LocalTime)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -527,14 +526,14 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(Duration);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-            string str = (string)reader.Value;
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+            string? str = (string?)reader.Value;
             if (str == null) return null;
             return Duration.Parse(str);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            Duration ts = (Duration)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            Duration ts = (Duration)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -543,14 +542,14 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(ObjectRef);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-            string str = (string)reader.Value;
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+            string? str = (string?)reader.Value;
             if (str == null) return null;
             return ObjectRef.FromEncodedString(str);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            ObjectRef ts = (ObjectRef)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            ObjectRef ts = (ObjectRef)value!;
             writer.WriteValue(ts.ToEncodedString());
         }
     }
@@ -559,14 +558,14 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(LocationRef);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-            string str = (string)reader.Value;
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+            string? str = (string?)reader.Value;
             if (str == null) return null;
             return LocationRef.FromLocationID(str);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            LocationRef ts = (LocationRef)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            LocationRef ts = (LocationRef)value!;
             writer.WriteValue(ts.ToString());
         }
     }
@@ -575,14 +574,14 @@ namespace Ifak.Fast.Mediator
     {
         public override bool CanConvert(Type objectType) => objectType == typeof(DataValue);
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-            string str = (string)reader.Value;
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+            string? str = (string?)reader.Value;
             if (str == null) return null;
             return DataValue.FromJSON(str);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            DataValue ts = (DataValue)value;
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            DataValue ts = (DataValue)value!;
             writer.WriteValue(ts.JSON);
         }
     }

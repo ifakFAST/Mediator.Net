@@ -33,7 +33,7 @@ namespace Ifak.Fast.Mediator
             this.moduleName = moduleName;
             this.fileName = fileName;
 
-            Task ignored = FlushTask(updateCounter);
+            _ = FlushTask(updateCounter);
         }
 
         public void Sync(IList<ObjectInfo> allObjects) {
@@ -52,7 +52,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            List<VariableRef> varsToRemove = null;
+            List<VariableRef>? varsToRemove = null;
             foreach (VariableRef vref in map.Keys) {
                 if (!validVarRefs.Contains(vref)) {
                     if (varsToRemove == null) {

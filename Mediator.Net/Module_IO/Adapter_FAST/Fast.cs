@@ -12,9 +12,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
     [Identify("Fast")]
     public class Fast : AdapterBase
     {
-        private Connection connection = null;
-        private Adapter config;
-        private AdapterCallback callback;
+        private Connection? connection = null;
+        private Adapter? config;
+        private AdapterCallback? callback;
         private Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
         private string moduleID = "";
 
@@ -34,8 +34,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
         private static VariableRef MakeVarRefFromAddress(string address, string moduleID) {
             try {
-                string[] arr = StdJson.ObjectFromString<string[]>(address);
-                if (arr.Length == 2 && arr[0].Length > 0 && arr[1].Length > 0) {
+                string[]? arr = StdJson.ObjectFromString<string[]>(address);
+                if (arr != null && arr.Length == 2 && arr[0].Length > 0 && arr[1].Length > 0) {
                     return VariableRef.Make(moduleID, arr[0], arr[1]);
                 }
             }
@@ -49,7 +49,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 return true;
             }
 
-            if (string.IsNullOrWhiteSpace(config.Address)) return false;
+            if (config == null ||string.IsNullOrWhiteSpace(config.Address)) return false;
 
             try {
                 var (host, port, user, pass, moduleID) = GetLogin(config);
@@ -105,9 +105,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             return Task.FromResult(new string[0]);
         }
 
-        public override async Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override async Task<string[]> BrowseDataItemAddress(string? idOrNull) {
 
-            if (!await TryConnect()) {
+            if (!await TryConnect() || connection == null) {
                 return new string[0];
             }
 
@@ -133,7 +133,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-            if (!await TryConnect()) {
+            if (!await TryConnect() || connection == null) {
                 return GetBadVTQs(items);
             }
 
@@ -194,7 +194,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
 
         public override async Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
 
-            if (!await TryConnect()) {
+            if (!await TryConnect() || connection == null) {
                 var failed = values.Select(div => new FailedDataItemWrite(div.ID, "No connection to server")).ToArray();
                 return WriteDataItemsResult.Failure(failed);
             }
@@ -234,10 +234,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
         }
 
         private void PrintLine(string msg) {
-            Console.WriteLine(config.Name + ": " + msg);
+            string name = config?.Name ?? "";
+            Console.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarn(string type, string msg, string[] dataItems = null, string details = null) {
+        private void LogWarn(string type, string msg, string[]? dataItems = null, string? details = null) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
@@ -248,10 +249,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 AffectedDataItems = dataItems ?? new string[0]
             };
 
-            callback.Notify_AlarmOrEvent(ae);
+            callback?.Notify_AlarmOrEvent(ae);
         }
 
-        private void LogError(string type, string msg, string[] dataItems = null, string details = null) {
+        private void LogError(string type, string msg, string[]? dataItems = null, string? details = null) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
@@ -262,7 +263,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 AffectedDataItems = dataItems ?? new string[0]
             };
 
-            callback.Notify_AlarmOrEvent(ae);
+            callback?.Notify_AlarmOrEvent(ae);
         }
     }
 

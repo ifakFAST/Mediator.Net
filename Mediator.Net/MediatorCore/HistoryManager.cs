@@ -19,12 +19,12 @@ namespace Ifak.Fast.Mediator
 
         private readonly Dictionary<string, ModuleDBs> dbs = new Dictionary<string, ModuleDBs>();
 
-        private Func<VariableRef, Variable> fVarResolver = null;
-        private Action<IList<HistoryChange>> fNotifyChanges = null;
+        private Func<VariableRef, Variable?> fVarResolver = (vr) => null;
+        private Action<IList<HistoryChange>> fNotifyChanges = (changes) => { };
 
-        private SynchronizationContext syncContext = null;
+        private SynchronizationContext? syncContext = null;
 
-        public async Task Start(Module[] modules, Func<VariableRef, Variable> fVarResolver, Action<IList<HistoryChange>> fNotifyChanges, bool emptyDBs) {
+        public async Task Start(Module[] modules, Func<VariableRef, Variable?> fVarResolver, Action<IList<HistoryChange>> fNotifyChanges, bool emptyDBs) {
 
             this.syncContext = SynchronizationContext.Current;
             this.fVarResolver = fVarResolver;
@@ -33,7 +33,7 @@ namespace Ifak.Fast.Mediator
             foreach (Module m in modules) {
 
                 var workers = new List<WorkerWithBuffer>();
-                WorkerWithBuffer defaultWorker = null;
+                WorkerWithBuffer? defaultWorker = null;
                 var variable2Worker = new Dictionary<string, WorkerWithBuffer>();
 
                 foreach (HistoryDB db in m.HistoryDBs) {
@@ -85,22 +85,18 @@ namespace Ifak.Fast.Mediator
                     logger.Warn("No default DB worker for module " + m.ID);
                 }
 
-                dbs[m.ID] = new ModuleDBs() {
-                    ModuleID = m.ID,
-                    Workers = workers.ToArray(),
-                    Variable2Worker = variable2Worker,
-                    DefaultWorker = defaultWorker
-                };
+                dbs[m.ID] = new ModuleDBs(m.ID, workers.ToArray(), variable2Worker, defaultWorker);
             }
         }
 
         private void Notify_Append(IEnumerable<VarHistoyChange> variables) {
 
             var changes = variables.Select(v => new HistoryChange(v.Var, v.Start, v.End, HistoryChangeType.Append)).ToArray();
-
-            syncContext.Post(delegate (object state) {
-                fNotifyChanges(changes);
-            }, null);
+            if (syncContext != null) {
+                syncContext.Post(delegate (object? state) {
+                    fNotifyChanges(changes);
+                }, null);
+            }
         }
 
         public Task Stop() {
@@ -110,7 +106,7 @@ namespace Ifak.Fast.Mediator
 
         public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
-            HistoryDBWorker worker = WorkerByVarRef(variable);
+            HistoryDBWorker? worker = WorkerByVarRef(variable);
 
             if (worker == null) {
                 throw new Exception("Failed to find DB worker for variable " + variable);
@@ -121,7 +117,7 @@ namespace Ifak.Fast.Mediator
 
         public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
 
-            HistoryDBWorker worker = WorkerByVarRef(variable);
+            HistoryDBWorker? worker = WorkerByVarRef(variable);
 
             if (worker == null) {
                 throw new Exception("Failed to find DB worker for variable " + variable);
@@ -132,7 +128,7 @@ namespace Ifak.Fast.Mediator
 
         public async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
 
-            HistoryDBWorker worker = WorkerByVarRef(variable);
+            HistoryDBWorker? worker = WorkerByVarRef(variable);
 
             if (worker == null) {
                 throw new Exception("Failed to find DB worker for variable " + variable);
@@ -146,7 +142,7 @@ namespace Ifak.Fast.Mediator
 
         public async Task<VTTQ?> HistorianGetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
 
-            HistoryDBWorker worker = WorkerByVarRef(variable);
+            HistoryDBWorker? worker = WorkerByVarRef(variable);
 
             if (worker == null) {
                 throw new Exception("Failed to find DB worker for variable " + variable);
@@ -158,7 +154,7 @@ namespace Ifak.Fast.Mediator
 
         public async Task HistorianModify(VariableRef variable, VTQ[] data, ModifyMode mode) {
 
-            HistoryDBWorker worker = WorkerByVarRef(variable);
+            HistoryDBWorker? worker = WorkerByVarRef(variable);
 
             if (worker == null) {
                 throw new Exception("Failed to find DB worker for variable " + variable);
@@ -192,7 +188,7 @@ namespace Ifak.Fast.Mediator
             var groups = variables.Select(v => Tuple.Create(WorkerByVarRef(v), v)).GroupBy(x => x.Item1).ToArray();
 
             Task[] tasks = groups.Select(group => {
-                HistoryDBWorker worker = group.Key;
+                HistoryDBWorker? worker = group.Key;
                 VariableRef[] variablesForWorker = group.Select(tp => tp.Item2).ToArray();
                 if (worker == null) {
                     if (variablesForWorker.Length == 1)
@@ -219,12 +215,12 @@ namespace Ifak.Fast.Mediator
         }
 
         private Variable CheckExistingVariable(VariableRef variable) {
-            Variable varDesc = fVarResolver(variable);
+            Variable? varDesc = fVarResolver(variable);
             if (varDesc != null) return varDesc;
             throw new Exception("Undefined variable: " + variable.ToString());
         }
 
-        private HistoryDBWorker WorkerByVarRef(VariableRef variable) {
+        private HistoryDBWorker? WorkerByVarRef(VariableRef variable) {
 
             string moduleID = variable.Object.ModuleID;
 
@@ -270,7 +266,7 @@ namespace Ifak.Fast.Mediator
                 VariableValue value = values[i].Value;
                 VTQ previousValue = values[i].PreviousValue;
 
-                Variable variable = fVarResolver(value.Variable);
+                Variable? variable = fVarResolver(value.Variable);
                 if (variable == null) {
                     logger.Warn("OnVariableValuesChanged: invalid variable reference: " + value.Variable);
                     continue;
@@ -433,10 +429,17 @@ namespace Ifak.Fast.Mediator
 
         private class ModuleDBs
         {
-            public string ModuleID { get; set; } = "";
-            public WorkerWithBuffer[] Workers { get; set; }
-            public Dictionary<string, WorkerWithBuffer> Variable2Worker { get; set; }
-            public WorkerWithBuffer DefaultWorker { get; set; }
+            public string ModuleID { get; private set; }
+            public WorkerWithBuffer[] Workers { get; private set; }
+            public Dictionary<string, WorkerWithBuffer> Variable2Worker { get; private set; }
+            public WorkerWithBuffer? DefaultWorker { get; private set; }
+
+            public ModuleDBs(string moduleID, WorkerWithBuffer[] workers, Dictionary<string, WorkerWithBuffer> variable2Worker, WorkerWithBuffer? defaultWorker) {
+                ModuleID = moduleID;
+                Workers = workers;
+                Variable2Worker = variable2Worker;
+                DefaultWorker = defaultWorker;
+            }
         }
 
         private class WorkerWithBuffer

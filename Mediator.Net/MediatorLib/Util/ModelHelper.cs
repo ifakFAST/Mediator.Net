@@ -19,7 +19,7 @@ namespace Ifak.Fast.Mediator.Util
 
     public struct ObjInfo
     {
-        public ObjInfo(ObjectRef id, string displayName, string className, IEnumerable<ChildObjectsInMember> childObjects, Variable[] variables, LocationRef? location) {
+        public ObjInfo(ObjectRef id, string displayName, string className, IEnumerable<ChildObjectsInMember> childObjects, Variable[]? variables, LocationRef? location) {
             ID = id;
             DisplayName = displayName;
             ClassName = className;
@@ -32,7 +32,7 @@ namespace Ifak.Fast.Mediator.Util
         public string ClassName { get; set; }
         public LocationRef? Location { get; set; }
         public IEnumerable<ChildObjectsInMember> ChildObjects { get; }
-        public Variable[] Variables { get; set; }
+        public Variable[]? Variables { get; set; }
     }
 
     public struct ChildObjectsInMember
@@ -78,14 +78,14 @@ namespace Ifak.Fast.Mediator.Util
             return null;
         }
 
-        protected virtual Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) => null;
+        protected virtual Variable[]? GetVariablesOrNull(IEnumerable<IModelObject> parents) => null;
 
         protected virtual List<ChildObjectsInMember> GetChildObjectsInMember() {
             var res = new List<ChildObjectsInMember>();
             PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
             foreach (PropertyInfo p in properties) {
                 object value = p.GetValue(this, null);
-                System.Collections.IEnumerable list = value as System.Collections.IEnumerable;
+                System.Collections.IEnumerable? list = value as System.Collections.IEnumerable;
                 if (list != null && typeof(IEnumerable<IModelObject>).IsAssignableFrom(list.GetType())) {
                     res.Add(new ChildObjectsInMember(p.Name, (IEnumerable<IModelObject>)list));
                 }
@@ -111,22 +111,22 @@ namespace Ifak.Fast.Mediator.Util
                 p.SetValue(this, null);
             }
             else {
-                object decodedValue = value.Object(p.PropertyType);
+                object? decodedValue = value.Object(p.PropertyType);
                 p.SetValue(this, decodedValue);
             }
         }
 
         public void AddChildObject(string memberName, DataValue objectToAdd) {
             PropertyInfo p = GetPropertyByNameOrThrow(memberName);
-            System.Collections.IList list = p.GetValue(this, null) as System.Collections.IList;
+            System.Collections.IList? list = p.GetValue(this, null) as System.Collections.IList;
             if (list == null) throw new ArgumentException("Member " + memberName + " is not a list.");
-            object decodedValue = objectToAdd.Object(p.PropertyType.GetGenericArguments()[0]);
+            object? decodedValue = objectToAdd.Object(p.PropertyType.GetGenericArguments()[0]);
             list.Add(decodedValue);
         }
 
         public void RemoveChildObject(string memberName, IModelObject childObject) {
             PropertyInfo p = GetPropertyByNameOrThrow(memberName);
-            System.Collections.IList list = p.GetValue(this, null) as System.Collections.IList;
+            System.Collections.IList? list = p.GetValue(this, null) as System.Collections.IList;
             if (list == null) throw new ArgumentException("Member " + memberName + " is not a list.");
             list.Remove(childObject);
         }

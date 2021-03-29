@@ -18,19 +18,19 @@ namespace Ifak.Fast.Mediator.Dashboard
     public class Session : EventListener, ViewContext
     {
         public string ID { get; private set; }
-        private WebSocket WebSocket { get; set; }
+        private WebSocket? WebSocket { get; set; }
 
-        private Connection connection;
+        private Connection connection = new ClosedConnection();
         private readonly Dictionary<string, ViewBase> views = new Dictionary<string, ViewBase>();
         private string moduleID = "";
 
-        private ViewBase currentView = null;
+        private ViewBase? currentView = null;
         private bool closed = false;
 
         public Timestamp lastActivity = Timestamp.Now;
 
-        private DashboardModel model;
-        private ViewType[] viewTypes;
+        private DashboardModel model = new DashboardModel();
+        private ViewType[] viewTypes = new ViewType[0];
 
         public Session() {
             ID = Guid.NewGuid().ToString().Replace("-", "");
@@ -47,7 +47,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 await CreateView(view);
             }
 
-            Task igored = DoRegularGetNaviAugmentation();
+            _ = DoRegularGetNaviAugmentation();
         }
 
         private async Task DoRegularGetNaviAugmentation() {
@@ -121,7 +121,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             lastActivity = Timestamp.Now;
 
-            View view = model.Views.Find(v => v.ID == viewID);
+            View? view = model.Views.Find(v => v.ID == viewID);
             if (view == null)
                 throw new Exception("Unknown viewID " + viewID);
 
@@ -147,11 +147,13 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             lastActivity = Timestamp.Now;
 
-            View view = model.Views.Find(v => v.ID == viewID);
+            View? view = model.Views.Find(v => v.ID == viewID);
             if (view == null)
                 throw new Exception("Unknown viewID " + viewID);
 
-            if (view.Type != typeof(View_HistoryPlots).GetCustomAttribute<Identify>().ID)
+            Identify? identify = typeof(View_HistoryPlots).GetCustomAttribute<Identify>();
+
+            if (identify == null || view.Type != identify.ID)
                 throw new Exception("View is not a HistoryPlot!");
 
             var config = view.Config.Object<View_HistoryPlots.ViewConfig>();
@@ -162,7 +164,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 Name = view.Name,
                 Group = view.Group,
                 Config = DataValue.FromObject(newConfig, indented: true),
-                Type = typeof(Pages.View).GetCustomAttribute<Identify>().ID,
+                Type = typeof(Pages.View).GetCustomAttribute<Identify>()!.ID,
             };
 
             model.Views.Add(newView);
@@ -179,7 +181,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             lastActivity = Timestamp.Now;
 
-            View view = model.Views.Find(v => v.ID == viewID);
+            View? view = model.Views.Find(v => v.ID == viewID);
             if (view == null)
                 throw new Exception("Unknown viewID " + viewID);
 
@@ -197,7 +199,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             lastActivity = Timestamp.Now;
 
-            View view = model.Views.Find(v => v.ID == viewID);
+            View? view = model.Views.Find(v => v.ID == viewID);
             if (view == null)
                 throw new Exception("Unknown viewID " + viewID);
 
@@ -212,7 +214,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             lastActivity = Timestamp.Now;
 
-            View view = model.Views.Find(v => v.ID == viewID);
+            View? view = model.Views.Find(v => v.ID == viewID);
             if (view == null)
                 throw new Exception("Unknown viewID " + viewID);
 
@@ -260,10 +262,12 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private ViewBase CreateViewInstance(View view, ViewType[] viewTypes) {
 
-            ViewType viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(view.Type, StringComparison.InvariantCultureIgnoreCase));
+            ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(view.Type, StringComparison.InvariantCultureIgnoreCase));
             if (viewType == null) throw new Exception($"No view type '{view.Type}' found!");
 
-            object viewObj = Activator.CreateInstance(viewType.Type);
+            object? viewObj = viewType.Type == null ? null : Activator.CreateInstance(viewType.Type);
+            if (viewObj == null) throw new Exception($"Failed to create instance of view type '{view.Type}'!");
+
             return (ViewBase)viewObj;
         }
 
@@ -334,7 +338,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         async Task ViewContext.SaveViewConfiguration(DataValue newConfig) {
-            ViewBase view = currentView;
+            ViewBase? view = currentView;
             if (view == null) return;
             var entry = views.FirstOrDefault(p => p.Value == view);
             if (entry.Value != view) return;
@@ -407,8 +411,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             await connection.Close();
         }
 
-        private void logInfo(string msg, Exception exp = null) {
-            Exception exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
+        private void logInfo(string msg, Exception? exp = null) {
+            Exception? exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
             if (exception != null)
                 Console.Out.WriteLine(msg + " " + exception.Message);
             else

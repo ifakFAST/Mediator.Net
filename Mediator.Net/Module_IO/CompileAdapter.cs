@@ -70,7 +70,7 @@ namespace Ifak.Fast.Mediator.IO
 
             var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
 
-            string trustedAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+            string? trustedAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
             var references = new List<PortableExecutableReference>();
 
             if (trustedAssemblies != null) {

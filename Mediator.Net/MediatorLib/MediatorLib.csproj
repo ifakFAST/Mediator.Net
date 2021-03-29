@@ -22,7 +22,8 @@
     <PackageTags>IOT SCADA Monitoring Control Automation Dashboard Integration</PackageTags>
     <Authors>ifak e.V.</Authors>
     <Description>Modular platform for process monitoring and supervisory control</Description>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

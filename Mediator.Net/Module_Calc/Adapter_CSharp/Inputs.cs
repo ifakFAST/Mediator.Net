@@ -37,8 +37,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class InputFloat64Array : InputBase {
 
-        public double[] DefaultValue { get; private set; }
-        public double[] Value {
+        public double[]? DefaultValue { get; private set; }
+        public double[]? Value {
             get {
                 try {
                     return VTQ.V.GetDoubleArray();
@@ -48,7 +48,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public static implicit operator double[](InputFloat64Array d) => d.Value;
+        public static implicit operator double[]?(InputFloat64Array d) => d.Value;
         public bool HasValidValue {
             get {
                 try {
@@ -59,7 +59,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public InputFloat64Array(string name, double[] defaultValue, int dimension = 0) :
+        public InputFloat64Array(string name, double[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Float64, dimension: dimension, defaultValue: DataValue.FromDoubleArray(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("InputFloat64Array: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputFloat64Array: dimension != defaultValue.Length");
@@ -69,8 +69,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class InputFloat32Array : InputBase {
 
-        public float[] DefaultValue { get; private set; }
-        public float[] Value {
+        public float[]? DefaultValue { get; private set; }
+        public float[]? Value {
             get {
                 try {
                     return VTQ.V.GetFloatArray();
@@ -80,7 +80,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public static implicit operator float[](InputFloat32Array d) => d.Value;
+        public static implicit operator float[]?(InputFloat32Array d) => d.Value;
         public bool HasValidValue {
             get {
                 try {
@@ -91,7 +91,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public InputFloat32Array(string name, float[] defaultValue, int dimension = 0) :
+        public InputFloat32Array(string name, float[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Float32, dimension: dimension, defaultValue: DataValue.FromFloatArray(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("InputFloat32Array: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputFloat32Array: dimension != defaultValue.Length");
@@ -131,8 +131,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class InputStructArray<T> : InputBase where T : struct {
 
-        public T[] DefaultValue { get; private set; }
-        public T[] Value {
+        public T[]? DefaultValue { get; private set; }
+        public T[]? Value {
             get {
                 try {
                     return VTQ.V.Object<T[]>();
@@ -152,9 +152,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public static implicit operator T[](InputStructArray<T> d) => d.Value;
+        public static implicit operator T[]?(InputStructArray<T> d) => d.Value;
 
-        public InputStructArray(string name, T[] defaultValue, int dimension = 0) :
+        public InputStructArray(string name, T[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Struct, dimension: dimension, defaultValue: DataValue.FromObject(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("InputStructArray: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputStructArray: dimension != defaultValue.Length");
@@ -164,8 +164,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class InputClass<T> : InputBase where T : class {
 
-        public T DefaultValue { get; private set; }
-        public T Value {
+        public T? DefaultValue { get; private set; }
+        public T? Value {
             get {
                 try {
                     return VTQ.V.Object<T>();
@@ -185,9 +185,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public static implicit operator T(InputClass<T> d) => d.Value;
+        public static implicit operator T?(InputClass<T> d) => d.Value;
 
-        public InputClass(string name, T defaultValue) :
+        public InputClass(string name, T? defaultValue) :
             base(name: name, unit: "", type: DataType.Struct, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
             DefaultValue = defaultValue;
         }
@@ -195,8 +195,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class InputClassArray<T> : InputBase where T : class {
 
-        public T[] DefaultValue { get; private set; }
-        public T[] Value {
+        public T[]? DefaultValue { get; private set; }
+        public T[]? Value {
             get {
                 try {
                     return VTQ.V.Object<T[]>();
@@ -216,9 +216,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
-        public static implicit operator T[](InputClassArray<T> d) => d.Value;
+        public static implicit operator T[]?(InputClassArray<T> d) => d.Value;
 
-        public InputClassArray(string name, T[] defaultValue, int dimension = 0) :
+        public InputClassArray(string name, T[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Struct, dimension: dimension, defaultValue: DataValue.FromObject(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("InputClassArray: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputClassArray: dimension != defaultValue.Length");

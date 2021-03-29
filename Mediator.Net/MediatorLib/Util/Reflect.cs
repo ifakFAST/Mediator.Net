@@ -11,14 +11,14 @@ namespace Ifak.Fast.Mediator.Util
 {
     public class Reflect
     {
-        public static T CreateInstanceOrThrow<T>(string typeName, string assemblyName = null) {
+        public static T CreateInstanceOrThrow<T>(string typeName, string? assemblyName = null) {
 
             if (string.IsNullOrWhiteSpace(assemblyName)) {
                 Type t = Type.GetType(typeName, throwOnError: true);
                 return (T)Activator.CreateInstance(t);
             }
             else {
-                Assembly assembly = null;
+                Assembly? assembly;
 
                 string fullFileName = Path.GetFullPath(Path.IsPathRooted(assemblyName) ? assemblyName : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, assemblyName));
                 Assembly assemblyOfT = typeof(T).Assembly;
@@ -44,7 +44,7 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
-        public static IList<Type> GetAllNonAbstractSubclasses(Type baseClass, string[] externalAssemblyFiles = null) {
+        public static IList<Type> GetAllNonAbstractSubclasses(Type baseClass, string[]? externalAssemblyFiles = null) {
 
             var result = new List<Type>();
             var processedAssemblies = new HashSet<string>();
@@ -97,7 +97,7 @@ namespace Ifak.Fast.Mediator.Util
             return path + Path.DirectorySeparatorChar;
         }
 
-        public static Type GetNonAbstractSubclassInDomainBaseDirectory(Type baseClass, string typeName) {
+        public static Type? GetNonAbstractSubclassInDomainBaseDirectory(Type baseClass, string typeName) {
 
             string BaseDir = EnsurePathSep(AppDomain.CurrentDomain.BaseDirectory);
 

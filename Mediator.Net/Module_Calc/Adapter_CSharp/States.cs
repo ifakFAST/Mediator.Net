@@ -63,12 +63,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class StateFloat64Array : StateBase {
 
-        public double[] DefaultValue { get; private set; }
-        public double[] Value { get; set; }
-        public static implicit operator double[](StateFloat64Array d) => d.Value;
+        public double[]? DefaultValue { get; private set; }
+        public double[]? Value { get; set; }
+        public static implicit operator double[]?(StateFloat64Array d) => d.Value;
         public bool NeedHighPrecision { get; set; }
 
-        public StateFloat64Array(string name, double[] defaultValue, int dimension = 0, bool needHighPrecision = false) :
+        public StateFloat64Array(string name, double[]? defaultValue, int dimension = 0, bool needHighPrecision = false) :
             base(name: name, unit: "", type: DataType.Float64, dimension: dimension, defaultValue: DataValue.FromDoubleArray(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("StateFloat64Array: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("StateFloat64Array: dimension != defaultValue.Length");
@@ -109,11 +109,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class StateFloat32Array : StateBase
     {
-        public float[] DefaultValue { get; private set; }
-        public float[] Value { get; set; }
-        public static implicit operator float[](StateFloat32Array d) => d.Value;
+        public float[]? DefaultValue { get; private set; }
+        public float[]? Value { get; set; }
+        public static implicit operator float[]?(StateFloat32Array d) => d.Value;
 
-        public StateFloat32Array(string name, float[] defaultValue, int dimension = 0) :
+        public StateFloat32Array(string name, float[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Float32, dimension: dimension, defaultValue: DataValue.FromFloatArray(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("StateFloat32Array: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("StateFloat32Array: dimension != defaultValue.Length");
@@ -170,11 +170,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class StateClass<T> : StateBase where T : class {
 
-        public T DefaultValue { get; private set; }
-        public T Value { get; set; }
-        public static implicit operator T(StateClass<T> d) => d.Value;
+        public T? DefaultValue { get; private set; }
+        public T? Value { get; set; }
+        public static implicit operator T?(StateClass<T> d) => d.Value;
 
-        public StateClass(string name, T defaultValue) :
+        public StateClass(string name, T? defaultValue) :
             base(name: name, unit: "", type: DataType.Struct, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
             DefaultValue = defaultValue;
             Value = defaultValue;
@@ -196,11 +196,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class StateStructArray<T> : StateBase where T : struct {
 
-        public T[] DefaultValue { get; private set; }
-        public T[] Value { get; set; }
-        public static implicit operator T[](StateStructArray<T> d) => d.Value;
+        public T[]? DefaultValue { get; private set; }
+        public T[]? Value { get; set; }
+        public static implicit operator T[]?(StateStructArray<T> d) => d.Value;
 
-        public StateStructArray(string name, T[] defaultValue, int dimension = 0) :
+        public StateStructArray(string name, T[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Struct, dimension: dimension, defaultValue: DataValue.FromObject(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("StateStructArray: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("StateStructArray: dimension != defaultValue.Length");
@@ -224,11 +224,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class StateClassArray<T> : StateBase where T : class {
 
-        public T[] DefaultValue { get; private set; }
-        public T[] Value { get; set; }
-        public static implicit operator T[](StateClassArray<T> d) => d.Value;
+        public T[]? DefaultValue { get; private set; }
+        public T[]? Value { get; set; }
+        public static implicit operator T[]?(StateClassArray<T> d) => d.Value;
 
-        public StateClassArray(string name, T[] defaultValue, int dimension = 0) :
+        public StateClassArray(string name, T[]? defaultValue, int dimension = 0) :
             base(name: name, unit: "", type: DataType.Struct, dimension: dimension, defaultValue: DataValue.FromObject(defaultValue)) {
             if (dimension < 0) throw new ArgumentException("StateClassArray: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("StateClassArray: dimension != defaultValue.Length");

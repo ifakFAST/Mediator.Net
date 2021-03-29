@@ -268,7 +268,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="updateOrDeleteObjects">The object values for update or delete</param>
         /// <param name="updateOrDeleteMembers">The member values for update or delete</param>
         /// <param name="addArrayElements">The values to add to an array member</param>
-        public abstract Task UpdateConfig(ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements);
+        public abstract Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements);
 
         #endregion
 
@@ -404,7 +404,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="timeout">Optional timeout</param>
         public virtual async Task<Result> WriteVariableSync(ObjectRef objectID, string variableName, VTQ value, Duration? timeout = null) {
             WriteResult res = await WriteVariablesSync(new VariableValues { VariableValue.Make(objectID, variableName, value) }, timeout);
-            if (res.Failed()) return Result.Failure(res.FailedVariables[0].Error);
+            if (res.Failed()) return Result.Failure(res.FailedVariables![0].Error);
             return Result.OK;
         }
 
@@ -636,8 +636,8 @@ namespace Ifak.Fast.Mediator
 
     public class ModuleInfo
     {
-        public string ID { get; set; }
-        public string Name { get; set; }
+        public string ID { get; set; } = "";
+        public string Name { get; set; } = "";
         public bool Enabled { get; set; }
         /// <summary>
         /// Return true if the module contains any object with at least one variable that is numeric or boolean

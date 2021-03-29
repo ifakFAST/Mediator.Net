@@ -13,10 +13,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
     [Identify("ModbusTCP")]
     public class ModbusTCP : AdapterBase
     {
-        private TcpClient connection = null;
-        private NetworkStream networkStream = null;
-        private Adapter config;
-        private AdapterCallback callback;
+        private TcpClient? connection = null;
+        private NetworkStream? networkStream = null;
+        private Adapter? config;
+        private AdapterCallback? callback;
         private Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
         private const int TimeOutMS = 2000;
 
@@ -178,7 +178,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 return true;
             }
 
-            if (string.IsNullOrWhiteSpace(config.Address)) return false;
+            if (config == null || string.IsNullOrWhiteSpace(config.Address)) return false;
 
             try {
 
@@ -239,6 +239,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 networkStream?.Close(0);
             }
             catch (Exception) { }
+            networkStream = null;
 
             try {
                 connection.Close();
@@ -275,7 +276,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return Task.FromResult(new string[0]);
         }
 
-        public override Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             return Task.FromResult(new string[0]);
         }
 
@@ -283,7 +284,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
             int N = items.Count;
 
-            if (!await TryConnect()) {
+            if (!await TryConnect() || networkStream == null || config == null) {
                 return GetBadVTQs(items);
             }
 
@@ -305,7 +306,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     WriteUShort(writeBuffer, 10, address.Count);
                     try {
                         await networkStream.WriteAsync(writeBuffer);
-                        ushort[] words = await ReadResponse(address.Count);
+                        ushort[] words = await ReadResponse(networkStream, address.Count);
                         vtqs[i] = ParseModbusResponse(item.Item, words, Timestamp.Now);
                     }
                     catch (Exception exp) {
@@ -323,7 +324,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return vtqs;
         }
 
-        private async Task<ushort[]> ReadResponse(int wordCount) {
+        private async Task<ushort[]> ReadResponse(NetworkStream networkStream, int wordCount) {
 
             const int ResponseHeadLen = 9;
             int ResponseLen = ResponseHeadLen + 2 * wordCount;
@@ -372,10 +373,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         }
 
         private void PrintLine(string msg) {
-            Console.WriteLine(config.Name + ": " + msg);
+            string name = config?.Name ?? "";
+            Console.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarn(string type, string msg, string[] dataItems = null, string details = null) {
+        private void LogWarn(string type, string msg, string[]? dataItems = null, string? details = null) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
@@ -386,10 +388,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 AffectedDataItems = dataItems ?? new string[0]
             };
 
-            callback.Notify_AlarmOrEvent(ae);
+            callback?.Notify_AlarmOrEvent(ae);
         }
 
-        private void LogError(string type, string msg, string[] dataItems = null, string details = null) {
+        private void LogError(string type, string msg, string[]? dataItems = null, string? details = null) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
@@ -400,7 +402,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 AffectedDataItems = dataItems ?? new string[0]
             };
 
-            callback.Notify_AlarmOrEvent(ae);
+            callback?.Notify_AlarmOrEvent(ae);
         }
     }
 

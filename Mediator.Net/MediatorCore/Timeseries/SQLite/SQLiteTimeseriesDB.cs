@@ -14,9 +14,9 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
     {
         private static Logger logger = LogManager.GetLogger("SQLiteTimeseriesDB");
 
-        protected DbConnection connection = null;
+        protected DbConnection? connection = null;
         private string tableSeparator = "$";
-        private PreparedStatement stmtSelectChannel;
+        private PreparedStatement? stmtSelectChannel;
 
         public override bool IsOpen => connection != null;
 
@@ -30,7 +30,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             else {
                 var parser = new DbConnectionStringBuilder();
                 parser.ConnectionString = connectionString;
-                string file = "";
+                string? file = "";
                 if (parser.ContainsKey("Filename")) {
                     file = parser["Filename"] as string;
                 }
@@ -56,7 +56,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
         }
 
-        public override void Open(string name, string connectionString, string[] settings = null) {
+        public override void Open(string name, string connectionString, string[]? settings = null) {
 
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
 
@@ -97,13 +97,13 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
         private void CheckDbChannelInfoOrCreate() {
 
-            using (var command = Factory.MakeCommand("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND tbl_name = 'channel_defs';", connection)) {
+            using (var command = Factory.MakeCommand("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND tbl_name = 'channel_defs';", connection!)) {
                 if (command.ExecuteScalar() != null) {
                     return;
                 }
             }
 
-            using (var command = Factory.MakeCommand("CREATE TABLE channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection)) {
+            using (var command = Factory.MakeCommand("CREATE TABLE channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection!)) {
                 command.ExecuteNonQuery();
             }
         }
@@ -113,7 +113,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             if (!IsOpen) return;
 
             try {
-                connection.Close();
+                connection!.Close();
             }
             catch (Exception exp) {
                 logger.Warn(exp, "Closing database failed: " + exp.Message);
@@ -134,7 +134,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             CheckDbOpen();
             ChannelEntry? entry = GetChannelDescription(objectID, variable);
             if (!entry.HasValue) throw new ArgumentException($"No channel found with obj={objectID} avr={variable}");
-            return new SQLiteChannel(connection, entry.Value.MakeInfo(), entry.Value.DataTableName);
+            return new SQLiteChannel(connection!, entry.Value.MakeInfo(), entry.Value.DataTableName);
         }
 
         public override bool RemoveChannel(string objectID, string variable) {
@@ -144,10 +144,10 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             if (!entry.HasValue) return false;
             string table = entry.Value.DataTableName;
 
-            using (var command = Factory.MakeCommand($"DROP TABLE \"{table}\"", connection)) {
+            using (var command = Factory.MakeCommand($"DROP TABLE \"{table}\"", connection!)) {
                 command.ExecuteNonQuery();
             }
-            using (var command = Factory.MakeCommand($"DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
+            using (var command = Factory.MakeCommand($"DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection!)) {
                 command.Parameters.Add(Factory.MakeParameter("obj", objectID));
                 command.Parameters.Add(Factory.MakeParameter("var", variable));
                 command.ExecuteNonQuery();
@@ -160,7 +160,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             CheckDbOpen();
             var res = new List<ChannelInfo>();
 
-            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection)) {
+            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection!)) {
                 using (var reader = command.ExecuteReader()) {
                     while (reader.Read()) {
                         string obj = (string)reader["obj"];
@@ -175,9 +175,10 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         }
 
         public override Channel[] CreateChannels(ChannelInfo[] channels) {
+            CheckDbOpen();
 
             var lowerCaseTableNames = new HashSet<string>();
-            using (var command = Factory.MakeCommand($"SELECT table_name FROM channel_defs", connection)) {
+            using (var command = Factory.MakeCommand($"SELECT table_name FROM channel_defs", connection!)) {
                 using (var reader = command.ExecuteReader()) {
                     while (reader.Read()) {
                         lowerCaseTableNames.Add(((string)reader["table_name"]).ToLowerInvariant());
@@ -185,7 +186,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 }
             }
 
-            using (var transaction = connection.BeginTransaction()) {
+            using (var transaction = connection!.BeginTransaction()) {
 
                 try {
 
@@ -229,11 +230,12 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
         }
 
-        public override string[] BatchExecute(Func<PrepareContext, string>[] updateActions) {
+        public override string[] BatchExecute(Func<PrepareContext, string?>[] updateActions) {
 
+            CheckDbOpen();
             Timestamp timeDb = Timestamp.Now;
 
-            using (var transaction = connection.BeginTransaction()) {
+            using (var transaction = connection!.BeginTransaction()) {
 
                 try {
 
@@ -241,7 +243,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                     var context = new SQLiteContext(timeDb, transaction);
 
                     foreach (var action in updateActions) {
-                        string error = action(context);
+                        string? error = action(context);
                         if (error != null) {
                             errors.Add(error);
                         }
@@ -345,7 +347,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             return new Microsoft.Data.Sqlite.SqliteCommand(commandText, (Microsoft.Data.Sqlite.SqliteConnection)connection);
         }
 
-        public static DbParameter MakeParameter(string name, object value = null) {
+        public static DbParameter MakeParameter(string name, object? value = null) {
             //return new System.Data.SQLite.SQLiteParameter(name, value);
             return new Microsoft.Data.Sqlite.SqliteParameter(name, value);
         }

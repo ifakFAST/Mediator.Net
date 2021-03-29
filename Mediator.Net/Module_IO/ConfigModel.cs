@@ -347,16 +347,16 @@ namespace Ifak.Fast.Mediator.IO.Config
             else {
                 history = new History(HistoryMode.None);
                 foreach (IModelObject obj in parents) {
-                    if (obj is IO_Model) {
-                        history = (obj as IO_Model).History;
+                    if (obj is IO_Model model) {
+                        history = model.History;
                         break;
                     }
-                    else if (obj is Adapter && (obj as Adapter).History.HasValue) {
-                        history = (obj as Adapter).History.Value;
+                    else if (obj is Adapter adapter && adapter.History.HasValue) {
+                        history = adapter.History.Value;
                         break;
                     }
-                    else if (obj is Node && (obj as Node).History.HasValue) {
-                        history = (obj as Node).History.Value;
+                    else if (obj is Node node && node.History.HasValue) {
+                        history = node.History.Value;
                         break;
                     }
                 }
@@ -462,7 +462,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public Duration? Offset { get; set; }
         public bool UseTimestampFromSource { get; set; }
 
-        public XmlSchema GetSchema() => null;
+        public XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
             string m = reader["mode"];

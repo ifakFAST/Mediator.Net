@@ -65,32 +65,40 @@ namespace Ifak.Fast.Mediator
 
         private class WI_Start : WorkItem
         {
-            public TaskCompletionSource<bool> Promise { get; set; }
+            public readonly TaskCompletionSource<bool> Promise;
             public override bool IsReadRequest => false;
+
+            public WI_Start(TaskCompletionSource<bool> promise) {
+                Promise = promise;
+            }
         }
 
         private class WI_Terminate : WorkItem
         {
-            public TaskCompletionSource<bool> Promise { get; set; }
+            public readonly TaskCompletionSource<bool> Promise;
             public override bool IsReadRequest => false;
+
+            public WI_Terminate(TaskCompletionSource<bool> promise) {
+                Promise = promise;
+            }
         }
 
         public Task Start() {
             var promise = new TaskCompletionSource<bool>();
-            queue.Post(new WI_Start() { Promise = promise });
+            queue.Post(new WI_Start(promise));
             return promise.Task;
         }
 
         public Task Terminate() {
             if (terminated || !started) return Task.FromResult(true);
             var promise = new TaskCompletionSource<bool>();
-            queue.Post(new WI_Terminate() { Promise = promise });
+            queue.Post(new WI_Terminate(promise));
             return promise.Task;
         }
 
         public int Append(IList<StoreValue> values) {
             if (!terminated) {
-                queue.Post(new WI_BatchAppend() { Values = values });
+                queue.Post(new WI_BatchAppend(values));
                 return queue.Count;
             }
             else {
@@ -100,153 +108,169 @@ namespace Ifak.Fast.Mediator
 
         private class WI_BatchAppend : WorkItem
         {
-            public IList<StoreValue> Values { get; set; }
+            public readonly IList<StoreValue> Values;
 
             public override bool IsReadRequest => false;
+
+            public WI_BatchAppend(IList<StoreValue> values) {
+                Values = values;
+            }
         }
 
         public Task<List<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
             var promise = new TaskCompletionSource<List<VTTQ>>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_ReadRaw() {
-                    Variable = variable,
-                    StartInclusive = startInclusive,
-                    EndInclusive = endInclusive,
-                    MaxValues = maxValues,
-                    Bounding = bounding,
-                    Filter = filter,
-                    Promise = promise
-                });
+                queue.Post(new WI_ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter, promise));
             }
             return promise.Task;
         }
 
         private class WI_ReadRaw : WorkItem
         {
-            public VariableRef Variable;
-            public Timestamp StartInclusive;
-            public Timestamp EndInclusive;
-            public int MaxValues;
-            public BoundingMethod Bounding;
-            public QualityFilter Filter;
+            public readonly VariableRef Variable;
+            public readonly Timestamp StartInclusive;
+            public readonly Timestamp EndInclusive;
+            public readonly int MaxValues;
+            public readonly BoundingMethod Bounding;
+            public readonly QualityFilter Filter;
 
-            public TaskCompletionSource<List<VTTQ>> Promise { get; set; }
+            public readonly TaskCompletionSource<List<VTTQ>> Promise;
             public override bool IsReadRequest => true;
+
+            public WI_ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, TaskCompletionSource<List<VTTQ>> promise) {
+                Variable = variable;
+                StartInclusive = startInclusive;
+                EndInclusive = endInclusive;
+                MaxValues = maxValues;
+                Bounding = bounding;
+                Filter = filter;
+                Promise = promise;
+            }
         }
 
         public Task<long> Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
             var promise = new TaskCompletionSource<long>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_Count() {
-                    Variable = variable,
-                    StartInclusive = startInclusive,
-                    EndInclusive = endInclusive,
-                    Filter = filter,
-                    Promise = promise
-                });
+                queue.Post(new WI_Count(variable, startInclusive, endInclusive, filter, promise));
             }
             return promise.Task;
         }
 
         private class WI_Count : WorkItem
         {
-            public VariableRef Variable;
-            public Timestamp StartInclusive;
-            public Timestamp EndInclusive;
-            public QualityFilter Filter;
+            public readonly VariableRef Variable;
+            public readonly Timestamp StartInclusive;
+            public readonly Timestamp EndInclusive;
+            public readonly QualityFilter Filter;
 
-            public TaskCompletionSource<long> Promise { get; set; }
+            public readonly TaskCompletionSource<long> Promise;
             public override bool IsReadRequest => true;
+
+            public WI_Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter, TaskCompletionSource<long> promise) {
+                Variable = variable;
+                StartInclusive = startInclusive;
+                EndInclusive = endInclusive;
+                Filter = filter;
+                Promise = promise;
+            }
         }
 
         public Task<long> DeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
             var promise = new TaskCompletionSource<long>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_DeleteInterval() {
-                    Variable = variable,
-                    StartInclusive = startInclusive,
-                    EndInclusive = endInclusive,
-                    Promise = promise
-                });
+                queue.Post(new WI_DeleteInterval(variable, startInclusive, endInclusive, promise));
             }
             return promise.Task;
         }
 
         private class WI_DeleteInterval : WorkItem
         {
-            public VariableRef Variable;
-            public Timestamp StartInclusive;
-            public Timestamp EndInclusive;
+            public readonly VariableRef Variable;
+            public readonly Timestamp StartInclusive;
+            public readonly Timestamp EndInclusive;
 
-            public TaskCompletionSource<long> Promise { get; set; }
+            public readonly TaskCompletionSource<long> Promise;
             public override bool IsReadRequest => false;
+
+            public WI_DeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, TaskCompletionSource<long> promise) {
+                Variable = variable;
+                StartInclusive = startInclusive;
+                EndInclusive = endInclusive;
+                Promise = promise;
+            }
         }
 
         public Task<VTTQ?> GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
             var promise = new TaskCompletionSource<VTTQ?>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_GetLatestTimestampDb() {
-                    Variable = variable,
-                    StartInclusive = startInclusive,
-                    EndInclusive = endInclusive,
-                    Promise = promise
-                });
+                queue.Post(new WI_GetLatestTimestampDb(variable, startInclusive, endInclusive, promise));
             }
             return promise.Task;
         }
 
         private class WI_GetLatestTimestampDb : WorkItem
         {
-            public VariableRef Variable;
-            public Timestamp StartInclusive;
-            public Timestamp EndInclusive;
+            public readonly VariableRef Variable;
+            public readonly Timestamp StartInclusive;
+            public readonly Timestamp EndInclusive;
 
-            public TaskCompletionSource<VTTQ?> Promise { get; set; }
+            public readonly TaskCompletionSource<VTTQ?> Promise;
             public override bool IsReadRequest => true;
+
+            public WI_GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, TaskCompletionSource<VTTQ?> promise) {
+                Variable = variable;
+                StartInclusive = startInclusive;
+                EndInclusive = endInclusive;
+                Promise = promise;
+            }
         }
 
         public Task Modify(VariableRef variable, Variable varDesc, VTQ[] data, ModifyMode mode) {
             var promise = new TaskCompletionSource<bool>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_Modify() {
-                    Variable = variable,
-                    VarDesc = varDesc,
-                    Data = data,
-                    Mode = mode,
-                    Promise = promise
-                });
+                queue.Post(new WI_Modify(variable, varDesc, data, mode, promise));
             }
             return promise.Task;
         }
 
         private class WI_Modify : WorkItem
         {
-            public VariableRef Variable;
-            public Variable VarDesc;
-            public VTQ[] Data;
-            public ModifyMode Mode;
+            public readonly VariableRef Variable;
+            public readonly Variable VarDesc;
+            public readonly VTQ[] Data;
+            public readonly ModifyMode Mode;
 
-            public TaskCompletionSource<bool> Promise { get; set; }
+            public readonly TaskCompletionSource<bool> Promise;
             public override bool IsReadRequest => false;
+
+            public WI_Modify(VariableRef variable, Variable varDesc, VTQ[] data, ModifyMode mode, TaskCompletionSource<bool> promise) {
+                Variable = variable;
+                VarDesc = varDesc;
+                Data = data;
+                Mode = mode;
+                Promise = promise;
+            }
         }
 
         public Task Delete(VariableRef variable) {
             var promise = new TaskCompletionSource<bool>();
             if (CheckPrecondition(promise)) {
-                queue.Post(new WI_Delete() {
-                    Variable = variable,
-                    Promise = promise
-                });
+                queue.Post(new WI_Delete(variable, promise));
             }
             return promise.Task;
         }
 
         private class WI_Delete : WorkItem
         {
-            public VariableRef Variable;
+            public readonly VariableRef Variable;
 
-            public TaskCompletionSource<bool> Promise { get; set; }
+            public readonly TaskCompletionSource<bool> Promise;
             public override bool IsReadRequest => false;
+
+            public WI_Delete(VariableRef variable, TaskCompletionSource<bool> promise) {
+                Variable = variable;
+                Promise = promise;
+            }
         }
 
         private bool CheckPrecondition<T>(TaskCompletionSource<T> promise) {
@@ -261,8 +285,13 @@ namespace Ifak.Fast.Mediator
             return true;
         }
 
-        private Timeseries.TimeSeriesDB db = null;
+        private TimeSeriesDB? db = null;
         private readonly Dictionary<VariableRef, Channel> mapChannels = new Dictionary<VariableRef, Channel>();
+
+        private TimeSeriesDB GetDbOrThrow() {
+            if (db == null) throw new Exception("Database is closed");
+            return db;
+        }
 
         private async Task Runner() {
 
@@ -270,34 +299,33 @@ namespace Ifak.Fast.Mediator
 
                 WorkItem it = await ReceiveNext();
 
-                if (it is WI_BatchAppend) {
+                if (it is WI_BatchAppend batchAppend) {
                     try {
-                        Append(it as WI_BatchAppend);
+                        Append(batchAppend);
                     }
                     catch (Exception exp) {
                         logger.Error(exp, "Batch Append failed");
                     }
                 }
-                else if (it is WI_ReadRaw) {
-                    ReadRaw(it as WI_ReadRaw);
+                else if (it is WI_ReadRaw readRaw) {
+                    ReadRaw(readRaw);
                 }
-                else if (it is WI_Count) {
-                    DoCount(it as WI_Count);
+                else if (it is WI_Count count) {
+                    DoCount(count);
                 }
-                else if (it is WI_DeleteInterval) {
-                    DoDeleteInterval(it as WI_DeleteInterval);
+                else if (it is WI_DeleteInterval deleteInterval) {
+                    DoDeleteInterval(deleteInterval);
                 }
-                else if (it is WI_Modify) {
-                    DoModify(it as WI_Modify);
+                else if (it is WI_Modify modify) {
+                    DoModify(modify);
                 }
-                else if (it is WI_Delete) {
-                    DoDelete(it as WI_Delete);
+                else if (it is WI_Delete delete) {
+                    DoDelete(delete);
                 }
-                else if (it is WI_GetLatestTimestampDb) {
-                    DoGetLatestTimestampDb(it as WI_GetLatestTimestampDb);
+                else if (it is WI_GetLatestTimestampDb getLatestTimestampDb) {
+                    DoGetLatestTimestampDb(getLatestTimestampDb);
                 }
-                else if (it is WI_Start) {
-                    WI_Start start = it as WI_Start;
+                else if (it is WI_Start start) {
                     try {
                         db = dbCreator();
                         db.Open(dbName, dbConnectionString, dbSettings);
@@ -309,9 +337,8 @@ namespace Ifak.Fast.Mediator
                         return;
                     }
                 }
-                else if (it is WI_Terminate) {
-                    WI_Terminate terminate = it as WI_Terminate;
-                    db.Close();
+                else if (it is WI_Terminate terminate) {
+                    db?.Close();
                     terminate.Promise.SetResult(true);
                     return;
                 }
@@ -321,7 +348,7 @@ namespace Ifak.Fast.Mediator
         private void ReadRaw(WI_ReadRaw read) {
             var promise = read.Promise;
             try {
-                Channel ch = GetChannelOrNull(read.Variable);
+                Channel? ch = GetChannelOrNull(read.Variable);
                 if (ch == null) {
                     promise.SetResult(new List<VTTQ>(0));
                 }
@@ -338,7 +365,7 @@ namespace Ifak.Fast.Mediator
         private void DoCount(WI_Count req) {
             var promise = req.Promise;
             try {
-                Channel ch = GetChannelOrNull(req.Variable);
+                Channel? ch = GetChannelOrNull(req.Variable);
                 if (ch == null) {
                     promise.SetResult(0);
                 }
@@ -367,7 +394,7 @@ namespace Ifak.Fast.Mediator
         private void DoDeleteInterval(WI_DeleteInterval req) {
             var promise = req.Promise;
             try {
-                Channel ch = GetChannelOrNull(req.Variable);
+                Channel? ch = GetChannelOrNull(req.Variable);
                 if (ch == null) {
                     promise.SetResult(0);
                 }
@@ -432,7 +459,7 @@ namespace Ifak.Fast.Mediator
             var promise = req.Promise;
             try {
                 VariableRef v = req.Variable;
-                db.RemoveChannel(v.Object.LocalObjectID, v.Name);
+                GetDbOrThrow().RemoveChannel(v.Object.LocalObjectID, v.Name);
                 promise.SetResult(true);
             }
             catch (Exception exp) {
@@ -443,7 +470,7 @@ namespace Ifak.Fast.Mediator
         private void DoGetLatestTimestampDb(WI_GetLatestTimestampDb req) {
             var promise = req.Promise;
             try {
-                Channel ch = GetChannelOrNull(req.Variable);
+                Channel? ch = GetChannelOrNull(req.Variable);
                 if (ch == null) {
                     promise.SetResult(null);
                 }
@@ -504,6 +531,8 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
+            var db = GetDbOrThrow();
+
             if (nonExisting.Count > 0) {
                 int count = nonExisting.Count;
                 logger.Debug("Creating {0} not yet existing channels.", count);
@@ -518,9 +547,9 @@ namespace Ifak.Fast.Mediator
 
             var swBatch = Stopwatch.StartNew();
 
-            Func<PrepareContext, string>[] appendActions = append.Values.Select(v => {
+            Func<PrepareContext, string?>[] appendActions = append.Values.Select(v => {
                 Channel ch = GetChannelOrThrow(v.Value.Variable);
-                Func<PrepareContext, string> f = ch.PrepareAppend(v.Value.Value);
+                Func<PrepareContext, string?> f = ch.PrepareAppend(v.Value.Value);
                 return f;
             }).ToArray();
 
@@ -536,14 +565,14 @@ namespace Ifak.Fast.Mediator
         }
 
         private bool ExistsChannel(VariableRef v) {
-            return db.ExistsChannel(v.Object.LocalObjectID, v.Name);
+            return GetDbOrThrow().ExistsChannel(v.Object.LocalObjectID, v.Name);
         }
 
-        private Channel GetChannelOrNull(VariableRef v) {
+        private Channel? GetChannelOrNull(VariableRef v) {
             try {
                 return GetChannelOrThrow(v);
             }
-            catch(Exception) {
+            catch (Exception) {
                 return null;
             }
         }
@@ -553,14 +582,14 @@ namespace Ifak.Fast.Mediator
                 return mapChannels[v];
             }
             else {
-                Channel res = db.GetChannel(v.Object.LocalObjectID, v.Name);
+                Channel res = GetDbOrThrow().GetChannel(v.Object.LocalObjectID, v.Name);
                 mapChannels[v] = res;
                 return res;
             }
         }
 
         private Channel GetOrCreateChannelOrThrow(VariableRef v, Variable varDesc) {
-
+            var db = GetDbOrThrow();
             if (db.ExistsChannel(v.Object.LocalObjectID, v.Name))
                 return GetChannelOrThrow(v);
 
@@ -622,7 +651,7 @@ namespace Ifak.Fast.Mediator
                 WI_BatchAppend[] appends = localQueue.TakeWhile(wi => wi is WI_BatchAppend).Cast<WI_BatchAppend>().ToArray();
                 if (appends.Length > 1) {
                     StoreValue[] values = appends.SelectMany(app => app.Values).ToArray();
-                    WI_BatchAppend frontAppend = new WI_BatchAppend() { Values = values };
+                    WI_BatchAppend frontAppend = new WI_BatchAppend(values);
                     WorkItem[] other = localQueue.Skip(appends.Length).ToArray();
                     localQueue.Clear();
                     localQueue.Enqueue(frontAppend);

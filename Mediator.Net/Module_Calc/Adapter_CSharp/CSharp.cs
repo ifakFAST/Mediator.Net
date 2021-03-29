@@ -21,7 +21,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private AbstractState[] states = new AbstractState[0];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
         private Duration dt = Duration.FromSeconds(1);
-        private AdapterCallback callback;
+        private AdapterCallback? callback;
 
         private static readonly object handleInitLock = new object();
 
@@ -145,7 +145,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             string name = Path.GetFileName(fileName);
             string assemblyFileName = Path.GetFileName(compileRes.AssemblyFileName);
-            string assemblyDir = Path.GetDirectoryName(compileRes.AssemblyFileName);
+            string assemblyDir = Path.GetDirectoryName(compileRes.AssemblyFileName) ?? "";
             var buffer = new StringBuilder();
             if (compileRes.IsUsingCachedAssembly) {
                 buffer.AppendLine($"C# lib {name}: Using cached assembly");
@@ -164,7 +164,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
 
         public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {
-            callback.Notify_AlarmOrEvent(eventInfo);
+            callback?.Notify_AlarmOrEvent(eventInfo);
         }
 
         private static bool IsStepSignature(MethodInfo m) {
@@ -226,7 +226,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             foreach (FieldInfo f in fields) {
                 string id = f.Name;
-                object fieldValue = f.GetValue(obj);
+                object? fieldValue = f.GetValue(obj);
                 if (fieldValue is T x) {
                     x.ID = idChain + id;
                     x.Name = idChain + x.Name;
@@ -243,7 +243,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             List<T> result = new List<T>();
             FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             foreach (FieldInfo f in fields) {
-                object fieldValue = f.GetValue(obj);
+                object? fieldValue = f.GetValue(obj);
                 if (fieldValue is T x) {
                     result.Add(x);
                 }

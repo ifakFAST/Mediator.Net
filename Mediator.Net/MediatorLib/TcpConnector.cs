@@ -79,7 +79,7 @@ namespace Ifak.Fast.Mediator
             this.networkStream = client.GetStream();
         }
 
-        public void Close(string reason = null) {
+        public void Close(string? reason = null) {
             if (!closed) {
                 closed = true;
                 try {
@@ -92,7 +92,7 @@ namespace Ifak.Fast.Mediator
 
                     foreach (var entry in mapPendingRequests) {
                         TaskCompletionSource<Response> promise = entry.Value;
-                        string msg = !string.IsNullOrEmpty(reason) ? reason : "Connection closed!";
+                        string msg = reason != null && !string.IsNullOrEmpty(reason) ? reason : "Connection closed!";
                         promise.TrySetException(new ConnectionCloseException(msg));
                     }
                     mapPendingRequests.Clear();
@@ -147,7 +147,7 @@ namespace Ifak.Fast.Mediator
                 ResponseOrEvent it = await ReceiveResponseOrEvent();
 
                 if (it.IsResponse) {
-                    Response response = it as Response;
+                    Response response = (Response)it;
                     int reqID = response.RequestID;
                     if (mapPendingRequests.ContainsKey(reqID)) {
                         TaskCompletionSource<Response> promise = mapPendingRequests[reqID];
@@ -160,8 +160,8 @@ namespace Ifak.Fast.Mediator
                     }
                 }
                 else {
-                    using (Event evt = it as Event) {
-                        onEvent(it as Event);
+                    using (Event evt = (Event)it) {
+                        onEvent(evt);
                     }
                 }
             }
@@ -248,8 +248,8 @@ namespace Ifak.Fast.Mediator
     {
         private const int SendTimeout = 10000; // ms
 
-        private TcpClient connection = null;
-        private NetworkStream networkStream = null;
+        private TcpClient? connection = null;
+        private NetworkStream? networkStream = null;
         private volatile bool closed = true;
 
         public void Connect(string host, int port) {
@@ -287,7 +287,7 @@ namespace Ifak.Fast.Mediator
             if (connection != null && !closed) {
                 try {
                     closed = true;
-                    networkStream.Close(0);
+                    networkStream?.Close(0);
                     connection.Close();
                     networkStream = null;
                     connection = null;
@@ -367,7 +367,7 @@ namespace Ifak.Fast.Mediator
 
         private async Task<int> ReceiveRequestRaw(MemoryStream stream) {
 
-            if (closed) throw new Exception("Connection is closed");
+            if (closed || networkStream == null) throw new Exception("Connection is closed");
 
             byte[] buffer = new byte[4 * 1024];
 
@@ -453,7 +453,7 @@ namespace Ifak.Fast.Mediator
 
     public sealed class Response : ResponseOrEvent
     {
-        private Response(bool success, int requestID, string errorMsg, MemoryStream successPayload) {
+        private Response(bool success, int requestID, string? errorMsg, MemoryStream? successPayload) {
             Success = success;
             RequestID = requestID;
             ErrorMsg = errorMsg;
@@ -476,8 +476,8 @@ namespace Ifak.Fast.Mediator
 
         public bool Success { get; private set; }
         public int RequestID { get; private set; }
-        public string ErrorMsg { get; private set; }
-        public MemoryStream SuccessPayload { get; private set; }
+        public string? ErrorMsg { get; private set; }
+        public MemoryStream? SuccessPayload { get; private set; }
 
         public override bool IsResponse => true;
     }

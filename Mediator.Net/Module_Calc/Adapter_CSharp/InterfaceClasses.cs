@@ -132,13 +132,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public interface EventProvider
     {
-        public EventSink EventSinkRef { get; set; }
+        public EventSink? EventSinkRef { get; set; }
     }
 
     public class Alarm : AbstractState, EventProvider
     {
         public int Value { get; private set; } = 0;
-        public EventSink EventSinkRef { get; set; }
+        public EventSink? EventSinkRef { get; set; }
 
         public Alarm(string name) {
             Name = name;
@@ -153,26 +153,26 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             }
         }
 
-        public void Set(Level level, string message = null) {
+        public void Set(Level level, string? message = null) {
             if (CheckCallbackFailed()) return;
             if (level == Level.Warn && Value != (int)Level.Warn) {
                 Value = (int)Level.Warn;
                 var info = AdapterAlarmOrEvent.Warning(ID, MakeMsg(message));
-                EventSinkRef.Notify_AlarmOrEvent(info);
+                EventSinkRef!.Notify_AlarmOrEvent(info);
             }
             else if (level == Level.Alarm && Value != (int)Level.Alarm) {
                 Value = (int)Level.Alarm;
                 var info = AdapterAlarmOrEvent.Alarm(ID, MakeMsg(message));
-                EventSinkRef.Notify_AlarmOrEvent(info);
+                EventSinkRef!.Notify_AlarmOrEvent(info);
             }
         }
 
-        public void Clear(string message = null) {
+        public void Clear(string? message = null) {
             if (Value != 0) {
                 Value = 0;
                 string msg = string.IsNullOrEmpty(message) ? "Cleared" : message;
                 var rtn = AdapterAlarmOrEvent.ReturnToNormalEvent(ID, MakeMsg(msg));
-                EventSinkRef.Notify_AlarmOrEvent(rtn);
+                EventSinkRef!.Notify_AlarmOrEvent(rtn);
             }
         }
 
@@ -188,7 +188,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
         internal override DataType GetDataType() => DataType.Byte;
 
-        private string MakeMsg(string message) {
+        private string MakeMsg(string? message) {
             return string.IsNullOrEmpty(message) ? Name : $"{Name}: {message}";
         }
 
@@ -215,7 +215,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
     public class EventLog : EventProvider
     {
-        public EventSink EventSinkRef { get; set; }
+        public EventSink? EventSinkRef { get; set; }
         public string MessagePrefix { get; set; } = "";
 
         public EventLog(string messagePrefix = "") {
@@ -225,19 +225,19 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public void Info(string id, string message) {
             if (CheckEventSinkFailed()) return;
             var info = AdapterAlarmOrEvent.Info(id, MakeMsg(message));
-            EventSinkRef.Notify_AlarmOrEvent(info);
+            EventSinkRef!.Notify_AlarmOrEvent(info);
         }
 
         public void Warn(string id, string message) {
             if (CheckEventSinkFailed()) return;
             var info = AdapterAlarmOrEvent.Warning(id, MakeMsg(message));
-            EventSinkRef.Notify_AlarmOrEvent(info);
+            EventSinkRef!.Notify_AlarmOrEvent(info);
         }
 
         public void Alarm(string id, string message) {
             if (CheckEventSinkFailed()) return;
             var info = AdapterAlarmOrEvent.Alarm(id, MakeMsg(message));
-            EventSinkRef.Notify_AlarmOrEvent(info);
+            EventSinkRef!.Notify_AlarmOrEvent(info);
         }
 
         private string MakeMsg(string message) {

@@ -20,7 +20,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public override async Task OnActivate() {
             string[] exclude = new string[0];
             if (Config.NonEmpty) {
-                var vc = Config.Object<ViewConfig>();
+                var vc = Config.Object<ViewConfig>() ?? new ViewConfig();
                 exclude = vc.ExcludeModules;
             }
             var mods = await Connection.GetModules();
@@ -42,10 +42,10 @@ namespace Ifak.Fast.Mediator.Dashboard
                         await Connection.DisableChangeEvents();
                     }
 
-                    var pars = parameters.Object<ReadModuleVariables_Params>();
+                    var pars = parameters.Object<ReadModuleVariables_Params>() ?? throw new Exception("ReadModuleVariables_Params is null");
                     string moduleID = string.IsNullOrEmpty(pars.ModuleID) ? modules[0].ID : pars.ModuleID;
 
-                    ObjectInfo rootObjInfo = null;
+                    ObjectInfo? rootObjInfo;
                     while (true) {
                         rootObjInfo = await Connection.GetRootObject(moduleID);
                         if (rootObjInfo != null) break;
@@ -84,7 +84,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "WriteVariable": {
 
-                        var write = parameters.Object<WriteVariable_Params>();
+                        var write = parameters.Object<WriteVariable_Params>() ?? throw new Exception("WriteVariable_Params is null");
                         VTQ vtq = new VTQ(Timestamp.Now, Quality.Good, DataValue.FromJSON(write.V));
                         await Connection.WriteVariable(ObjectRef.FromEncodedString(write.ObjID), write.Var, vtq);
                         return ReqResult.OK();
@@ -92,7 +92,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 case "SyncRead": {
 
-                        var sread = parameters.Object<ReadSync_Params>();
+                        var sread = parameters.Object<ReadSync_Params>() ?? throw new Exception("ReadSync_Params is null");
                         ObjectRef obj = ObjectRef.FromEncodedString(sread.ObjID);
                         VariableRef varRef = VariableRef.Make(obj, sread.Var);
                         VTQ vtq = await Connection.ReadVariableSync(varRef);
@@ -140,9 +140,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private VarEntry MapVarValue(VariableValue vv) {
             ObjectRef obj = vv.Variable.Object;
-            ObjectInfo info = mapObjectToObjectInfo.ContainsKey(obj) ? mapObjectToObjectInfo[obj] : null;
+            ObjectInfo? info = mapObjectToObjectInfo.ContainsKey(obj) ? mapObjectToObjectInfo[obj] : null;
             string varName = vv.Variable.Name;
-            Variable variable = info?.Variables.FirstOrDefault(v => v.Name == varName);
+            Variable? variable = info?.Variables.FirstOrDefault(v => v.Name == varName);
             LocationRef? loc = info?.Location;
 
             return new VarEntry() {
@@ -172,15 +172,15 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class WriteVariable_Params
         {
-            public string ObjID { get; set; }
-            public string Var { get; set; }
-            public string V { get; set; }
+            public string ObjID { get; set; } = "";
+            public string Var { get; set; } = "";
+            public string V { get; set; } = "";
         }
 
         public class ReadSync_Params
         {
-            public string ObjID { get; set; }
-            public string Var { get; set; }
+            public string ObjID { get; set; } = "";
+            public string Var { get; set; } = "";
         }
 
         public class ReadModuleVariables_Result {
@@ -193,23 +193,23 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class ModuleInfo
         {
-            public string ID { get; set; }
-            public string Name { get; set; }
+            public string ID { get; set; } = "";
+            public string Name { get; set; } = "";
         }
 
         public class VarEntry
         {
-            public string ID { get; set; }
-            public string ObjID { get; set; }
-            public string Obj { get; set; }
-            public string Loc { get; set; }
-            public string Var { get; set; }
+            public string ID { get; set; } = "";
+            public string ObjID { get; set; } = "";
+            public string Obj { get; set; } = "";
+            public string Loc { get; set; } = "";
+            public string Var { get; set; } = "";
             public DataType Type { get; set; }
             public int Dimension { get; set; }
             public bool Writable { get; set; }
             public bool SyncReadable { get; set; }
             public DataValue V { get; set; }
-            public string T { get; set; }
+            public string T { get; set; } = "";
             public Quality Q { get; set; }
         }
 
@@ -217,7 +217,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         {
             public int N { get; set; }
             public DataValue V { get; set; }
-            public string T { get; set; }
+            public string T { get; set; } = "";
             public Quality Q { get; set; }
         }
 

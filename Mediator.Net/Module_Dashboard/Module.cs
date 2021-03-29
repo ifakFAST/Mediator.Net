@@ -34,9 +34,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
 
-        private static Module theModule = null;
-        private static SynchronizationContext theSyncContext = null;
-        private IWebHost webHost = null;
+        private static Module? theModule = null;
+        private static SynchronizationContext? theSyncContext = null;
+        private IWebHost? webHost = null;
         private bool isRunning = false;
 
         public Module() {
@@ -110,7 +110,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public async override Task InitAbort() {
             try {
-                await webHost.StopAsync();
+                await webHost!.StopAsync();
             }
             catch (Exception) { }
         }
@@ -136,7 +136,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             };
             app.UseWebSockets(webSocketOptions);
 
-            string regex = $"^{theModule.BundlesPrefix}/(.*)";
+            string regex = $"^{theModule!.BundlesPrefix}/(.*)";
             var rewriteOptions = new RewriteOptions().AddRewrite(regex, "/$1", skipRemainingRules: true);
 
             app.UseRewriter(rewriteOptions);
@@ -150,7 +150,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             app.Run((context) => {
                 var promise = new TaskCompletionSource<bool>();
-                theSyncContext.Post(_ => {
+                theSyncContext!.Post(_ => {
                     Task task = theModule.HandleClientRequest(context);
                     task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
                 }, null);
@@ -186,7 +186,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             Task closeTask = Task.WhenAll(sessions.Values.Select(session => session.Close()).ToArray());
             await Task.WhenAny(closeTask, Task.Delay(2000));
 
-            Task ignored = webHost.StopAsync();
+            if (webHost != null) {
+                _ = webHost.StopAsync();
+            }
         }
 
         private async Task HandleClientWebSocket(WebSocket socket) {
@@ -302,19 +304,19 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 if (path == Path_Login) {
 
-                    string user;
-                    string pass;
+                    string? user;
+                    string? pass;
                     using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
                         var obj = await StdJson.JObjectFromReaderAsync(reader);
-                        user = (string)obj["user"];
-                        pass = (string)obj["pass"];
+                        user = (string?)obj["user"];
+                        pass = (string?)obj["pass"];
                         if (user == null || pass == null) {
                             return ReqResult.Bad("Missing user and password.");
                         }
                     }
 
                     var session = new Session();
-                    Connection connection = null;
+                    Connection connection;
                     try {
                         connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session);
                     }
@@ -338,7 +340,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
 
-                    string content = null;
+                    string content;
                     using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
                         content = await reader.ReadToEndAsync();
                     }
@@ -378,10 +380,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
 
-                    string newViewName = "";
+                    string? newViewName;
                     using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
                         var obj = await StdJson.JObjectFromReaderAsync(reader);
-                        newViewName = (string)obj["newViewName"];
+                        newViewName = (string?)obj["newViewName"];
                         if (newViewName == null) {
                             return ReqResult.Bad("Missing newViewName");
                         }
@@ -402,7 +404,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     bool up = false;
                     using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
                         var obj = await StdJson.JObjectFromReaderAsync(reader);
-                        up = (bool)obj["up"];
+                        up = (bool)obj["up"]!;
                     }
 
                     await session.OnMoveView(viewID, up);
@@ -426,7 +428,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 }
                 else if (path == Path_Logout) {
 
-                    string sessionID = null;
+                    string sessionID;
                     using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
                         sessionID = await reader.ReadToEndAsync();
                     }
@@ -476,7 +478,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             var result = new List<ViewType>();
 
             foreach (Type type in viewTypes) {
-                Identify id = type.GetCustomAttribute<Identify>();
+                Identify? id = type.GetCustomAttribute<Identify>();
                 if (id != null) {
                     string viewBundle = "ViewBundle_" + id.Bundle;
                     string viewBundlePath = Path.Combine(absoluteBaseDir, viewBundle);
@@ -486,7 +488,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                             Name = id.ID,
                             HtmlPath = $"/{bundlesPrefx}/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
                             Type = type,
-                            Icon = id.Icon ??  ""
+                            Icon = id.Icon ?? ""
                         };
                         result.Add(vt);
                     }
@@ -532,7 +534,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 var viewInstance = new ViewInstance() {
                     viewID = v.ID,
                     viewName = v.Name,
-                    viewURL = url ? v.Config.Object<ViewURLConfig>().URL : viewType.HtmlPath,
+                    viewURL = url ? v.Config.Object<ViewURLConfig>()!.URL : viewType.HtmlPath,
                     viewIcon = viewType.Icon,
                     viewGroup = v.Group,
                     viewType = v.Type,
@@ -543,8 +545,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             return result;
         }
 
-        private static void logWarn(string msg, Exception exp = null) {
-            Exception exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
+        private static void logWarn(string msg, Exception? exp = null) {
+            Exception? exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
             if (exception != null)
                 Console.Out.WriteLine(msg + " " + exception.Message + "\n" + exception.StackTrace);
             else
@@ -557,7 +559,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public string Name { get; set; } = "";
         public string HtmlPath { get; set; } = "";
         public string Icon { get; set; } = "";
-        public Type Type { get; set; }
+        public Type? Type { get; set; }
     }
 
 
@@ -589,7 +591,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 promise.SetResult(true);
             }
             else if (completedTask.IsFaulted) {
-                promise.SetException(completedTask.Exception);
+                promise.SetException(completedTask.Exception!);
             }
             else {
                 promise.SetCanceled();

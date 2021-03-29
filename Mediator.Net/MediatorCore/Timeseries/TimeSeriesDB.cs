@@ -8,7 +8,7 @@ namespace Ifak.Fast.Mediator.Timeseries
 {
     public abstract class TimeSeriesDB
     {
-        public abstract void Open(string name, string connectionString, string[] settings = null);
+        public abstract void Open(string name, string connectionString, string[]? settings = null);
 
         public abstract bool IsOpen { get; }
 
@@ -63,7 +63,7 @@ namespace Ifak.Fast.Mediator.Timeseries
         * must not throw an exception but return non-null string in case of error.
         * The sequence of all error messages is returned (empty list when no error).
         * */
-        public abstract string[] BatchExecute(Func<PrepareContext, string>[] updateActions);
+        public abstract string[] BatchExecute(Func<PrepareContext, string?>[] updateActions);
     }
 
     public class ChannelInfo
@@ -98,7 +98,7 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public bool Equals(ChannelRef other) => objectID == other.objectID && variableName == other.variableName;
 
-        public override bool Equals(object obj) {
+        public override bool Equals(object? obj) {
             if (obj is ChannelRef) {
                 return Equals((ChannelRef)obj);
             }

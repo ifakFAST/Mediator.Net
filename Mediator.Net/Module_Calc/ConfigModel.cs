@@ -129,8 +129,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
             else {
                 history = new History(HistoryMode.None);
                 foreach (IModelObject obj in parents) {
-                    if (obj is Folder && (obj as Folder).History.HasValue) {
-                        history = (obj as Folder).History.Value;
+                    if (obj is Folder folder && folder.History.HasValue) {
+                        history = folder.History.Value;
                         break;
                     }
                 }
@@ -257,7 +257,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         internal const string ID_Separator = ".In.";
 
         protected override string GetID(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
 
@@ -265,7 +265,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public string Name { get; set; } = "";
 
         protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.Name + ".In." + Name;
         }
 
@@ -288,12 +288,12 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
             History history = new History(HistoryMode.None);
             foreach (IModelObject obj in parents) {
-                if (obj is Folder && (obj as Folder).History.HasValue) {
-                    history = (obj as Folder).History.Value;
+                if (obj is Folder folder && folder.History.HasValue) {
+                    history = folder.History.Value;
                     break;
                 }
-                else if (obj is Calculation && (obj as Calculation).History.HasValue) {
-                    history = (obj as Calculation).History.Value;
+                else if (obj is Calculation calcu && calcu.History.HasValue) {
+                    history = calcu.History.Value;
                     break;
                 }
             }
@@ -330,7 +330,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         internal const string ID_Separator = ".Out.";
 
         protected override string GetID(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
 
@@ -338,7 +338,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public string Name { get; set; } = "";
 
         protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.Name + ".Out." + Name;
         }
 
@@ -359,12 +359,12 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
             History history = new History(HistoryMode.None);
             foreach (IModelObject obj in parents) {
-                if (obj is Folder && (obj as Folder).History.HasValue) {
-                    history = (obj as Folder).History.Value;
+                if (obj is Folder folder && folder.History.HasValue) {
+                    history = folder.History.Value;
                     break;
                 }
-                else if (obj is Calculation && (obj as Calculation).History.HasValue) {
-                    history = (obj as Calculation).History.Value;
+                else if (obj is Calculation calcu && calcu.History.HasValue) {
+                    history = calcu.History.Value;
                     break;
                 }
             }
@@ -400,7 +400,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         internal const string ID_Separator = ".State.";
 
         protected override string GetID(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
 
@@ -408,7 +408,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public string Name { get; set; } = "";
 
         protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
-            var calculation = parents.First() as Calculation;
+            var calculation = (Calculation)parents.First();
             return calculation.Name + ".State." + Name;
         }
 
@@ -427,12 +427,12 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
             History history = new History(HistoryMode.None);
             foreach (IModelObject obj in parents) {
-                if (obj is Folder && (obj as Folder).History.HasValue) {
-                    history = (obj as Folder).History.Value;
+                if (obj is Folder folder && folder.History.HasValue) {
+                    history = folder.History.Value;
                     break;
                 }
-                else if (obj is Calculation && (obj as Calculation).History.HasValue) {
-                    history = (obj as Calculation).History.Value;
+                else if (obj is Calculation calcu && calcu.History.HasValue) {
+                    history = calcu.History.Value;
                     break;
                 }
             }

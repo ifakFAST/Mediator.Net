@@ -18,7 +18,7 @@ namespace Ifak.Fast.Mediator.IO
     {
         private readonly Dictionary<string, ItemState> dataItemsState = new Dictionary<string, ItemState>();
         private readonly List<AdapterState> adapters = new List<AdapterState>();
-        private ModuleThread moduleThread = null;
+        private ModuleThread? moduleThread = null;
 
         private readonly Dictionary<string, Type> mapAdapterTypes = new Dictionary<string, Type>();
 
@@ -72,7 +72,7 @@ namespace Ifak.Fast.Mediator.IO
 
             mapAdapterTypes.Clear();
             foreach (var type in adapterTypes) {
-                Identify id = type.GetCustomAttribute<Identify>();
+                Identify? id = type.GetCustomAttribute<Identify>();
                 if (id != null) {
                     mapAdapterTypes[id.ID] = type;
                 }
@@ -223,7 +223,7 @@ namespace Ifak.Fast.Mediator.IO
                     StartScheduledReadTask(adapter);
                 }
                 else {
-                    adapter.Instance.StartRunning();
+                    adapter.Instance!.StartRunning();
                     adapter.State = State.Running;
                 }
                 adapter.IsRestarting = false;
@@ -266,7 +266,7 @@ namespace Ifak.Fast.Mediator.IO
 
                 var wrapper = new Wrapper(this, info);
                 adapter.State = State.InitStarted;
-                var groups = await adapter.Instance.Initialize(info, wrapper, items);
+                var groups = await adapter.Instance!.Initialize(info, wrapper, items);
                 if (adapter.State == State.InitStarted) {
                     adapter.State = State.InitComplete;
                     adapter.SetGroups(groups);
@@ -327,7 +327,7 @@ namespace Ifak.Fast.Mediator.IO
                 Log_Warn("AdapterShutdownError", "Shutdown exception: " + e.Message);
             }
             adapter.State = State.ShutdownCompleted;
-            adapter.Instance = null;
+            adapter.SetInstanceNull();
         }
 
         public async override Task InitAbort() {
@@ -451,7 +451,7 @@ namespace Ifak.Fast.Mediator.IO
 
         private async Task<VTQ[]> AdapterReadTask(AdapterState adapter, List<ReadRequest> requests, Duration? timeout) {
 
-            if (adapter.State != State.Running) {
+            if (adapter.State != State.Running || adapter.Instance == null) {
                 var now = Timestamp.Now;
                 VTQ[] failures = requests.Select(it => new VTQ(now, Quality.Bad, it.LastValue.V)).ToArray();
                 return failures;
@@ -569,7 +569,7 @@ namespace Ifak.Fast.Mediator.IO
             WriteResult res = MapWriteResults(moduleID, resArr);
 
             if (res.Failed()) {
-                failed.AddRange(res.FailedVariables);
+                failed.AddRange(res.FailedVariables!);
             }
 
             if (failed.Count == 0)
@@ -592,7 +592,7 @@ namespace Ifak.Fast.Mediator.IO
 
         private async Task<WriteDataItemsResult> AdapterWriteTask(AdapterState adapter, List<DataItemValue> items, Duration? timeout) {
 
-            if (adapter.State != State.Running) {
+            if (adapter.State != State.Running || adapter.Instance == null) {
                 string err = "Adapter is not in state Running. Current state: " + adapter.State;
                 Log_Warn("WriteStateError", err);
                 adapter.SetOfPendingWriteItems.ExceptWith(items.Select(it => it.ID));
@@ -606,7 +606,7 @@ namespace Ifak.Fast.Mediator.IO
                     adapter.SetOfPendingWriteItems.ExceptWith(writeTask.IDs);
                     WriteDataItemsResult res = t.Result;
                     if (res.Failed()) {
-                        DataItemErr[] failed = ResolveDataItemErrors(res.FailedDataItems);
+                        DataItemErr[] failed = ResolveDataItemErrors(res.FailedDataItems!);
                         if (failed.Length > 0) {
                             string names = string.Join(", ", failed.Select(it => it.Name + ": " + it.Error));
                             string msg = $"Write error for {failed.Length} data items: {failed[0].Name}, ...";
@@ -616,7 +616,7 @@ namespace Ifak.Fast.Mediator.IO
                             ObjectRef[] objs = failed.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
                             var ev = AlarmOrEventInfo.Warning("WriteErr", msg, objs);
                             ev.Details = names;
-                            notifier.Notify_AlarmOrEvent(ev);
+                            notifier?.Notify_AlarmOrEvent(ev);
                         }
                     }
                     return res;
@@ -638,11 +638,7 @@ namespace Ifak.Fast.Mediator.IO
         private DataItemErr[] ResolveDataItemErrors(FailedDataItemWrite[] errors) {
             return errors.SelectIgnoreException(error => {
                 ItemState info = dataItemsState[error.ID];
-                return new DataItemErr() {
-                    ID = error.ID,
-                    Name = info.Name,
-                    Error = error.Error
-                };
+                return new DataItemErr(id: error.ID, name: info.Name, error: error.Error);
             }).ToArray();
         }
 
@@ -651,6 +647,18 @@ namespace Ifak.Fast.Mediator.IO
             public string ID { get; set; }
             public string Name { get; set; }
             public string Error { get; set; }
+
+            public DataItemErr(string id, string name, string error) {
+                ID = id;
+                Name = name;
+                Error = error;
+            }
+
+            public DataItemErr() {
+                ID = "";
+                Name = "";
+                Error = "";
+            }
         }
 
         private void StartScheduledReadTask(AdapterState adapter) {
@@ -658,7 +666,7 @@ namespace Ifak.Fast.Mediator.IO
             adapter.ScheduledReadingTask = readTask;
             var ignored1 = readTask.ContinueOnMainThread(t => {
                 if (t.IsFaulted) {
-                    Exception exp = t.Exception.GetBaseException() ?? t.Exception;
+                    Exception exp = t.Exception!.GetBaseException() ?? t.Exception;
                     Task ignored2 = RestartAdapter(adapter, "Read exception: " + exp.Message);
                 }
             });
@@ -668,7 +676,7 @@ namespace Ifak.Fast.Mediator.IO
 
             var dict = new Dictionary<Timestamp, List<string>>();
 
-            adapter.Instance.StartRunning();
+            adapter.Instance!.StartRunning();
             adapter.State = State.Running;
 
             while (adapter.State == State.Running) {
@@ -774,7 +782,7 @@ namespace Ifak.Fast.Mediator.IO
                                                 }
                                             }
 
-                                            if (values.Count > 0) {
+                                            if (values.Count > 0 && notifier != null) {
                                                 notifier.Notify_VariableValuesChanged(values);
                                             }
 
@@ -961,7 +969,7 @@ namespace Ifak.Fast.Mediator.IO
             if (badItems.Count == 1) {
                 string msg = "Bad quality for reading data item: " + badItems[0].Name;
                 var ev = AlarmOrEventInfo.Warning("Quality", msg, ObjectRef.Make(moduleID, badItems[0].ID));
-                notifier.Notify_AlarmOrEvent(ev);
+                notifier?.Notify_AlarmOrEvent(ev);
             }
             else if (badItems.Count > 1) {
                 string names = string.Join(", ", badItems.Select(it => it.Name));
@@ -969,12 +977,12 @@ namespace Ifak.Fast.Mediator.IO
                 ObjectRef[] objs = badItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
                 var ev = AlarmOrEventInfo.Warning("Quality", msg, objs);
                 ev.Details = names;
-                notifier.Notify_AlarmOrEvent(ev);
+                notifier?.Notify_AlarmOrEvent(ev);
             }
             if (goodItems.Count == 1) {
                 string msg = "Good quality restored for data item: " + goodItems[0].Name;
                 var ev = AlarmOrEventInfo.Info("Quality", msg, ObjectRef.Make(moduleID, goodItems[0].ID));
-                notifier.Notify_AlarmOrEvent(ev);
+                notifier?.Notify_AlarmOrEvent(ev);
             }
             else if (goodItems.Count > 1) {
                 string names = string.Join(", ", goodItems.Select(it => it.Name));
@@ -982,13 +990,13 @@ namespace Ifak.Fast.Mediator.IO
                 ObjectRef[] objs = goodItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
                 var ev = AlarmOrEventInfo.Info("Quality", msg, objs);
                 ev.Details = names;
-                notifier.Notify_AlarmOrEvent(ev);
+                notifier?.Notify_AlarmOrEvent(ev);
             }
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
         public void Notify_NeedRestart(string reason, Adapter adapter) {
-            moduleThread.Post(Do_Notify_NeedRestart, reason, adapter);
+            moduleThread?.Post(Do_Notify_NeedRestart, reason, adapter);
         }
 
         private void Do_Notify_NeedRestart(string reason, Adapter adapter) {
@@ -998,7 +1006,7 @@ namespace Ifak.Fast.Mediator.IO
 
         // This will be called from a different Thread, therefore post it to the main thread!
         public void Notify_DataItemsChanged(DataItemValue[] result) {
-            moduleThread.Post(Do_Notify_DataItemsChanged, result);
+            moduleThread?.Post(Do_Notify_DataItemsChanged, result);
         }
 
         private readonly CompareDataItemValue compare = new CompareDataItemValue();
@@ -1029,7 +1037,7 @@ namespace Ifak.Fast.Mediator.IO
                     Console.Error.WriteLine($"Notify_DataItemsChanged: Unknown DataItem ID: {val.ID}");
                 }
             }
-            if (values.Count > 0) {
+            if (values.Count > 0 && notifier != null) {
                 notifier.Notify_VariableValuesChanged(values);
             }
         }
@@ -1092,12 +1100,12 @@ namespace Ifak.Fast.Mediator.IO
                 Initiator = initiator
             };
 
-            notifier.Notify_AlarmOrEvent(ae);
+            notifier?.Notify_AlarmOrEvent(ae);
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
         public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter) {
-            moduleThread.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
+            moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
         }
 
         private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter) {
@@ -1113,7 +1121,7 @@ namespace Ifak.Fast.Mediator.IO
                 Initiator = null
             };
 
-            notifier.Notify_AlarmOrEvent(ae);
+            notifier?.Notify_AlarmOrEvent(ae);
         }
 
         class AdapterState
@@ -1128,8 +1136,9 @@ namespace Ifak.Fast.Mediator.IO
                     throw new Exception($"No adapter type '{Config.Type}' found.");
                 }
                 Type type = mapAdapterTypes[Config.Type];
-                AdapterBase rawAdapter = (AdapterBase)Activator.CreateInstance(type);
-                Instance = new SingleThreadIOAdapter(rawAdapter);
+                AdapterBase? rawAdapter = (AdapterBase?)Activator.CreateInstance(type);
+                if (rawAdapter == null) throw new Exception($"Failed to create instance of adapter type {type}");
+                instance = new SingleThreadIOAdapter(rawAdapter);
                 State = State.Created;
                 SetOfPendingReadItems.Clear();
                 SetOfPendingWriteItems.Clear();
@@ -1144,7 +1153,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             private ItemSchedule[] GetScheduledDataItems(Config.IO_Model model) {
-                AdapterBase instance = Instance;
+                AdapterBase? instance = Instance;
                 if (instance != null && instance.SupportsScheduledReading) {
                     List<Tuple<Config.DataItem, Config.Scheduling>> items = this.Config.GetAllDataItemsWithScheduling(model.Scheduling);
                     var res = new List<ItemSchedule>();
@@ -1174,8 +1183,9 @@ namespace Ifak.Fast.Mediator.IO
             public State State { get; set; } = State.Created;
 
             private string originalConfig = "";
+            private SingleThreadIOAdapter? instance;
 
-            public Config.Adapter Config { get;  private set; }
+            public Config.Adapter Config { get; private set; } = new Config.Adapter();
 
             public bool SetConfig(Config.Adapter newConfig) {
                 string newOriginalConfig = Xml.ToXml<Config.Adapter>(newConfig);
@@ -1185,20 +1195,24 @@ namespace Ifak.Fast.Mediator.IO
                 return changed;
             }
 
-            public ItemSchedule[] ScheduledDataItems { get; set; }
-            public HashSet<string> NonStrictScheduledDataItems { get; set; }
+            public ItemSchedule[] ScheduledDataItems { get; set; } = new ItemSchedule[0];
+            public HashSet<string> NonStrictScheduledDataItems { get; set; } = new HashSet<string>();
 
-            public SingleThreadIOAdapter Instance { get; set; }
+            public SingleThreadIOAdapter? Instance => instance;
 
-            public Task ScheduledReadingTask { get; set; }
+            public void SetInstanceNull() {
+                instance = null;
+            }
 
-            public string LastError { get; set; }
+            public Task? ScheduledReadingTask { get; set; }
+
+            public string LastError { get; set; } = "";
 
             public readonly HashSet<string> SetOfPendingReadItems = new HashSet<string>();
             public readonly HashSet<string> SetOfPendingWriteItems = new HashSet<string>();
 
             private readonly Dictionary<string, string> MapItem2GroupID = new Dictionary<string, string>();
-            private Group[] ItemGroups { get; set; }
+            private Group[] ItemGroups { get; set; } = new Group[0];
 
             public void SetGroups(Group[] groups) {
                 MapItem2GroupID.Clear();
@@ -1222,16 +1236,19 @@ namespace Ifak.Fast.Mediator.IO
                     return divalues;
                 };
 
+                var instance = Instance;
+                if (instance == null) throw new Exception("ReadItems: Instance is null");
+
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
-                    Task<VTQ[]> t = Instance.ReadDataItems(group, values, timeout);
+                    Task<VTQ[]> t = instance.ReadDataItems(group, values, timeout);
                     Task<DataItemValue[]> tt = t.ContinueOnMainThread(t => f(t, values));
                     return new ReadTask[] { new ReadTask(tt, values.Select(x => x.ID).ToArray()) };
                 }
                 else {
                     return values.GroupBy(x => MapItem2GroupID[x.ID]).Select(group => {
                         ReadRequest[] items = group.ToArray();
-                        Task<VTQ[]> t = Instance.ReadDataItems(group.Key, items, timeout);
+                        Task<VTQ[]> t = instance.ReadDataItems(group.Key, items, timeout);
                         Task<DataItemValue[]> tt = t.ContinueOnMainThread(t => f(t, items));
                         return new ReadTask(tt, items.Select(x => x.ID).ToArray());
                     }).ToArray();
@@ -1240,15 +1257,18 @@ namespace Ifak.Fast.Mediator.IO
 
             public IList<WriteTask> WriteItems(IList<DataItemValue> values, Duration? timeout) {
 
+                var instance = Instance;
+                if (instance == null) throw new Exception("WriteItems: Instance is null");
+
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
-                    Task<WriteDataItemsResult> t = Instance.WriteDataItems(group, values, timeout);
+                    Task<WriteDataItemsResult> t = instance.WriteDataItems(group, values, timeout);
                     return new WriteTask[] { new WriteTask(t, values.Select(x => x.ID).ToArray()) };
                 }
                 else {
                     return values.GroupBy(x => MapItem2GroupID[x.ID]).Select(group => {
                         DataItemValue[] items = group.ToArray();
-                        Task<WriteDataItemsResult> t = Instance.WriteDataItems(group.Key, items, timeout);
+                        Task<WriteDataItemsResult> t = instance.WriteDataItems(group.Key, items, timeout);
                         return new WriteTask(t, items.Select(x => x.ID).ToArray());
                     }).ToArray();
                 }

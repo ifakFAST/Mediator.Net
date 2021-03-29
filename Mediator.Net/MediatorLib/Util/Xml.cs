@@ -9,7 +9,7 @@ namespace Ifak.Fast.Mediator.Util
 {
     public class Xml
     {
-        public static string ToXml<T>(T model) {
+        public static string ToXml<T>(T model) where T : notnull {
             var x = new System.Xml.Serialization.XmlSerializer(model.GetType());
             var writer = new Utf8StringWriter();
             x.Serialize(writer, model);

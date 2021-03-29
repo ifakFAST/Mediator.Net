@@ -29,12 +29,13 @@ namespace Ifak.Fast.Mediator.IO
 
         private static async Task Loop(TcpConnectorSlave connector, AdapterBase module) {
 
-            Process parentProcess = null;
+            Process? parentProcess = null;
             using (Request request = await connector.ReceiveRequest(5000)) {
                 if (request.Code != AdapterMsg.ID_ParentInfo) {
                     throw new Exception("Missing ParentInfo request");
                 }
-                ParentInfoMsg info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload);
+                ParentInfoMsg? info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload);
+                if (info == null) throw new Exception("ParentInfoMsg is null");
                 parentProcess = Process.GetProcessById(info.PID);
                 connector.SendResponseSuccess(request.RequestID, s => { });
             }
@@ -173,7 +174,7 @@ namespace Ifak.Fast.Mediator.IO
                 return exp.Message + "\n" + exp.StackTrace;
             }
 
-            private static T Deserialize<T>(MemoryStream stream) => StdJson.ObjectFromUtf8Stream<T>(stream);
+            private static T Deserialize<T>(MemoryStream stream) => StdJson.ObjectFromUtf8Stream<T>(stream) ?? throw new Exception("Unexpected null value");
 
             private static readonly byte[] EmptyArray = new byte[] { (byte)'[', (byte)']' };
 
@@ -187,7 +188,7 @@ namespace Ifak.Fast.Mediator.IO
                 }
             }
 
-            private void SerializeObject<T>(T obj, Stream output) {
+            private void SerializeObject<T>(T obj, Stream output) where T: notnull {
                 StdJson.ObjectToStream(obj, output);
             }
 

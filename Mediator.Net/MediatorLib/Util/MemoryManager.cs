@@ -338,7 +338,7 @@ namespace Microsoft.IO
         /// <param name="requiredSize">The minimum length of the buffer</param>
         /// <param name="tag">The tag of the stream returning this buffer, for logging if necessary.</param>
         /// <returns>A buffer of at least the required size.</returns>
-        internal byte[] GetLargeBuffer(int requiredSize, string tag) {
+        internal byte[] GetLargeBuffer(int requiredSize, string? tag) {
             requiredSize = this.RoundToLargeBufferMultiple(requiredSize);
 
             var poolIndex = requiredSize / this.largeBufferMultiple - 1;
@@ -364,7 +364,7 @@ namespace Microsoft.IO
 
                 // We still want to round up to reduce heap fragmentation.
                 buffer = new byte[requiredSize];
-                string callStack = null;
+                string? callStack = null;
                 if (this.GenerateCallStacks) {
                     // Grab the stack -- we want to know who requires such large buffers
                     callStack = Environment.StackTrace;
@@ -393,7 +393,7 @@ namespace Microsoft.IO
         /// <param name="tag">The tag of the stream returning this buffer, for logging if necessary.</param>
         /// <exception cref="ArgumentNullException">buffer is null</exception>
         /// <exception cref="ArgumentException">buffer.Length is not a multiple of LargeBufferMultiple (it did not originate from this pool)</exception>
-        internal void ReturnLargeBuffer(byte[] buffer, string tag) {
+        internal void ReturnLargeBuffer(byte[]? buffer, string? tag) {
             if (buffer == null) {
                 throw new ArgumentNullException(nameof(buffer));
             }
@@ -441,7 +441,7 @@ namespace Microsoft.IO
         /// <param name="tag">The tag of the stream returning these blocks, for logging if necessary.</param>
         /// <exception cref="ArgumentNullException">blocks is null</exception>
         /// <exception cref="ArgumentException">blocks contains buffers that are the wrong size (or null) for this memory manager</exception>
-        internal void ReturnBlocks(ICollection<byte[]> blocks, string tag) {
+        internal void ReturnBlocks(ICollection<byte[]> blocks, string? tag) {
             if (blocks == null) {
                 throw new ArgumentNullException(nameof(blocks));
             }
@@ -586,27 +586,27 @@ namespace Microsoft.IO
         /// <summary>
         /// Triggered when a new block is created.
         /// </summary>
-        public event EventHandler BlockCreated;
+        public event EventHandler? BlockCreated;
 
         /// <summary>
         /// Triggered when a new block is created.
         /// </summary>
-        public event EventHandler BlockDiscarded;
+        public event EventHandler? BlockDiscarded;
 
         /// <summary>
         /// Triggered when a new large buffer is created.
         /// </summary>
-        public event EventHandler LargeBufferCreated;
+        public event EventHandler? LargeBufferCreated;
 
         /// <summary>
         /// Triggered when a new stream is created.
         /// </summary>
-        public event EventHandler StreamCreated;
+        public event EventHandler? StreamCreated;
 
         /// <summary>
         /// Triggered when a stream is disposed.
         /// </summary>
-        public event EventHandler StreamDisposed;
+        public event EventHandler? StreamDisposed;
 
         ///// <summary>
         ///// Triggered when a stream is finalized.
@@ -716,14 +716,14 @@ namespace Microsoft.IO
 
         private readonly RecyclableMemoryStreamManager memoryManager;
 
-        private readonly string tag;
+        private readonly string? tag;
 
         /// <summary>
         /// This list is used to store buffers once they're replaced by something larger.
         /// This is for the cases where you have users of this class that may hold onto the buffers longer
         /// than they should and you want to prevent race conditions which could corrupt the data.
         /// </summary>
-        private List<byte[]> dirtyBuffers;
+        private List<byte[]?>? dirtyBuffers;
 
         // long to allow Interlocked.Read (for .NET Standard 1.4 compat)
         private long disposedState;
@@ -735,7 +735,7 @@ namespace Microsoft.IO
         /// <remarks>If this field is non-null, it contains the concatenation of the bytes found in the individual
         /// blocks. Once it is created, this (or a larger) largeBuffer will be used for the life of the stream.
         /// </remarks>
-        private byte[] largeBuffer;
+        private byte[]? largeBuffer;
 
         // /// <summary>
         // /// Unique identifier for this stream across it's entire lifetime
@@ -754,7 +754,7 @@ namespace Microsoft.IO
         /// A temporary identifier for the current usage of this stream.
         /// </summary>
         /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        internal string Tag
+        internal string? Tag
         {
             get
             {
@@ -780,13 +780,13 @@ namespace Microsoft.IO
         /// Callstack of the constructor. It is only set if MemoryManager.GenerateCallStacks is true,
         /// which should only be in debugging situations.
         /// </summary>
-        internal string AllocationStack { get; }
+        internal string? AllocationStack { get; }
 
         /// <summary>
         /// Callstack of the Dispose call. It is only set if MemoryManager.GenerateCallStacks is true,
         /// which should only be in debugging situations.
         /// </summary>
-        internal string DisposeStack { get; private set; }
+        internal string? DisposeStack { get; private set; }
 
         #region Constructors
         /// <summary>
@@ -810,7 +810,7 @@ namespace Microsoft.IO
         /// <param name="memoryManager">The memory manager</param>
         /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
         /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize)
+        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string? tag, int requestedSize)
             : this(memoryManager, tag, requestedSize, null) { }
 
         /// <summary>
@@ -820,8 +820,8 @@ namespace Microsoft.IO
         /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
         /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
         /// <param name="initialLargeBuffer">An initial buffer to use. This buffer will be owned by the stream and returned to the memory manager upon Dispose.</param>
-        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize,
-                                        byte[] initialLargeBuffer)
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string? tag, int requestedSize,
+                                        byte[]? initialLargeBuffer)
             : base(emptyArray) {
             this.memoryManager = memoryManager;
             //this.id = Guid.NewGuid();
@@ -860,7 +860,7 @@ namespace Microsoft.IO
             Justification = "We have different disposal semantics, so SuppressFinalize is in a different spot.")]
         protected override void Dispose(bool disposing) {
             if (Interlocked.CompareExchange(ref this.disposedState, 1, 0) != 0) {
-                string doubleDisposeStack = null;
+                string? doubleDisposeStack = null;
                 if (this.memoryManager.GenerateCallStacks) {
                     doubleDisposeStack = Environment.StackTrace;
                 }
@@ -1082,7 +1082,7 @@ namespace Microsoft.IO
             var newBuffer = new byte[this.Length];
 
             this.InternalRead(newBuffer, 0, this.length, 0);
-            string stack = this.memoryManager.GenerateCallStacks ? Environment.StackTrace : null;
+            //string stack = this.memoryManager.GenerateCallStacks ? Environment.StackTrace : null;
             //RecyclableMemoryStreamManager.Events.Writer.MemoryStreamToArray(this.id, this.tag, stack, 0);
             //this.memoryManager.ReportStreamToArray();
 
@@ -1440,7 +1440,7 @@ namespace Microsoft.IO
             else {
                 if (this.dirtyBuffers == null) {
                     // We most likely will only ever need space for one
-                    this.dirtyBuffers = new List<byte[]>(1);
+                    this.dirtyBuffers = new List<byte[]?>(1);
                 }
                 this.dirtyBuffers.Add(this.largeBuffer);
             }

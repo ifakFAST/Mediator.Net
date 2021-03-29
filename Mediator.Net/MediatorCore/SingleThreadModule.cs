@@ -49,9 +49,9 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private TaskCompletionSource<bool> initPromise = null;
+        private TaskCompletionSource<bool>? initPromise = null;
 
-        public override Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
+        public override Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread? moduleThread) {
             // moduleThread is null here will be set later!
             CheckStarted();
             var promise = new TaskCompletionSource<bool>();
@@ -67,7 +67,7 @@ namespace Ifak.Fast.Mediator
             return promise.Task;
         }
 
-        private TaskCompletionSource<bool> runPromise = null;
+        private TaskCompletionSource<bool>? runPromise = null;
 
         public override Task Run(Func<bool> shutdown) {
             if (!isStarted) throw new Exception("Run requires prior Init!");
@@ -118,7 +118,7 @@ namespace Ifak.Fast.Mediator
             return promise.Task;
         }
 
-        public override Task<Result> UpdateConfig(Origin origin, ObjectValue[] updateOrDeleteObjects, MemberValue[] updateOrDeleteMembers, AddArrayElement[] addArrayElements) {
+        public override Task<Result> UpdateConfig(Origin origin, ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             if (!isStarted) throw new Exception("UpdateConfig requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
             var promise = new TaskCompletionSource<Result>();
@@ -172,9 +172,9 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.Init: {
 
-                            var promise = (TaskCompletionSource<bool>)it.Promise;
+                            var promise = (TaskCompletionSource<bool>)it.Promise!;
                             try {
-                                await module.Init((ModuleInitInfo)it.Param1, (VariableValue[])it.Param2, (Notifier)it.Param3, moduleThread);
+                                await module.Init((ModuleInitInfo)it.Param1!, (VariableValue[])it.Param2!, (Notifier)it.Param3!, moduleThread);
                                 promise.SetResult(true);
                             }
                             catch (Exception exp) {
@@ -184,7 +184,7 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case MethodID.InitAbort: {
-                            var promise = (TaskCompletionSource<bool>)it.Promise;
+                            var promise = (TaskCompletionSource<bool>)it.Promise!;
                             try {
                                 await module.InitAbort();
                                 hasTerminated = true;
@@ -199,13 +199,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.Run: {
 
-                            var promise = (TaskCompletionSource<bool>)it.Promise;
+                            var promise = (TaskCompletionSource<bool>)it.Promise!;
                             try {
-                                Task t = module.Run((Func<bool>)it.Param1);
+                                Task t = module.Run((Func<bool>)it.Param1!);
                                 Task ignored = t.ContinueOnMainThread(x => {
                                     hasTerminated = true;
                                     if (x.IsFaulted) {
-                                        promise.SetException(x.Exception);
+                                        promise.SetException(x.Exception!);
                                     }
                                     else {
                                         promise.SetResult(true);
@@ -223,7 +223,7 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.GetAllObjects: {
 
-                            var promise = (TaskCompletionSource<ObjectInfo[]>)it.Promise;
+                            var promise = (TaskCompletionSource<ObjectInfo[]>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
@@ -241,13 +241,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.GetMemberValues: {
 
-                            var promise = (TaskCompletionSource<MemberValue[]>)it.Promise;
+                            var promise = (TaskCompletionSource<MemberValue[]>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.GetMemberValues((MemberRef[])it.Param1);
+                                    var res = await module.GetMemberValues((MemberRef[])it.Param1!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -259,7 +259,7 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.GetMetaInfo: {
 
-                            var promise = (TaskCompletionSource<MetaInfos>)it.Promise;
+                            var promise = (TaskCompletionSource<MetaInfos>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
@@ -277,13 +277,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.GetObjectsByID: {
 
-                            var promise = (TaskCompletionSource<ObjectInfo[]>)it.Promise;
+                            var promise = (TaskCompletionSource<ObjectInfo[]>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.GetObjectsByID((ObjectRef[])it.Param1);
+                                    var res = await module.GetObjectsByID((ObjectRef[])it.Param1!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -295,13 +295,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.GetObjectValuesByID: {
 
-                            var promise = (TaskCompletionSource<ObjectValue[]>)it.Promise;
+                            var promise = (TaskCompletionSource<ObjectValue[]>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.GetObjectValuesByID((ObjectRef[])it.Param1);
+                                    var res = await module.GetObjectValuesByID((ObjectRef[])it.Param1!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -313,13 +313,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.UpdateConfig: {
 
-                            var promise = (TaskCompletionSource<Result>)it.Promise;
+                            var promise = (TaskCompletionSource<Result>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.UpdateConfig((Origin)it.Param1, (ObjectValue[])it.Param2, (MemberValue[])it.Param3, (AddArrayElement[])it.Param4);
+                                    var res = await module.UpdateConfig((Origin)it.Param1!, (ObjectValue[]?)it.Param2, (MemberValue[]?)it.Param3, (AddArrayElement[]?)it.Param4);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -331,13 +331,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.ReadVariables: {
 
-                            var promise = (TaskCompletionSource<VTQ[]>)it.Promise;
+                            var promise = (TaskCompletionSource<VTQ[]>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.ReadVariables((Origin)it.Param1, (VariableRef[])it.Param2, (Duration?)it.Param3);
+                                    var res = await module.ReadVariables((Origin)it.Param1!, (VariableRef[])it.Param2!, (Duration?)it.Param3!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -349,13 +349,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.WriteVariables: {
 
-                            var promise = (TaskCompletionSource<WriteResult>)it.Promise;
+                            var promise = (TaskCompletionSource<WriteResult>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.WriteVariables((Origin)it.Param1, (VariableValue[])it.Param2, (Duration?)it.Param3);
+                                    var res = await module.WriteVariables((Origin)it.Param1!, (VariableValue[])it.Param2!, (Duration?)it.Param3);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -367,13 +367,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.OnMethodCall: {
 
-                            var promise = (TaskCompletionSource<Result<DataValue>>)it.Promise;
+                            var promise = (TaskCompletionSource<Result<DataValue>>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.OnMethodCall((Origin)it.Param1, (string)it.Param2, (NamedValue[])it.Param3);
+                                    var res = await module.OnMethodCall((Origin)it.Param1!, (string)it.Param2!, (NamedValue[])it.Param3!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -385,13 +385,13 @@ namespace Ifak.Fast.Mediator
 
                     case MethodID.Browse: {
 
-                            var promise = (TaskCompletionSource<BrowseResult>)it.Promise;
+                            var promise = (TaskCompletionSource<BrowseResult>)it.Promise!;
                             if (hasTerminated) {
                                 promise.SetException(new Exception("Module terminated."));
                             }
                             else {
                                 try {
-                                    var res = await module.BrowseObjectMemberValues((MemberRef)it.Param1, (int?)it.Param2);
+                                    var res = await module.BrowseObjectMemberValues((MemberRef)it.Param1!, (int?)it.Param2);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {
@@ -409,7 +409,7 @@ namespace Ifak.Fast.Mediator
 
         private class WorkItem
         {
-            public WorkItem(MethodID methode, object promise, object param1 = null, object param2 = null, object param3 = null, object param4 = null) {
+            public WorkItem(MethodID methode, object? promise, object? param1 = null, object? param2 = null, object? param3 = null, object? param4 = null) {
                 Methode = methode;
                 Promise = promise;
                 Param1 = param1;
@@ -419,11 +419,11 @@ namespace Ifak.Fast.Mediator
             }
 
             public MethodID Methode { get; set; }
-            public object Promise { get; set; }
-            public object Param1 { get; set; }
-            public object Param2 { get; set; }
-            public object Param3 { get; set; }
-            public object Param4 { get; set; }
+            public object? Promise { get; set; }
+            public object? Param1 { get; set; }
+            public object? Param2 { get; set; }
+            public object? Param3 { get; set; }
+            public object? Param4 { get; set; }
         }
 
         enum MethodID
@@ -433,22 +433,22 @@ namespace Ifak.Fast.Mediator
 
         private class TheModuleThread : ModuleThread
         {
-            private readonly SynchronizationContext syncContext = SynchronizationContext.Current;
+            private readonly SynchronizationContext syncContext = SynchronizationContext.Current!;
 
             public void Post(Action action) {
-                syncContext.Post(delegate (object state) { action(); }, null);
+                syncContext.Post(delegate (object? state) { action(); }, null);
             }
 
             public void Post<T>(Action<T> action, T parameter) {
-                syncContext.Post(delegate (object state) { action(parameter); }, null);
+                syncContext.Post(delegate (object? state) { action(parameter); }, null);
             }
 
             public void Post<T1, T2>(Action<T1, T2> action, T1 parameter1, T2 parameter2) {
-                syncContext.Post(delegate (object state) { action(parameter1, parameter2); }, null);
+                syncContext.Post(delegate (object? state) { action(parameter1, parameter2); }, null);
             }
 
             public void Post<T1, T2, T3>(Action<T1, T2, T3> action, T1 parameter1, T2 parameter2, T3 parameter3) {
-                syncContext.Post(delegate (object state) { action(parameter1, parameter2, parameter3); }, null);
+                syncContext.Post(delegate (object? state) { action(parameter1, parameter2, parameter3); }, null);
             }
         }
     }

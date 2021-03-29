@@ -14,8 +14,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     {
         public class ModuleInfo
         {
-            public string ID { get; set; }
-            public string Name { get; set; }
+            public string ID { get; set; } = "";
+            public string Name { get; set; } = "";
         }
 
         public class ObjInfo

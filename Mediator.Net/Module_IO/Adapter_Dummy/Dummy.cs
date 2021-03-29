@@ -37,7 +37,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
             // nothing to do
         }
 
-        public override Task<string[]> BrowseDataItemAddress(string idOrNull) {
+        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             return Task.FromResult(new string[] { "Sin(period=5 min, amplitude=5, offset=11)" });
         }
 

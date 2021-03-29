@@ -24,14 +24,14 @@ namespace Ifak.Fast.Mediator.Calc
 
         public override Task OnActivate() {
             if (Config.NonEmpty) {
-                configuration = Config.Object<ViewConfig>();
+                configuration = Config.Object<ViewConfig>() ?? new ViewConfig();
             }
             return Task.FromResult(true);
         }
 
         public override async Task<ReqResult> OnUiRequestAsync(string command, DataValue parameters) {
 
-            bool hasModuleID = !(configuration == null || string.IsNullOrEmpty(configuration.ModuleID));
+            bool hasModuleID = !string.IsNullOrEmpty(configuration.ModuleID);
             moduleID = hasModuleID ? configuration.ModuleID : "CALC";
 
             switch (command) {
@@ -47,9 +47,9 @@ namespace Ifak.Fast.Mediator.Calc
 
                 case "Save": {
 
-                        SaveParams saveParams = parameters.Object<SaveParams>();
+                        SaveParams saveParams = parameters.Object<SaveParams>() ?? throw new Exception("SaveParams is null");
                         string objID = saveParams.ID;
-                        IDictionary<string, JToken> dict = saveParams.Obj;
+                        IDictionary<string, JToken?> dict = saveParams.Obj;
                         MemberValue[] members = dict
                             .Where(kv => kv.Key != "ID")
                             .Select(entry => MakeMemberValue(objID, entry))
@@ -61,7 +61,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 case "Delete": {
 
-                        ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString());
+                        ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString() ?? "");
                         await Connection.UpdateConfig(ObjectValue.Make(obj, DataValue.Empty));
 
                         return await GetModelResult();
@@ -69,7 +69,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 case "AddObject": {
 
-                        AddObjectParams addParams = parameters.Object<AddObjectParams>();
+                        AddObjectParams addParams = parameters.Object<AddObjectParams>() ?? throw new Exception("AddObjectParams is null");
                         ObjectRef objParent = ObjectRef.Make(moduleID, addParams.ParentObjID);
                         DataValue dataValue = DataValue.FromObject(new {
                             ID = addParams.NewObjID,
@@ -83,7 +83,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 case "MoveObject": {
 
-                        var move = parameters.Object<MoveObject_Params>();
+                        var move = parameters.Object<MoveObject_Params>() ?? throw new Exception("MoveObject_Params is null");
                         bool up = move.Up;
 
                         ObjectRef obj = ObjectRef.Make(moduleID, move.ObjID);
@@ -122,7 +122,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 case "ReadModuleObjects": {
 
-                        var pars = parameters.Object<ReadModuleObjectsParams>();
+                        var pars = parameters.Object<ReadModuleObjectsParams>() ?? throw new Exception("ReadModuleObjectsParams is null");
 
                         ObjectInfos objects;
 
@@ -153,7 +153,7 @@ namespace Ifak.Fast.Mediator.Calc
         private async Task<ReqResult> GetModelResult() {
 
             ObjectValue v = await Connection.GetObjectValueByID(RootID);
-            Calc_Model model = v.ToObject<Calc_Model>();
+            Calc_Model model = v.ToObject<Calc_Model>() ?? new Calc_Model();
 
             ObjectRef[] objects = model.GetAllCalculations().SelectMany(GetObjects).Distinct().ToArray();
             ObjectInfos infos;
@@ -189,7 +189,7 @@ namespace Ifak.Fast.Mediator.Calc
             var changes = VarValsToEventEntries(variables);
 
             DataValue resGetAdapterInfo = await Connection.CallMethod(moduleID, "GetAdapterInfo");
-            AdapterInfo[] adapterTypesInfo = resGetAdapterInfo.Object<AdapterInfo[]>();
+            AdapterInfo[] adapterTypesInfo = resGetAdapterInfo.Object<AdapterInfo[]>() ?? new AdapterInfo[0];
 
             var res = new {
                 model = model,
@@ -229,9 +229,9 @@ namespace Ifak.Fast.Mediator.Calc
 
         private static bool IsNumericBoolOrStruct(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Struct;
 
-        private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken> entry) {
-            JToken value = entry.Value;
-            DataValue dataValue = DataValue.FromObject(value);
+        private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken?> entry) {
+            JToken? value = entry.Value;
+            DataValue dataValue = value == null ? DataValue.Empty : DataValue.FromObject(value);
             // Console.WriteLine($"{id}.{entry.Key}: {dataValue.ToString()}");
             return MemberValue.Make(moduleID, id, entry.Key, dataValue);
         }
@@ -245,12 +245,11 @@ namespace Ifak.Fast.Mediator.Calc
             var changes = new List<EventEntry>(variables.Count);
             for (int n = 0; n < variables.Count; ++n) {
                 VariableValue vv = variables[n];
-                changes.Add(new EventEntry() {
-                    Key = vv.Variable.Object.LocalObjectID,
-                    V = vv.Value.V,
-                    T = FormatTime(vv.Value.T),
-                    Q = vv.Value.Q
-                });
+                changes.Add(new EventEntry(
+                    key: vv.Variable.Object.LocalObjectID,
+                    v: vv.Value.V,
+                    t: FormatTime(vv.Value.T),
+                    q: vv.Value.Q));
             }
             return changes;
         }
@@ -266,28 +265,28 @@ namespace Ifak.Fast.Mediator.Calc
 
         public class ViewConfig
         {
-            public string ModuleID { get; set; }
+            public string ModuleID { get; set; } = "";
         }
 
         public class SaveParams
         {
-            public string ID { get; set; }
+            public string ID { get; set; } = "";
 
-            public JObject Obj { get; set; }
+            public JObject Obj { get; set; } = new JObject();
         }
 
         public class AddObjectParams
         {
-            public string ParentObjID { get; set; }
-            public string ParentMember { get; set; }
-            public string NewObjID { get; set; }
-            public string NewObjType { get; set; }
-            public string NewObjName { get; set; }
+            public string ParentObjID { get; set; } = "";
+            public string ParentMember { get; set; } = "";
+            public string NewObjID { get; set; } = "";
+            public string NewObjType { get; set; } = "";
+            public string NewObjName { get; set; } = "";
         }
 
         public class MoveObject_Params
         {
-            public string ObjID { get; set; }
+            public string ObjID { get; set; } = "";
             public bool Up { get; set; }
         }
 
@@ -310,14 +309,21 @@ namespace Ifak.Fast.Mediator.Calc
             public DataValue V { get; set; }
             public string T { get; set; }
             public Quality Q { get; set; }
+
+            public EventEntry(string key, DataValue v, string t, Quality q) {
+                Key = key;
+                V = v;
+                T = t;
+                Q = q;
+            }
         }
 
         public class AdapterInfo
         {
-            public string Type { get; set; }
+            public string Type { get; set; } = "";
             public bool Show_WindowVisible { get; set; }
             public bool Show_Definition { get; set; }
-            public string DefinitionLabel { get; set; }
+            public string DefinitionLabel { get; set; } = "";
             public bool DefinitionIsCode { get; set; }
         }
     }
