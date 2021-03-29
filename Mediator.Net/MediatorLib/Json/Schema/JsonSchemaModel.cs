@@ -28,6 +28,8 @@ using System.Collections.Generic;
 using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Json.Utilities;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Schema
 {
     [Obsolete("JSON Schema validation has been moved to its own package. See https://www.newtonsoft.com/jsonschema for more details.")]

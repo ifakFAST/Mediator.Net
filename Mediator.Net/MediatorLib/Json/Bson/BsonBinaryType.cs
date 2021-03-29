@@ -25,6 +25,8 @@
 
 using System;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Bson
 {
     internal enum BsonBinaryType : byte

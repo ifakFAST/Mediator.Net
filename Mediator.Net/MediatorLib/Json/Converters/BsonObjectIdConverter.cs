@@ -28,6 +28,8 @@ using Ifak.Fast.Json.Bson;
 using System.Globalization;
 using Ifak.Fast.Json.Utilities;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Converters
 {
     /// <summary>

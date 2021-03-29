@@ -26,6 +26,8 @@
 using System;
 using Ifak.Fast.Json.Utilities;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Bson
 {
     /// <summary>

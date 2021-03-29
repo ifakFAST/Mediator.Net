@@ -30,6 +30,8 @@ using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Json.Utilities;
 using System.Globalization;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Schema
 {
     /// <summary>
@@ -241,7 +243,9 @@ namespace Ifak.Fast.Json.Schema
 
         internal string Location { get; set; }
 
+#pragma warning disable CA1305 // Specify IFormatProvider
         private readonly string _internalId = Guid.NewGuid().ToString("N");
+#pragma warning restore CA1305 // Specify IFormatProvider
 
         internal string InternalId => _internalId;
 

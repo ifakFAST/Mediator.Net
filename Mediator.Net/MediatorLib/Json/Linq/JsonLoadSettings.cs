@@ -69,7 +69,7 @@ namespace Ifak.Fast.Json.Linq
             get => _duplicatePropertyNameHandling;
             set
             {
-                if (value < DuplicatePropertyNameHandling.Ignore || value > DuplicatePropertyNameHandling.Error)
+                if (value < DuplicatePropertyNameHandling.Replace || value > DuplicatePropertyNameHandling.Error)
                 {
                     throw new ArgumentOutOfRangeException(nameof(value));
                 }

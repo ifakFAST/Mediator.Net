@@ -32,6 +32,8 @@ using System.Linq;
 
 #endif
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Schema
 {
     /// <summary>

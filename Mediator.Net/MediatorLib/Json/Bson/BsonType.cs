@@ -23,6 +23,8 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Bson
 {
     internal enum BsonType : sbyte

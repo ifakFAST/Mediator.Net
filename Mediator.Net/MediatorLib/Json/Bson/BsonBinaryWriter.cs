@@ -29,6 +29,8 @@ using System.IO;
 using System.Text;
 using Ifak.Fast.Json.Utilities;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Bson
 {
     internal class BsonBinaryWriter

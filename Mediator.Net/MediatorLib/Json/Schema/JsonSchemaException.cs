@@ -26,6 +26,8 @@
 using System;
 using System.Runtime.Serialization;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Schema
 {
     /// <summary>

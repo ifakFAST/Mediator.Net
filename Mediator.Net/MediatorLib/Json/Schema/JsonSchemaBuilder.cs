@@ -35,6 +35,8 @@ using System.Globalization;
 using Ifak.Fast.Json.Utilities;
 using Ifak.Fast.Json.Linq;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Schema
 {
     [Obsolete("JSON Schema validation has been moved to its own package. See https://www.newtonsoft.com/jsonschema for more details.")]
@@ -219,7 +221,7 @@ namespace Ifak.Fast.Json.Schema
             }
 
             string location = token.Path.Replace(".", "/").Replace("[", "/").Replace("]", string.Empty);
-            if (!string.IsNullOrEmpty(location))
+            if (!StringUtils.IsNullOrEmpty(location))
             {
                 location = "/" + location;
             }

@@ -35,6 +35,8 @@ using Ifak.Fast.Json.Utilities;
 using Ifak.Fast.Json.Linq;
 using System.Globalization;
 
+#nullable disable
+
 namespace Ifak.Fast.Json.Bson
 {
     /// <summary>

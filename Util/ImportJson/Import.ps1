@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$dirJson = "D:\Sonstiges\Newtonsoft.Json_12.0.1"
+$dirJson = "D:\Sonstiges\NoBackup\Newtonsoft.Json_13.0.1"
 $dirJsonSrc = Join-Path -Path $dirJson -ChildPath "Src/Newtonsoft.Json"
 
 $baseDir  = $PSScriptRoot
