@@ -8,6 +8,8 @@ namespace Ifak.Fast.Mediator.BinSeri
     {
         public const byte CurrentBinaryVersion = 1;
 
+        public const int MaxListLen = 1000 * 1000;
+
         internal static readonly char[] mapCode2Char = new char[] {
             '0', // 0
             '1', // 1

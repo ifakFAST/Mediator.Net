@@ -19,6 +19,7 @@ namespace Ifak.Fast.Mediator.BinSeri
         public static void Serialize(BinaryWriter writer, List<VariableRef> variables, byte binaryVersion) {
 
             int N = variables.Count;
+            if (N > Common.MaxListLen) throw new System.Exception($"VariableRef_Serializer: May not serialize more than {Common.MaxListLen} items");
             writer.Write(binaryVersion);
             writer.Write(Code);
             writer.Write(N);
@@ -137,6 +138,7 @@ namespace Ifak.Fast.Mediator.BinSeri
             if (reader.ReadByte() != Code) throw new IOException("Failed to deserialize VariableRef[]: Wrong start byte");
 
             int N = reader.ReadInt32();
+            if (N > Common.MaxListLen) throw new System.Exception($"VariableRef_Serializer: May not deserialize more than {Common.MaxListLen} items");
             var res = new List<VariableRef>(N);
 
             if (N == 0) return res;
