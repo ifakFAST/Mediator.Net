@@ -65,9 +65,28 @@ namespace Ifak.Fast.Mediator.Util
             return Xml.ToXml(model);
         }
 
+        protected X? GetParentModelObjectFromIdOrNull<X>(ObjectRef id) where X : class, IModelObject {
+            if (mapObjectInfos.TryGetValue(id, out ObjectInfo m)) {
+                MemberRefIdx? parent = m.Parent;
+                if (!parent.HasValue) return null;
+                ObjectRef objParent = parent.Value.Object;
+                return GetModelObjectFromIdOrNull<X>(objParent);
+            }
+            return null;
+        }
+
+        protected X GetParentModelObjectFromIdOrThrow<X>(ObjectRef id) where X : class, IModelObject {
+            if (mapObjectInfos.TryGetValue(id, out ObjectInfo m)) {
+                var parent = m.Parent;
+                if (!parent.HasValue) throw new Exception($"Object {id} has no parent");
+                ObjectRef objParent = parent.Value.Object;
+                return GetModelObjectFromIdOrThrow<X>(objParent);
+            }
+            throw new Exception($"Unable to find object for id: {id}");
+        }
+
         protected X? GetModelObjectFromIdOrNull<X>(ObjectRef id) where X : class, IModelObject {
-            if (mapObjects.ContainsKey(id)) {
-                IModelObject m = mapObjects[id];
+            if (mapObjects.TryGetValue(id, out IModelObject m)) {
                 if (m is X t) {
                     return t;
                 }
