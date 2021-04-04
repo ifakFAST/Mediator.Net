@@ -104,6 +104,9 @@ namespace Ifak.Fast.Mediator
 
             while (true) {
                 string? line = Console.In.ReadLine();
+                if (line == null) {
+                    return;
+                }
                 if (line == "Stop") {
                     core.RequestShutdown();
                     logger.Info($"{title} terminate requested...");
