@@ -617,15 +617,22 @@ namespace Ifak.Fast.Mediator
         }
 
         public List<ObjectInfo> AllObjects => allObjects;
+        public HashSet<ObjectRef> ObjectsWithChildren => objectsWithChildren;
         private List<ObjectInfo> allObjects = new List<ObjectInfo>();
         private Dictionary<ObjectRef, ObjectInfo> mapObjects = new Dictionary<ObjectRef, ObjectInfo>();
+        private HashSet<ObjectRef> objectsWithChildren = new HashSet<ObjectRef>();
         private SingleThreadModule? instance;
 
         public void SetAllObjects(ObjectInfo[] allObjs) {
             allObjects = new List<ObjectInfo>(allObjs);
             mapObjects.Clear();
+            objectsWithChildren.Clear();
             foreach (ObjectInfo obj in allObjects) {
                 mapObjects[obj.ID] = obj;
+                if (obj.Parent.HasValue) {
+                    ObjectRef parent = obj.Parent.Value.Object;
+                    objectsWithChildren.Add(parent);
+                }
             }
             variables.Sync(allObjects);
         }
@@ -672,6 +679,11 @@ namespace Ifak.Fast.Mediator
             ObjectInfo info = mapObjects[o];
             if (info.Parent.HasValue) return info.Parent.Value.Object;
             return null;
+        }
+
+        internal ObjectInfo? GetObjectInfo(ObjectRef o) {
+            mapObjects.TryGetValue(o, out ObjectInfo? res);
+            return res;
         }
 
         public Task FlushVariables() => variables.Shutdown();

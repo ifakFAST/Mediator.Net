@@ -315,10 +315,13 @@ namespace Ifak.Fast.Mediator
                             ObjectRef obj = req.ObjectID;
                             string mod = obj.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(mod);
-                            IList<ObjectInfo> allObj = module.AllObjects;
-                            var varRefs = new List<VariableRef>();
-                            GetAllVarRefsOfObjTree(allObj, obj, varRefs);
 
+                            ObjectInfo? objInfo = module.GetObjectInfo(obj);
+                            if (objInfo == null) throw new Exception($"Invalid object ref: {obj}");
+                            ObjectInfos allObj = module.AllObjects;
+                            HashSet<ObjectRef> objsWithChildren = module.ObjectsWithChildren;
+                            var varRefs = new List<VariableRef>();
+                            GetAllVarRefsOfObjTree(allObj, objInfo, objsWithChildren, varRefs);
                             VariableValues result = new VariableValues(varRefs.Count);
                             for (int i = 0; i < varRefs.Count; ++i) {
                                 VariableRef vr = varRefs[i];
@@ -703,9 +706,12 @@ namespace Ifak.Fast.Mediator
                             ObjectRef obj = req.ObjectID;
                             string mod = obj.ModuleID;
                             ModuleState module = ModuleFromIdOrThrow(mod);
-                            IList<ObjectInfo> allObj = module.AllObjects;
+                            ObjectInfo? objInfo = module.GetObjectInfo(obj);
+                            if (objInfo == null) throw new Exception($"Invalid object ref: {obj}");
+                            ObjectInfos allObj = module.AllObjects;
+                            HashSet<ObjectRef> objsWithChildren = module.ObjectsWithChildren;
                             var varRefs = new List<VariableRef>();
-                            GetAllVarRefsOfObjTree(allObj, obj, varRefs);
+                            GetAllVarRefsOfObjTree(allObj, objInfo, objsWithChildren, varRefs);
                             await core.history.DeleteVariables(varRefs);
                             return Result_OK();
                         }
@@ -1324,20 +1330,21 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private void GetAllVarRefsOfObjTree(IList<ObjectInfo> all, ObjectRef objID, List<VariableRef> res) {
+        private void GetAllVarRefsOfObjTree(ObjectInfos all, ObjectInfo objInfo, HashSet<ObjectRef> objsWithChildren, List<VariableRef> res) {
 
-            foreach (ObjectInfo info in all) {
-                if (info.ID == objID && info.Variables != null) {
-                    foreach (Variable v in info.Variables) {
-                        res.Add(new VariableRef(objID, v.Name));
-                    }
-                    break;
+            ObjectRef objID = objInfo.ID;
+
+            if (objInfo.Variables != null) {
+                foreach (Variable v in objInfo.Variables) {
+                    res.Add(new VariableRef(objID, v.Name));
                 }
             }
 
-            foreach (ObjectInfo info in all) {
-                if (info.Parent.HasValue && info.Parent.Value.Object == objID) {
-                    GetAllVarRefsOfObjTree(all, info.ID, res);
+            if (objsWithChildren.Contains(objID)) {
+                foreach (ObjectInfo info in all) {
+                    if (info.Parent.HasValue && info.Parent.Value.Object == objID) {
+                        GetAllVarRefsOfObjTree(all, info, objsWithChildren, res);
+                    }
                 }
             }
         }
