@@ -497,14 +497,14 @@ namespace Ifak.Fast.Mediator.Dashboard
         private TreeNode TransformModel(ObjectInfos objects) {
 
             ObjectInfo? rootObjInfo = null;
-            var objectsChildren = new Dictionary<ObjectRef, List<ObjectInfo>>();
+            var objectsChildren = new Dictionary<ObjectRef, ObjectInfos>();
 
             foreach (ObjectInfo obj in objects) {
-                var parent = obj.Parent;
+                MemberRefIdx? parent = obj.Parent;
                 if (parent.HasValue) {
                     var key = parent.Value.Object;
                     if (!objectsChildren.ContainsKey(key)) {
-                        objectsChildren[key] = new List<ObjectInfo>();
+                        objectsChildren[key] = new ObjectInfos();
                     }
                     objectsChildren[key].Add(obj);
                 }
@@ -515,17 +515,21 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             if (rootObjInfo == null) throw new Exception("No root object found");
 
-            return MapObjectInfo2TreeNode(rootObjInfo, null, objectsChildren);
+            return MapObjectInfo2TreeNode(rootObjInfo, null, objectsChildren, new List<TreeNode>(0));
         }
 
-        private TreeNode MapObjectInfo2TreeNode(ObjectInfo obj, List<ObjectInfo>? siblings, Dictionary<ObjectRef, List<ObjectInfo>> map) {
+        private TreeNode MapObjectInfo2TreeNode(ObjectInfo obj, ObjectInfos? siblings, Dictionary<ObjectRef, ObjectInfos> map, List<TreeNode> emptyChildren) {
             List<TreeNode> children;
             if (map.ContainsKey(obj.ID)) {
                 var ch = map[obj.ID];
-                children = ch.Select(n => MapObjectInfo2TreeNode(n, ch, map)).ToList();
+                children = new List<TreeNode>(ch.Count);
+                for (int i = 0; i < ch.Count; ++i) {
+                    ObjectInfo child = ch[i];
+                    children.Add(MapObjectInfo2TreeNode(child, ch, map, emptyChildren));
+                }
             }
             else {
-                children = new List<TreeNode>();
+                children = emptyChildren;
             }
 
             var listVariables = new List<VariableVal>();
@@ -550,20 +554,20 @@ namespace Ifak.Fast.Mediator.Dashboard
             if (obj.Parent.HasValue) {
                 var p = obj.Parent.Value;
                 idx = p.Index;
-                string mem = p.Name;
-                count = siblings.Count(sib => sib.Parent!.Value.Name == mem);
+                // string mem = p.Name;
+                count = siblings!.Count; // Assume all siblings are below the same parent member otherwise slow // (sib => sib.Parent!.Value.Name == mem);
             }
 
-            return new TreeNode() {
-                ID = obj.ID.ToString(),
-                ParentID = obj.Parent.HasValue ? obj.Parent.Value.Object.ToString() : "",
-                First = idx == 0,
-                Last = idx + 1 == count,
-                Name = obj.Name,
-                Type = obj.ClassName,
-                Children = children,
-                Variables = listVariables
-            };
+            return new TreeNode(
+                id: obj.ID.ToString(),
+                parentID: obj.Parent.HasValue ? obj.Parent.Value.Object.ToString() : "",
+                first: idx == 0,
+                last: idx + 1 == count,
+                name: obj.Name,
+                type: obj.ClassName,
+                children: children,
+                variables: listVariables
+            );
         }
 
         public class ViewConfig
@@ -574,14 +578,34 @@ namespace Ifak.Fast.Mediator.Dashboard
 
     public class TreeNode
     {
-        public string ID { get; set; } = "";
-        public string ParentID { get; set; } = "";
-        public bool First { get; set; } = false;
-        public bool Last { get; set; } = false;
-        public string Name { get; set; } = "";
-        public string Type { get; set; } = "";
-        public List<VariableVal> Variables { get; set; } = new List<VariableVal>();
-        public List<TreeNode> Children { get; set; } = new List<TreeNode>();
+        public string ID { get; set; }
+        public string ParentID { get; set; }
+        public bool First { get; set; }
+        public bool Last { get; set; }
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public List<VariableVal> Variables { get; set; }
+        public List<TreeNode> Children { get; set; }
+
+        public TreeNode() {
+            ID = "";
+            ParentID = "";
+            Name = "";
+            Type = "";
+            Variables = new List<VariableVal>();
+            Children = new List<TreeNode>();
+        }
+
+        public TreeNode(string id, string parentID, bool first, bool last, string name, string type, List<VariableVal> variables, List<TreeNode> children) {
+            ID = id;
+            ParentID = parentID;
+            First = first;
+            Last = last;
+            Name = name;
+            Type = type;
+            Variables = variables;
+            Children = children;
+        }
     }
 
     public class VariableVal
