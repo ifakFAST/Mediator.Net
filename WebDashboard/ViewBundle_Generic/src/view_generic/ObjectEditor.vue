@@ -177,18 +177,22 @@
     <v-dialog v-model="browseDialog.show" persistent scrollable max-width="700px" @keydown="browseKeydown">
       <v-card>
           <v-card-title>
-            <v-text-field v-model="search" label="Search Text" ref="txtSearch" autofocus></v-text-field>
+            <v-text-field v-show="!browseValuesLoading" v-model="search" label="Search Text" ref="txtSearch" autofocus></v-text-field>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text style="height: 520px;">
-            <v-radio-group v-model="browseDialog.selection" column>
-              <v-radio v-for="(x, i) in filteredBrowseValues" :key="i" :label="x" :value="x" style="max-width: 95%;"></v-radio>
-            </v-radio-group>
+
+            <v-data-table dense no-data-text="No values" :headers="browseHeaders" :items="filteredBrowseValuesObj"
+                        class="elevation-2 mt-2" show-select single-select :footer-props="browseFooter"
+                        :loading="browseValuesLoading"
+                        item-key="it" v-model="browseDialog.selection">
+            </v-data-table>
+
           </v-card-text>
           <v-divider></v-divider>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" text @click.native="browseOK">OK</v-btn>
+            <v-btn color="blue darken-1" :disabled="browseDialog.selection.length === 0" text @click.native="browseOK">OK</v-btn>
             <v-btn color="red  darken-1" text @click.native="browseDialog.show = false">Cancel</v-btn>
           </v-card-actions>
       </v-card>
@@ -208,6 +212,10 @@ import Confirm from '../components/Confirm.vue'
 import Location from '../components/Location.vue'
 import { TreeNode, TypeMap, ObjMemInfo, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
 import { LocationInfo } from '../fast_types'
+
+interface BrowseItem {
+  it: string
+}
 
 @Component({
   components: {
@@ -237,7 +245,7 @@ export default class ObjectEditor extends Vue {
     show: false,
     memberName: '',
     memberIdx: 0,
-    selection: '',
+    selection: [],
   }
   search = ''
   varHeaders = [
@@ -249,6 +257,14 @@ export default class ObjectEditor extends Vue {
   editVarDialog = false
   editVarName = ''
   editVarTmp = ''
+
+  browseFooter = {
+    showFirstLastPage: true,
+    itemsPerPageOptions: [100, 500, 1000, { text: 'All', value: -1 }],
+  }
+  browseHeaders = [
+    { text: 'Value', align: 'left', sortable: true, value: 'it' },
+  ]
 
   get categoryMembers() {
     const categories = []
@@ -282,6 +298,18 @@ export default class ObjectEditor extends Vue {
       return this.members[this.browseDialog.memberIdx].BrowseValues
     }
     return []
+  }
+
+  get browseValuesLoading(): boolean {
+    if (this.browseDialog.memberIdx < this.members.length) {
+      return this.members[this.browseDialog.memberIdx].BrowseValuesLoading
+    }
+    return false
+  }
+
+  get filteredBrowseValuesObj(): BrowseItem[] {
+    const items: string[] = this.filteredBrowseValues
+    return items.map((it) => ({ it }))
   }
 
   get filteredBrowseValues() {
@@ -318,7 +346,13 @@ export default class ObjectEditor extends Vue {
     this.$emit('browse', memberName, idx)
     this.browseDialog.memberName = memberName
     this.browseDialog.memberIdx = idx
-    this.browseDialog.selection = ''
+    this.browseDialog.selection = []
+    if (this.browseDialog.memberIdx < this.members.length) {
+      const value = this.members[this.browseDialog.memberIdx].Value
+      if (value !== undefined && value !== null && value !== '') {
+        this.browseDialog.selection = [ { it: value }]
+      }
+    }
     this.search = ''
     this.browseDialog.show = true
     const context = this
@@ -330,7 +364,7 @@ export default class ObjectEditor extends Vue {
   }
 
   browseOK() {
-    this.members[this.browseDialog.memberIdx].Value = this.browseDialog.selection
+    this.members[this.browseDialog.memberIdx].Value = this.browseDialog.selection[0].it
     this.browseDialog.show = false
   }
 

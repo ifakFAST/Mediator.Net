@@ -114,9 +114,12 @@ export default class ViewGeneric extends Vue {
       ObjID: this.selectedObjectID,
       Member: memberName,
     }
+    context.currObjectValues[idx].BrowseValuesLoading = true
+    context.currObjectValues[idx].BrowseValues = []
     window.parent['dashboardApp'].sendViewRequest('Browse', info, (strResponse) => {
       const res = JSON.parse(strResponse)
       context.currObjectValues[idx].BrowseValues = res
+      context.currObjectValues[idx].BrowseValuesLoading = false
     })
   }
 

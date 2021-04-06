@@ -44,6 +44,7 @@ export interface ObjectMember {
   Category: string
   Browseable: boolean
   BrowseValues: string[]
+  BrowseValuesLoading: boolean
   Value: string
   ValueOriginal: string
   EnumValues: string[]

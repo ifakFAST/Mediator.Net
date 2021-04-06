@@ -414,6 +414,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string Category { get; set; } = "";
             public bool Browseable { get; set; }
             public string[] BrowseValues { get; set; } = new string[0];
+            public bool BrowseValuesLoading { get; set; } = false;
             public JToken Value { get; set; } = new JObject();
             public JToken ValueOriginal { get; set; } = new JObject();
             public string[] EnumValues { get; set; } = new string[0];
