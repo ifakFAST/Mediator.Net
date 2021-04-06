@@ -45,6 +45,10 @@ export default class ObjectTree extends Vue {
   open: boolean = false
   showStruct: boolean = false
 
+  mounted() {
+    this.open = this.initialOpen
+  }
+
   get firstVar(): VariableVal {
     return this.model.Variables[0]
   }
