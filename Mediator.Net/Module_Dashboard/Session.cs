@@ -352,20 +352,29 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private bool eventAcked = false;
 
+        private readonly MemoryStream streamSend = new MemoryStream(512);
+
         private async Task SendWebSocket(WebSocket socket, string msgStart, object content) {
             try {
-                using (var stream = MemoryManager.GetMemoryStream("Session.SendWebSocket")) {
-                    using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
-                        writer.Write(msgStart);
-                        StdJson.ObjectToWriter(content, writer);
-                        writer.Write("}");
-                    }
-                    byte[] bytes = stream.GetBuffer();
-                    int count = (int)stream.Length;
-                    var segment = new ArraySegment<byte>(bytes, 0, count);
-                    eventAcked = false;
-                    await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+
+                var stream = streamSend;
+                stream.Position = 0;
+                stream.SetLength(0);
+
+                // Console.WriteLine($"SendWebSocket: {stream.Capacity}  Thread: {Thread.CurrentThread.ManagedThreadId}");
+
+                using (var writer = new StreamWriter(stream, UTF8_NoBOM, 1024, leaveOpen: true)) {
+                    writer.Write(msgStart);
+                    StdJson.ObjectToWriter(content, writer);
+                    writer.Write("}");
                 }
+
+                ArraySegment<byte> segment;
+                stream.TryGetBuffer(out segment);
+
+                eventAcked = false;
+                await socket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+
 
                 int counter = 0;
                 while (!eventAcked && !closed && counter < 100) {
