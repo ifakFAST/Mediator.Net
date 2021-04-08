@@ -11,6 +11,11 @@ namespace Ifak.Fast.Mediator.Util
 
     public static class MemoryManager
     {
+        // The two classes RecyclableMemoryStreamManager and RecyclableMemoryStream
+        // are copies from the library "Microsoft.IO.RecyclableMemoryStream" version 2.0.
+        // Some events have been disabled that are not used. Some minor performance improvements
+        // have been made.
+
         private static readonly RecyclableMemoryStreamManager manager = SetupMemoryManager();
 
         public static MemoryStream GetMemoryStream(string context) {
@@ -27,7 +32,7 @@ namespace Ifak.Fast.Mediator.Util
 
         private static int streamCounter = 0;
 
-        private static void Res_StreamCreated() {
+        private static void Res_StreamCreated(object sender, RecyclableMemoryStreamManager.StreamCreatedEventArgs e) {
             const int Warn_Limit = 16;
             int count = Interlocked.Add(ref streamCounter, 1);
             if (count > Warn_Limit) {
@@ -35,15 +40,39 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
-        private static void Res_StreamDisposed() {
+        private static void Res_StreamDisposed(object sender, RecyclableMemoryStreamManager.StreamDisposedEventArgs e) {
             Interlocked.Add(ref streamCounter, -1);
+        }
+    }
+
+    internal sealed class DebugMemStream : MemoryStream
+    {
+        private const int InitialCapacity = 32 * 1024;
+        private bool disposed;
+        private string context;
+
+        public string Context => context;
+
+        internal DebugMemStream(string context) : base(InitialCapacity) {
+            this.disposed = false;
+            this.context = context;
+        }
+
+        protected override void Dispose(bool disposing) {
+
+            if (disposed) {
+                Console.Error.WriteLine($"Multi Dispose!!! Context: {context}");
+                Console.Error.WriteLine(Environment.StackTrace);
+                return;
+            }
+            disposed = true;
+        }
+
+        public override void Close() {
+            Dispose(true);
         }
     }
 }
 
-// The two classes RecyclableMemoryStreamManager and RecyclableMemoryStream
-// are copies from the library "Microsoft.IO.RecyclableMemoryStream" version 1.2.2.
-// The copy was necessary because of a problem with .GetBuffer() under .Net Core 2.0
-// Some events have been disabled that are not used. Some minor performance improvements
-// have been made.
+
 
