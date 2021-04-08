@@ -1,17 +1,17 @@
 ﻿// The MIT License (MIT)
-// 
+//
 // Copyright (c) 2015-2016 Microsoft
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,6 +19,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+
+#nullable disable
 
 namespace Microsoft.IO
 {
@@ -69,14 +71,14 @@ namespace Microsoft.IO
     /// object itself.
     /// </para>
     /// <para>
-    /// The biggest wrinkle in this implementation is when <see cref="GetBuffer"/> is called. This requires a single 
-    /// contiguous buffer. If only a single block is in use, then that block is returned. If multiple blocks 
-    /// are in use, we retrieve a larger buffer from the memory manager. These large buffers are also pooled, 
+    /// The biggest wrinkle in this implementation is when <see cref="GetBuffer"/> is called. This requires a single
+    /// contiguous buffer. If only a single block is in use, then that block is returned. If multiple blocks
+    /// are in use, we retrieve a larger buffer from the memory manager. These large buffers are also pooled,
     /// split by size--they are multiples/exponentials of a chunk size (1 MB by default).
     /// </para>
     /// <para>
-    /// Once a large buffer is assigned to the stream the small blocks are NEVER again used for this stream. All operations take place on the 
-    /// large buffer. The large buffer can be replaced by a larger buffer from the pool as needed. All blocks and large buffers 
+    /// Once a large buffer is assigned to the stream the small blocks are NEVER again used for this stream. All operations take place on the
+    /// large buffer. The large buffer can be replaced by a larger buffer from the pool as needed. All blocks and large buffers
     /// are maintained in the stream until the stream is disposed (unless AggressiveBufferReturn is enabled in the stream manager).
     /// </para>
     /// <para>
@@ -264,7 +266,7 @@ namespace Microsoft.IO
             this.memoryManager = memoryManager;
             this.id = id;
             this.tag = tag;
-            
+
             var actualRequestedSize = requestedSize;
             if (actualRequestedSize < this.memoryManager.BlockSize)
             {
@@ -291,7 +293,7 @@ namespace Microsoft.IO
 
         #region Dispose and Finalize
         /// <summary>
-        /// The finalizer will be called when a stream is not disposed properly. 
+        /// The finalizer will be called when a stream is not disposed properly.
         /// </summary>
         /// <remarks>Failing to dispose indicates a bug in the code using streams. Care should be taken to properly account for stream lifetime.</remarks>
         ~RecyclableMemoryStream()
@@ -343,7 +345,7 @@ namespace Microsoft.IO
                     base.Dispose(disposing);
                     return;
                 }
-                
+
             }
 
             this.memoryManager.ReportStreamLength(this.length);
@@ -383,9 +385,9 @@ namespace Microsoft.IO
         /// <remarks>
         /// <para>
         /// Capacity is always in multiples of the memory manager's block size, unless
-        /// the large buffer is in use.  Capacity never decreases during a stream's lifetime. 
-        /// Explicitly setting the capacity to a lower value than the current value will have no effect. 
-        /// This is because the buffers are all pooled by chunks and there's little reason to 
+        /// the large buffer is in use.  Capacity never decreases during a stream's lifetime.
+        /// Explicitly setting the capacity to a lower value than the current value will have no effect.
+        /// This is because the buffers are all pooled by chunks and there's little reason to
         /// allow stream truncation.
         /// </para>
         /// <para>
@@ -420,7 +422,7 @@ namespace Microsoft.IO
                 this.EnsureCapacity(value);
             }
         }
-        
+
         /// <summary>
         /// Returns a 64-bit version of capacity, for streams larger than <c>int.MaxValue</c> in length.
         /// </summary>
@@ -483,7 +485,7 @@ namespace Microsoft.IO
                 {
                     throw new ArgumentOutOfRangeException("value", "value must be non-negative");
                 }
-                
+
                 if (this.largeBuffer != null && value > RecyclableMemoryStreamManager.MaxArrayLength)
                 {
                     throw new InvalidOperationException($"Once the stream is converted to a single large buffer, position cannot be set past {RecyclableMemoryStreamManager.MaxArrayLength}");
@@ -586,7 +588,7 @@ namespace Microsoft.IO
             this.position += count;
 
             if (destination is MemoryStream destinationRMS)
-            {                
+            {
                 this.WriteTo(destinationRMS, startPos, count);
                 return Task.CompletedTask;
             }
@@ -604,7 +606,7 @@ namespace Microsoft.IO
                         return CopyToAsyncImpl(cancellationToken, count);
 
                         async Task CopyToAsyncImpl(CancellationToken ct, long totalBytesToWrite)
-                        {                            
+                        {
                             var bytesRemaining = totalBytesToWrite;
                             var totalBytesToaDd = bytesRemaining;
                             var blockAndOffset = this.GetBlockAndRelativeOffset(startPos);
@@ -717,9 +719,9 @@ namespace Microsoft.IO
                 throw new ArgumentOutOfRangeException("sizeHint", $"sizeHint must be non-negative");
             }
 
-            if (minimumBufferSize == 0) 
-            { 
-                minimumBufferSize = 1; 
+            if (minimumBufferSize == 0)
+            {
+                minimumBufferSize = 1;
             }
 
             this.EnsureCapacity(this.position + minimumBufferSize);
@@ -772,7 +774,7 @@ namespace Microsoft.IO
 
             BlockSegment first = new BlockSegment(this.blocks[0]);
             BlockSegment last = first;
-            
+
             for (int blockIdx = 1; blockIdx < blocks.Count; blockIdx++)
             {
                 last = last.Append(this.blocks[blockIdx]);
@@ -813,7 +815,7 @@ namespace Microsoft.IO
             }
             catch(OutOfMemoryException)
             {
-                
+
             }
 
 #if NETCOREAPP2_1 || NETSTANDARD2_1
@@ -825,7 +827,7 @@ namespace Microsoft.IO
         }
 
         /// <summary>
-        /// Returns a new array with a copy of the buffer's contents. You should almost certainly be using <see cref="GetBuffer"/> combined with the <see cref="Length"/> to 
+        /// Returns a new array with a copy of the buffer's contents. You should almost certainly be using <see cref="GetBuffer"/> combined with the <see cref="Length"/> to
         /// access the bytes in this stream. Calling <c>ToArray</c> will destroy the benefits of pooled buffers, but it is included
         /// for the sake of completeness.
         /// </summary>
@@ -984,7 +986,7 @@ namespace Microsoft.IO
             return amountRead;
         }
 #endif
-        
+
         /// <summary>
         /// Writes the buffer to the stream
         /// </summary>
@@ -1239,7 +1241,7 @@ namespace Microsoft.IO
         public override long Seek(long offset, SeekOrigin loc)
         {
             this.CheckDisposed();
-            
+
             long newPosition;
             switch (loc)
             {
@@ -1402,7 +1404,7 @@ namespace Microsoft.IO
                 {
                     int amountToCopy = (int)Math.Min((long)this.blocks[currentBlock].Length - currentOffset, bytesRemaining);
                     Buffer.BlockCopy(this.blocks[currentBlock], currentOffset, buffer, currentTargetOffset, amountToCopy);
-                    
+
                     bytesRemaining -= amountToCopy;
 
                     ++currentBlock;
@@ -1478,7 +1480,7 @@ namespace Microsoft.IO
             {
                 return 0;
             }
-            
+
             int amountToCopy;
 
             if (this.largeBuffer == null)
