@@ -109,7 +109,7 @@ namespace Ifak.Fast.Json.Serialization
                             // current property is hidden by the existing so don't add it
                             return;
                         }
-                        
+
                         if (_type.ImplementInterface(existingProperty.DeclaringType) && _type.ImplementInterface(property.DeclaringType))
                         {
                             // current property was already defined on another interface
@@ -145,7 +145,7 @@ namespace Ifak.Fast.Json.Serialization
             return property;
         }
 
-        private bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
+        private new bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
         {
             if (Dictionary == null)
             {
