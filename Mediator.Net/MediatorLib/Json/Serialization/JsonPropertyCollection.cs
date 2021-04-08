@@ -144,7 +144,7 @@ namespace Ifak.Fast.Json.Serialization
 
             return property;
         }
-
+#if NETSTANDARD2_1
         private new bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
         {
             if (Dictionary == null)
@@ -155,7 +155,18 @@ namespace Ifak.Fast.Json.Serialization
 
             return Dictionary.TryGetValue(key, out item);
         }
+#else
+        private bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
+        {
+            if (Dictionary == null)
+            {
+                item = default;
+                return false;
+            }
 
+            return Dictionary.TryGetValue(key, out item);
+        }
+#endif
         /// <summary>
         /// Gets a property by property name.
         /// </summary>
