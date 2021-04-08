@@ -182,20 +182,20 @@ namespace Microsoft.IO
         internal string DisposeStack { get; private set; }
 
         #region Constructors
-        /// <summary>
-        /// Allocate a new RecyclableMemoryStream object.
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager)
-            : this(memoryManager, Guid.NewGuid(), null, 0, null) { }
+        ///// <summary>
+        ///// Allocate a new RecyclableMemoryStream object.
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager)
+        //    : this(memoryManager, Guid.NewGuid(), null, 0, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object.
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id)
-            : this(memoryManager, id, null, 0, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object.
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id)
+        //    : this(memoryManager, id, null, 0, null) { }
 
         /// <summary>
         /// Allocate a new <c>RecyclableMemoryStream</c> object
@@ -205,52 +205,52 @@ namespace Microsoft.IO
         public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag)
             : this(memoryManager, Guid.NewGuid(), tag, 0, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag)
-            : this(memoryManager, id, tag, 0, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag)
+        //    : this(memoryManager, id, tag, 0, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize)
-            : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize)
+        //    : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, long requestedSize)
-            : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, long requestedSize)
+        //    : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, int requestedSize)
-            : this(memoryManager, id, tag, requestedSize, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, int requestedSize)
+        //    : this(memoryManager, id, tag, requestedSize, null) { }
 
-        /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
-        /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, long requestedSize)
-            : this(memoryManager, id, tag, requestedSize, null) { }
+        ///// <summary>
+        ///// Allocate a new <c>RecyclableMemoryStream</c> object
+        ///// </summary>
+        ///// <param name="memoryManager">The memory manager</param>
+        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
+        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, long requestedSize)
+        //    : this(memoryManager, id, tag, requestedSize, null) { }
 
         /// <summary>
         /// Allocate a new <c>RecyclableMemoryStream</c> object
@@ -309,13 +309,13 @@ namespace Microsoft.IO
         {
             if (this.disposed)
             {
-                string doubleDisposeStack = null;
-                if (this.memoryManager.GenerateCallStacks)
-                {
-                    doubleDisposeStack = Environment.StackTrace;
-                }
+                //string doubleDisposeStack = null;
+                //if (this.memoryManager.GenerateCallStacks)
+                //{
+                //    doubleDisposeStack = Environment.StackTrace;
+                //}
 
-                this.memoryManager.ReportStreamDoubleDisposed(this.id, this.tag, this.AllocationStack, this.DisposeStack, doubleDisposeStack);
+                //this.memoryManager.ReportStreamDoubleDisposed(this.id, this.tag, this.AllocationStack, this.DisposeStack, doubleDisposeStack);
                 return;
             }
 
@@ -335,7 +335,7 @@ namespace Microsoft.IO
             else
             {
                 // We're being finalized.
-                this.memoryManager.ReportStreamFinalized(this.id, this.tag, this.AllocationStack);
+                //this.memoryManager.ReportStreamFinalized(this.id, this.tag, this.AllocationStack);
 
                 if (AppDomain.CurrentDomain.IsFinalizingForUnload())
                 {
@@ -348,7 +348,7 @@ namespace Microsoft.IO
 
             }
 
-            this.memoryManager.ReportStreamLength(this.length);
+            //this.memoryManager.ReportStreamLength(this.length);
 
             if (this.largeBuffer != null)
             {
@@ -841,7 +841,7 @@ namespace Microsoft.IO
             this.CheckDisposed();
 
             string stack = this.memoryManager.GenerateCallStacks ? Environment.StackTrace : null;
-            this.memoryManager.ReportStreamToArray(this.id, this.tag, stack, this.length);
+            //this.memoryManager.ReportStreamToArray(this.id, this.tag, stack, this.length);
 
             if (this.memoryManager.ThrowExceptionOnToArray)
             {
@@ -1535,7 +1535,7 @@ namespace Microsoft.IO
         {
             if (newCapacity > this.memoryManager.MaximumStreamCapacity && this.memoryManager.MaximumStreamCapacity > 0)
             {
-                this.memoryManager.ReportStreamOverCapacity(this.id, this.tag, newCapacity, this.AllocationStack);
+                //this.memoryManager.ReportStreamOverCapacity(this.id, this.tag, newCapacity, this.AllocationStack);
                 throw new OutOfMemoryException(
                     "Requested capacity is too large: " + newCapacity.ToString(CultureInfo.InvariantCulture) +
                     ". Limit is " + this.memoryManager.MaximumStreamCapacity.ToString(CultureInfo.InvariantCulture));
