@@ -1,8 +1,8 @@
-﻿namespace Microsoft.IO
+﻿namespace Ifak.Fast.Mediator.Util
 {
     using System;
 
-    public sealed partial class RecyclableMemoryStreamManager
+    internal sealed partial class RecyclableMemoryStreamManager
     {
         /// <summary>
         /// Arguments for the StreamCreated event
@@ -421,9 +421,9 @@
             /// <param name="largePoolInUseBytes">Bytes from the large pool currently in use</param>
             /// <param name="largePoolFreeBytes">Bytes from the large pool currently available</param>
             public UsageReportEventArgs(
-                long smallPoolInUseBytes, 
-                long smallPoolFreeBytes, 
-                long largePoolInUseBytes, 
+                long smallPoolInUseBytes,
+                long smallPoolFreeBytes,
+                long largePoolInUseBytes,
                 long largePoolFreeBytes)
             {
                 this.SmallPoolInUseBytes = smallPoolInUseBytes;

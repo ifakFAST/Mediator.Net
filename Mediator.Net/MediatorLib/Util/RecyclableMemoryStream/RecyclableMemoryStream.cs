@@ -22,7 +22,7 @@
 
 #nullable disable
 
-namespace Microsoft.IO
+namespace Ifak.Fast.Mediator.Util
 {
     using System;
 #if NETCOREAPP2_1 || NETSTANDARD2_1
@@ -202,7 +202,7 @@ namespace Microsoft.IO
         /// </summary>
         /// <param name="memoryManager">The memory manager</param>
         /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag)
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag)
             : this(memoryManager, Guid.NewGuid(), tag, 0, null) { }
 
         ///// <summary>

@@ -7,7 +7,6 @@ namespace Ifak.Fast.Mediator.Util
     using System;
     using System.IO;
     using System.Threading;
-    using Microsoft.IO;
 
     public static class MemoryManager
     {

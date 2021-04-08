@@ -22,7 +22,7 @@
 
 #nullable disable
 
-namespace Microsoft.IO
+namespace Ifak.Fast.Mediator.Util
 {
     using System;
     using System.Collections.Concurrent;
@@ -45,7 +45,7 @@ namespace Microsoft.IO
     /// usage. There should be far fewer 8 MB buffers than 1 MB buffers, for example.
     /// </para>
     /// </remarks>
-    public partial class RecyclableMemoryStreamManager
+    internal partial class RecyclableMemoryStreamManager
     {
         /// <summary>
         /// Maximum length of a single array.
@@ -655,7 +655,7 @@ namespace Microsoft.IO
         /// </summary>
         /// <param name="tag">A tag which can be used to track the source of the stream.</param>
         /// <returns>A <c>MemoryStream</c>.</returns>
-        public MemoryStream GetStream(string tag)
+        public RecyclableMemoryStream GetStream(string tag)
         {
             return new RecyclableMemoryStream(this, tag);
         }

@@ -20,12 +20,12 @@
 // THE SOFTWARE.
 // ---------------------------------------------------------------------
 
-namespace Microsoft.IO
+namespace Ifak.Fast.Mediator.Util
 {
     using System;
     using System.Diagnostics.Tracing;
 
-    public sealed partial class RecyclableMemoryStreamManager
+    internal sealed partial class RecyclableMemoryStreamManager
     {
         /// <summary>
         /// ETW events for RecyclableMemoryStream
