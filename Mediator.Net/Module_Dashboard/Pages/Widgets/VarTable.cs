@@ -22,6 +22,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         VarTableConfig configuration => Config;
 
+        private readonly Dictionary<string, string> mapTrend = new Dictionary<string, string>();
+
         public override Task OnActivate() {
 
             Variables = configuration.Items.Select(it => it.Variable).ToArray();
@@ -38,6 +40,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         }
 
         public async Task<ReqResult> UiReq_LoadData() {
+            var items = await LoadData(updateTrend: true);
+            return ReqResult.OK(items);
+        }
+
+        public async Task<VarVal[]> LoadData(bool updateTrend) {
 
             List<VariableValue> values = await Connection.ReadVariablesIgnoreMissing(Variables.ToList());
 
@@ -45,14 +52,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             IsLoaded = true;
 
-            foreach (var it in configuration.Items) {
-                Task ignored = CalcTrend(it);
+            if (updateTrend) {
+                _ = CalcTrendForVarItems(configuration.Items);
             }
 
-            return ReqResult.OK(items);
+            return items;
         }
 
-        private static VarVal[] MakeValues(VarTableConfig config, IList<VariableValue> values) {
+        private VarVal[] MakeValues(VarTableConfig config, IList<VariableValue> values) {
 
             var res = new List<VarVal>();
             foreach (var it in config.Items) {
@@ -99,12 +106,15 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     }
                 }
 
+                string? trend = null;
+                mapTrend.TryGetValue(it.Name, out trend);
+
                 var itt = new VarVal() {
                     Name = it.Name,
                     Value = value.HasValue ? FormatDouble(value.Value, 2) : "",
                     Unit = it.Unit,
                     Time = FormatTime(vtq.T),
-                    Trend = "?",
+                    Trend = trend ?? "?",
                     Warning = warning,
                     Alarm = alarm,
                 };
@@ -151,9 +161,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 Task ignored2 = Connection.EnableVariableHistoryChangedEvents(Variables);
             }
 
-            return ReqResult.OK(new {
-                ReloadData = reloadData
-            });
+            var values = await LoadData(updateTrend: reloadData);
+            return ReqResult.OK(values);
         }
 
         public override async Task OnVariableValueChanged(List<VariableValue> variables) {
@@ -167,13 +176,17 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public override async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
 
-            Task[] tasks = configuration
-                .Items
+            VarItem[] varItems = configuration.Items
                 .Where(it => changes.Any(ch => ch.Variable == it.Variable))
-                .Select(CalcTrend)
                 .ToArray();
 
-            await Task.WhenAll(tasks);
+            await CalcTrendForVarItems(varItems);
+        }
+
+        private async Task CalcTrendForVarItems(IEnumerable<VarItem> varItems) {
+            foreach (VarItem it in varItems) {
+                await CalcTrend(it);
+            }
         }
 
         private async Task CalcTrend(VarItem it) {
@@ -226,10 +239,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     break;
             }
 
-            await Context.SendEventToUI("TrendUpdate", new {
-                Name = it.Name,
-                Trend = trend,
-            });
+            mapTrend[it.Name] = trend;
         }
 
         private static double GetMeanOfThird(double[] values, int third) {

@@ -302,17 +302,9 @@ export default class VarTable extends Vue {
             at.Time = it.Time
             at.Warning = it.Warning
             at.Alarm = it.Alarm
+            at.Trend = it.Trend
             break
           }
-        }
-      }
-    }
-    else if (this.eventName === 'TrendUpdate') {
-      const updatedItem: VarItem = this.eventPayload as any
-      for (const at of this.items) {
-        if (updatedItem.Name === at.Name) {
-          at.Trend = updatedItem.Trend
-          break
         }
       }
     }
@@ -355,14 +347,8 @@ export default class VarTable extends Vue {
     const para = {
       items: this.editorItems.items,
     }
-
-    const response: {
-        ReloadData: boolean,
-      } = await this.backendAsync('SaveItems', para)
-
-    if (response.ReloadData) {
-      this.onLoadData()
-    }
+    const items: VarItem[] = await this.backendAsync('SaveItems', para)
+    this.items = items
   }
 
   editorItems_ObjectID2Name(id: string): string {
