@@ -351,11 +351,23 @@ namespace Ifak.Fast.Mediator.Dashboard
         private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         private bool eventAcked = false;
+        private bool eventPending = false;
 
         private readonly MemoryStream streamSend = new MemoryStream(512);
 
         private async Task SendWebSocket(WebSocket socket, string msgStart, object content) {
+
+            int pendingCounter = 0;
+            while (eventPending && !closed && pendingCounter < 100) {
+                await Task.Delay(50);
+                pendingCounter += 1;
+            }
+
+            if (closed) return;
+
             try {
+
+                eventPending = true;
 
                 var stream = streamSend;
                 stream.Position = 0;
@@ -384,6 +396,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
             catch (Exception exp) {
                 logInfo("SendWebSocket:", exp);
+            }
+            finally {
+                eventPending = false;
             }
         }
 
