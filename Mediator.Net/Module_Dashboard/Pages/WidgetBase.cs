@@ -43,6 +43,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
     public abstract class WidgetBase: EventListener
     {
+        protected string ID { get; private set; } = "";
+
         protected Connection Connection { get; set; } = new ClosedConnection();
         protected WidgetContext Context { get; set; } = new EmptyWidgetContext();
 
@@ -53,6 +55,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         protected abstract void SetConfig(object config);
 
         internal void OnInit(Connection connection, WidgetContext context, Widget widget) {
+
+            ID = widget.ID;
+
             Connection = connection;
             Context = context;
 
