@@ -790,7 +790,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class PlotConfig
         {
-            public int MaxDataPoints { get; set; } = 12000;
+            public int MaxDataPoints { get; set; } = 8000;
 
             public QualityFilter FilterByQuality { get; set; } = QualityFilter.ExcludeBad;
 

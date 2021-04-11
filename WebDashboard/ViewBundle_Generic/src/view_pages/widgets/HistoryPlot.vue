@@ -571,6 +571,11 @@ export default class HistoryPlot extends Vue {
 
       const data = this.historyData
 
+      if (data.length > 0 && data[0].length !== newData[0].length) {
+        // console.info('Len mismatch: ' + data[0].length + ' != ' + newData[0].length)
+        return
+      }
+
       const hasData = (entry) => {
         for (let k = 1; k < entry.length; ++k) {
           if (entry[k] !== null) { return true }
