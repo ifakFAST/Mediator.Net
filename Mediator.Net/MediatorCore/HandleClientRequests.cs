@@ -1534,7 +1534,9 @@ namespace Ifak.Fast.Mediator
                     foreach (VariableValue vv in values) {
                         bufferVarValues[vv.Variable] = vv;
                     }
-                    lastTimeVarValues = Timestamp.Now;
+                    if (lastTimeVarValues.IsEmpty) {
+                        lastTimeVarValues = Timestamp.Now;
+                    }
                 }
                 else {
                     _ = SendVariables(values);
@@ -1556,7 +1558,9 @@ namespace Ifak.Fast.Mediator
                             bufferVarHistory[key] = h;
                         }
                     }
-                    lastTimeVarHistory = Timestamp.Now;
+                    if (lastTimeVarHistory.IsEmpty) {
+                        lastTimeVarHistory = Timestamp.Now;
+                    }
                 }
                 else {
                     _ = SendVariableHistory(changes);
@@ -1568,7 +1572,9 @@ namespace Ifak.Fast.Mediator
                     foreach (ObjectRef obj in changes) {
                         bufferConfigChanges.Add(obj);
                     }
-                    lastTimeConfigChanged = Timestamp.Now;
+                    if (lastTimeConfigChanged.IsEmpty) {
+                        lastTimeConfigChanged = Timestamp.Now;
+                    }
                 }
                 else {
                     _ = SendConfigChanged(changes);
@@ -1583,7 +1589,9 @@ namespace Ifak.Fast.Mediator
                     }
                     else {
                         bufferEvents.Add(ae);
-                        lastTimeEvents = Timestamp.Now;
+                        if (lastTimeEvents.IsEmpty) {
+                            lastTimeEvents = Timestamp.Now;
+                        }
                     }
                 }
                 else {
