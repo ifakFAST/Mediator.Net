@@ -18,4 +18,7 @@ export default {
     rangeEnd: ''
   },
   timeRangeListener: function(timeRange) {},
+  eventBurstCount: 1,
+  eventACKCounter: 0,
+  eventACKTime: 0
 }

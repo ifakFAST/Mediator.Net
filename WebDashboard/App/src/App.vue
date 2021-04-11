@@ -88,6 +88,7 @@ export default {
         };
 
         socket.onmessage = function(wsEvent) {
+          const eventStartTime = new Date().getTime();
           context.connectionState = 0;
           const parsedData = JSON.parse(wsEvent.data);
           if (parsedData.event === "NaviAugmentation") {
@@ -97,9 +98,28 @@ export default {
             context.eventListener(parsedData.event, parsedData.payload);
           }
           const doACK = function() {
+            context.eventACKTime = new Date().getTime()
             socket.send("OK");
           };
-          setTimeout(doACK, 500);
+
+          context.eventACKCounter += 1
+          if (context.eventACKCounter < context.eventBurstCount) {
+            doACK();
+          }
+          else {
+            context.eventACKCounter = 0
+            const diff = eventStartTime - context.eventACKTime;
+            const minDist = 500;
+            const waitTime = minDist - diff;
+            if (waitTime <= 5) {
+              // console.info("ACK. Diff: " + diff);
+              doACK();
+            }
+            else {
+              // console.info("Delayed ACK! Diff: " + diff + " -> WaitTime: " + waitTime);
+              setTimeout(doACK, waitTime);
+            }
+          }
         };
 
         socket.onclose = function(ev) {
@@ -168,6 +188,7 @@ export default {
       axios
         .post("/activateView?" + this.sessionID + "_" + viewID)
         .then(function(response) {
+          context.eventBurstCount = 1;
           context.currentViewID = viewID;
           context.showTimeRangeSelector = false;
         })

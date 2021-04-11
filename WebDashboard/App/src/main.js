@@ -103,6 +103,10 @@ window.dashboardApp = new Vue({
     },
     registerTimeRangeListener(listener) {
       globalState.timeRangeListener = listener;
+    },
+    setEventBurstCount(count) {
+      // console.info("setEventBurstCount: " + count);
+      globalState.eventBurstCount = count;
     }
   }
 })

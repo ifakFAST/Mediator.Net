@@ -181,6 +181,13 @@ export default class Page extends Vue {
     })
   }
 
+  @Watch('page')
+  watch_page(newVal: model.Page | null, old: model.Page | null): void {
+    const dashboard = window.parent['dashboardApp']
+    const widgets = this.getAllWidgetIDs()
+    dashboard.setEventBurstCount(Math.max(1, widgets.size))
+  }
+
   get pageID(): string {
     if (this.page === null) { return '' }
     return this.page.ID
