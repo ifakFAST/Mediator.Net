@@ -22,6 +22,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         private TimeRange LastTimeRange = new TimeRange();
         private bool IsLoaded = false;
 
+        private long dataRevision = 0;
+
         public override string DefaultHeight => "300px";
 
         public override string DefaultWidth => "100%";
@@ -67,11 +69,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             var (windowLeft, windowRight) = GetTimeWindow(timeRange, listHistories);
 
+            dataRevision += 1;
+
             var res = MemoryManager.GetMemoryStream("LoadHistory");
             try {
                 using (var writer = new StreamWriter(res, Encoding.ASCII, 8 * 1024, leaveOpen: true)) {
                     writer.Write("{ \"WindowLeft\": " + windowLeft.JavaTicks);
                     writer.Write(", \"WindowRight\": " + windowRight.JavaTicks);
+                    writer.Write(", \"DataRevision\": " + dataRevision);
                     writer.Write(", \"Data\": ");
                     WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
                     writer.Write('}');
@@ -247,6 +252,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 var evt = new {
                     WindowLeft = windowLeft.JavaTicks,
                     WindowRight = windowRight.JavaTicks,
+                    DataRevision = dataRevision,
                     Data = sb.ToString()
                 };
 

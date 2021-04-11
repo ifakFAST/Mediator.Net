@@ -299,6 +299,8 @@ export default class HistoryPlot extends Vue {
     variable: { Object: '', Name: '' },
   }
 
+  dataRevision = 0
+
   get variables(): Variable[] {
     return this.items.map((it) => it.Variable)
   }
@@ -562,8 +564,13 @@ export default class HistoryPlot extends Vue {
       const payload: {
         Data: string,
         WindowLeft: number,
-        WindowRight: number } = this.eventPayload as any
+        WindowRight: number,
+        DataRevision: number } = this.eventPayload as any
 
+      if (payload.DataRevision !== this.dataRevision) {
+        // console.info('payload.DataRevision !== this.dataRevision: ' + payload.DataRevision + ' !== ' + this.dataRevision)
+        return
+      }
       const newData: any[][] = JSON.parse(payload.Data)
       if (newData.length === 0) { return }
 
@@ -650,8 +657,10 @@ export default class HistoryPlot extends Vue {
         WindowLeft: number,
         WindowRight: number,
         Data: any[][],
+        DataRevision: number,
       } = await this.backendAsync('LoadData', para)
 
+    this.dataRevision = response.DataRevision
     const data: any[][] = response.Data
 
     this.convertTimestamps(data)

@@ -148,6 +148,9 @@ export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void 
     registerTimeRangeListener(listener) {
       // console.log('registerTimeRangeListener')
     },
+    setEventBurstCount(count) {
+
+    },
   }
 }
 
