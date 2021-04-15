@@ -556,7 +556,7 @@ namespace Ifak.Fast.Mediator
 
             MediaTypeHeaderValue contentType;
             string path = obj.GetPath();
-            var requestStream = MemoryManager.GetMemoryStream("HttpConnection.Post");
+            var requestStream = MemoryManager.GetMemoryStream(path);
             try {
 
                 if (obj is BinSerializable bin && MapBinaryMessages[obj.GetID()]) {

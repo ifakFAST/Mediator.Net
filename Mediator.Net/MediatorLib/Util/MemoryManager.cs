@@ -30,16 +30,29 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         private static int streamCounter = 0;
+        private static long warnCounter = 0;
+        private static Timestamp lastWarnTime = Timestamp.Now;
 
-        private static void Res_StreamCreated(object sender, RecyclableMemoryStreamManager.StreamCreatedEventArgs e) {
-            const int Warn_Limit = 16;
+        private static void Res_StreamCreated(object sender, string tag) {
+#if DEBUG
+            const int Warn_Limit = 12;
+#else
+            const int Warn_Limit = 36;
+#endif
             int count = Interlocked.Add(ref streamCounter, 1);
             if (count > Warn_Limit) {
-                Console.Error.WriteLine($"More than {Warn_Limit} non-disposed MemoryStreams created: {count}");
+                if (warnCounter <= 6) {
+                    lastWarnTime = Timestamp.Now;
+                    Interlocked.Add(ref warnCounter, 1);
+                    Console.Error.WriteLine($"More than {Warn_Limit} non-disposed MemoryStreams created: {count} (Tag: {tag})");
+                }
+                else if ((Timestamp.Now - lastWarnTime) > Duration.FromHours(6)) {
+                    warnCounter = 0;
+                }
             }
         }
 
-        private static void Res_StreamDisposed(object sender, RecyclableMemoryStreamManager.StreamDisposedEventArgs e) {
+        private static void Res_StreamDisposed(object sender, string tag) {
             Interlocked.Add(ref streamCounter, -1);
         }
     }

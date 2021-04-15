@@ -586,14 +586,14 @@ namespace Ifak.Fast.Mediator.Util
         {
             // Events.Writer.MemoryStreamCreated(id, tag, requestedSize, actualSize);
             //this.StreamCreated?.Invoke(this, new StreamCreatedEventArgs(id, tag, requestedSize, actualSize));
-            this.StreamCreated?.Invoke(this, null);
+            this.StreamCreated?.Invoke(this, tag);
         }
 
         internal void ReportStreamDisposed(Guid id, string tag, string allocationStack, string disposeStack)
         {
             // Events.Writer.MemoryStreamDisposed(id, tag, allocationStack, disposeStack);
             //this.StreamDisposed?.Invoke(this, new StreamDisposedEventArgs(id, tag, allocationStack, disposeStack));
-            this.StreamDisposed?.Invoke(this, null);
+            this.StreamDisposed?.Invoke(this, tag);
         }
 
         //internal void ReportStreamDoubleDisposed(Guid id, string tag, string allocationStack, string disposeStack1, string disposeStack2)
@@ -855,12 +855,12 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Triggered when a new stream is created.
         /// </summary>
-        public event EventHandler<StreamCreatedEventArgs> StreamCreated;
+        public event EventHandler<string> StreamCreated;
 
         /// <summary>
         /// Triggered when a stream is disposed.
         /// </summary>
-        public event EventHandler<StreamDisposedEventArgs> StreamDisposed;
+        public event EventHandler<string> StreamDisposed;
 
         ///// <summary>
         ///// Triggered when a stream is disposed of twice (an error).
