@@ -123,7 +123,7 @@ namespace Ifak.Fast.Mediator
                 var reqEnablePing = new EnableEventPingReq() {
                     Session = session
                 };
-                await PostVoid(reqEnablePing);
+                await PostVoid(reqEnablePing, ignoreError: true);
 
                 eventManager = new EventManager(listener, eventDataVersion);
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
@@ -517,13 +517,13 @@ namespace Ifak.Fast.Mediator
 
         #endregion
 
-        protected async Task PostVoid(RequestBase obj) {
+        protected async Task PostVoid(RequestBase obj, bool ignoreError = false) {
 
             if (inProc != null) {
                 await inProc.AddRequest(obj);
             }
             else {
-                await PostInternal<bool>(obj, binaryDeserializer: null, expectReturn: false);
+                await PostInternal<bool>(obj, binaryDeserializer: null, expectReturn: false, ignoreError: ignoreError);
             }
         }
 
@@ -537,7 +537,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        protected async Task<T> PostInternal<T>(RequestBase obj, Func<Stream, T>? binaryDeserializer, bool expectReturn) {
+        protected async Task<T> PostInternal<T>(RequestBase obj, Func<Stream, T>? binaryDeserializer, bool expectReturn, bool ignoreError = false) {
 
             MediaTypeHeaderValue contentType;
             string path = obj.GetPath();
@@ -609,7 +609,10 @@ namespace Ifak.Fast.Mediator
                     }
                 }
                 else {
-                    await ThrowError(response, $"Post<T> {path}", path);
+
+                    if (!ignoreError) {
+                        await ThrowError(response, $"Post<T> {path}", path);
+                    }
                     return default!; // never come here
                 }
             }
