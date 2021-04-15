@@ -106,8 +106,8 @@ namespace Ifak.Fast.Mediator
 
                         var req = (LoginReq)request;
                         string password = "";
-                        string? moduleID = req.ModuleID;
-                        bool isModuleSession = moduleID != null && moduleID != "";
+                        string moduleID = req.ModuleID;
+                        bool isModuleSession = !string.IsNullOrEmpty(moduleID);
 
                         var origin = new Origin();
 
@@ -406,7 +406,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectsByIDReq.ID: {
                             var req = (GetObjectsByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
                             ObjectInfos result = objectIDs.Select(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 foreach (ObjectInfo inf in module.AllObjects) {
@@ -421,7 +421,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetChildrenOfObjectsReq.ID: {
                             var req = (GetChildrenOfObjectsReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
                             ObjectInfos result = objectIDs.SelectMany(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
@@ -433,7 +433,7 @@ namespace Ifak.Fast.Mediator
                     case GetAllObjectsWithVariablesOfTypeReq.ID: {
                             var req = (GetAllObjectsWithVariablesOfTypeReq)request;
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
-                            DataType[] types = req.Types ?? throw new Exception("Missing types");
+                            DataType[] types = req.Types ?? new DataType[0];
                             Func<Variable, bool> varHasType = (variable) => {
                                 DataType type = variable.Type;
                                 return types.Any(t => t == type);
@@ -447,7 +447,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectValuesByIDReq.ID: {
                             var req = (GetObjectValuesByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? throw new Exception("Missing objectIDs");
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
 
                             if (objectIDs.Length <= 1 || objectIDs.All(o => o.ModuleID == objectIDs[0].ModuleID)) {
                                 ModuleState module = ModuleFromIdOrThrow(objectIDs[0].ModuleID);
@@ -472,7 +472,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetMemberValuesReq.ID: {
                             var req = (GetMemberValuesReq)request;
-                            MemberRef[] member = req.Member ?? throw new Exception("Missing member"); ;
+                            MemberRef[] member = req.Member ?? new MemberRef[0];
 
                             if (member.Length <= 1 || member.All(o => o.Object.ModuleID == member[0].Object.ModuleID)) {
                                 ModuleState module = ModuleFromIdOrThrow(member[0].Object.ModuleID);
@@ -688,13 +688,8 @@ namespace Ifak.Fast.Mediator
                             var req = (HistorianModifyReq)request;
 
                             VariableRef variable = req.Variable;
-                            VTQ[]? data = req.Data;
+                            VTQ[] data = req.Data ?? new VTQ[0];
                             ModifyMode mode = req.Mode;
-
-                            if (data == null) {
-                                return Result_BAD("Missing data");
-                            }
-
                             await core.history.HistorianModify(variable, data, mode);
                             return Result_OK();
                         }
@@ -720,7 +715,7 @@ namespace Ifak.Fast.Mediator
 
                             var req = (HistorianDeleteVariablesReq)request;
 
-                            VariableRef[] variables = req.Variables ?? throw new Exception("Missing variables");
+                            VariableRef[] variables = req.Variables ?? new VariableRef[0];
                             await core.history.DeleteVariables(variables);
                             return Result_OK();
                         }
@@ -841,7 +836,7 @@ namespace Ifak.Fast.Mediator
 
         private async Task<ReqResult> DoWriteVariablesSync(VariableValues? values, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
-            if (values == null) throw new Exception("Missing values");
+            if (values == null) return Result_OK(WriteResult.OK);
 
             VariableError[]? ignoredVars = null;
             if (ignoreMissing) {
@@ -925,7 +920,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private async Task<WriteResult> DoWriteVariables(VariableValues? values, SessionInfo info, bool ignoreMissing) {
-            if (values == null) throw new Exception("Missing values");
+            if (values == null) return WriteResult.OK;
 
             VariableError[]? ignoredVars = null;
             if (ignoreMissing) {
@@ -977,7 +972,7 @@ namespace Ifak.Fast.Mediator
 
         private async Task<VariableValues> DoReadVariablesSync(List<VariableRef>? variables, Duration? timeout, SessionInfo info, bool ignoreMissing) {
 
-            if (variables == null) throw new Exception("Missing variables");
+            if (variables == null) return new VariableValues(0);
 
             if (ignoreMissing && !variables.All(VarExists)) {
                 variables = variables.Where(VarExists).ToList();
@@ -1050,7 +1045,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private VTQs DoReadVariables(List<VariableRef>? variables) {
-            if (variables == null) throw new Exception("Missing variables");
+            if (variables == null) return new VTQs(0);
             int N = variables.Count;
             var res = new VTQs(N);
             for (int i = 0; i < N; ++i) {
@@ -1063,7 +1058,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private VariableValues DoReadVariablesIgnoreMissing(List<VariableRef>? variables) {
-            if (variables == null) throw new Exception("Missing variables");
+            if (variables == null) return new VariableValues(0);
             int N = variables.Count;
             var res = new VariableValues(N);
             for (int i = 0; i < N; ++i) {

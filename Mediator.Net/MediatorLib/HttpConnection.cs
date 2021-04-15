@@ -211,24 +211,28 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task EnableConfigChangedEvents(params ObjectRef[] objects) {
+            if (objects == null) throw new ArgumentNullException(nameof(objects));
             var request = MakeSessionRequest<EnableConfigChangedEventsReq>();
             request.Objects = objects;
             await PostVoid(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params VariableRef[] variables) {
+            if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
             request.Variables = variables;
             await PostVoid(request);
         }
 
         public override async Task EnableVariableHistoryChangedEvents(params ObjectRef[] idsOfEnabledTreeRoots) {
+            if (idsOfEnabledTreeRoots == null) throw new ArgumentNullException(nameof(idsOfEnabledTreeRoots));
             var request = MakeSessionRequest<EnableVariableHistoryChangedEventsReq>();
             request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
             await PostVoid(request);
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params VariableRef[] variables) {
+            if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
             request.Options = options;
             request.Variables = variables;
@@ -236,6 +240,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task EnableVariableValueChangedEvents(SubOptions options, params ObjectRef[] idsOfEnabledTreeRoots) {
+            if (idsOfEnabledTreeRoots == null) throw new ArgumentNullException(nameof(idsOfEnabledTreeRoots));
             var request = MakeSessionRequest<EnableVariableValueChangedEventsReq>();
             request.Options = options;
             request.IdsOfEnabledTreeRoots = idsOfEnabledTreeRoots;
@@ -279,6 +284,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task<ObjectInfos> GetAllObjectsWithVariablesOfType(string moduleID, params DataType[] types) {
+            if (types == null) throw new ArgumentNullException(nameof(types));
             var request = MakeSessionRequest<GetAllObjectsWithVariablesOfTypeReq>();
             request.ModuleID = moduleID;
             request.Types = types;
@@ -286,6 +292,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task<ObjectInfos> GetChildrenOfObjects(params ObjectRef[] objectIDs) {
+            if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
             var request = MakeSessionRequest<GetChildrenOfObjectsReq>();
             request.ObjectIDs = objectIDs;
             return await Post<ObjectInfos>(request);
@@ -306,12 +313,14 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs) {
+            if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
             var request = MakeSessionRequest<GetObjectsByIDReq>();
             request.ObjectIDs = objectIDs;
             return await Post<ObjectInfos>(request);
         }
 
         public override async Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs) {
+            if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
             var request = MakeSessionRequest<GetObjectValuesByIDReq>();
             request.ObjectIDs = objectIDs;
             return await Post<ObjectValues>(request);
@@ -345,6 +354,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task HistorianDeleteVariables(params VariableRef[] variables) {
+            if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<HistorianDeleteVariablesReq>();
             request.Variables = variables;
             await PostVoid(request);
@@ -367,6 +377,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task HistorianModify(VariableRef variable, ModifyMode mode, params VTQ[] data) {
+            if (data == null) throw new ArgumentNullException(nameof(data));
             var request = MakeSessionRequest<HistorianModifyReq>();
             request.Variable = variable;
             request.Data = data;
@@ -446,25 +457,28 @@ namespace Ifak.Fast.Mediator
 
         public override async Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             var request = MakeSessionRequest<UpdateConfigReq>();
-            request.UpdateOrDeleteObjects = updateOrDeleteObjects;
-            request.UpdateOrDeleteMembers = updateOrDeleteMembers;
-            request.AddArrayElements = addArrayElements;
+            request.UpdateOrDeleteObjects = updateOrDeleteObjects ?? new ObjectValue[0];
+            request.UpdateOrDeleteMembers = updateOrDeleteMembers ?? new MemberValue[0];
+            request.AddArrayElements = addArrayElements ?? new AddArrayElement[0];
             await PostVoid(request);
         }
 
         public override Task WriteVariables(VariableValues values) {
+            if (values == null) throw new ArgumentNullException(nameof(values));
             var request = MakeSessionRequest<WriteVariablesReq>();
             request.Values = values;
             return PostVoid(request);
         }
 
         public override Task<WriteResult> WriteVariablesIgnoreMissing(VariableValues values) {
+            if (values == null) throw new ArgumentNullException(nameof(values));
             var request = MakeSessionRequest<WriteVariablesIgnoreMissingReq>();
             request.Values = values;
             return Post<WriteResult>(request);
         }
 
         public override async Task<WriteResult> WriteVariablesSync(VariableValues values, Duration? timeout = null) {
+            if (values == null) throw new ArgumentNullException(nameof(values));
             var request = MakeSessionRequest<WriteVariablesSyncReq>();
             request.Values = values;
             request.Timeout = timeout;
@@ -483,6 +497,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public override async Task<WriteResult> WriteVariablesSyncIgnoreMissing(VariableValues values, Duration? timeout = null) {
+            if (values == null) throw new ArgumentNullException(nameof(values));
             var request = MakeSessionRequest<WriteVariablesSyncIgnoreMissingReq>();
             request.Values = values;
             request.Timeout = timeout;
@@ -504,7 +519,7 @@ namespace Ifak.Fast.Mediator
             var request = MakeSessionRequest<CallMethodReq>();
             request.ModuleID = moduleID;
             request.MethodName = methodName;
-            request.Parameters = parameters;
+            request.Parameters = parameters ?? new NamedValue[0];
             return Post<DataValue>(request);
         }
 
