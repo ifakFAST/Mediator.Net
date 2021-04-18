@@ -128,6 +128,17 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             //loggerFactory.AddConsole(Microsoft.Extensions.Logging.LogLevel.Trace);
 
+            app.Use(async (context, nextMiddleware) => {
+                string path = context.Request.Path;
+                if (path == "/") {
+                    context.Response.OnStarting(() => {
+                        context.Response.Headers.Add("Expires", (DateTime.UtcNow + TimeSpan.FromMinutes(1)).ToString("r"));
+                        return Task.CompletedTask;
+                    });
+                }
+                await nextMiddleware();
+            });
+
             app.UseCors("AllowLocalhost8080");
 
             var webSocketOptions = new WebSocketOptions() {
