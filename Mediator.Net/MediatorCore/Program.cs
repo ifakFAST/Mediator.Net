@@ -76,7 +76,9 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            logger.Info($"Starting {title}...");
+            string version = Util.VersionInfo.ifakFAST_Str();
+
+            logger.Info($"Starting {title} {version}...");
 
             var core = new MediatorCore();
 
