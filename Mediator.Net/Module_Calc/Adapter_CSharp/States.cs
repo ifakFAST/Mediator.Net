@@ -249,4 +249,56 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             }
         }
     }
+
+    public class StateString : StateBase {
+
+        public string? DefaultValue { get; private set; }
+        public string? Value { get; set; }
+        public static implicit operator string?(StateString d) => d.Value;
+
+        public StateString(string name, string? defaultValue) :
+            base(name: name, unit: "", type: DataType.String, dimension: 1, defaultValue: DataValue.FromString(defaultValue)) {
+            DefaultValue = defaultValue;
+            Value = defaultValue;
+        }
+
+        internal override DataValue GetValue() {
+            return DataValue.FromString(Value);
+        }
+
+        internal override void SetValueFromDataValue(DataValue v) {
+            try {
+                Value = v.GetString();
+            }
+            catch (Exception) {
+                Value = DefaultValue;
+            }
+        }
+    }
+
+    public class StateTimestamp : StateBase {
+
+        public Timestamp? DefaultValue { get; private set; }
+        public Timestamp? Value { get; set; }
+        public static implicit operator Timestamp?(StateTimestamp d) => d.Value;
+
+        public StateTimestamp(string name, Timestamp? defaultValue) :
+            base(name: name, unit: "", type: DataType.Timestamp, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromTimestamp(defaultValue.Value) : DataValue.Empty) {
+            DefaultValue = defaultValue;
+            Value = defaultValue;
+        }
+
+        internal override DataValue GetValue() {
+            return Value.HasValue ? DataValue.FromTimestamp(Value.Value) : DataValue.Empty;
+        }
+
+        internal override void SetValueFromDataValue(DataValue v) {
+            try {
+                Value = v.GetTimestampOrNull();
+            }
+            catch (Exception) {
+                Value = DefaultValue;
+            }
+        }
+    }
 }

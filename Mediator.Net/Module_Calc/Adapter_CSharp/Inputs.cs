@@ -225,4 +225,66 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             DefaultValue = defaultValue;
         }
     }
+
+    public class InputString : InputBase {
+
+        public string? DefaultValue { get; private set; }
+        public string? Value {
+            get {
+                try {
+                    return VTQ.V.GetString();
+                }
+                catch (Exception) {
+                    throw new Exception($"Input {ID}: Value is not a string value: {VTQ.V.JSON}");
+                }
+            }
+        }
+        public bool HasValidValue {
+            get {
+                try {
+                    return Value != null;
+                }
+                catch (Exception) {
+                    return false;
+                }
+            }
+        }
+        public static implicit operator string?(InputString d) => d.Value;
+
+        public InputString(string name, string? defaultValue) :
+            base(name: name, unit: "", type: DataType.String, dimension: 1, defaultValue: DataValue.FromString(defaultValue)) {
+            DefaultValue = defaultValue;
+        }
+    }
+
+    public class InputTimestamp : InputBase {
+
+        public Timestamp? DefaultValue { get; private set; }
+        public Timestamp? Value {
+            get {
+                try {
+                    return VTQ.V.GetTimestampOrNull();
+                }
+                catch (Exception) {
+                    throw new Exception($"Input {ID}: Value is not a timestamp value: {VTQ.V.JSON}");
+                }
+            }
+        }
+        public bool HasValidValue {
+            get {
+                try {
+                    return Value != null;
+                }
+                catch (Exception) {
+                    return false;
+                }
+            }
+        }
+        public static implicit operator Timestamp?(InputTimestamp d) => d.Value;
+
+        public InputTimestamp(string name, Timestamp? defaultValue) :
+            base(name: name, unit: "", type: DataType.Timestamp, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromTimestamp(defaultValue.Value) : DataValue.Empty) {
+            DefaultValue = defaultValue;
+        }
+    }
 }
