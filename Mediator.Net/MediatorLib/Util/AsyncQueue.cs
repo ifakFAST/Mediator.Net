@@ -17,8 +17,9 @@ namespace Ifak.Fast.Mediator.Util
         public void Post(T item) {
             lock (sync) {
                 if (promise != null) {
-                    promise.TrySetResult(item);
+                    var p = promise;
                     promise = null;
+                    p.TrySetResult(item);
                 }
                 else {
                     buffer.Enqueue(item);
