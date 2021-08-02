@@ -2,9 +2,10 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -18,10 +19,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
     public class OPC_UA : AdapterBase
     {
         private ApplicationDescription appDescription = new ApplicationDescription();
-        //private ICertificateStore certificateStore;
+        private ICertificateStore? certificateStore;
         private UaTcpSessionChannel? connection;
-
-        private readonly ILoggerFactory loggerFactory = new LoggerFactory();
 
         private Adapter? config;
         private AdapterCallback? callback;
@@ -41,13 +40,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 ApplicationUri = $"urn:{Dns.GetHostName()}:{appName}",
                 ApplicationType = ApplicationType.Client
             };
-
-            //string pkiPath = Path.Combine(
-            //    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            //    "Mediator.IO.OPC_UA",
-            //    "pki");
-
-            //certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: true, createLocalCertificateIfNotExist: true);
 
             this.mapId2Info = config.GetAllDataItems().Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                item => /* key */ item.ID,
@@ -70,30 +62,52 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             try {
 
-                var getEndpointsRequest = new GetEndpointsRequest {
-                    EndpointUrl = config.Address,
-                    ProfileUris = new[] { TransportProfileUris.UaTcpTransport }
-                };
+                if (certificateStore == null) {
 
-                GetEndpointsResponse endpointsResponse = await UaTcpDiscoveryService.GetEndpointsAsync(getEndpointsRequest);
-                EndpointDescription?[] endpoints = endpointsResponse.Endpoints ?? new EndpointDescription[0];
-                EndpointDescription[] noSecurityEndpoints = endpoints
-                    .Where(e => e != null && e.SecurityPolicyUri == SecurityPolicyUris.None)
-                    .Cast<EndpointDescription>()
-                    .ToArray();
+                    var pkiPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "ifakFAST.IO.OPC_UA",
+                        "pki");
 
-                var (endpoint, userIdentity) = FirstEndpointWithLogin(noSecurityEndpoints);
+                    Console.WriteLine($"Location of OPC UA certificate store: {pkiPath}");
 
-                if (endpoint == null || userIdentity == null) {
-                    throw new Exception("No matching endpoint");
+                    certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: true, createLocalCertificateIfNotExist: true);
                 }
 
+                const string Config_Security = "Security";
+                string sec = "None";
+                if (config.Config.Any(nv => nv.Name == Config_Security)) {
+                    sec = config.Config.First(nv => nv.Name == Config_Security).Value;
+                }
+
+                var mapSecurityPolicies = new Dictionary<string, string>() {
+                    { "None",                  SecurityPolicyUris.None },
+                    { "Basic128Rsa15",         SecurityPolicyUris.Basic128Rsa15 },
+                    { "Basic256",              SecurityPolicyUris.Basic256 },
+                    { "Https",                 SecurityPolicyUris.Https },
+                    { "Basic256Sha256",        SecurityPolicyUris.Basic256Sha256 },
+                    { "Aes128_Sha256_RsaOaep", SecurityPolicyUris.Aes128_Sha256_RsaOaep },
+                    { "Aes256_Sha256_RsaPss",  SecurityPolicyUris.Aes256_Sha256_RsaPss },
+                };
+
+                if (!mapSecurityPolicies.ContainsKey(sec)) {
+                    string[] keys = mapSecurityPolicies.Keys.ToArray();
+                    string strKeys = string.Join(", ", keys);
+                    throw new Exception($"Invalid value for config setting '{Config_Security}': {sec}. Expected any of: {strKeys}");
+                }
+
+                var endpoint = new EndpointDescription {
+                    EndpointUrl = config.Address,
+                    SecurityPolicyUri = mapSecurityPolicies[sec],
+                };
+
+                IUserIdentity identity = GetIdentity();
+
                 var channel = new UaTcpSessionChannel(
-                            this.appDescription,
-                            null,
-                            userIdentity,
-                            endpoint,
-                            loggerFactory);
+                            localDescription: appDescription,
+                            certificateStore: certificateStore,
+                            userIdentity: identity,
+                            remoteEndpoint: endpoint);
 
                 await channel.OpenAsync();
 
@@ -151,24 +165,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
         }
 
-        private (EndpointDescription?, IUserIdentity?) FirstEndpointWithLogin(EndpointDescription[] endpoints) {
-
-            if (config == null) return (null, null);
-
-            foreach (var endpoint in endpoints) {
-
-                foreach (var policy in CleanNulls(endpoint.UserIdentityTokens)) {
-
-                    if (policy.TokenType == UserTokenType.Anonymous && !config.Login.HasValue) {
-                        return (endpoint, new AnonymousIdentity());
-                    }
-
-                    if (policy.TokenType == UserTokenType.UserName && config.Login.HasValue) {
-                        return (endpoint, new UserNameIdentity(config.Login.Value.UserName, config.Login.Value.Password));
-                    }
-                }
+        private IUserIdentity GetIdentity() {
+            if (config == null) return new AnonymousIdentity();
+            if (config.Login.HasValue) {
+                return new UserNameIdentity(config.Login.Value.UserName, config.Login.Value.Password);
             }
-            return (null, null);
+            else {
+                return new AnonymousIdentity();
+            }
         }
 
         private static IEnumerable<T> CleanNulls<T>(IEnumerable<T?>? items) where T: class {
@@ -356,6 +360,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 case VariantType.Null: return lastValue;
 
                 case VariantType.DateTime:
+                    if (array) {
+                        DateTime[]? theArr = (DateTime[]?)v;
+                        Timestamp[]? timestamps = theArr == null ? null : theArr.Select(Timestamp.FromDateTime).ToArray();
+                        return DataValue.FromTimestampArray(timestamps);
+                    }
+                    else {
+                        return DataValue.FromTimestamp(Timestamp.FromDateTime((DateTime)v));
+                    }
+
                 case VariantType.Guid:
                 case VariantType.ByteString:
                 case VariantType.XmlElement:
@@ -451,27 +464,57 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return Task.FromResult(new string[0]);
         }
 
+        private string[]? cachedBrowseResult = null;
+        private Timestamp? cacheTime = null;
+        private const int CacheTimeMinutes = 30;
+
         public override async Task<string[]> BrowseDataItemAddress(string? idOrNull) {
 
             if (connection == null) {
                 return new string[0];
             }
 
+            if (cachedBrowseResult != null && cacheTime.HasValue && Timestamp.Now - cacheTime.Value < Duration.FromMinutes(CacheTimeMinutes)) {
+                PrintLine("Returning cached browse result.");
+                return cachedBrowseResult;
+            }
+
+            cachedBrowseResult = null;
+            cacheTime = null;
+
             var result = new List<BrowseNode>();
 
             NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ObjectsFolder), connection.NamespaceUris);
             var objects = new BrowseNode(objectsID, new QualifiedName("Objects"));
 
-            NodeId viewsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ViewsFolder), connection.NamespaceUris);
-            var views = new BrowseNode(viewsID, new QualifiedName("Views"));
+            //NodeId viewsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ViewsFolder), connection.NamespaceUris);
+            //var views = new BrowseNode(viewsID, new QualifiedName("Views"));
+            var set = new HashSet<BrowseNode>();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            await BrowseEntireTree(objects, result, set);
+            sw.Stop();
 
-            await BrowseEntireTree(objects, result);
-            await BrowseEntireTree(views, result);
+            //await BrowseEntireTree(views, result);
 
-            return result.Select(n => n.ToString()).ToArray();
+            string[] ids = new string[result.Count];
+            for (int i = 0; i < result.Count; ++i) {
+                ids[i] = result[i].ToString();
+            }
+
+            if (ids.Length > 0) {
+                Task _ = File.WriteAllLinesAsync("Browse_OPC_UA.txt", ids);
+            }
+
+            if (sw.Elapsed > TimeSpan.FromSeconds(5)) {
+                PrintLine($"Caching browse result for {CacheTimeMinutes} minutes.");
+                cachedBrowseResult = ids;
+                cacheTime = Timestamp.Now;
+            }
+
+            return ids;
         }
 
-        private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result) {
+        private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result, HashSet<BrowseNode> set) {
 
             var children = await BrowseTree(parent.ID);
             if (children == null || connection == null) return;
@@ -480,12 +523,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 NodeId id = ExpandedNodeId.ToNodeId(item.NodeId, connection.NamespaceUris);
                 if (item.NodeClass == NodeClass.Object && id.NamespaceIndex != 0 && item.BrowseName != null) {
                     var nodeObject = new BrowseNode(id, item.BrowseName, parent);
-                    await BrowseEntireTree(nodeObject, result);
+                    await BrowseEntireTree(nodeObject, result, set);
                 }
                 else if (item.NodeClass == NodeClass.Variable && id.NamespaceIndex != 0 && item.BrowseName != null) {
                     var nodeVariable = new BrowseNode(id, item.BrowseName, parent);
-                    if (result.All(n => n.ID != id)) {
+                    if (!set.Contains(nodeVariable)) {
                         result.Add(nodeVariable);
+                        set.Add(nodeVariable);
                     }
                 }
             }
@@ -617,7 +661,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
     }
 
-    class BrowseNode
+    class BrowseNode: IEquatable<BrowseNode>
     {
         public NodeId ID { get; set; }
         public QualifiedName BrowseName { get; set; }
@@ -630,6 +674,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         public override string ToString() {
+
+            if (ID.IdType == IdType.String) {
+                return ID.ToString();
+            }
+
             var sb = new StringBuilder();
             PrintPath(this, sb);
             return sb.ToString();
@@ -644,6 +693,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 sb.Append(ItemInfo.Separator);
                 sb.Append(node.BrowseName.ToString());
             }
+        }
+
+        public override int GetHashCode() => ID.GetHashCode();
+
+        public bool Equals([AllowNull] BrowseNode other) => other != null && ID == other.ID;
+
+        public override bool Equals(object? obj) {
+            if (obj is BrowseNode) {
+                return Equals((BrowseNode)obj);
+            }
+            return false;
         }
     }
 }
