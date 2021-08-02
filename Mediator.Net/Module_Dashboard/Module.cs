@@ -329,7 +329,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     var session = new Session();
                     Connection connection;
                     try {
-                        connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session);
+                        connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session, timeoutSeconds: 90);
                     }
                     catch (Exception exp) {
                         logWarn(exp.Message);
