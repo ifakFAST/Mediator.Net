@@ -259,6 +259,15 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
             long N = CountData(startInclusive, endInclusive, filter);
 
+            //double millis = (endInclusive - startInclusive).TotalMilliseconds + 1;
+            //double avgInterval_MS = millis / N;
+            //double requestInterval_MS = 60 * 1000;
+
+            //double N_2 = N;
+            //if (requestInterval_MS > avgInterval_MS) {
+            //    N_2 = N / (requestInterval_MS / avgInterval_MS);
+            //}
+
             PreparedStatement statement;
 
             switch (bounding) {
