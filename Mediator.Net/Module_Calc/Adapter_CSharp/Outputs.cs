@@ -95,6 +95,19 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class OutputString : OutputBase
+    {
+        public OutputString(string name) :
+            base(name: name, unit: "", type: DataType.String, dimension: 1) {
+        }
+
+        public string Value {
+            set {
+                VTQ = VTQ.WithValue(DataValue.FromString(value));
+            }
+        }
+    }
+
     public class OutputStruct : OutputBase {
 
         public OutputStruct(string name) :
