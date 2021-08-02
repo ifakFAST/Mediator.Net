@@ -420,7 +420,7 @@ namespace Ifak.Fast.Mediator.Calc
 
             Duration cycle = adapter.ScaledCycle();
             Duration offset = adapter.ScaledOffset();
-            Timestamp t = GetNextNormalizedTimestamp(cycle, offset);
+            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
             string moduleID = base.moduleID;
 
             await adapter.WaitUntil(t);
@@ -635,7 +635,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private Timestamp GetNextNormalizedTimestamp(Timestamp tCurrent, Duration cycle, Duration offset, CalcInstance adapter) {
 
-            Timestamp tNext = GetNextNormalizedTimestamp(cycle, offset);
+            Timestamp tNext = Time.GetNextNormalizedTimestamp(cycle, offset);
 
             Duration minDuration = Duration.FromMilliseconds(1);
             Duration c = cycle < minDuration ? minDuration : cycle;
@@ -654,16 +654,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
 
             return tNext;
-        }
-
-        private static Timestamp GetNextNormalizedTimestamp(Duration cycle, Duration offset) {
-            long cycleTicks = cycle.TotalMilliseconds;
-            long offsetTicks = offset.TotalMilliseconds;
-            long nowTicks = Timestamp.Now.JavaTicks - offsetTicks;
-            long tLast = nowTicks - (nowTicks % cycleTicks);
-            long tNext = tLast + cycleTicks + offsetTicks;
-            return Timestamp.FromJavaTicks(tNext);
-        }
+        }      
 
         private void Log_Info(string type, string msg) {
             Log_Event(Severity.Info, type, msg);
