@@ -286,15 +286,17 @@ namespace Ifak.Fast.Mediator.Calc
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException();
                 string errMsg = $"Restart of calculation {adapter.Name} failed: {exp.Message}";
-                Log_Error("CalcRestartError", errMsg);
+
                 if (critical) {
+                    Log_Error("CalcRestartError", errMsg);
                     // Thread.Sleep(500);
                     // Environment.Exit(1); // will result in restart of entire module by Mediator
                     int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
                     await Task.Delay(delayMS);
-                    Task ignored = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                    Task _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
                 }
                 else {
+                    Log_Info("CalcRestartFailed", errMsg);
                     adapter.IsRestarting = false;
                     throw new Exception(errMsg);
                 }
