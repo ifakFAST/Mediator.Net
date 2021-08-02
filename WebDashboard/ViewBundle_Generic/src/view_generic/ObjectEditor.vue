@@ -174,7 +174,7 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="browseDialog.show" persistent scrollable max-width="700px" @keydown="browseKeydown">
+    <v-dialog v-model="browseDialog.show" persistent scrollable max-width="900px" @keydown="browseKeydown">
       <v-card>
           <v-card-title>
             <v-text-field v-show="!browseValuesLoading" v-model="search" label="Search Text" ref="txtSearch" autofocus></v-text-field>
