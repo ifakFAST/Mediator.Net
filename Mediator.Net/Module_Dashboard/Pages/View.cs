@@ -42,10 +42,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return Task.FromResult(true);
         }
 
-        public Task<ReqResult> UiReq_Init() {
+        public async Task<ReqResult> UiReq_Init() {
 
             if (configuration.Pages.Length > 0) {
-                Task ignored = UiReq_SwitchToPage(configuration.Pages.First().ID);
+                await UiReq_SwitchToPage(configuration.Pages.First().ID);
             }
 
             var result = ReqResult.OK(new {
@@ -53,7 +53,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 widgetTypes = widgetTypes.Keys.OrderBy(s => s).ToArray()
             });
 
-            return Task.FromResult(result);
+            return result;
         }
 
         public async Task<ReqResult> UiReq_SwitchToPage(string pageID) {
