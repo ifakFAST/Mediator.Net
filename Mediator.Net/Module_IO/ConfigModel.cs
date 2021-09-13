@@ -14,6 +14,7 @@ namespace Ifak.Fast.Mediator.IO.Config
 {
     [XmlRoot(Namespace = "Module_IO", ElementName = "IO_Model")]
     public class IO_Model : ModelObject {
+
         [XmlIgnore]
         public string ID { get; set; } = "Root";
 
@@ -27,6 +28,8 @@ namespace Ifak.Fast.Mediator.IO.Config
         public List<Adapter> Adapters { get; set; } = new List<Adapter>();
 
         public bool ShouldSerializeFolders() => Folders.Count > 0;
+        public bool ShouldSerializeID() => false;
+        public bool ShouldSerializeName() => false;
 
         public List<Adapter> GetAllAdapters() {
             var res = new List<Adapter>();
