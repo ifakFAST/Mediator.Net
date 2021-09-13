@@ -395,6 +395,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeType() => Type != DataType.Float64;
         public bool ShouldSerializeComment() => !string.IsNullOrEmpty(Comment);
         public bool ShouldSerializeLocationStringFoxXml() => !string.IsNullOrEmpty(LocationStringFoxXml);
+        public bool ShouldSerializeLocation() => Location.HasValue;
         public bool ShouldSerializeConversionRead() => !string.IsNullOrEmpty(ConversionRead);
         public bool ShouldSerializeConversionWrite() => !string.IsNullOrEmpty(ConversionWrite);
 
@@ -461,6 +462,10 @@ namespace Ifak.Fast.Mediator.IO.Config
         public Duration? Interval { get; set; } // Must be at most 24 hours, and must divide 24 hours in whole numbers, e.g. 6h, 8h, 12h but not 7h
         public Duration? Offset { get; set; }
         public bool UseTimestampFromSource { get; set; }
+
+        public bool ShouldSerializeInterval() => Interval.HasValue;
+        public bool ShouldSerializeOffset() => Offset.HasValue;
+        public bool ShouldSerializeUseTimestampFromSource() => UseTimestampFromSource;
 
         public XmlSchema? GetSchema() => null;
 
