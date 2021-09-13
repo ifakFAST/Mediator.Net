@@ -20,7 +20,7 @@ namespace Ifak.Fast.Mediator.Publish
     {
         public static async Task MakeConfigPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
 
-            var mqttOptions = MakeMqttOptions(certDir, config);
+            var mqttOptions = MakeMqttOptions(certDir, config, "ConfigPub");
             var configPub = config.ConfigPublish!;
             string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + configPub.Topic;
 
@@ -112,7 +112,7 @@ namespace Ifak.Fast.Mediator.Publish
 
             SynchronizationContext theSyncContext = SynchronizationContext.Current!;
 
-            var mqttOptions = MakeMqttOptions(certDir, config);
+            var mqttOptions = MakeMqttOptions(certDir, config, "VarRec");
             var varRec = config.VarReceive!;
             string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + varRec.Topic;
 
@@ -165,8 +165,9 @@ namespace Ifak.Fast.Mediator.Publish
                     try {
                         await clientMQTT.PingAsync(CancellationToken.None);
                     }
-                    catch (Exception) {
-                        Console.Error.WriteLine("Connection broken. Trying to reconnect...");
+                    catch (Exception exp) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        Console.Error.WriteLine($"MakeVarRecTask: Connection broken during Ping. Trying to reconnect. Err: {e.Message}");
                         break;
                     }
 
@@ -221,7 +222,7 @@ namespace Ifak.Fast.Mediator.Publish
 
         public static async Task MakeVarPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
 
-            var mqttOptions = MakeMqttOptions(certDir, config);
+            var mqttOptions = MakeMqttOptions(certDir, config, "VarPub");
             var varPub = config.VarPublish!;
             string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + varPub.Topic;
 
@@ -381,10 +382,14 @@ namespace Ifak.Fast.Mediator.Publish
             catch (Exception) { }
         }
 
-        private static IMqttClientOptions MakeMqttOptions(string certDir, MqttConfig config) {
+        private static readonly string TheGuid = Guid.NewGuid().ToString().Replace("-", "");
+
+        private static IMqttClientOptions MakeMqttOptions(string certDir, MqttConfig config, string suffix) {
+
+            string clientID = $"{config.ClientIDPrefix}_{suffix}_{TheGuid}";
 
             var builder = new MqttClientOptionsBuilder()
-                .WithClientId(config.ClientID)
+                .WithClientId(clientID)
                 .WithTcpServer(config.Endpoint);
 
             if (config.CertFileCA != "") {

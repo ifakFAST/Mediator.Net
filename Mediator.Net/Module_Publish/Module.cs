@@ -83,7 +83,7 @@ namespace Ifak.Fast.Mediator.Publish
         public string Name { get; set; } = "";
 
         public string Endpoint { get; set; } = "";
-        public string ClientID { get; set; } = "";
+        public string ClientIDPrefix { get; set; } = "";
         public string CertFileCA { get; set; } = "";
         public string CertFileClient { get; set; } = "";
 
@@ -112,7 +112,7 @@ namespace Ifak.Fast.Mediator.Publish
         public bool PrintPayload { get; set; } = true;
 
         public string ModuleID { get; set; } = "IO";
-        public string RootObject { get; set; } = "";
+        public string RootObject { get; set; } = "Root";
 
         public bool TimeAsUnixMilliseconds { get; set; } = false;
         public bool QualityNumeric { get; set; } = false;
@@ -153,6 +153,5 @@ namespace Ifak.Fast.Mediator.Publish
         public string Topic { get; set; } = "";
 
         public string ModuleID { get; set; } = "IO";
-        public string RootObject { get; set; } = "";
     }
 }
