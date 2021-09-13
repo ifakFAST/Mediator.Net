@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Publish_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Publish">  
+  <MQTT>
+    <MqttConfig id="mqtt_io" name="MQTT_IO">
+        <Endpoint>url.of.mqtt.broker</Endpoint>
+        <ClientID>client_id</ClientID>
+        <CertFileCA>RootCA.pem</CertFileCA>
+        <CertFileClient>client_cert.pfx</CertFileClient>
+        <MaxPayloadSize>131072</MaxPayloadSize>
+        <TopicRoot>TopicRoot</TopicRoot>
+        <VarPublish>
+            <Topic>IO</Topic>
+            <ModuleID>IO</ModuleID>
+            <RootObject>Root</RootObject>
+            <PayloadLimit>500</PayloadLimit>
+            <PrintPayload>true</PrintPayload>
+            <TimeAsUnixMilliseconds>false</TimeAsUnixMilliseconds>
+            <QualityNumeric>true</QualityNumeric>
+            <PublishInterval>5 s</PublishInterval>
+            <PublishOffset>0 s</PublishOffset>
+        </VarPublish>
+    </MqttConfig>
+  </MQTT>
+</Publish_Model>

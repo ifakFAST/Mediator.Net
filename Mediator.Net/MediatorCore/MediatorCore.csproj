@@ -29,6 +29,7 @@
     <ProjectReference Include="..\Module_Dashboard\Module_Dashboard.csproj" />
     <ProjectReference Include="..\Module_EventLog\Module_EventLog.csproj" />
     <ProjectReference Include="..\Module_IO\Module_IO.csproj" />
+    <ProjectReference Include="..\Module_Publish\Module_Publish.csproj" />
   </ItemGroup>
 
   <ItemGroup>

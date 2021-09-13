@@ -19,6 +19,7 @@ namespace Ifak.Fast.Mediator
                 typeof(Ifak.Fast.Mediator.IO.Module),
                 typeof(Ifak.Fast.Mediator.Dashboard.Module),
                 typeof(Ifak.Fast.Mediator.EventLog.Module),
+                typeof(Ifak.Fast.Mediator.Publish.Module),
             };
 
             Type? t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
