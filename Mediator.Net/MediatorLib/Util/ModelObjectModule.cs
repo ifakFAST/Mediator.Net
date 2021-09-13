@@ -18,6 +18,7 @@ namespace Ifak.Fast.Mediator.Util
 
         protected string modelFileName = "model.xml";
         protected string modelAsString = "";
+        protected ModelFormat modelFormat = ModelFormat.XML;
 
         protected ObjectInfo[] allObjectInfos = new ObjectInfo[0];
         protected Dictionary<ObjectRef, ObjectInfo> mapObjectInfos = new Dictionary<ObjectRef, ObjectInfo>();
@@ -58,11 +59,34 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         protected virtual T DeserializeModelFromString(string model) {
-            return Xml.FromXmlString<T>(modelAsString);
+
+            string m = model.TrimStart();
+
+            if (m.StartsWith("<")) {
+                modelFormat = ModelFormat.XML;
+                return Xml.FromXmlString<T>(modelAsString);
+            }
+            else if (m.StartsWith("{")) {
+                modelFormat = ModelFormat.JSON;
+                return StdJson.ObjectFromString<T>(modelAsString) ?? new T();
+            }
+            else {
+                throw new Exception($"Unknown file format for {modelFileName}: expected XML or JSON");
+            }
         }
 
         protected virtual string SerializeModelToString(T model) {
-            return Xml.ToXml(model);
+
+            switch (modelFormat) {
+                case ModelFormat.XML:
+                    return Xml.ToXml(model);
+
+                case ModelFormat.JSON:
+                    return StdJson.ObjectToString(model, indented: true);
+
+                default:
+                    throw new Exception($"Model format {modelFormat} not implemented in SerializeModelToString");
+            }
         }
 
         protected X? GetParentModelObjectFromIdOrNull<X>(ObjectRef id) where X : class, IModelObject {
@@ -419,6 +443,12 @@ namespace Ifak.Fast.Mediator.Util
         }
     }
 
+
+    public enum ModelFormat
+    {
+        XML,
+        JSON
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
