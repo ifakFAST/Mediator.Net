@@ -138,6 +138,8 @@ namespace Ifak.Fast.Mediator
             return
                 Name == other.Name &&
                 Type == other.Type &&
+                Writable == other.Writable &&
+                SyncReadable == other.SyncReadable &&
                 DefaultValue == other.DefaultValue &&
                 TypeConstraints == other.TypeConstraints &&
                 Dimension == other.Dimension &&

@@ -434,6 +434,70 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
+        protected async Task<Result> UpdateConfigByStr(string str) {
+
+            try {
+                var changedObjects = new List<ObjectRef>();
+
+                model = DeserializeModelFromString(str);
+                ModifyModelAfterInit();
+                await OnConfigModelChanged(init: false);
+
+                ObjectInfo rootObj = allObjectInfos.FirstOrDefault(obj => obj.Parent == null);
+                changedObjects.Add(rootObj.ID);
+
+                modelAsString = str;
+                WriteConfigFile(modelFileName, str);
+                if (notifier != null) {
+                    notifier.Notify_ConfigChanged(changedObjects);
+                }
+                return Result.OK;
+            }
+            catch (Exception exp) {
+                model = DeserializeModelFromString(modelAsString); // restore model which might have been partially modified before the exception
+                ModifyModelAfterInit();
+                await OnConfigModelChanged(init: false);
+                return Result.Failure("UpdateConfigByStr failed: " + exp.Message);
+            }
+        }
+
+        public override async Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
+
+            switch (methodName) {
+                case "GetConfigString": {
+                        var res = Result<DataValue>.OK(DataValue.FromString(modelAsString));
+                        return res;
+                    }
+
+                case "SetConfigString": {
+
+                        if (parameters.Length != 1) {
+                            return Result<DataValue>.Failure("Missing parameter: str");
+                        }
+
+                        NamedValue parameter = parameters[0];
+                        if (parameter.Name != "str") {
+                            return Result<DataValue>.Failure("Missing parameter: str");
+                        }
+
+                        string modelString = parameter.Value;
+
+                        Result res = await UpdateConfigByStr(modelString);
+
+                        if (res.IsOK) {
+                            return Result<DataValue>.OK(DataValue.Empty);
+                        }
+                        else {
+                            return Result<DataValue>.Failure(res.Error ?? "");
+                        }
+                    }
+
+                default: {
+                        return Result<DataValue>.Failure("Method not implemented: " + methodName);
+                    }
+            }
+        }
+
         public override Task<VTQ[]> ReadVariables(Origin origin, VariableRef[] variables, Duration? timeout) {
             throw new NotImplementedException("ReadVariables not implemented");
         }
