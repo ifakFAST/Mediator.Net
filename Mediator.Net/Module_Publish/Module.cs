@@ -49,6 +49,13 @@ namespace Ifak.Fast.Mediator.Publish
 
             tasks.AddRange(tasksVarRec);
 
+            Task[] tasksConfigRec = model.MQTT
+               .Where(mqtt => mqtt.ConfigReceive != null)
+               .Select(mqtt => MqttPublisher.MakeConfigRecTask(mqtt, info, certDir, shutdown))
+               .ToArray();
+
+            tasks.AddRange(tasksConfigRec);
+
             if (tasks.Count == 0) {
                 while (!shutdown()) {
                     await Task.Delay(100);
@@ -91,9 +98,10 @@ namespace Ifak.Fast.Mediator.Publish
 
         public string TopicRoot { get; set; } = "";
 
-        public MqttVarPub?     VarPublish { get; set; } = null;
-        public MqttVarReceive? VarReceive { get; set; } = null;
-        public MqttConfigPub?  ConfigPublish { get; set; } = null;
+        public MqttVarPub?        VarPublish { get; set; } = null;
+        public MqttVarReceive?    VarReceive { get; set; } = null;
+        public MqttConfigPub?     ConfigPublish { get; set; } = null;
+        public MqttConfigReceive? ConfigReceive { get; set; } = null;
     }
 
 
@@ -153,5 +161,22 @@ namespace Ifak.Fast.Mediator.Publish
         public string Topic { get; set; } = "";
 
         public string ModuleID { get; set; } = "IO";
+    }
+
+    public class MqttConfigReceive : ModelObject
+    {
+        [XmlAttribute]
+        public string Name { get; set; } = "ConfigReceive";
+
+        protected override string GetID(IEnumerable<IModelObject> parents) {
+            var mqttConfig = (MqttConfig)parents.First();
+            return mqttConfig.ID + ".ConfigReceive";
+        }
+
+        public string Topic { get; set; } = "";
+
+        public string ModuleID { get; set; } = "IO";
+
+        public int MaxBuckets { get; set; } = 100;
     }
 }

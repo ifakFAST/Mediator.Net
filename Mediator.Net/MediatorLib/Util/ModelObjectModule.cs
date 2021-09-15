@@ -472,12 +472,12 @@ namespace Ifak.Fast.Mediator.Util
                 case "SetConfigString": {
 
                         if (parameters.Length != 1) {
-                            return Result<DataValue>.Failure("Missing parameter: str");
+                            return Result<DataValue>.Failure("Missing parameter: config");
                         }
 
                         NamedValue parameter = parameters[0];
-                        if (parameter.Name != "str") {
-                            return Result<DataValue>.Failure("Missing parameter: str");
+                        if (parameter.Name != "config") {
+                            return Result<DataValue>.Failure("Missing parameter: config");
                         }
 
                         string modelString = parameter.Value;
