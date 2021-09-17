@@ -28,11 +28,13 @@ namespace Ifak.Fast.Mediator
         private readonly Dictionary<VariableRef, VTQ> map = new Dictionary<VariableRef, VTQ>();
         private IList<ObjectInfo> allObjects = new ObjectInfo[0];
 
+        private readonly Util.FileStore fileStore;
+
         public ModuleVariables(string moduleID, string moduleName, string fileName) {
             this.moduleID = moduleID;
             this.moduleName = moduleName;
             this.fileName = fileName;
-
+            this.fileStore = new Util.FileStore(fileName);
             _ = FlushTask(updateCounter);
         }
 
@@ -141,6 +143,7 @@ namespace Ifak.Fast.Mediator
             if (changed) {
                 await Write(updateCounter);
             }
+            _ = fileStore.Terminate();
         }
 
         public void Load() {
@@ -183,31 +186,16 @@ namespace Ifak.Fast.Mediator
                 content = sw.ToString();
             }
 
-            int retryCounter = 0;
+            try {
 
-            while (true) {
+                await fileStore.Save(content);
 
-                try {
-                    using (var outputFile = new StreamWriter(fileName, false, Encoding.UTF8)) {
-                        await outputFile.WriteAsync(content);
-                        if (updateCounter == counter) {
-                            changed = false;
-                        }
-                        return;
-                    }
+                if (updateCounter == counter) {
+                    changed = false;
                 }
-                catch (Exception exp) {
-                    const int MaxRetry = 5;
-                    if (retryCounter < MaxRetry) {
-                        retryCounter += 1;
-                        logger.Warn($"Exception while persisting variables for module {moduleName}. Retrying {retryCounter}/{MaxRetry}...");
-                        await Task.Delay(retryCounter * 100);
-                    }
-                    else {
-                        logger.Error(exp, "Failed to persist variables for module " + moduleName);
-                        return;
-                    }
-                }
+            }
+            catch (Exception exp) {
+                logger.Error(exp, "Failed to persist variables for module " + moduleName);
             }
         }
 

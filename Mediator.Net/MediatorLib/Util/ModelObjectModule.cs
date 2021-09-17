@@ -55,7 +55,7 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         protected virtual void WriteConfigFile(string modelFileName, string modelAsString) {
-            File.WriteAllText(modelFileName, modelAsString, Encoding.UTF8);
+            FileWrite.WriteFileOrThrow(modelFileName, modelAsString, Encoding.UTF8, maxRetry: 5, retryDelayFactor: 50);
         }
 
         protected virtual T DeserializeModelFromString(string model) {
