@@ -550,7 +550,10 @@ namespace Ifak.Fast.Mediator.Publish
                     {
                         clientCert,
                         caCert
-                    }
+                    },
+                    IgnoreCertificateRevocationErrors = config.IgnoreCertificateRevocationErrors,
+                    IgnoreCertificateChainErrors = config.IgnoreCertificateChainErrors,
+                    AllowUntrustedCertificates = config.AllowUntrustedCertificates,
                 });
             }
 

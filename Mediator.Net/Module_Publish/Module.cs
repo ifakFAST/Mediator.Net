@@ -94,6 +94,10 @@ namespace Ifak.Fast.Mediator.Publish
         public string CertFileCA { get; set; } = "";
         public string CertFileClient { get; set; } = "";
 
+        public bool IgnoreCertificateRevocationErrors { get; set; } = false;
+        public bool IgnoreCertificateChainErrors { get; set; } = false;
+        public bool AllowUntrustedCertificates { get; set; } = false;
+
         public int MaxPayloadSize { get; set; } = 128 * 1024;
 
         public string TopicRoot { get; set; } = "";

@@ -5,7 +5,10 @@
         <Endpoint>url.of.mqtt.broker</Endpoint>
         <ClientID>client_id</ClientID>
         <CertFileCA>RootCA.pem</CertFileCA>
-        <CertFileClient>client_cert.pfx</CertFileClient>
+        <CertFileClient>client_cert.pfx</CertFileClient>        
+        <IgnoreCertificateRevocationErrors>false</IgnoreCertificateRevocationErrors>
+        <IgnoreCertificateChainErrors>false</IgnoreCertificateChainErrors>
+        <AllowUntrustedCertificates>false</AllowUntrustedCertificates>        
         <MaxPayloadSize>131072</MaxPayloadSize>
         <TopicRoot>TopicRoot</TopicRoot>
         <VarPublish>
