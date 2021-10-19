@@ -56,6 +56,13 @@ namespace Ifak.Fast.Mediator.Publish
 
             tasks.AddRange(tasksConfigRec);
 
+            Task[] tasksMethodPub = model.MQTT
+              .Where(mqtt => mqtt.MethodPublish != null)
+              .Select(mqtt => MqttPublisher.MakeMethodPubTask(mqtt, info, certDir, shutdown))
+              .ToArray();
+
+            tasks.AddRange(tasksMethodPub);
+
             if (tasks.Count == 0) {
                 while (!shutdown()) {
                     await Task.Delay(100);
@@ -106,6 +113,7 @@ namespace Ifak.Fast.Mediator.Publish
         public MqttVarReceive?    VarReceive { get; set; } = null;
         public MqttConfigPub?     ConfigPublish { get; set; } = null;
         public MqttConfigReceive? ConfigReceive { get; set; } = null;
+        public MqttMethodPub?     MethodPublish { get; set; } = null;
     }
 
 
@@ -182,5 +190,25 @@ namespace Ifak.Fast.Mediator.Publish
         public string ModuleID { get; set; } = "IO";
 
         public int MaxBuckets { get; set; } = 100;
+    }
+
+    public class MqttMethodPub : ModelObject
+    {
+        [XmlAttribute]
+        public string Name { get; set; } = "MethodPub";
+
+        protected override string GetID(IEnumerable<IModelObject> parents) {
+            var mqttConfig = (MqttConfig)parents.First();
+            return mqttConfig.ID + ".MethodPub";
+        }
+
+        public string Topic { get; set; } = "method/reported";
+
+        public string ModuleID { get; set; } = "IO";
+        public string MethodName { get; set; } = "BrowseAllAdapterDataItems";
+        public bool PrintPayload { get; set; } = true;
+
+        public Duration PublishInterval { get; set; } = Duration.FromHours(1);
+        public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
     }
 }
