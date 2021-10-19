@@ -1050,27 +1050,41 @@ namespace Ifak.Fast.Mediator.IO
             }
         }
 
-        //public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
+        public override async Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 
-        //    Log_Info("OnMethodCall: " + methodName);
+            switch (methodName) {
+                case "BrowseAllAdapterDataItems": {
 
-        //    switch (methodName) {
-        //        case "Browse": {
-        //                var res = Result<DataValue>.OK(DataValue.FromDouble(3.1415926));
-        //                return Task.FromResult(res);
-        //            }
+                        try {
+                            Task<AdapterBrowseInfo>[] tasks = adapters
+                                .Where(a => a.Instance != null && a.State == State.Running)
+                                .Select(a => BrowseAdapter(a.Config, a.Instance!))
+                                .ToArray();
 
-        //        case "BrowseErr": {
-        //                var res = Result<DataValue>.Failure("Fähler!");
-        //                return Task.FromResult(res);
-        //            }
+                            AdapterBrowseInfo[] x = await Task.WhenAll(tasks);
 
-        //        default: {
-        //                throw new Exception("Some unexpected exception");
-        //            }
-        //    }
+                            return Result<DataValue>.OK(DataValue.FromObject(x));
+                        }
+                        catch (Exception exp) {
+                            Exception e = exp.GetBaseException() ?? exp;
+                            return Result<DataValue>.Failure($"Exception while browsing: {e.Message}");
+                        }
+                    }
+            }
 
-        //}
+            return await base.OnMethodCall(origin, methodName, parameters);
+        }
+
+        private async Task<AdapterBrowseInfo> BrowseAdapter(Config.Adapter config, AdapterBase adapter) {
+            string[] tags = await adapter.BrowseDataItemAddress(null);
+            var dataItems = tags.Select(t => new DataItemBrowseInfo() {
+                ID = t
+            }).ToArray();
+            return new AdapterBrowseInfo() {
+                AdapterID = config.ID,
+                DataItems = dataItems
+            };
+        }
 
         private void Log_Info(string type, string msg) {
             Log_Event(Severity.Info, type, msg);
@@ -1371,5 +1385,16 @@ namespace Ifak.Fast.Mediator.IO
                 m.Notify_NeedRestart(reason, a);
             }
         }
+    }
+
+    public class AdapterBrowseInfo
+    {
+        public string AdapterID { get; set; } = "";
+        public DataItemBrowseInfo[] DataItems { get; set; } = new DataItemBrowseInfo[0];
+    }
+
+    public class DataItemBrowseInfo
+    {
+        public string ID { get; set; } = "";
     }
 }
