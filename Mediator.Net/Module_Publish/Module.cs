@@ -4,7 +4,7 @@ using System.Linq;
 using System.Xml.Serialization;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
-
+using System.IO;
 
 namespace Ifak.Fast.Mediator.Publish
 {
@@ -27,6 +27,20 @@ namespace Ifak.Fast.Mediator.Publish
 
             string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
             var tasks = new List<Task>();
+
+            foreach (var mqt in model.MQTT) {
+                string file = mqt.TopicRootFile.Trim();
+                if (file != "") {
+                    if (!File.Exists(file)) {
+                        Console.WriteLine($"TopicRootFile '{file}' not found!");
+                    }
+                    else {
+                        string topic = File.ReadAllText(file, System.Text.Encoding.UTF8).Trim();
+                        mqt.TopicRoot = topic;
+                        Console.WriteLine($"Using root topic '{topic}' as specified in TopicRootFile '{file}'");
+                    }
+                }
+            }
 
             Task[] tasksVarPub = model.MQTT
                 .Where(mqtt => mqtt.VarPublish != null)
@@ -64,12 +78,23 @@ namespace Ifak.Fast.Mediator.Publish
             tasks.AddRange(tasksMethodPub);
 
             if (tasks.Count == 0) {
+
                 while (!shutdown()) {
                     await Task.Delay(100);
                 }
             }
             else {
-                await Task.WhenAll(tasks);
+
+                try {
+                    await Task.WhenAll(tasks);
+                }
+                catch (Exception exp) {
+                    if (!shutdown()) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        Console.Error.WriteLine($"Run: {e.GetType().FullName} {e.Message}");
+                        return;
+                    }
+                }
             }
         }
     }
@@ -108,6 +133,7 @@ namespace Ifak.Fast.Mediator.Publish
         public int MaxPayloadSize { get; set; } = 128 * 1024;
 
         public string TopicRoot { get; set; } = "";
+        public string TopicRootFile { get; set; } = ""; // optional file name containing the topic root to be used instead of TopicRoot
 
         public MqttVarPub?        VarPublish { get; set; } = null;
         public MqttVarReceive?    VarReceive { get; set; } = null;

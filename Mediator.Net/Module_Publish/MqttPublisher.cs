@@ -73,7 +73,9 @@ namespace Ifak.Fast.Mediator.Publish
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
                 string msg = $"Failed ifakFAST connection: {e.GetType().FullName} {e.Message}";
-                Console.Error.WriteLine(msg);
+                if (!e.Message.Contains("request because system is shutting down")) {
+                    Console.Error.WriteLine(msg);
+                }
                 throw new Exception(msg);
             }
         }
