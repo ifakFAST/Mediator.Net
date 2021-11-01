@@ -5,6 +5,7 @@ using MQTTnet.Client;
 using Ifak.Fast.Mediator.Util;
 using Ifak.Fast.Json.Linq;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using System.Collections.Generic;
 
 namespace Ifak.Fast.Mediator.Publish
 {
@@ -15,11 +16,14 @@ namespace Ifak.Fast.Mediator.Publish
             var mqttOptions = MakeMqttOptions(certDir, config, "VarPub");
             var varPub = config.VarPublish!;
             string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + varPub.Topic;
+            string topicRegister = varPub.TopicRegistration.Trim() == "" ? "" : (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + varPub.TopicRegistration;
 
             Timestamp t = Time.GetNextNormalizedTimestamp(varPub.PublishInterval, varPub.PublishOffset);
             await Time.WaitUntil(t, abort: shutdown);
 
             ObjectRef objRoot = ObjectRef.Make(varPub.ModuleID, varPub.RootObject);
+
+            RegCache reg = new RegCache(varPub, topicRegister);
 
             Connection clientFAST = await EnsureConnectOrThrow(info, null);
             IMqttClient? clientMQTT = null;
@@ -33,6 +37,8 @@ namespace Ifak.Fast.Mediator.Publish
                 clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
 
                 if (clientMQTT != null) {
+
+                    await reg.Register(clientMQTT, values);
 
                     while (values.Count > 0) {
 
@@ -99,6 +105,54 @@ namespace Ifak.Fast.Mediator.Publish
                 case Quality.Uncertain: return 2;
             }
             return 0;
+        }
+
+
+        public class RegCache
+        {
+            private readonly HashSet<VariableRef> registeredVars = new HashSet<VariableRef>();
+            private MqttVarPub varPub;
+            private string topic;
+
+            public RegCache(MqttVarPub varPub, string topic) {
+                this.varPub = varPub;
+                this.topic = topic;
+            }
+
+            public async Task Register(IMqttClient clientMQTT, VariableValues allValues) {
+
+                if (topic == "") return;
+
+                var newVarVals = allValues.Where(v => !registeredVars.Contains(v.Variable)).ToList();
+
+                while (newVarVals.Count > 0) {
+
+                    int BatchSize = Math.Min(varPub.PayloadLimit, newVarVals.Count);
+                    var batch = newVarVals.Take(BatchSize).ToArray();
+                    newVarVals.RemoveRange(0, BatchSize);
+
+                    JObject[] payload = batch.Select(vv => FromVariableValue(vv, varPub)).ToArray();
+
+                    string msg = StdJson.ObjectToString(payload);
+
+                    try {
+                        await clientMQTT.PublishAsync(topic, msg);
+
+                        foreach (var vv in batch) {
+                            registeredVars.Add(vv.Variable);
+                        }
+
+                        if (varPub.PrintPayload) {
+                            Console.Out.WriteLine($"REG PUB: {topic}: {msg}");
+                        }
+                    }
+                    catch (Exception exp) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        Console.Error.WriteLine($"Reg Publish failed for topic {topic}: {e.Message}");
+                        break;
+                    }
+                }
+            }
         }
     }
 }
