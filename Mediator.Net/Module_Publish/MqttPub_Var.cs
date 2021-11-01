@@ -32,7 +32,7 @@ namespace Ifak.Fast.Mediator.Publish
 
                 clientFAST = await EnsureConnectOrThrow(info, clientFAST);
 
-                VariableValues values = await clientFAST.ReadAllVariablesOfObjectTree(objRoot);
+                VariableValues values = Filter(await clientFAST.ReadAllVariablesOfObjectTree(objRoot), varPub);
 
                 clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
 
@@ -70,6 +70,39 @@ namespace Ifak.Fast.Mediator.Publish
 
             await clientFAST.Close();
             Close(clientMQTT);
+        }
+
+        private static VariableValues Filter(VariableValues values, MqttVarPub config) {
+
+            bool numsOnly = config.NumericTagsOnly;
+            bool sendNull = config.SendTagsWithNull;
+
+            if (!numsOnly && sendNull) {
+                return values;
+            }
+
+            var res = new VariableValues(values.Count);
+            foreach (var vv in values) {
+
+                if (numsOnly && !sendNull) {
+                    double? dbl = vv.Value.V.AsDouble();
+                    if (dbl.HasValue) {
+                        res.Add(vv);
+                    }
+                }
+                else if (numsOnly && sendNull) {
+                    double? dbl = vv.Value.V.AsDouble();
+                    if (dbl.HasValue || vv.Value.V.IsEmpty) {
+                        res.Add(vv);
+                    }
+                }
+                else if (!numsOnly && !sendNull) {
+                    if (!vv.Value.V.IsEmpty) {
+                        res.Add(vv);
+                    }
+                }
+            }
+            return res;
         }
 
         private static JObject FromVariableValue(VariableValue vv, MqttVarPub config) {

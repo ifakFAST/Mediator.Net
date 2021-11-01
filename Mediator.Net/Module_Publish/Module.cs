@@ -188,6 +188,9 @@ namespace Ifak.Fast.Mediator.Publish
         public string ModuleID { get; set; } = "IO";
         public string RootObject { get; set; } = "Root";
 
+        public bool NumericTagsOnly { get; set; } = true;
+        public bool SendTagsWithNull { get; set; } = false;
+
         public bool TimeAsUnixMilliseconds { get; set; } = false;
         public bool QualityNumeric { get; set; } = false;
 
