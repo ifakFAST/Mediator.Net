@@ -25,22 +25,29 @@ namespace Ifak.Fast.Mediator.Publish
 
         public override async Task Run(Func<bool> shutdown) {
 
-            string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
-            var tasks = new List<Task>();
+            var mapConfigVar = new Dictionary<string, string>();
 
-            foreach (var mqt in model.MQTT) {
-                string file = mqt.TopicRootFile.Trim();
-                if (file != "") {
-                    if (!File.Exists(file)) {
-                        Console.WriteLine($"TopicRootFile '{file}' not found!");
-                    }
-                    else {
-                        string topic = File.ReadAllText(file, System.Text.Encoding.UTF8).Trim();
-                        mqt.TopicRoot = topic;
-                        Console.WriteLine($"Using root topic '{topic}' as specified in TopicRootFile '{file}'");
+            string configVarFile = info.GetConfigReader().GetOptionalString("config-var-file", "").Trim();
+            if (configVarFile != "") {
+                if (!File.Exists(configVarFile)) {
+                    Console.WriteLine($"config-var-file '{configVarFile}' not found!");
+                }
+                else {
+                    string vars = File.ReadAllText(configVarFile, System.Text.Encoding.UTF8);
+                    var variables = StdJson.JObjectFromString(vars);
+                    Console.WriteLine($"Using variables as specified in config-var-file '{configVarFile}':");
+                    foreach (var prop in variables.Properties()) {
+                        string key = "${" + prop.Name + "}";
+                        mapConfigVar[key] = prop.Value.ToString();
+                        Console.WriteLine($"{prop.Name} -> {prop.Value}");
                     }
                 }
             }
+
+            model.ApplyVarConfig(mapConfigVar);
+
+            string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
+            var tasks = new List<Task>();
 
             Task[] tasksVarPub = model.MQTT
                 .Where(mqtt => mqtt.VarPublish != null)
@@ -111,6 +118,12 @@ namespace Ifak.Fast.Mediator.Publish
         public List<MqttConfig> MQTT { get; set; } = new List<MqttConfig>();
 
         public bool ShouldSerializeMQTT() { return MQTT.Count > 0; }
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var mm in MQTT) {
+                mm.ApplyVarConfig(vars);
+            }
+        }
     }
 
     public class MqttConfig : ModelObject
@@ -133,13 +146,27 @@ namespace Ifak.Fast.Mediator.Publish
         public int MaxPayloadSize { get; set; } = 128 * 1024;
 
         public string TopicRoot { get; set; } = "";
-        public string TopicRootFile { get; set; } = ""; // optional file name containing the topic root to be used instead of TopicRoot
 
         public MqttVarPub?        VarPublish { get; set; } = null;
         public MqttVarReceive?    VarReceive { get; set; } = null;
         public MqttConfigPub?     ConfigPublish { get; set; } = null;
         public MqttConfigReceive? ConfigReceive { get; set; } = null;
         public MqttMethodPub?     MethodPublish { get; set; } = null;
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Endpoint = Endpoint.Replace(entry.Key, entry.Value);
+                ClientIDPrefix = ClientIDPrefix.Replace(entry.Key, entry.Value);
+                CertFileCA = CertFileCA.Replace(entry.Key, entry.Value);
+                CertFileClient = CertFileClient.Replace(entry.Key, entry.Value);
+                TopicRoot = TopicRoot.Replace(entry.Key, entry.Value);
+            }
+            VarPublish?.ApplyVarConfig(vars);
+            VarReceive?.ApplyVarConfig(vars);
+            ConfigPublish?.ApplyVarConfig(vars);
+            ConfigReceive?.ApplyVarConfig(vars);
+            MethodPublish?.ApplyVarConfig(vars);
+        }
     }
 
 
@@ -154,6 +181,7 @@ namespace Ifak.Fast.Mediator.Publish
         }
 
         public string Topic { get; set; } = "";
+        public string TopicRegistration { get; set; } = "";
         public int PayloadLimit { get; set; } = 500;
         public bool PrintPayload { get; set; } = true;
 
@@ -165,6 +193,13 @@ namespace Ifak.Fast.Mediator.Publish
 
         public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
         public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Topic = Topic.Replace(entry.Key, entry.Value);
+                TopicRegistration = TopicRegistration.Replace(entry.Key, entry.Value);
+            }
+        }
     }
 
     public class MqttConfigPub : ModelObject
@@ -184,6 +219,12 @@ namespace Ifak.Fast.Mediator.Publish
 
         public Duration PublishInterval { get; set; } = Duration.FromMinutes(5);
         public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Topic = Topic.Replace(entry.Key, entry.Value);
+            }
+        }
     }
 
     public class MqttVarReceive : ModelObject
@@ -199,6 +240,12 @@ namespace Ifak.Fast.Mediator.Publish
         public string Topic { get; set; } = "";
 
         public string ModuleID { get; set; } = "IO";
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Topic = Topic.Replace(entry.Key, entry.Value);
+            }
+        }
     }
 
     public class MqttConfigReceive : ModelObject
@@ -216,6 +263,12 @@ namespace Ifak.Fast.Mediator.Publish
         public string ModuleID { get; set; } = "IO";
 
         public int MaxBuckets { get; set; } = 100;
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Topic = Topic.Replace(entry.Key, entry.Value);
+            }
+        }
     }
 
     public class MqttMethodPub : ModelObject
@@ -236,5 +289,11 @@ namespace Ifak.Fast.Mediator.Publish
 
         public Duration PublishInterval { get; set; } = Duration.FromHours(1);
         public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+
+        public void ApplyVarConfig(Dictionary<string, string> vars) {
+            foreach (var entry in vars) {
+                Topic = Topic.Replace(entry.Key, entry.Value);
+            }
+        }
     }
 }
