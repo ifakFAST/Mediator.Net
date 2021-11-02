@@ -535,12 +535,16 @@ namespace Ifak.Fast.Mediator
 
             reqHandler.OnAlarmOrEvent(ae);
 
+            bool logInfo = module.UpdateWarningAlarmState(e);
+
             string msg = e.Message;
 
             switch (e.Severity) {
 
                 case Severity.Info:
-                    module.logger.Info(msg);
+                    if (logInfo) {
+                        module.logger.Info(msg);
+                    }
                     break;
 
                 case Severity.Warning:
@@ -736,6 +740,45 @@ namespace Ifak.Fast.Mediator
 
         public void Notify_AlarmOrEvent(AlarmOrEventInfo alarmOrEventInfo) {
             syncContext.Post(delegate (object? state) { core.Notify_AlarmOrEvent(this, alarmOrEventInfo); }, null);
+        }
+
+        private readonly Dictionary<string, HashSet<ObjectRef>> map = new Dictionary<string, HashSet<ObjectRef>>();
+
+        public bool UpdateWarningAlarmState(AlarmOrEventInfo e) {
+
+            bool warnOrAlarm = e.Severity == Severity.Warning || e.Severity == Severity.Alarm;
+
+            if (warnOrAlarm) {
+
+                if (!map.ContainsKey(e.Type)) {
+                    map[e.Type] = new HashSet<ObjectRef>();
+                }
+                var set = map[e.Type];
+                if (e.AffectedObjects != null) {
+                    foreach (var obj in e.AffectedObjects) {
+                        set.Add(obj);
+                    }
+                }
+                return false;
+            }
+            else if (e.ReturnToNormal && map.ContainsKey(e.Type)) {
+
+                var set = map[e.Type];
+                bool anyRemoved = false;
+                if (e.AffectedObjects != null) {
+                    foreach (var obj in e.AffectedObjects) {
+                        anyRemoved |= set.Remove(obj);
+                    }
+                }
+                bool logInfo = anyRemoved || set.Count == 0;
+                if (set.Count == 0) {
+                    map.Remove(e.Type);
+                }
+                return logInfo;
+            }
+            else {
+                return e.Severity == Severity.Info && !e.ReturnToNormal;
+            }
         }
     }
 
