@@ -280,6 +280,16 @@ namespace Ifak.Fast.Mediator
             };
         }
 
+        public static AlarmOrEventInfo RTN(string type, string message, params ObjectRef[] affectedObjects) {
+            return new AlarmOrEventInfo() {
+                Severity = Severity.Info,
+                Type = type,
+                Message = message,
+                ReturnToNormal = true,
+                AffectedObjects = affectedObjects
+            };
+        }
+
         public override string ToString() => Severity + ": " + Message;
     }
 

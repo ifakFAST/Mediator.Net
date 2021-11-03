@@ -130,7 +130,7 @@ namespace Ifak.Fast.Mediator.IO
 
         public override string ToString() => Message;
 
-        public static AdapterAlarmOrEvent Info(string type, string message, params string[] affectedDataItems) {
+        public static AdapterAlarmOrEvent MakeInfo(string type, string message, params string[] affectedDataItems) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Info,
                 Type = type,
@@ -139,7 +139,7 @@ namespace Ifak.Fast.Mediator.IO
             };
         }
 
-        public static AdapterAlarmOrEvent Warning(string type, string message, params string[] affectedDataItems) {
+        public static AdapterAlarmOrEvent MakeWarning(string type, string message, params string[] affectedDataItems) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Warning,
                 Type = type,
@@ -148,12 +148,22 @@ namespace Ifak.Fast.Mediator.IO
             };
         }
 
-        public static AdapterAlarmOrEvent Alarm(string type, string message, params string[] affectedDataItems) {
+        public static AdapterAlarmOrEvent MakeAlarm(string type, string message, params string[] affectedDataItems) {
             return new AdapterAlarmOrEvent() {
                 Severity = Severity.Alarm,
                 Type = type,
                 Message = message,
                 AffectedDataItems = affectedDataItems
+            };
+        }
+
+        public static AdapterAlarmOrEvent MakeReturnToNormal(string type, string message, params string[] affectedDataItems) {
+            return new AdapterAlarmOrEvent() {
+                Severity = Severity.Info,
+                Type = type,
+                Message = message,
+                AffectedDataItems = affectedDataItems,
+                ReturnToNormal = true
             };
         }
     }

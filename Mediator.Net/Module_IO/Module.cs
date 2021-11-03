@@ -981,14 +981,14 @@ namespace Ifak.Fast.Mediator.IO
             }
             if (goodItems.Count == 1) {
                 string msg = "Good quality restored for data item: " + goodItems[0].Name;
-                var ev = AlarmOrEventInfo.Info("Quality", msg, ObjectRef.Make(moduleID, goodItems[0].ID));
+                var ev = AlarmOrEventInfo.RTN("Quality", msg, ObjectRef.Make(moduleID, goodItems[0].ID));
                 notifier?.Notify_AlarmOrEvent(ev);
             }
             else if (goodItems.Count > 1) {
                 string names = string.Join(", ", goodItems.Select(it => it.Name));
                 string msg = $"Good quality restored for {goodItems.Count} data items: {goodItems[0].Name}, ... ";
                 ObjectRef[] objs = goodItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
-                var ev = AlarmOrEventInfo.Info("Quality", msg, objs);
+                var ev = AlarmOrEventInfo.RTN("Quality", msg, objs);
                 ev.Details = names;
                 notifier?.Notify_AlarmOrEvent(ev);
             }

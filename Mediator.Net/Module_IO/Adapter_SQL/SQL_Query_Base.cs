@@ -197,18 +197,16 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             Console.WriteLine(config.Name + ": " + msg);
         }
 
-        private void LogError(string type, string msg) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.Alarm(type, msg));
+        private void LogError(string type, string msg, params string[] affectedDataItems) {
+            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeAlarm(type, msg, affectedDataItems));
         }
 
         private void LogWarning(string type, string msg, params string[] affectedDataItems) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.Warning(type, msg, affectedDataItems));
+            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeWarning(type, msg, affectedDataItems));
         }
 
         private void ReturnToNormal(string type, string msg, params string[] affectedDataItems) {
-            var it = AdapterAlarmOrEvent.Info(type, msg, affectedDataItems);
-            it.ReturnToNormal = true;
-            callback?.Notify_AlarmOrEvent(it);
+            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems));
         }
     }
 }

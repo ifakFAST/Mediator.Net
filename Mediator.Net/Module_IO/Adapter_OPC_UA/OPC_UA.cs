@@ -155,6 +155,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         }
                     }
                 }
+                ReturnToNormal("OpenChannel", $"Connected to OPC UA server at {config.Address}");
                 return true;
             }
             catch (Exception exp) {
@@ -203,6 +204,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             catch (Exception) { }
         }
 
+        private bool readExceptionWarning = false;
+
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
             bool connected = await TryConnect();
@@ -218,6 +221,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             try {
 
+                VTQ[] result;
+
                 if (dataItemsToRead.Length > 0) {
 
                     var readRequest = new Workstation.ServiceModel.Ua.ReadRequest {
@@ -227,14 +232,22 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                     ReadResponse readResponse = await connection.ReadAsync(readRequest);
                     readHelper.SetAllResults(readResponse.Results, (vv, request) => MakeVTQ(vv, request.LastValue, request.ID));
-                    return readHelper.values;
+                    result = readHelper.values;
                 }
                 else {
-                    return readHelper.values;
+                    result = readHelper.values;
                 }
+
+                if (readExceptionWarning) {
+                    readExceptionWarning = false;
+                    ReturnToNormal("UAReadExcept", "ReadDataItems successful again");
+                }
+
+                return result;
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
+                readExceptionWarning = true;
                 LogWarn("UAReadExcept", $"Read exception: {e.Message}", details: e.ToString());
                 Task ignored = CloseChannel();
                 return GetBadVTQs(items);
@@ -589,6 +602,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             };
 
             callback?.Notify_AlarmOrEvent(ae);
+        }
+
+        private void ReturnToNormal(string type, string msg, params string[] affectedDataItems) {
+            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems));
         }
     }
 
