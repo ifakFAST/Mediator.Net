@@ -64,11 +64,11 @@ namespace Ifak.Fast.Mediator.Util
 
             if (m.StartsWith("<")) {
                 modelFormat = ModelFormat.XML;
-                return Xml.FromXmlString<T>(modelAsString);
+                return Xml.FromXmlString<T>(model);
             }
             else if (m.StartsWith("{")) {
                 modelFormat = ModelFormat.JSON;
-                return StdJson.ObjectFromString<T>(modelAsString) ?? new T();
+                return StdJson.ObjectFromString<T>(model) ?? new T();
             }
             else {
                 throw new Exception($"Unknown file format for {modelFileName}: expected XML or JSON");
