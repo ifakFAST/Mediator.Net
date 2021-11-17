@@ -28,14 +28,12 @@ namespace Ifak.Fast.Mediator
         private readonly Dictionary<VariableRef, VTQ> map = new Dictionary<VariableRef, VTQ>();
         private IList<ObjectInfo> allObjects = new ObjectInfo[0];
 
-        private readonly Util.FileStore fileStore;
+        private Util.FileStore? fileStore = null;
 
         public ModuleVariables(string moduleID, string moduleName, string fileName) {
             this.moduleID = moduleID;
             this.moduleName = moduleName;
             this.fileName = fileName;
-            this.fileStore = new Util.FileStore(fileName);
-            _ = FlushTask(updateCounter);
         }
 
         public void Sync(IList<ObjectInfo> allObjects) {
@@ -138,15 +136,23 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public async Task Shutdown() {
-            closed = true;
+        public async Task Flush() {
             if (changed) {
                 await Write(updateCounter);
             }
-            _ = fileStore.Terminate();
         }
 
-        public void Load() {
+        public void Shutdown() {
+            closed = true;
+            _ = fileStore?.Terminate();
+        }
+
+        public void StartAndLoad() {
+
+            closed = false;
+            this.fileStore = new Util.FileStore(fileName);
+            _ = FlushTask(updateCounter);
+
             try {
                 map.Clear();
                 if (!string.IsNullOrEmpty(fileName)) {
@@ -188,7 +194,10 @@ namespace Ifak.Fast.Mediator
 
             try {
 
-                await fileStore.Save(content);
+                var fs = fileStore;
+                if (fs != null) {
+                    await fs.Save(content);
+                }
 
                 if (updateCounter == counter) {
                     changed = false;

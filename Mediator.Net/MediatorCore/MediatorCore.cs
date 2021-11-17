@@ -606,7 +606,7 @@ namespace Ifak.Fast.Mediator
         public Logger logger;
         public Module Config { get; private set; }
         private readonly MediatorCore core;
-        private readonly ModuleVariables variables;
+        private ModuleVariables variables;
 
         public bool IsRestarting = false;
 
@@ -617,7 +617,6 @@ namespace Ifak.Fast.Mediator
             this.State = State.Created;
             this.Password = Guid.NewGuid().ToString();
             this.variables = new ModuleVariables(config.ID, config.Name, config.VariablesFileName);
-            this.variables.Load();
         }
 
         public List<ObjectInfo> AllObjects => allObjects;
@@ -690,7 +689,7 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
-        public Task FlushVariables() => variables.Shutdown();
+        public Task FlushVariables() => variables.Flush();
         public VariableValue[] GetVariableValues() => variables.GetVariableValues();
         public string ID => Config.ID;
         public string Name => Config.Name;
@@ -708,10 +707,14 @@ namespace Ifak.Fast.Mediator
         }
         public void SetInstanceNull() {
             instance = null;
+            variables.Shutdown();
+            variables = new ModuleVariables(Config.ID, Config.Name, Config.VariablesFileName);
         }
         public Task? RunTask { get; set; }
 
         public void CreateInstance() {
+
+            this.variables.StartAndLoad();
 
             string implAssembly = Config.ImplAssembly;
             const string releaseDebugPlaceHolder = "{RELEASE_OR_DEBUG}";
