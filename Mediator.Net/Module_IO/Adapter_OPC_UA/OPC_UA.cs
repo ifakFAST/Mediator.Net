@@ -28,6 +28,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         public override bool SupportsScheduledReading => true;
 
+        private string lastConnectErrMsg = "";
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
@@ -58,7 +60,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 return true;
             }
 
-            if (config == null || string.IsNullOrEmpty(config.Address)) return false;
+            if (config == null || string.IsNullOrEmpty(config.Address)) {
+                lastConnectErrMsg = "No address configured";
+                return false;
+            }
 
             try {
 
@@ -112,6 +117,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 await channel.OpenAsync();
 
                 this.connection = channel;
+                lastConnectErrMsg = "";
 
                 PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'.");
                 PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'.");
@@ -160,6 +166,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
             catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
+                lastConnectErrMsg = baseExp.Message;
                 LogWarn("OpenChannel", "Open channel error: " + baseExp.Message, dataItem: null, details: baseExp.StackTrace);
                 await CloseChannel();
                 return false;
@@ -527,6 +534,41 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return ids;
         }
 
+        public override async Task<BrowseDataItemsResult> BrowseDataItems() {
+
+            if (connection == null) {
+                string endpoint = config?.Address ?? "";
+                string msg = $"No connection to OPC UA server '{endpoint}': " + lastConnectErrMsg;
+                return new BrowseDataItemsResult(
+                    supportsBrowsing: true,
+                    browsingError: msg,
+                    items: new DataItemBrowseInfo[0]);
+            }
+
+            NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ObjectsFolder), connection.NamespaceUris);
+            BrowseNode objects = new BrowseNode(objectsID, new QualifiedName("Objects"));
+
+            var result = new List<BrowseNode>();
+            var set = new HashSet<BrowseNode>();
+
+            await BrowseEntireTree(objects, result, set);
+
+            var items = result.Select(MakeDataItemBrowseInfo).ToArray();
+            return new BrowseDataItemsResult(
+                    supportsBrowsing: true,
+                    browsingError: "",
+                    items: items);
+        }
+
+        private static DataItemBrowseInfo MakeDataItemBrowseInfo(BrowseNode n) {
+
+            var list = new List<BrowseNode>();
+            BrowseNode.BuildPath(n, list, includeRoot: false);
+            string[] path = list.Select(node => node.BrowseName.Name ?? node.BrowseName.ToString()).ToArray();
+
+            return new DataItemBrowseInfo(n.ID.ToString(), path);
+        }
+
         private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result, HashSet<BrowseNode> set) {
 
             var children = await BrowseTree(parent.ID);
@@ -709,6 +751,18 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 PrintPath(node.Parent, sb);
                 sb.Append(ItemInfo.Separator);
                 sb.Append(node.BrowseName.ToString());
+            }
+        }
+
+        public static void BuildPath(BrowseNode node, List<BrowseNode> sb, bool includeRoot) {
+            if (node.Parent == null) {
+                if (includeRoot) {
+                    sb.Add(node);
+                }
+            }
+            else {
+                BuildPath(node.Parent, sb, includeRoot);
+                sb.Add(node);
             }
         }
 

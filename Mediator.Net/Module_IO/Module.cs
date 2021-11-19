@@ -1076,13 +1076,12 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         private async Task<AdapterBrowseInfo> BrowseAdapter(Config.Adapter config, AdapterBase adapter) {
-            string[] tags = await adapter.BrowseDataItemAddress(null);
-            var dataItems = tags.Select(t => new DataItemBrowseInfo() {
-                ID = t
-            }).ToArray();
+            BrowseDataItemsResult res = await adapter.BrowseDataItems();
             return new AdapterBrowseInfo() {
                 AdapterID = config.ID,
-                DataItems = dataItems
+                SupportsBrowsing = res.SupportsBrowsing,
+                BrowsingError = res.BrowsingError,
+                DataItems = res.Items
             };
         }
 
@@ -1390,11 +1389,8 @@ namespace Ifak.Fast.Mediator.IO
     public class AdapterBrowseInfo
     {
         public string AdapterID { get; set; } = "";
+        public bool SupportsBrowsing { get; set; } = false;
+        public string BrowsingError { get; set; } = "";
         public DataItemBrowseInfo[] DataItems { get; set; } = new DataItemBrowseInfo[0];
-    }
-
-    public class DataItemBrowseInfo
-    {
-        public string ID { get; set; } = "";
     }
 }

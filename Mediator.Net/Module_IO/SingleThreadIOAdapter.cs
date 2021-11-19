@@ -73,6 +73,13 @@ namespace Ifak.Fast.Mediator.IO
             return promise.Task;
         }
 
+        public override Task<BrowseDataItemsResult> BrowseDataItems() {
+            if (!isStarted) throw new Exception("BrowseDataItems requires prior Initialize!");
+            var promise = new TaskCompletionSource<BrowseDataItemsResult>();
+            queue.Post(new WorkItem(MethodID.BrowseDataItems, promise));
+            return promise.Task;
+        }
+
         public override Task<string[]> BrowseAdapterAddress() {
             if (!isStarted) throw new Exception("BrowseAdapterAddress requires prior Initialize!");
             var promise = new TaskCompletionSource<string[]>();
@@ -162,6 +169,19 @@ namespace Ifak.Fast.Mediator.IO
                             break;
                         }
 
+                    case MethodID.BrowseDataItems: {
+
+                            var promise = (TaskCompletionSource<BrowseDataItemsResult>)it.Promise!;
+                            try {
+                                BrowseDataItemsResult res = await adapter.BrowseDataItems();
+                                promise.SetResult(res);
+                            }
+                            catch (Exception exp) {
+                                promise.SetException(exp);
+                            }
+                            break;
+                        }
+
                     case MethodID.BrowseAdapterAddress: {
 
                             var promise = (TaskCompletionSource<string[]>)it.Promise!;
@@ -209,7 +229,7 @@ namespace Ifak.Fast.Mediator.IO
 
         enum MethodID
         {
-            Init, StartRunning, ReadDataItems, WriteDataItems, Shutdown, BrowseDataItemAddress, BrowseAdapterAddress
+            Init, StartRunning, ReadDataItems, WriteDataItems, Shutdown, BrowseDataItemAddress, BrowseAdapterAddress, BrowseDataItems
         }
     }
 }

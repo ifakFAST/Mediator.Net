@@ -73,9 +73,44 @@ namespace Ifak.Fast.Mediator.IO
         public abstract Task<string[]> BrowseDataItemAddress(string? idOrNull);
 
         /// <summary>
+        /// This method is called by the IO module to query possible DataItems.
+        /// </summary>
+        /// <returns></returns>
+        public virtual Task<BrowseDataItemsResult> BrowseDataItems() {
+            return Task.FromResult(new BrowseDataItemsResult(
+                supportsBrowsing: false,
+                browsingError: "",
+                items: new DataItemBrowseInfo[0]));
+        }
+
+        /// <summary>
         /// Called by the IO module to shutdown this Adapter instance.
         /// </summary>
         public abstract Task Shutdown();
+    }
+
+    public struct BrowseDataItemsResult
+    {
+        public BrowseDataItemsResult(bool supportsBrowsing, string browsingError, DataItemBrowseInfo[] items) {
+            SupportsBrowsing = supportsBrowsing;
+            BrowsingError = browsingError;
+            Items = items;
+        }
+
+        public bool SupportsBrowsing { get; private set; }
+        public string BrowsingError { get; private set; }
+        public DataItemBrowseInfo[] Items { get; private set; }
+    }
+
+    public struct DataItemBrowseInfo
+    {
+        public DataItemBrowseInfo(string id, string[] path) {
+            ID = id;
+            Path = path;
+        }
+
+        public string ID { get; private set; }
+        public string[] Path { get; private set; }
     }
 
     public struct DataItemInfo
