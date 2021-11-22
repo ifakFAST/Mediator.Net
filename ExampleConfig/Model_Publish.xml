@@ -3,7 +3,7 @@
   <MQTT>
     <MqttConfig id="mqtt_io" name="MQTT_IO">
         <Endpoint>url.of.mqtt.broker</Endpoint>
-        <ClientID>client_id</ClientID>
+        <ClientIDPrefix>client_id</ClientIDPrefix>
         <CertFileCA>RootCA.pem</CertFileCA>
         <CertFileClient>client_cert.pfx</CertFileClient>        
         <IgnoreCertificateRevocationErrors>false</IgnoreCertificateRevocationErrors>
@@ -13,9 +13,12 @@
         <TopicRoot>TopicRoot</TopicRoot>
         <VarPublish>
             <Topic>IO</Topic>
+            <TopicRegistration></TopicRegistration>
             <ModuleID>IO</ModuleID>
             <RootObject>Root</RootObject>
             <PayloadLimit>500</PayloadLimit>
+            <NumericTagsOnly>true</NumericTagsOnly>
+            <SendTagsWithNull>false</SendTagsWithNull>
             <PrintPayload>true</PrintPayload>
             <TimeAsUnixMilliseconds>false</TimeAsUnixMilliseconds>
             <QualityNumeric>true</QualityNumeric>
