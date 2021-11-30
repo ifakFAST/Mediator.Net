@@ -1081,6 +1081,7 @@ namespace Ifak.Fast.Mediator.IO
                 AdapterID = config.ID,
                 SupportsBrowsing = res.SupportsBrowsing,
                 BrowsingError = res.BrowsingError,
+                ClientCertificate = res.ClientCertificate,
                 DataItems = res.Items
             };
         }
@@ -1391,6 +1392,7 @@ namespace Ifak.Fast.Mediator.IO
         public string AdapterID { get; set; } = "";
         public bool SupportsBrowsing { get; set; } = false;
         public string BrowsingError { get; set; } = "";
+        public string ClientCertificate { get; set; } = "";
         public DataItemBrowseInfo[] DataItems { get; set; } = new DataItemBrowseInfo[0];
     }
 }

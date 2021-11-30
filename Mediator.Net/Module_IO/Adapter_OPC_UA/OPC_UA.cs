@@ -20,6 +20,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
     {
         private ApplicationDescription appDescription = new ApplicationDescription();
         private ICertificateStore? certificateStore;
+        private string certificateLocation = "";
         private UaTcpSessionChannel? connection;
 
         private Adapter? config;
@@ -77,6 +78,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     Console.WriteLine($"Location of OPC UA certificate store: {pkiPath}");
 
                     certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: true, createLocalCertificateIfNotExist: true);
+                    certificateLocation = Path.Combine(pkiPath, "own", "certs");
                 }
 
                 const string Config_Security = "Security";
@@ -536,13 +538,16 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         public override async Task<BrowseDataItemsResult> BrowseDataItems() {
 
+            string clientCertificate = GetCertificate(certificateLocation);
+
             if (connection == null) {
                 string endpoint = config?.Address ?? "";
                 string msg = $"No connection to OPC UA server '{endpoint}': " + lastConnectErrMsg;
                 return new BrowseDataItemsResult(
                     supportsBrowsing: true,
                     browsingError: msg,
-                    items: new DataItemBrowseInfo[0]);
+                    items: new DataItemBrowseInfo[0],
+                    clientCertificate: clientCertificate);
             }
 
             NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ObjectsFolder), connection.NamespaceUris);
@@ -557,7 +562,29 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return new BrowseDataItemsResult(
                     supportsBrowsing: true,
                     browsingError: "",
-                    items: items);
+                    items: items,
+                    clientCertificate: clientCertificate);
+        }
+
+        private static string GetCertificate(string certificateLocation) {
+            if (Directory.Exists(certificateLocation)) {
+                string[] files = Directory.GetFiles(certificateLocation, "*.crt");
+                string? latestFile = null;
+                DateTime latestTime = DateTime.MinValue;
+                foreach (string file in files) {
+                    FileInfo fi = new FileInfo(file);
+                    DateTime t = fi.CreationTimeUtc;
+                    if (t > latestTime) {
+                        latestTime = t;
+                        latestFile = file;
+                    }
+                }
+                if (latestFile != null) {
+                    string path = Path.Combine(certificateLocation, latestFile);
+                    return File.ReadAllText(path, Encoding.UTF8);
+                }
+            }
+            return "";
         }
 
         private static DataItemBrowseInfo MakeDataItemBrowseInfo(BrowseNode n) {

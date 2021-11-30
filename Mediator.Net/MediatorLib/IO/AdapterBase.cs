@@ -80,7 +80,8 @@ namespace Ifak.Fast.Mediator.IO
             return Task.FromResult(new BrowseDataItemsResult(
                 supportsBrowsing: false,
                 browsingError: "",
-                items: new DataItemBrowseInfo[0]));
+                items: new DataItemBrowseInfo[0],
+                clientCertificate: ""));
         }
 
         /// <summary>
@@ -91,14 +92,16 @@ namespace Ifak.Fast.Mediator.IO
 
     public struct BrowseDataItemsResult
     {
-        public BrowseDataItemsResult(bool supportsBrowsing, string browsingError, DataItemBrowseInfo[] items) {
+        public BrowseDataItemsResult(bool supportsBrowsing, string browsingError, DataItemBrowseInfo[] items, string clientCertificate) {
             SupportsBrowsing = supportsBrowsing;
             BrowsingError = browsingError;
             Items = items;
+            ClientCertificate = clientCertificate;
         }
 
         public bool SupportsBrowsing { get; private set; }
         public string BrowsingError { get; private set; }
+        public string ClientCertificate { get; private set; }
         public DataItemBrowseInfo[] Items { get; private set; }
     }
 
