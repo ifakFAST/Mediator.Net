@@ -32,6 +32,8 @@ namespace Ifak.Fast.Mediator.Publish
 
                 clientFAST = await EnsureConnectOrThrow(info, clientFAST);
 
+                string Now = Timestamp.Now.ToString();
+
                 VariableValues values = Filter(await clientFAST.ReadAllVariablesOfObjectTree(objRoot), varPub);
 
                 clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
@@ -48,7 +50,12 @@ namespace Ifak.Fast.Mediator.Publish
 
                         JObject[] payload = batch.Select(vv => FromVariableValue(vv, varPub)).ToArray();
 
-                        string msg = StdJson.ObjectToString(payload);
+                        var wrappedPayload = new {
+                            now = Now,
+                            tags = payload
+                        };
+
+                        string msg = StdJson.ObjectToString(wrappedPayload);
 
                         try {
                             await clientMQTT.PublishAsync(topic, msg);
