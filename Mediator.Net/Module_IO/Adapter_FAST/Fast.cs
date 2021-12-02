@@ -17,6 +17,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
         private AdapterCallback? callback;
         private Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
         private string moduleID = "";
+        private string lastConnectErrMsg = "";
 
         public override bool SupportsScheduledReading => true;
 
@@ -49,11 +50,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
                 return true;
             }
 
-            if (config == null ||string.IsNullOrWhiteSpace(config.Address)) return false;
+            if (config == null || string.IsNullOrWhiteSpace(config.Address)) {
+                lastConnectErrMsg = "No address configured";
+                return false;
+            }
 
             try {
                 var (host, port, user, pass, moduleID) = GetLogin(config);
                 connection = await HttpConnection.ConnectWithUserLogin(host, port, user, pass, timeoutSeconds: 2);
+                lastConnectErrMsg = "";
 
                 this.moduleID = moduleID;
 
@@ -65,6 +70,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             }
             catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
+                lastConnectErrMsg = baseExp.Message;
                 LogWarn("Connect", "Connection error: " + baseExp.Message, details: baseExp.StackTrace);
                 await CloseConnection();
                 return false;
@@ -129,6 +135,43 @@ namespace Ifak.Fast.Mediator.IO.Adapter_FAST
             }
 
             return result.ToArray();
+        }
+
+        public override async Task<BrowseDataItemsResult> BrowseDataItems() {
+
+            if (connection == null) {
+                string endpoint = config?.Address ?? "";
+                string msg = $"No connection to server '{endpoint}': " + lastConnectErrMsg;
+                return new BrowseDataItemsResult(
+                    supportsBrowsing: true,
+                    browsingError: msg,
+                    items: new DataItemBrowseInfo[0],
+                    clientCertificate: "");
+            }
+
+            var allObjects = await connection.GetAllObjects(moduleID);
+
+            var result = new List<DataItemBrowseInfo>();
+            foreach (ObjectInfo obj in allObjects) {
+                foreach (Variable v in obj.Variables) {
+                    string objID = obj.ID.LocalObjectID;
+                    string varName = v.Name;
+                    if (varName == "Value") {
+                        result.Add(new DataItemBrowseInfo(objID, new[] { objID }));
+                    }
+                    else {
+                        string[] objVar = new string[] { objID, varName };
+                        string id = StdJson.ValueToString(objVar);
+                        result.Add(new DataItemBrowseInfo(id, objVar));
+                    }
+                }
+            }
+
+            return new BrowseDataItemsResult(
+                    supportsBrowsing: true,
+                    browsingError: "",
+                    items: result.ToArray(),
+                    clientCertificate: "");
         }
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
