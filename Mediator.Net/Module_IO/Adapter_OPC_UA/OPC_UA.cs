@@ -722,7 +722,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 }
             }
             else {
-                Node = NodeId.Parse(address);
+
+                try {
+                    Node = NodeId.Parse(address);
+                }
+                catch (Exception) {
+                    throw new Exception($"DataItem {id}: address '{address}' is not a valid OPC UA node id");
+                }
             }
         }
 
