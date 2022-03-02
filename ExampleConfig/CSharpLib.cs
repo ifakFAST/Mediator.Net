@@ -1,10 +1,74 @@
 ﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using Ifak.Fast.Mediator;
 using Ifak.Fast.Mediator.Calc.Adapter_CSharp; // for State
 
 namespace Std {
 
+    public class DelayValue {
+
+        public Duration Resolution;
+        public Duration Delay;
+        public DataValue DefaultValue;
+
+        private readonly StateStructArray<VTQ> stateBuffer = new StateStructArray<VTQ>(name: "buffer", defaultValue: new VTQ[0]);
+
+        public DelayValue(Duration resolution, Duration delay, DataValue defaultValue) {
+            this.Resolution = resolution;
+            this.Delay = delay;
+            this.DefaultValue = defaultValue;
+        }
+
+        public VTQ Step(Timestamp t, VTQ x) {
+
+            VTQ[] buffer = stateBuffer.Value ?? new VTQ[0];
+
+            var (idx1, dist1) = MinDistIndex(buffer, x.T);
+
+            if (dist1 >= Resolution) {
+                List<VTQ> buff = buffer.ToList();
+                buff.Add(x);
+                buffer = buff.OrderBy(v => v.T).ToArray();
+                stateBuffer.Value = buffer;
+            }
+
+            var (idx, dist) = MinDistIndex(buffer, t - Delay);
+
+            if (idx < 0) {
+                return VTQ.Make(DefaultValue, t, Quality.Bad);
+            }
+
+            VTQ res = buffer[idx];
+            if (idx > 0) {
+                stateBuffer.Value = buffer.Skip(idx).ToArray();
+            }
+
+            if (dist < Resolution)
+                return res;
+            else
+                return VTQ.Make(DefaultValue, t, Quality.Bad);
+        }
+
+        private static (int idx, Duration dist) MinDistIndex(IList<VTQ> buffer, Timestamp t) {
+
+            Duration minDist = Duration.FromDays(1000);
+            int minIdx = -1;
+
+            if (buffer != null) {
+                for (int i = 0; i < buffer.Count; ++i) {
+                    VTQ vtq = buffer[i];
+                    Duration dist = (vtq.T - t).Abs();
+                    if (dist < minDist) {
+                        minDist = dist;
+                        minIdx = i;
+                    }
+                }
+            }
+            return (minIdx, minDist);
+        }
+    }
+    
     public class PI {
 
         public bool Invert = false;
