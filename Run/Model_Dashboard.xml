@@ -78,7 +78,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }
@@ -138,7 +139,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }
@@ -192,7 +194,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }
@@ -236,7 +239,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }
@@ -381,7 +385,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }
@@ -430,7 +435,8 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
+                        "SimbaFormat": true
                       }
                     }
                   }

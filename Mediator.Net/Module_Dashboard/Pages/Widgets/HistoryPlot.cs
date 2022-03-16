@@ -193,8 +193,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
                         contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                         using (var excel = new ExcelPackage(res)) {
-                            ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
-                            WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);
+
+                            if (configuration.DataExport.Spreadsheet.SimbaFormat) {
+                                WriteExcelDataSIMBA(excel, columns, listHistories, configuration.DataExport.Spreadsheet);
+                            }
+                            else {
+                                ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
+                                WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);                                
+                            }
                             excel.Save();
                         }
                         break;
@@ -509,6 +515,61 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
+        private static void WriteExcelDataSIMBA(
+            ExcelPackage excel, 
+            IList<string> columns, 
+            List<VTTQs> variables, 
+            SpreadsheetDataExport format) {
+
+            const double MillisecondsPerDay = 24 * 60 * 60 * 1000.0;
+
+            string[] tags = columns.Skip(1).ToArray();
+
+            long tBase = long.MaxValue;
+
+            foreach (VTTQs vttqs in variables) {
+                if (vttqs.Count > 0) {
+                    long t = vttqs[0].T.JavaTicks;
+                    tBase = Math.Min(t, tBase);
+                }
+            }
+
+            for (int i = 0; i < tags.Length; i++) {
+
+                string tagName = tags[i];
+                VTTQs vttqs = variables[i];
+
+                ExcelWorksheet sheet = excel.Workbook.Worksheets.Add(tagName);
+
+                sheet.Cells[1, 1].Value = "Time (d)";
+                sheet.Cells[1, 1].Style.Font.Bold = true;
+                sheet.Cells[1, 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheet.Column(1).Width = 12;
+
+                sheet.Cells[1, 2].Value = "Value";
+                sheet.Cells[1, 2].Style.Font.Bold = true;
+                sheet.Cells[1, 2].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheet.Column(2).Width = 12;
+
+                sheet.Cells[1, 3].Value = "Time";
+                sheet.Cells[1, 3].Style.Font.Bold = true;
+                sheet.Cells[1, 3].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheet.Column(3).Width = 20;
+
+                for (int j = 0; j < vttqs.Count; j++) {
+                    VTTQ vtq = vttqs[j];
+                    double? vOpt = vtq.V.AsDouble();
+                    if (vOpt.HasValue) {
+                        double d = (vtq.T.JavaTicks - tBase) / MillisecondsPerDay;
+                        double v = vOpt.Value;
+                        sheet.Cells[2 + j, 1].Value = d;
+                        sheet.Cells[2 + j, 2].Value = v;
+                        sheet.Cells[2 + j, 3].Value = vtq.T.ToDateTime().ToLocalTime();
+                        sheet.Cells[2 + j, 3].Style.Numberformat.Format = format.TimestampFormat;
+                    }
+                }
+            }
+        }
     }
 
     public class HistoryPlotConfig
@@ -577,6 +638,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class SpreadsheetDataExport
     {
         public string TimestampFormat { get; set; } = "yyyy/mm/dd hh:mm:ss;@";
+        public bool SimbaFormat { get; set; } = false;
     }
 
 }
