@@ -525,14 +525,23 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             string[] tags = columns.Skip(1).ToArray();
 
-            long tBase = long.MaxValue;
+            Timestamp tFirst = Timestamp.Max;
+            Timestamp tLast = Timestamp.Empty;            
 
             foreach (VTTQs vttqs in variables) {
                 if (vttqs.Count > 0) {
-                    long t = vttqs[0].T.JavaTicks;
-                    tBase = Math.Min(t, tBase);
+                    Timestamp t1 = vttqs.First().T;
+                    if (t1 < tFirst) {
+                        tFirst = t1;
+                    }
+                    Timestamp tn = vttqs.Last().T;
+                    if (tn > tLast) {
+                        tLast = tn;
+                    }
                 }
             }
+
+            long tBase = tFirst.JavaTicks;
 
             for (int i = 0; i < tags.Length; i++) {
 
@@ -551,11 +560,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 sheet.Cells[1, 2].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
                 sheet.Column(2).Width = 12;
 
-                sheet.Cells[1, 3].Value = "Time";
-                sheet.Cells[1, 3].Style.Font.Bold = true;
-                sheet.Cells[1, 3].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
-                sheet.Column(3).Width = 20;
-
                 for (int j = 0; j < vttqs.Count; j++) {
                     VTTQ vtq = vttqs[j];
                     double? vOpt = vtq.V.AsDouble();
@@ -564,10 +568,31 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                         double v = vOpt.Value;
                         sheet.Cells[2 + j, 1].Value = d;
                         sheet.Cells[2 + j, 2].Value = v;
-                        sheet.Cells[2 + j, 3].Value = vtq.T.ToDateTime().ToLocalTime();
-                        sheet.Cells[2 + j, 3].Style.Numberformat.Format = format.TimestampFormat;
                     }
                 }
+            }
+
+            if (tFirst != tLast) {
+
+                ExcelWorksheet sheetTime = excel.Workbook.Worksheets.Add("Time");
+
+                sheetTime.Cells[1, 1].Value = "Time (d)";
+                sheetTime.Cells[1, 1].Style.Font.Bold = true;
+                sheetTime.Cells[1, 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheetTime.Column(1).Width = 12;
+
+                sheetTime.Cells[1, 2].Value = "Time Str";
+                sheetTime.Cells[1, 2].Style.Font.Bold = true;
+                sheetTime.Cells[1, 2].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheetTime.Column(2).Width = 20;
+
+                sheetTime.Cells[2 + 0, 1].Value = 0;
+                sheetTime.Cells[2 + 0, 2].Value = tFirst.ToDateTime().ToLocalTime();
+                sheetTime.Cells[2 + 0, 2].Style.Numberformat.Format = format.TimestampFormat;
+
+                sheetTime.Cells[2 + 1, 1].Value = (tLast.JavaTicks - tBase) / MillisecondsPerDay;
+                sheetTime.Cells[2 + 1, 2].Value = tLast.ToDateTime().ToLocalTime();
+                sheetTime.Cells[2 + 1, 2].Style.Numberformat.Format = format.TimestampFormat;
             }
         }
     }
