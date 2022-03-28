@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -105,10 +106,18 @@ namespace Ifak.Fast.Mediator.Calc
             // model.ValidateOrThrow();
             model.Normalize();
 
-            Config.Calculation[] enabledAdapters = model.GetAllCalculations().Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Type) && !string.IsNullOrWhiteSpace(a.Definition)).ToArray();
+            Config.Calculation[] enabledAdapters = model.GetAllCalculations()
+                .Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Type) && !string.IsNullOrWhiteSpace(a.Definition))
+                .ToArray();
 
-            CalcInstance[] removedAdapters = adapters.Where(a => !enabledAdapters.Any(x => x.ID == a.CalcConfig.ID)).ToArray();
-            CalcInstance[] newAdapters = enabledAdapters.Where(x => !adapters.Any(a => x.ID == a.CalcConfig.ID)).Select(a => new CalcInstance(a, moduleID)).ToArray();
+            CalcInstance[] removedAdapters = adapters
+                .Where(a => !enabledAdapters.Any(x => x.ID == a.CalcConfig.ID))
+                .ToArray();
+
+            CalcInstance[] newAdapters = enabledAdapters
+                .Where(x => !adapters.Any(a => x.ID == a.CalcConfig.ID))
+                .Select(a => new CalcInstance(a, moduleID))
+                .ToArray();
 
             adapters.RemoveAll(removedAdapters);
             adapters.AddRange(newAdapters);
@@ -140,6 +149,16 @@ namespace Ifak.Fast.Mediator.Calc
 
                     foreach (CalcInstance adapter in newAdapters) {
                         adapter.CreateInstance(mapAdapterTypes);
+                    }
+
+                    foreach (CalcInstance adapter in newAdapters) {
+                        var variables = new VariableRefs();
+                        variables.AddRange(adapter.CalcConfig.States.Select(s => adapter.GetStateVarRef(s.ID)));
+                        variables.AddRange(adapter.CalcConfig.Outputs.Select(o => adapter.GetOutputVarRef(o.ID)));
+                        VariableValues varValues = await connection.ReadVariablesIgnoreMissing(variables);
+                        Dictionary<VariableRef, VTQ> varMap = varValues.ToDictionary(v => v.Variable, v => v.Value);
+                        adapter.SetInitialStateValues(varMap);
+                        adapter.SetInitialOutputValues(varMap);
                     }
 
                     Task[] initTasks = newAdapters.Select(InitAdapter).ToArray();
