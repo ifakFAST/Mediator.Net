@@ -182,13 +182,16 @@ namespace Ifak.Fast.Mediator.Publish
 
         public string Topic { get; set; } = "";
         public string TopicRegistration { get; set; } = "";
-        public int PayloadLimit { get; set; } = 500;
+
         public bool PrintPayload { get; set; } = true;
 
         public string ModuleID { get; set; } = "IO";
         public string RootObject { get; set; } = "Root";
 
-        public bool NumericTagsOnly { get; set; } = true;
+        public PubVarFormat PubFormat { get; set; } = PubVarFormat.Array;
+        public PubVarFormat PubFormatReg { get; set; } = PubVarFormat.Array;
+
+        public bool SimpleTagsOnly { get; set; } = true;
         public bool SendTagsWithNull { get; set; } = false;
 
         public bool TimeAsUnixMilliseconds { get; set; } = false;
@@ -203,6 +206,11 @@ namespace Ifak.Fast.Mediator.Publish
                 TopicRegistration = TopicRegistration.Replace(entry.Key, entry.Value);
             }
         }
+    }
+
+    public enum PubVarFormat {
+        Array,
+        Object
     }
 
     public class MqttConfigPub : ModelObject

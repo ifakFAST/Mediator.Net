@@ -40,22 +40,25 @@ namespace Ifak.Fast.Mediator.Publish
 
                 if (clientMQTT != null) {
 
-                    await reg.Register(clientMQTT, values);
+                    await reg.Register(clientMQTT, values, config);
 
-                    while (values.Count > 0) {
+                    List<JObject> transformedValues = values.Select(vv => FromVariableValue(vv, varPub)).ToList();
 
-                        int BatchSize = Math.Min(varPub.PayloadLimit, values.Count);
-                        var batch = values.Take(BatchSize).ToArray();
-                        values.RemoveRange(0, BatchSize);
+                    while (transformedValues.Count > 0) {
 
-                        JObject[] payload = batch.Select(vv => FromVariableValue(vv, varPub)).ToArray();
+                        JObject[] payload = GetChunckByLimit(transformedValues, config.MaxPayloadSize - 100);
 
-                        var wrappedPayload = new {
-                            now = Now,
-                            tags = payload
-                        };
-
-                        string msg = StdJson.ObjectToString(wrappedPayload);
+                        string msg;
+                        if (varPub.PubFormat == PubVarFormat.Object) {
+                            var wrappedPayload = new {
+                                now = Now,
+                                tags = payload
+                            };
+                            msg = StdJson.ObjectToString(wrappedPayload);
+                        }
+                        else {
+                            msg = StdJson.ObjectToString(payload);
+                        }
 
                         try {
                             await clientMQTT.PublishAsync(topic, msg);
@@ -79,32 +82,55 @@ namespace Ifak.Fast.Mediator.Publish
             Close(clientMQTT);
         }
 
+        private static T[] GetChunckByLimit<T>(List<T> list, int limit) {
+            int sum = 0;
+            for (int i = 0; i < list.Count; i++) {
+                var obj = list[i];
+                string str = StdJson.ObjectToString(obj);
+                sum += str.Length + 1;
+                if (sum >= limit) {
+                    if (i > 0) {
+                        var res = list.Take(i).ToArray();
+                        list.RemoveRange(0, i);
+                        return res;
+                    }
+                    else {
+                        list.RemoveAt(0); // drop the first item (already to big)
+                        return GetChunckByLimit(list, limit);
+                    }
+                }
+            }
+            var result = list.ToArray();
+            list.Clear();
+            return result;
+        }
+
         private static VariableValues Filter(VariableValues values, MqttVarPub config) {
 
-            bool numsOnly = config.NumericTagsOnly;
+            bool simpleOnly = config.SimpleTagsOnly;
             bool sendNull = config.SendTagsWithNull;
 
-            if (!numsOnly && sendNull) {
+            if (!simpleOnly && sendNull) {
                 return values;
             }
 
             var res = new VariableValues(values.Count);
             foreach (var vv in values) {
 
-                if (numsOnly && !sendNull) {
-                    double? dbl = vv.Value.V.AsDouble();
-                    if (dbl.HasValue) {
+                DataValue v = vv.Value.V;
+
+                if (simpleOnly && !sendNull) {
+                    if (!v.IsArray && !v.IsObject && v.NonEmpty) {
                         res.Add(vv);
                     }
                 }
-                else if (numsOnly && sendNull) {
-                    double? dbl = vv.Value.V.AsDouble();
-                    if (dbl.HasValue || vv.Value.V.IsEmpty) {
+                else if (simpleOnly && sendNull) {
+                    if (!v.IsArray && !v.IsObject) {
                         res.Add(vv);
                     }
                 }
-                else if (!numsOnly && !sendNull) {
-                    if (!vv.Value.V.IsEmpty) {
+                else if (!simpleOnly && !sendNull) {
+                    if (v.NonEmpty) {
                         res.Add(vv);
                     }
                 }
@@ -159,27 +185,36 @@ namespace Ifak.Fast.Mediator.Publish
                 this.topic = topic;
             }
 
-            public async Task Register(IMqttClient clientMQTT, VariableValues allValues) {
+            public async Task Register(IMqttClient clientMQTT, VariableValues allValues, MqttConfig config) {
 
                 if (topic == "") return;
 
+                string Now = Timestamp.Now.ToString();
+
                 var newVarVals = allValues.Where(v => !registeredVars.Contains(v.Variable)).ToList();
+                List<ObjItem> transformedValues = newVarVals.Select(vv => ObjItem.Make(vv.Variable, FromVariableValue(vv, varPub))).ToList();
 
-                while (newVarVals.Count > 0) {
+                while (transformedValues.Count > 0) {
 
-                    int BatchSize = Math.Min(varPub.PayloadLimit, newVarVals.Count);
-                    var batch = newVarVals.Take(BatchSize).ToArray();
-                    newVarVals.RemoveRange(0, BatchSize);
+                    ObjItem[] chunck = GetChunckByLimit(transformedValues, config.MaxPayloadSize - 100);                    
 
-                    JObject[] payload = batch.Select(vv => FromVariableValue(vv, varPub)).ToArray();
-
-                    string msg = StdJson.ObjectToString(payload);
+                    string msg;
+                    if (varPub.PubFormatReg == PubVarFormat.Object) {
+                        var wrappedPayload = new {
+                            now = Now,
+                            tags = chunck.Select(obj => obj.Obj)
+                        };
+                        msg = StdJson.ObjectToString(wrappedPayload);
+                    }
+                    else {
+                        msg = StdJson.ObjectToString(chunck.Select(obj => obj.Obj));
+                    }
 
                     try {
                         await clientMQTT.PublishAsync(topic, msg);
 
-                        foreach (var vv in batch) {
-                            registeredVars.Add(vv.Variable);
+                        foreach (var vv in chunck) {
+                            registeredVars.Add(vv.Var);
                         }
 
                         if (varPub.PrintPayload) {
@@ -192,6 +227,17 @@ namespace Ifak.Fast.Mediator.Publish
                         break;
                     }
                 }
+            }
+        }
+
+        public class ObjItem {
+            public VariableRef Var { get; set; }
+            public JObject? Obj { get; set; }
+            public static ObjItem Make(VariableRef v, JObject obj) {
+                return new ObjItem() {
+                    Obj = obj,
+                    Var = v,
+                };
             }
         }
     }

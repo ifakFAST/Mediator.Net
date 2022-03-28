@@ -300,6 +300,13 @@ namespace Ifak.Fast.Mediator
             return DataType.Struct;
         }
 
+        public bool IsObject {
+            get {
+                string json = JSON;
+                return !string.IsNullOrEmpty(json) && (json[0] == '{' || FirstNonWhitespace(json) == '{');
+            }
+        }
+
         public bool IsArray {
             get {
                 string json = JSON;
@@ -414,7 +421,7 @@ namespace Ifak.Fast.Mediator
         private static char FirstNonWhitespace(string str) {
             for (int i = 0; i < str.Length; ++i) {
                 char c = str[i];
-                if (!Char.IsWhiteSpace(c)) return c;
+                if (!char.IsWhiteSpace(c)) return c;
             }
             return ' ';
         }
