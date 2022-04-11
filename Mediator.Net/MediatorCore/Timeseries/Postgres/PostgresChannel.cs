@@ -26,8 +26,15 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         private readonly PreparedStatement stmtDeleteOne;
         private readonly PreparedStatement stmtLast;
         private readonly PreparedStatement stmtLatestTimeDb;
-        private readonly PreparedStatement stmtRawFirstN;
-        private readonly PreparedStatement stmtRawLastN;
+
+        private readonly PreparedStatement stmtRawFirstN_AllQuality;
+        private readonly PreparedStatement stmtRawFirstN_NonBad;
+        private readonly PreparedStatement stmtRawFirstN_Good;
+
+        private readonly PreparedStatement stmtRawLastN_AllQuality;
+        private readonly PreparedStatement stmtRawLastN_NonBad;
+        private readonly PreparedStatement stmtRawLastN_Good;
+
         private readonly PreparedStatement stmtRawFirst;
         private readonly PreparedStatement stmtCount;
         private readonly PreparedStatement stmtCountAllQuality;
@@ -51,8 +58,15 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = @1", 1, time);
             stmtLast            = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1", 0);
             stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2, time, time);
-            stmtRawFirstN       = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
-            stmtRawLastN        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+
+            stmtRawFirstN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawFirstN_NonBad     = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawFirstN_Good       = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality  = 1 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+
+            stmtRawLastN_AllQuality  = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawLastN_NonBad      = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawLastN_Good        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality  = 1 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+
             stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC", 2, time, time);
             stmtCount           = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table}", 0);
             stmtCountAllQuality = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2", 2, time, time);
@@ -272,11 +286,31 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 
             switch (bounding) {
                 case BoundingMethod.TakeFirstN:
-                    statement = stmtRawFirstN;
+                    switch (filter) {
+                        case QualityFilter.ExcludeBad:
+                            statement = stmtRawFirstN_NonBad;
+                            break;
+                        case QualityFilter.ExcludeNonGood:
+                            statement = stmtRawFirstN_Good;
+                            break;
+                        default:
+                            statement = stmtRawFirstN_AllQuality;
+                            break;
+                    }
                     break;
 
                 case BoundingMethod.TakeLastN:
-                    statement = stmtRawLastN;
+                    switch (filter) {
+                        case QualityFilter.ExcludeBad:
+                            statement = stmtRawLastN_NonBad;
+                            break;
+                        case QualityFilter.ExcludeNonGood:
+                            statement = stmtRawLastN_Good;
+                            break;
+                        default:
+                            statement = stmtRawLastN_AllQuality;
+                            break;
+                    }
                     break;
 
                 case BoundingMethod.CompressToN:
@@ -292,16 +326,12 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             statement[1] = endInclusive.ToDateTime();
             statement[2] = maxValues;
 
-            var filterHelper = QualityFilterHelper.Make(filter);
-
             int initSize = N < maxValues ? (int)N : maxValues;
             var res = new List<VTTQ>(initSize);
             using (var reader = statement.ExecuteReader()) {
                 while (reader.Read()) {
                     VTTQ vttq = ReadVTTQ(reader);
-                    if (filterHelper.Include(vttq.Q)) {
-                        res.Add(vttq);
-                    }
+                    res.Add(vttq);
                 }
             }
 
