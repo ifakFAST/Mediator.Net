@@ -191,6 +191,8 @@ namespace Ifak.Fast.Mediator.Publish
         public PubVarFormat PubFormat { get; set; } = PubVarFormat.Array;
         public PubVarFormat PubFormatReg { get; set; } = PubVarFormat.Array;
 
+        public bool BufferIfOffline { get; set; } = false;
+
         public bool SimpleTagsOnly { get; set; } = true;
         public bool SendTagsWithNull { get; set; } = false;
 

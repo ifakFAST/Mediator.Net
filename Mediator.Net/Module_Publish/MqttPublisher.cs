@@ -1,18 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Cryptography.X509Certificates;
 using MQTTnet.Client;
 using MQTTnet.Client.Options;
 using MQTTnet;
 using System.Threading;
-using Ifak.Fast.Mediator.Util;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
-using Ifak.Fast.Json.Linq;
 using MQTTnet.Protocol;
-using System.Text;
 
 namespace Ifak.Fast.Mediator.Publish
 {
@@ -80,7 +76,13 @@ namespace Ifak.Fast.Mediator.Publish
             }
         }
 
-        private static async Task<IMqttClient?> EnsureConnect(IMqttClientOptions? mqttOptions, IMqttClient? mqttClient) {
+        private static Task<IMqttClient?> EnsureConnect(IMqttClientOptions? mqttOptions, IMqttClient? mqttClient) {
+            return EnsureConnectIntern(mqttOptions, mqttClient, 0);
+        }
+
+        private static async Task<IMqttClient?> EnsureConnectIntern(IMqttClientOptions? mqttOptions, IMqttClient? mqttClient, int retry) {
+
+            const int MaxRetry = 2;
 
             if (mqttClient != null && mqttClient.IsConnected) {
                 return mqttClient;
@@ -97,9 +99,16 @@ namespace Ifak.Fast.Mediator.Publish
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
-                Console.Error.WriteLine($"Failed MQTT connection: {e.Message}");
+                if (retry > 0) {
+                    Console.Error.WriteLine($"Failed MQTT connection: {e.Message} (retry {retry} of {MaxRetry})");
+                }
                 client.Dispose();
-                return null;
+                if (retry < MaxRetry) {
+                    return await EnsureConnectIntern(mqttOptions, null, retry + 1);
+                }
+                else {
+                    return null;
+                }
             }
         }
 
