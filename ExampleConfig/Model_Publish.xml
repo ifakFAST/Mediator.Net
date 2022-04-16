@@ -16,10 +16,12 @@
             <TopicRegistration></TopicRegistration>
             <ModuleID>IO</ModuleID>
             <RootObject>Root</RootObject>
-            <PayloadLimit>500</PayloadLimit>
-            <NumericTagsOnly>true</NumericTagsOnly>
+			<BufferIfOffline>true</BufferIfOffline>
             <SendTagsWithNull>false</SendTagsWithNull>
-            <PrintPayload>true</PrintPayload>
+			<SimpleTagsOnly>true</SimpleTagsOnly>
+			<PubFormat>Array</PubFormat>
+			<PubFormatReg>Array</PubFormatReg>
+            <PrintPayload>false</PrintPayload>
             <TimeAsUnixMilliseconds>false</TimeAsUnixMilliseconds>
             <QualityNumeric>true</QualityNumeric>
             <PublishInterval>5 s</PublishInterval>
