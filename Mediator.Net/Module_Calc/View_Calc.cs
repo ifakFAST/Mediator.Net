@@ -175,7 +175,7 @@ namespace Ifak.Fast.Mediator.Calc
 
             var objectInfos = new List<ObjInfo>();
             foreach (ObjectInfo info in infos) {
-                var numericVariables = info.Variables.Where(IsNumericBoolOrStruct).Select(v => v.Name).ToArray();
+                var numericVariables = info.Variables.Select(v => v.Name).ToArray();
                 objectInfos.Add(new ObjInfo() {
                     ID = info.ID.ToEncodedString(),
                     Name = info.Name,
@@ -227,7 +227,7 @@ namespace Ifak.Fast.Mediator.Calc
             return (v) => v.Type == type;
         }
 
-        private static bool IsNumericBoolOrStruct(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Struct;
+        // private static bool IsNumericBoolOrStruct(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Struct;
 
         private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken?> entry) {
             JToken? value = entry.Value;
