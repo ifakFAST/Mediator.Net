@@ -137,9 +137,38 @@ namespace Ifak.Fast.Mediator
         public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             if (!isStarted) throw new Exception("WriteVariables requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
-            var promise = new TaskCompletionSource<WriteResult>();
-            queue.Post(new WorkItem(MethodID.WriteVariables, promise, origin, values, timeout, sync));
-            return promise.Task;
+            
+            if (sync) {
+                var promise = new TaskCompletionSource<WriteResult>();
+                var item = new WorkItem(MethodID.WriteVariables, promise, origin, values, timeout, sync);
+                queue.Post(item);
+                return promise.Task;
+            }
+            else {
+
+                var item = new WorkItem(MethodID.WriteVariables, null, origin, values, timeout, sync);
+
+                Func<WorkItem, bool> skipPost = (old) => {
+
+                    if (old.Methode != MethodID.WriteVariables) return false;
+                    if (!false.Equals(old.Param4)) return false;
+                    VariableValue[] oldValues = (VariableValue[])old.Param2!;
+                    if (oldValues.Length != values.Length) return false;
+                    for (int i = 0; i < values.Length; i++) {
+                        var a = oldValues[i];
+                        var b = values[i];
+                        if (a.Variable != b.Variable) return false;
+                    }
+
+                    old.Param1 = origin;
+                    old.Param2 = values;
+                    old.Param3 = timeout;
+
+                    return true;
+                };
+                queue.Post(item, skipPost);
+                return Task.FromResult(WriteResult.OK);
+            }
         }
 
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
@@ -330,74 +359,22 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case MethodID.ReadVariables: {
-
-                            var promise = (TaskCompletionSource<VTQ[]>)it.Promise!;
-                            if (hasTerminated) {
-                                promise.SetException(new Exception("Module terminated."));
-                            }
-                            else {
-                                try {
-                                    var res = await module.ReadVariables((Origin)it.Param1!, (VariableRef[])it.Param2!, (Duration?)it.Param3!);
-                                    promise.SetResult(res);
-                                }
-                                catch (Exception exp) {
-                                    promise.SetException(exp);
-                                }
-                            }
+                            Task _ = Handle_ReadVariables(it, module, hasTerminated);
                             break;
                         }
 
                     case MethodID.WriteVariables: {
-
-                            var promise = (TaskCompletionSource<WriteResult>)it.Promise!;
-                            if (hasTerminated) {
-                                promise.SetException(new Exception("Module terminated."));
-                            }
-                            else {
-                                try {
-                                    var res = await module.WriteVariables((Origin)it.Param1!, (VariableValue[])it.Param2!, (Duration?)it.Param3, (bool)it.Param4!);
-                                    promise.SetResult(res);
-                                }
-                                catch (Exception exp) {
-                                    promise.SetException(exp);
-                                }
-                            }
+                            Task _ = Handle_WriteVariables(it, module, hasTerminated);
                             break;
                         }
 
                     case MethodID.OnMethodCall: {
-
-                            var promise = (TaskCompletionSource<Result<DataValue>>)it.Promise!;
-                            if (hasTerminated) {
-                                promise.SetException(new Exception("Module terminated."));
-                            }
-                            else {
-                                try {
-                                    var res = await module.OnMethodCall((Origin)it.Param1!, (string)it.Param2!, (NamedValue[])it.Param3!);
-                                    promise.SetResult(res);
-                                }
-                                catch (Exception exp) {
-                                    promise.SetException(exp);
-                                }
-                            }
+                            Task _ = Handle_MethodCall(it, module, hasTerminated);
                             break;
                         }
 
                     case MethodID.Browse: {
-
-                            var promise = (TaskCompletionSource<BrowseResult>)it.Promise!;
-                            if (hasTerminated) {
-                                promise.SetException(new Exception("Module terminated."));
-                            }
-                            else {
-                                try {
-                                    var res = await module.BrowseObjectMemberValues((MemberRef)it.Param1!, (int?)it.Param2);
-                                    promise.SetResult(res);
-                                }
-                                catch (Exception exp) {
-                                    promise.SetException(exp);
-                                }
-                            }
+                            Task _ = Handle_Browse(it, module, hasTerminated);
                             break;
                         }
 
@@ -407,7 +384,74 @@ namespace Ifak.Fast.Mediator
             } // while
         }
 
-        private class WorkItem
+        private static async Task Handle_ReadVariables(WorkItem it, ModuleBase module, bool hasTerminated) {
+            var promise = (TaskCompletionSource<VTQ[]>)it.Promise!;
+            if (hasTerminated) {
+                promise.SetException(new Exception("Module terminated."));
+            }
+            else {
+                try {
+                    var res = await module.ReadVariables((Origin)it.Param1!, (VariableRef[])it.Param2!, (Duration?)it.Param3!);
+                    promise.SetResult(res);
+                }
+                catch (Exception exp) {
+                    promise.SetException(exp);
+                }
+            }
+        }
+
+        private static async Task Handle_WriteVariables(WorkItem it, ModuleBase module, bool hasTerminated) {
+            var promise = (TaskCompletionSource<WriteResult>?)it.Promise;
+            if (hasTerminated) {
+                promise?.SetException(new Exception("Module terminated."));
+            }
+            else {
+                try {
+                    var task = module.WriteVariables((Origin)it.Param1!, (VariableValue[])it.Param2!, (Duration?)it.Param3, (bool)it.Param4!);
+                    if (promise != null) {
+                        var res = await task;
+                        promise.SetResult(res);
+                    }
+                }
+                catch (Exception exp) {
+                    promise?.SetException(exp);
+                }
+            }
+        }
+
+        private static async Task Handle_MethodCall(WorkItem it, ModuleBase module, bool hasTerminated) {
+            var promise = (TaskCompletionSource<Result<DataValue>>)it.Promise!;
+            if (hasTerminated) {
+                promise.SetException(new Exception("Module terminated."));
+            }
+            else {
+                try {
+                    var res = await module.OnMethodCall((Origin)it.Param1!, (string)it.Param2!, (NamedValue[])it.Param3!);
+                    promise.SetResult(res);
+                }
+                catch (Exception exp) {
+                    promise.SetException(exp);
+                }
+            }
+        }
+
+        private static async Task Handle_Browse(WorkItem it, ModuleBase module, bool hasTerminated) {
+            var promise = (TaskCompletionSource<BrowseResult>)it.Promise!;
+            if (hasTerminated) {
+                promise.SetException(new Exception("Module terminated."));
+            }
+            else {
+                try {
+                    var res = await module.BrowseObjectMemberValues((MemberRef)it.Param1!, (int?)it.Param2);
+                    promise.SetResult(res);
+                }
+                catch (Exception exp) {
+                    promise.SetException(exp);
+                }
+            }
+        }
+
+        private sealed class WorkItem
         {
             public WorkItem(MethodID methode, object? promise, object? param1 = null, object? param2 = null, object? param3 = null, object? param4 = null) {
                 Methode = methode;

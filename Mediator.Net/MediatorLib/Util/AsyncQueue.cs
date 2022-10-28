@@ -2,6 +2,7 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -22,6 +23,25 @@ namespace Ifak.Fast.Mediator.Util
                     p.TrySetResult(item);
                 }
                 else {
+                    buffer.Enqueue(item);
+                }
+            }
+        }
+
+        public void Post(T item, Func<T, bool> skipPost) {
+            lock (sync) {
+                if (promise != null) {
+                    var p = promise;
+                    promise = null;
+                    p.TrySetResult(item);
+                }
+                else {
+
+                    foreach (T it in buffer) {
+                        bool skip = skipPost(it);
+                        if (skip) { return; }
+                    }
+
                     buffer.Enqueue(item);
                 }
             }
