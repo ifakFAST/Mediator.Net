@@ -36,6 +36,7 @@ namespace Ifak.Fast.Mediator
 
         private bool requestShutdown = false;
         private bool shutdown = false;
+        private bool starting = true;
 
         private static MediatorCore? theCore = null;
         private static SynchronizationContext? theSyncContext = null;
@@ -141,7 +142,8 @@ namespace Ifak.Fast.Mediator
                 await Shutdown();
                 throw new Exception("Init of modules failed", exp);
             }
-
+            
+            starting = false;
             Log_Event(Severity.Info, "SysStartup", "System started successfully");
 
             logger.Info("All modules initialized successfully.");
@@ -368,7 +370,7 @@ namespace Ifak.Fast.Mediator
 
                 RequestBase obj = await GetRequestObject(request, reqDef);
 
-                using (ReqResult result = await reqHandler.Handle(obj)) {
+                using (ReqResult result = await reqHandler.Handle(obj, starting)) {
 
                     //logger.Info(result.AsString());
 

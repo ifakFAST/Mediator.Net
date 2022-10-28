@@ -96,7 +96,7 @@ namespace Ifak.Fast.Mediator
             await tcs.Task;
         }
 
-        public async Task<ReqResult> Handle(RequestBase request) {
+        public async Task<ReqResult> Handle(RequestBase request, bool startingUp) {
 
             int id = request.GetID();
 
@@ -123,6 +123,10 @@ namespace Ifak.Fast.Mediator
                             password = module.Password;
                         }
                         else {
+
+                            if (startingUp) {
+                                return Result_BAD("Mediator start up not completed yet.");
+                            }
 
                             string login = req.Login ?? "";
                             string[] roles = req.Roles ?? new string[0];
@@ -1401,7 +1405,7 @@ namespace Ifak.Fast.Mediator
 
                 var promise = req.Promise;
                 try {
-                    Task<ReqResult> t = Handle(req.Req);
+                    Task<ReqResult> t = Handle(req.Req, startingUp: false);
                     _ = t.ContinueWith(task => {
                         try {
                             ReqResult reqResult = task.Result;
