@@ -874,7 +874,7 @@ namespace Ifak.Fast.Mediator
                     writableErrors = removedModuleValues.Select(vv => new VariableError(vv.Variable, $"Variable {vv.Variable.ToString()} is not writable.")).ToArray();
                 }
                 if (moduleValues.Length > 0) {
-                    Task<WriteResult> t = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout));
+                    Task<WriteResult> t = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, timeout, sync: true));
                     if (writableErrors == null) return t;
                     return t.ContinueOnMainThread((task) => {
                         WriteResult writeResult = task.Result;
@@ -953,7 +953,7 @@ namespace Ifak.Fast.Mediator
                 moduleValues = moduleValues.Where(vv => module.GetVarDescription(vv.Variable)?.Writable ?? false).ToArray();
                 maxBufferCount = Math.Max(maxBufferCount, count);
                 if (moduleValues.Length > 0) {
-                    var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null));
+                    var ignored = RestartOnExp(module, m => m.WriteVariables(info.Origin, moduleValues, null, sync: false));
                 }
             }
 

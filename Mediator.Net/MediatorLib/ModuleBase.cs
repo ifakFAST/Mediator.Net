@@ -120,7 +120,8 @@ namespace Ifak.Fast.Mediator
         /// <param name="origin">Information about the originator/initiator of this write request</param>
         /// <param name="values">The variable values to write</param>
         /// <param name="timeout">Optional timeout</param>
-        public virtual Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        /// <param name="sync">True if the caller will wait for the result</param>
+        public virtual Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             var errs = values.Select(v => new VariableError(v.Variable, "WriteVariables not implemented by module")).ToArray();
             return Task.FromResult(WriteResult.Failure(errs));
         }
@@ -431,6 +432,7 @@ namespace Ifak.Fast.Mediator
         public Origin Origin { get; set; }
         public VariableValue[] Values { get; set; } = Array.Empty<VariableValue>();
         public Duration? Timeout { get; set; } = null;
+        public bool Sync { get; set; } = true;
 
         public override byte GetMessageCode() => ExternalModuleHost.ModuleHelper.ID_WriteVariables;
     }

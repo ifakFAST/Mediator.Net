@@ -369,7 +369,7 @@ namespace Ifak.Fast.Mediator.IO
                     return VariableValue.Make(moduleID, di.ID, VariableName, state.LastWrittenValue);
                 }).ToArray();
 
-                Task ignored = WriteVariables(origin, varValues, null);
+                Task ignored = WriteVariables(origin, varValues, null, sync: false);
             }
         }
 
@@ -493,7 +493,7 @@ namespace Ifak.Fast.Mediator.IO
             return vtq;
         }
 
-        public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
 
             var failed = new List<VariableError>(0);
             var skippedItems = new List<string>(0);

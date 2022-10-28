@@ -276,11 +276,12 @@ namespace Ifak.Fast.Mediator
             return await SendRequest<Result>(msg);
         }
 
-        public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             var msg = new WriteVariablesMsg() {
                 Origin = origin,
                 Values = values,
-                Timeout = timeout
+                Timeout = timeout,
+                Sync = sync
             };
             return await SendRequest<WriteResult>(msg);
         }

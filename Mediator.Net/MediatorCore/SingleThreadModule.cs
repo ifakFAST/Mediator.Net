@@ -134,11 +134,11 @@ namespace Ifak.Fast.Mediator
             return promise.Task;
         }
 
-        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             if (!isStarted) throw new Exception("WriteVariables requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
             var promise = new TaskCompletionSource<WriteResult>();
-            queue.Post(new WorkItem(MethodID.WriteVariables, promise, origin, values, timeout));
+            queue.Post(new WorkItem(MethodID.WriteVariables, promise, origin, values, timeout, sync));
             return promise.Task;
         }
 
@@ -355,7 +355,7 @@ namespace Ifak.Fast.Mediator
                             }
                             else {
                                 try {
-                                    var res = await module.WriteVariables((Origin)it.Param1!, (VariableValue[])it.Param2!, (Duration?)it.Param3);
+                                    var res = await module.WriteVariables((Origin)it.Param1!, (VariableValue[])it.Param2!, (Duration?)it.Param3, (bool)it.Param4!);
                                     promise.SetResult(res);
                                 }
                                 catch (Exception exp) {

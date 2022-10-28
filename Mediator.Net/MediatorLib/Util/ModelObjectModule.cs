@@ -502,7 +502,7 @@ namespace Ifak.Fast.Mediator.Util
             throw new NotImplementedException("ReadVariables not implemented");
         }
 
-        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             throw new NotImplementedException("WriteVariables not implemented");
         }
     }
@@ -591,7 +591,7 @@ namespace Ifak.Fast.Mediator.Util
             return Task.FromResult(result);
         }
 
-        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout) {
+        public override Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
             var failures = new List<VariableError>();
             foreach (VariableValue vv in values) {
                 string? error = null;

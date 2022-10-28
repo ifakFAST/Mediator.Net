@@ -150,7 +150,7 @@ namespace Ifak.Fast.Mediator
                         }
                     case ID_WriteVariables: {
                             var msg = Deserialize<WriteVariablesMsg>(request.Payload);
-                            WrapCall(() => module.WriteVariables(msg.Origin, msg.Values, msg.Timeout), SerializeObject, reqID);
+                            WrapCall(() => module.WriteVariables(msg.Origin, msg.Values, msg.Timeout, msg.Sync), SerializeObject, reqID);
                             break;
                         }
                     case ID_OnMethodCall: {
