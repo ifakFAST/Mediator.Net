@@ -37,7 +37,7 @@ namespace Ifak.Fast.Mediator.Util
 #if DEBUG
             const int Warn_Limit = 12;
 #else
-            const int Warn_Limit = 36;
+            const int Warn_Limit = 100;
 #endif
             int count = Interlocked.Add(ref streamCounter, 1);
             if (count > Warn_Limit) {
