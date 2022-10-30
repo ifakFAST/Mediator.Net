@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.IO
@@ -556,7 +555,7 @@ namespace Ifak.Fast.Mediator.IO
                 foreach (IGrouping<string, (string, AdapterState)> g in skippedItems.GroupBy(it => it.Item2.ID)) {
 
                     AdapterState adapter = g.First().Item2;
-                    string[] names = g.Select(it => it.Item1).ToArray();
+                    string[] names = g.Select(it => it.Item1).OrderBy(it => it).ToArray();
                     int namesCount = names.Length;
                     string warn;
 
@@ -569,7 +568,7 @@ namespace Ifak.Fast.Mediator.IO
 
                     string details = string.Join(", ", names.Take(30));
                     adapter.TimeOfLastSkippedWarning = Timestamp.Now;
-                    Log_Warn_Details("WritesPending", $"Adapter {adapter.Name}: {warn}", details, origin, adapter.ID);
+                    Log_Warn_Details("WritesPending", $"{adapter.Name}: {warn}", details, origin, adapter.ID);
                 }
             }
             else {
@@ -581,7 +580,7 @@ namespace Ifak.Fast.Mediator.IO
                     if (adapter.TimeOfLastSkippedWarning.Value > t) continue;
                     Timestamp tt = adapter.TimeOfLastSkippedWarning.Value;
                     adapter.TimeOfLastSkippedWarning = null;
-                    Log_ReturnToNormal("WritesPending", $"Adapter {adapter.Name}: No skipped writes since {tt}", adapter.Config.ID);
+                    Log_ReturnToNormal("WritesPending", $"{adapter.Name}: No skipped writes since {tt}", adapter.ID);
                 }
             }
 
@@ -820,7 +819,7 @@ namespace Ifak.Fast.Mediator.IO
                                                 notifier.Notify_VariableValuesChanged(values);
                                             }
 
-                                            NotifyQualityChange(badItems, goodItems);
+                                            NotifyQualityChange(adapter, badItems, goodItems);
                                         }
                                     });
                                 }
@@ -999,32 +998,40 @@ namespace Ifak.Fast.Mediator.IO
             return new BrowseResult();
         }
 
-        private void NotifyQualityChange(List<ItemState> badItems, List<ItemState> goodItems) {
-            if (badItems.Count == 1) {
-                string msg = "Bad quality for reading data item: " + badItems[0].Name;
-                var ev = AlarmOrEventInfo.Warning("Quality", msg, ObjectRef.Make(moduleID, badItems[0].ID));
-                notifier?.Notify_AlarmOrEvent(ev);
+        private void NotifyQualityChange(AdapterState adapter, List<ItemState> newBad, List<ItemState> newGood) {
+
+            if (newBad.Count == 0 && newGood.Count == 0) {
+                return;
             }
-            else if (badItems.Count > 1) {
-                string names = string.Join(", ", badItems.Select(it => it.Name));
-                string msg = $"Bad quality for reading {badItems.Count} data items: {badItems[0].Name}, ...";
-                ObjectRef[] objs = badItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
-                var ev = AlarmOrEventInfo.Warning("Quality", msg, objs);
-                ev.Details = names;
-                notifier?.Notify_AlarmOrEvent(ev);
+
+            foreach (var good in newGood) {
+                adapter.BadItems.Remove(good.ID);
             }
-            if (goodItems.Count == 1) {
-                string msg = "Good quality restored for data item: " + goodItems[0].Name;
-                var ev = AlarmOrEventInfo.RTN("Quality", msg, ObjectRef.Make(moduleID, goodItems[0].ID));
-                notifier?.Notify_AlarmOrEvent(ev);
+
+            foreach (var bad in newBad) {
+                adapter.BadItems.Add(bad.ID, bad.Name);
             }
-            else if (goodItems.Count > 1) {
-                string names = string.Join(", ", goodItems.Select(it => it.Name));
-                string msg = $"Good quality restored for {goodItems.Count} data items: {goodItems[0].Name}, ... ";
-                ObjectRef[] objs = goodItems.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
-                var ev = AlarmOrEventInfo.RTN("Quality", msg, objs);
-                ev.Details = names;
-                notifier?.Notify_AlarmOrEvent(ev);
+
+            var allBad = adapter.BadItems;
+            int allBadCount = allBad.Count;
+
+            if (allBadCount > 0) {
+
+                string[] names = allBad.Select(it => it.Value).OrderBy(it => it).ToArray();
+                string warn;
+                if (allBadCount == 1) {
+                    warn = $"Bad quality for reading data item {names[0]}";
+                }
+                else {
+                    warn = $"Bad quality for reading {allBadCount} data items: {names[0]}, ...";
+                }
+
+                string details = string.Join(", ", names.Take(30));
+                Log_Warn_Details("Quality", $"{adapter.Name}: {warn}", details, initiator: null, adapter.ID);
+            }
+            else {
+
+                Log_ReturnToNormal("Quality", $"{adapter.Name}: Good quality restored", adapter.ID);
             }
         }
 
@@ -1279,6 +1286,8 @@ namespace Ifak.Fast.Mediator.IO
 
             public readonly HashSet<string> SetOfPendingReadItems = new HashSet<string>();
             public readonly HashSet<string> SetOfPendingWriteItems = new HashSet<string>();
+
+            public readonly Dictionary<string, string> BadItems = new Dictionary<string, string>();
 
             public Timestamp? TimeOfLastSkippedWarning;
 
