@@ -52,6 +52,7 @@ namespace Ifak.Fast.Mediator.EventLog
             running = true;
 
             _ = KeepSessionAlive();
+            _ = UpdateVariables();
 
             foreach (var entry in initBuffer) {
                 await OnAlarmOrEvent(entry);
@@ -80,6 +81,47 @@ namespace Ifak.Fast.Mediator.EventLog
                     catch (Exception) { }
                 }
             }
+        }
+
+        private async Task UpdateVariables() {
+
+            int? lastValue = null;
+
+            while (running) {
+
+                await Task.Delay(TimeSpan.FromSeconds(5));
+
+                if (running) {
+
+                    try {
+
+                        int v = CountActiveWarningAndAlarms();
+
+                        if (v != lastValue) {
+                            lastValue = v;
+                            
+                            Timestamp t = Timestamp.Now.TruncateMilliseconds();
+                            VTQ vtq = VTQ.Make(v, t, Quality.Good);
+
+                            //var listVarValues = new List<VariableValue>(1);
+                            //listVarValues.Add(VariableValue.Make(moduleID, "Root", "CountActiveWarningsAndAlarms", vtq));
+                            //notifier?.Notify_VariableValuesChanged(listVarValues);
+
+                            if (model.CountActiveWarningsAndAlarms.HasValue) {
+                                await connection.WriteVariable(model.CountActiveWarningsAndAlarms.Value, vtq);
+                            }
+                        }
+                    }
+                    catch (Exception exp) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        Console.Error.WriteLine($"Exception in UpdateVariables: {e.Message}");
+                    }
+                }
+            }
+        }
+
+        private int CountActiveWarningAndAlarms() {
+            return aggregatedWarningsAndAlarms.Count(it => !it.ReturnedToNormal);
         }
 
         private async Task LoadData() {

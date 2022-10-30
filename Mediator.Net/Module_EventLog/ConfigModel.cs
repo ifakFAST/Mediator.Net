@@ -17,11 +17,14 @@ namespace Ifak.Fast.Mediator.EventLog
         [XmlIgnore]
         public string Name { get; set; } = "EventLog_Model";
 
+        public VariableRef? CountActiveWarningsAndAlarms { get; set; }
+        public bool ShouldSerializeVariable() => CountActiveWarningsAndAlarms.HasValue;
+
         public MailNotificationSettings MailNotificationSettings { get; set; } = new MailNotificationSettings();
 
         protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
 
-            var variable = new Variable(
+            var variableLastEvent = new Variable(
                 name: "LastEvent",
                 type: DataType.Struct,
                 dimension: 1,
@@ -30,8 +33,18 @@ namespace Ifak.Fast.Mediator.EventLog
                 history: History.None
             );
 
+            //var variableWarnAlarmCount = new Variable(
+            //    name: "CountActiveWarningsAndAlarms",
+            //    type: DataType.UInt32,
+            //    dimension: 1,
+            //    defaultValue: DataValue.FromInt(0),
+            //    remember: false,
+            //    history: History.None
+            //);
+
             return new Variable[] {
-               variable
+               variableLastEvent,
+               //variableWarnAlarmCount
             };
         }
     }
