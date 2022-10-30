@@ -496,7 +496,7 @@ namespace Ifak.Fast.Mediator.IO
         public override async Task<WriteResult> WriteVariables(Origin origin, VariableValue[] values, Duration? timeout, bool sync) {
 
             var failed = new List<VariableError>(0);
-            var skippedItems = new List<string>(0);
+            var skippedItems = new List<(string, AdapterState)>(0);
             var adapter2Items = new Dictionary<AdapterState, List<DataItemValue>>();
 
             foreach (VariableValue vv in values) {
@@ -528,7 +528,7 @@ namespace Ifak.Fast.Mediator.IO
 
                 AdapterState adapter = itemState.Adapter;
                 if (adapter.SetOfPendingWriteItems.Contains(id)) {
-                    skippedItems.Add(id);
+                    skippedItems.Add((itemState.Name, adapter));
                     failed.Add(new VariableError(vv.Variable, "Previous write still pending"));
                     continue;
                 }
@@ -550,9 +550,39 @@ namespace Ifak.Fast.Mediator.IO
                 adapter.SetOfPendingWriteItems.Add(id);
             }
 
+
             if (skippedItems.Count > 0) {
-                string warn = string.Format("Write of {0} data items skipped because of pending write: {1}", skippedItems.Count, string.Join(", ", skippedItems));
-                Log_Warn("WritesPending", warn, origin);
+
+                foreach (IGrouping<string, (string, AdapterState)> g in skippedItems.GroupBy(it => it.Item2.ID)) {
+
+                    AdapterState adapter = g.First().Item2;
+                    string[] names = g.Select(it => it.Item1).ToArray();
+                    int namesCount = names.Length;
+                    string warn;
+
+                    if (namesCount == 1) {
+                        warn = $"Write of 1 data item skipped because of pending write: {names[0]}";
+                    }
+                    else {
+                        warn = $"Write of {namesCount} data items skipped because of pending write: {names[0]}, ...";
+                    }
+
+                    string details = string.Join(", ", names.Take(30));
+                    adapter.TimeOfLastSkippedWarning = Timestamp.Now;
+                    Log_Warn_Details("WritesPending", $"Adapter {adapter.Name}: {warn}", details, origin, adapter.ID);
+                }
+            }
+            else {
+
+                var t = Timestamp.Now - Duration.FromMinutes(5);
+
+                foreach (var adapter in adapter2Items.Keys) {
+                    if (!adapter.TimeOfLastSkippedWarning.HasValue) continue;
+                    if (adapter.TimeOfLastSkippedWarning.Value > t) continue;
+                    Timestamp tt = adapter.TimeOfLastSkippedWarning.Value;
+                    adapter.TimeOfLastSkippedWarning = null;
+                    Log_ReturnToNormal("WritesPending", $"Adapter {adapter.Name}: No skipped writes since {tt}", adapter.Config.ID);
+                }
             }
 
             var allWriteTasks = new List<Task<WriteDataItemsResult>>(adapter2Items.Count);
@@ -1102,7 +1132,27 @@ namespace Ifak.Fast.Mediator.IO
             Log_Event(Severity.Warning, type, msg, null, details);
         }
 
-        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "") {
+        private void Log_Warn_Details(string type, string msg, string details, Origin? initiator = null, string? affectedObjID = null) {
+            Log_Event(Severity.Warning, type, msg, initiator, details, affectedObjID);
+        }
+
+        private void Log_ReturnToNormal(string type, string msg, string affectedObjectID) {
+
+            var ae = new AlarmOrEventInfo() {
+                Time = Timestamp.Now,
+                Severity = Severity.Info,
+                Type = type,
+                ReturnToNormal = true,
+                Message = msg,
+                Details = "",
+                AffectedObjects = new ObjectRef[] { ObjectRef.Make(moduleID, affectedObjectID) },
+                Initiator = null
+            };
+
+            notifier!.Notify_AlarmOrEvent(ae);
+        }
+
+        private void Log_Event(Severity severity, string type, string msg, Origin? initiator = null, string details = "", string? affectedObjID = null) {
 
             var ae = new AlarmOrEventInfo() {
                 Time = Timestamp.Now,
@@ -1110,7 +1160,7 @@ namespace Ifak.Fast.Mediator.IO
                 Type = type,
                 Message = msg,
                 Details = details,
-                AffectedObjects = new ObjectRef[0],
+                AffectedObjects = affectedObjID == null ? new ObjectRef[0] : new ObjectRef[] { ObjectRef.Make(moduleID, affectedObjID) },
                 Initiator = initiator
             };
 
@@ -1192,6 +1242,7 @@ namespace Ifak.Fast.Mediator.IO
 
             public bool IsRestarting = false;
 
+            public string ID => Config == null ? "" : Config.ID;
             public string Name => Config == null ? "?" : Config.Name;
 
             public State State { get; set; } = State.Created;
@@ -1224,6 +1275,8 @@ namespace Ifak.Fast.Mediator.IO
 
             public readonly HashSet<string> SetOfPendingReadItems = new HashSet<string>();
             public readonly HashSet<string> SetOfPendingWriteItems = new HashSet<string>();
+
+            public Timestamp? TimeOfLastSkippedWarning;
 
             private readonly Dictionary<string, string> MapItem2GroupID = new Dictionary<string, string>();
             private Group[] ItemGroups { get; set; } = new Group[0];
