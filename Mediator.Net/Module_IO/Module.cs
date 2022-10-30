@@ -595,6 +595,10 @@ namespace Ifak.Fast.Mediator.IO
                 allWriteTasks.Add(task);
             }
 
+            if (!sync) {
+                return WriteResult.OK;
+            }
+
             WriteDataItemsResult[] resArr = await Task.WhenAll(allWriteTasks);
             WriteResult res = MapWriteResults(moduleID, resArr);
 
