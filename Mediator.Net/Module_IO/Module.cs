@@ -590,7 +590,7 @@ namespace Ifak.Fast.Mediator.IO
                 AdapterState adapter = adapterItems.Key;
                 List<DataItemValue> items = adapterItems.Value;
 
-                Task<WriteDataItemsResult> task = AdapterWriteTask(adapter, items, timeout);
+                Task<WriteDataItemsResult> task = AdapterWriteTask(origin, adapter, items, timeout);
                 allWriteTasks.Add(task);
             }
 
@@ -623,7 +623,7 @@ namespace Ifak.Fast.Mediator.IO
             return WriteResult.Failure(failures);
         }
 
-        private async Task<WriteDataItemsResult> AdapterWriteTask(AdapterState adapter, List<DataItemValue> items, Duration? timeout) {
+        private async Task<WriteDataItemsResult> AdapterWriteTask(Origin origin, AdapterState adapter, List<DataItemValue> items, Duration? timeout) {
 
             if (adapter.State != State.Running || adapter.Instance == null) {
                 string err = "Adapter is not in state Running. Current state: " + adapter.State;
@@ -634,9 +634,35 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             try {
+                var sw = Stopwatch.StartNew();
                 IList<WriteTask> writeTasks = adapter.WriteItems(items, timeout);
                 Task<WriteDataItemsResult>[] tasks = writeTasks.Select(writeTask => writeTask.Task.ContinueOnMainThread(t => {
+                    TimeSpan elapsed = sw.Elapsed;
                     adapter.SetOfPendingWriteItems.ExceptWith(writeTask.IDs);
+
+                    var writeDurationWarnLimit = adapter.Config.WriteDurationWarnLimit;
+                    if (writeDurationWarnLimit.HasValue) {
+                        Duration limit = writeDurationWarnLimit.Value;
+                        long limitTicks = limit.TotalMilliseconds * TimeSpan.TicksPerMillisecond;
+                        if (elapsed.Ticks > limitTicks) {
+                            string msg = $"{adapter.Name}: Write took {elapsed.ElapsedString()} for {items.Count} data items!";
+                            string details = string.Join(", ", items.Take(30).Select(it => it.ID));
+                            Log_Warn_Details("WriteDuration", msg, details, origin, adapter.ID);
+                            adapter.TimeOfLastWriteDelayWarning = Timestamp.Now;
+                        }
+                        else {
+                            
+                            if (adapter.TimeOfLastWriteDelayWarning.HasValue) {
+                                Timestamp mt = Timestamp.Now - Duration.FromMinutes(5);
+                                Timestamp tLastWriteDelay = adapter.TimeOfLastWriteDelayWarning.Value;
+                                if (tLastWriteDelay < mt) {
+                                    adapter.TimeOfLastWriteDelayWarning = null;
+                                    Log_ReturnToNormal("WriteDuration", $"{adapter.Name}: Write duration below limit of {limit} since {tLastWriteDelay}", adapter.ID);
+                                }
+                            }
+                        }
+                    }
+
                     WriteDataItemsResult res = t.Result;
                     if (res.Failed()) {
                         DataItemErr[] failed = ResolveDataItemErrors(res.FailedDataItems!);
@@ -768,10 +794,12 @@ namespace Ifak.Fast.Mediator.IO
                                     adapter.SetOfPendingReadItems.Add(rr.ID);
                                 }
 
+                                var sw = Stopwatch.StartNew();
                                 IList<ReadTask> readTasks = adapter.ReadItems(requests, null);
 
                                 foreach (ReadTask rt in readTasks) {
                                     Task tx = rt.Task.ContinueOnMainThread(completedReadTask => {
+                                        TimeSpan elapsed = sw.Elapsed;
                                         adapter.SetOfPendingReadItems.ExceptWith(rt.IDs);
                                         if (adapter.State == State.Running) {
 
@@ -791,6 +819,31 @@ namespace Ifak.Fast.Mediator.IO
                                             else {
                                                 result = completedReadTask.Result;
                                             }
+
+
+                                            var readDurationWarnLimit = adapter.Config.ReadDurationWarnLimit;
+                                            if (readDurationWarnLimit.HasValue) {
+                                                Duration limit = readDurationWarnLimit.Value;
+                                                long limitTicks = limit.TotalMilliseconds * TimeSpan.TicksPerMillisecond;
+                                                if (elapsed.Ticks > limitTicks) {
+                                                    string msg = $"{adapter.Name}: Read took {elapsed.ElapsedString()} for {requests.Length} data items!";
+                                                    string details = string.Join(", ", requests.Take(30).Select(it => it.ID));
+                                                    Log_Warn_Details("ReadDuration", msg, details, initiator: null, adapter.ID);
+                                                    adapter.TimeOfLastReadDelayWarning = Timestamp.Now;
+                                                }
+                                                else {
+
+                                                    if (adapter.TimeOfLastReadDelayWarning.HasValue) {
+                                                        Timestamp mt = Timestamp.Now - Duration.FromMinutes(5);
+                                                        Timestamp tLastReadDelay = adapter.TimeOfLastReadDelayWarning.Value;
+                                                        if (tLastReadDelay < mt) {
+                                                            adapter.TimeOfLastReadDelayWarning = null;
+                                                            Log_ReturnToNormal("ReadDuration", $"{adapter.Name}: Read duration below limit of {limit} since {tLastReadDelay}", adapter.ID);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
 
                                             var values = new List<VariableValue>(result.Length);
                                             var badItems = new List<ItemState>();
@@ -1290,6 +1343,8 @@ namespace Ifak.Fast.Mediator.IO
             public readonly Dictionary<string, string> BadItems = new Dictionary<string, string>();
 
             public Timestamp? TimeOfLastSkippedWarning;
+            public Timestamp? TimeOfLastWriteDelayWarning;
+            public Timestamp? TimeOfLastReadDelayWarning;
 
             private readonly Dictionary<string, string> MapItem2GroupID = new Dictionary<string, string>();
             private Group[] ItemGroups { get; set; } = new Group[0];

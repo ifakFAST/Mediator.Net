@@ -112,6 +112,9 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public Duration RepeatWriteInterval { get; set; } = Duration.FromSeconds(0);
 
+        public Duration? ReadDurationWarnLimit { get; set; } = null;
+        public Duration? WriteDurationWarnLimit { get; set; } = null;
+
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         public Login? Login { get; set; } = null;
@@ -119,8 +122,11 @@ namespace Ifak.Fast.Mediator.IO.Config
         public List<Node> Nodes { get; set; } = new List<Node>();
         public List<DataItem> DataItems { get; set; } = new List<DataItem>();
 
-        public bool ShouldSerializeScheduling() { return Scheduling.HasValue; }
-        public bool ShouldSerializeHistory() { return History.HasValue; }
+        public bool ShouldSerializeReadDurationWarnLimit() => ReadDurationWarnLimit.HasValue;
+        public bool ShouldSerializeWriteDurationWarnLimit() => WriteDurationWarnLimit.HasValue;
+
+        public bool ShouldSerializeScheduling() => Scheduling.HasValue;
+        public bool ShouldSerializeHistory() => History.HasValue;
         public bool ShouldSerializeEnabled() => !Enabled;
         public bool ShouldSerializeLogin() => Login.HasValue;
         public bool ShouldSerializeNodes() => Nodes.Count > 0;
