@@ -80,7 +80,7 @@
             </HistoryDBs>
         </Module>
         
-        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
+        <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
             <VariablesFileName>Var_Pub.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
             <ExternalArgs>../Mediator.Net/Module_Publish/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_Publish.dll {PORT}</ExternalArgs>
@@ -107,6 +107,11 @@
     <UserManagement>
         <Users>
             <User id="ifak" login="ifak" name="Demo User" encryptedPassword="cH8j7vythfU=" inactive="false">
+                <Roles>
+                    <string>Admin</string>
+                </Roles>
+            </User>
+            <User id="simba" login="simba" name="Simba" encryptedPassword="u2jKVVkFiaX0dorJtbWtBQ==" inactive="false">
                 <Roles>
                     <string>Admin</string>
                 </Roles>

@@ -87,6 +87,11 @@
                     <string>Admin</string>
                 </Roles>
             </User>
+            <User id="simba" login="simba" name="Simba" encryptedPassword="u2jKVVkFiaX0dorJtbWtBQ==" inactive="false">
+                <Roles>
+                    <string>Admin</string>
+                </Roles>
+            </User>
         </Users>
         <Roles>
             <Role name="Admin" />
