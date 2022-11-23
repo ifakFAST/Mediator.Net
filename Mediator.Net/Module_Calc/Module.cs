@@ -503,7 +503,7 @@ namespace Ifak.Fast.Mediator.Calc
                     listVarValues.Add(vv);
                 }
 
-                List<VariableValue> outputDest = new List<VariableValue>();
+                var outputDest = new VariableValues();
                 foreach (Config.Output ot in adapter.CalcConfig.Outputs) {
                     if (ot.Variable.HasValue) {
                         int idx = outValues.FindIndex(o => o.OutputID == ot.ID);
@@ -514,7 +514,9 @@ namespace Ifak.Fast.Mediator.Calc
                 }
                 notifier.Notify_VariableValuesChanged(listVarValues);
 
-                await WriteOutputVars(outputDest);
+                if (adapter.CalcConfig.EnableOutputVarWrite) {
+                    await WriteOutputVars(outputDest);
+                }
 
                 adapter.SetLastOutputValues(outValues);
                 adapter.SetLastStateValues(stateValues);

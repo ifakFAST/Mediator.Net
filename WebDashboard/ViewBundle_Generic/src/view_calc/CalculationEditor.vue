@@ -18,6 +18,7 @@
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
         <member-row name="Cycle Offset"    v-model="value.Offset"        type="Duration" :optional="false"></member-row>
         <member-row name="Enabled"         v-model="value.Enabled"       type="Boolean"  :optional="false"></member-row>
+        <member-row name="Enable Output Var Write" v-model="value.EnableOutputVarWrite" type="Boolean" :optional="false"></member-row>
         <member-row name="WindowVisible"   v-model="value.WindowVisible" type="Boolean"  :optional="false" v-if="showWindowVisible"></member-row>
         <member-row :name="definitionName" v-model="value.Definition"    :type="definitionType" :optional="false" v-if="showDefinition && definitionType !== 'Code'"></member-row>
       </table>

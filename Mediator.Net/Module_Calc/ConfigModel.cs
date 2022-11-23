@@ -170,6 +170,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("enabled")]
         public bool Enabled { get; set; } = false;
 
+        public bool EnableOutputVarWrite { get; set; } = true;
+
         public History? History { get; set; } = null;
 
         public bool WindowVisible { get; set; } = false;

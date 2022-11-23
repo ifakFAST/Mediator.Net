@@ -33,6 +33,7 @@ export interface Calculation {
   Name: string
   Type: string // e.g. C#, SIMBA, ...
   Enabled: boolean
+  EnableOutputVarWrite: boolean
   History: fast.History | null
   WindowVisible: boolean
   Cycle: fast.Duration
