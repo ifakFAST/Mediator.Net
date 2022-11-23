@@ -208,7 +208,7 @@ namespace Ifak.Fast.Mediator.IO
                 Log_Info("AdapterRestart", $"Restarting adapter {adapter.Name}. Reason: {reason}");
             }
 
-            const int TimeoutSeconds = 10;
+            const int TimeoutSeconds = 60;
             try {
                 Task shutdown = ShutdownAdapter(adapter);
                 Task t = await Task.WhenAny(shutdown, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds)));
