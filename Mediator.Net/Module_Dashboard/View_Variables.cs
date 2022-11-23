@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
-    [Identify(id: "ModuleVariables", bundle: "Generic", path: "variables.html", icon: "mdi-table-large")]
+    [Identify(id: "ModuleVariables", bundle: "Generic", path: "variables.html", configType: typeof(ViewConfig), icon: "mdi-table-large")]
     public class View_ModuleVariables : ViewBase
     {
         private string activeModuleID = "";

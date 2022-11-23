@@ -268,7 +268,9 @@ namespace Ifak.Fast.Mediator.Dashboard
             object? viewObj = viewType.Type == null ? null : Activator.CreateInstance(viewType.Type);
             if (viewObj == null) throw new Exception($"Failed to create instance of view type '{view.Type}'!");
 
-            return (ViewBase)viewObj;
+            ViewBase vb = (ViewBase)viewObj;
+            vb.ID = ObjectRef.Make(moduleID, view.ID);
+            return vb;
         }
 
         async Task EventListener.OnConfigChanged(List<ObjectRef> changedObjects) {
@@ -322,8 +324,9 @@ namespace Ifak.Fast.Mediator.Dashboard
         private void ReportEventException(ViewBase view, string eventName, Exception exp) {
             Exception e = exp.GetBaseException() ?? exp;
             if (!(e is ConnectivityException)) {
-                string msg = $"{view.GetType().Name}.{eventName}: {e.Message}";
+                string msg = $"{view.GetType().FullName}.{eventName}: {e.Message}";
                 Console.Error.WriteLine(msg);
+                Console.Error.WriteLine(e.StackTrace);
             }
         }
 
@@ -340,10 +343,10 @@ namespace Ifak.Fast.Mediator.Dashboard
         async Task ViewContext.SaveViewConfiguration(DataValue newConfig) {
             ViewBase? view = currentView;
             if (view == null) return;
-            var entry = views.FirstOrDefault(p => p.Value == view);
-            if (entry.Value != view) return;
-            string viewID = entry.Key;
-            MemberValue member = MemberValue.Make(moduleID, viewID, nameof(View.Config), newConfig);
+
+            var dv = DataValue.FromObject(newConfig); // need to wrap for transport because Config is itself a DataValue
+
+            MemberValue member = MemberValue.Make(view.ID, nameof(View.Config), dv);
             await connection.UpdateConfig(member);
             view.Config = newConfig;
         }

@@ -13,6 +13,7 @@ export interface Obj {
   ID: string
   Name: string
   Variables: string[]
+  Members: string[]
 }
 
 export interface ObjInfo {
@@ -25,7 +26,6 @@ export interface SelectObject {
   modules: ModuleInfo[]
   selectedModuleID: string
   selectedObjectID: string
-  variable: Variable
 }
 
 export interface ObjectMap {

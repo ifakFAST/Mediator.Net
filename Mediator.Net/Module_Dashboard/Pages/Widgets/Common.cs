@@ -24,7 +24,15 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             public string[] Variables { get; set; } = new string[0];
         }
 
-        public static async Task<ReqResult> GetItemsData(Connection connection, ObjectRef[] usedObjects) {
+        public static Task<ReqResult> GetNumericVarItemsData(Connection connection, ObjectRef[] usedObjects) {
+            return GetVarItemsData(connection, usedObjects, IsNumericOrBool);
+        }
+
+        public static Task<ReqResult> GetNumericAndStringVarItemsData(Connection connection, ObjectRef[] usedObjects) {
+            return GetVarItemsData(connection, usedObjects, IsNumericOrBoolOrString);
+        }
+
+        public static async Task<ReqResult> GetVarItemsData(Connection connection, ObjectRef[] usedObjects, Func<Variable, bool> f) {
 
             var modules = (await connection.GetModules())
                 .Where(m => m.HasNumericVariables)
@@ -32,10 +40,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     ID = m.ID,
                     Name = m.Name
                 }).ToArray();
-
-            var objectMap = new Dictionary<string, ObjInfo>();
-
-            // ObjectRef[] objects = configuration.Items.Select(it => it.Variable.Object).Distinct().ToArray();
 
             ObjectInfos infos;
             try {
@@ -54,8 +58,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 }
             }
 
+            var objectMap = new Dictionary<string, ObjInfo>();
+
             foreach (ObjectInfo info in infos) {
-                var numericVariables = info.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray();
+                var numericVariables = info.Variables.Where(f).Select(v => v.Name).ToArray();
                 objectMap[info.ID.ToEncodedString()] = new ObjInfo() {
                     Name = info.Name,
                     Variables = numericVariables
@@ -69,6 +75,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         }
 
         public static bool IsNumericOrBool(Variable v) => v.IsNumeric || v.Type == DataType.Bool;
+
+        private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String;
 
     }
 }

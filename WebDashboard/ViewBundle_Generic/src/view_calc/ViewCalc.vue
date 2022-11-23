@@ -4,7 +4,7 @@
 
     <v-container fluid>
       <v-row>
-        <v-col cols="3" style="min-width: 250px;">
+        <v-col cols="auto" style="min-width: 260px;">
 
           <v-treeview activatable return-object dense
             :items="treeItems"
@@ -28,7 +28,7 @@
           </v-treeview>
 
         </v-col>
-        <v-col cols="9">
+        <v-col cols="fill">
 
           <v-toolbar dense v-if="editObject !== null">
             <v-toolbar-title>{{ objectTitle }}</v-toolbar-title>

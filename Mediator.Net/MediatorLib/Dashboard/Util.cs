@@ -82,11 +82,14 @@ namespace Ifak.Fast.Mediator.Dashboard
         /// </summary>
         public string? Icon { get; set; }
 
-        public Identify(string id, string bundle, string path, string? icon = null) {
+        public Type? ConfigType { get; set; }
+
+        public Identify(string id, string bundle, string path, Type? configType = null, string? icon = null) {
             ID = id;
             Bundle = bundle;
             Path = path;
             Icon = icon;
+            ConfigType = configType;
         }
     }
 }

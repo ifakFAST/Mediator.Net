@@ -41,7 +41,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public Task<ReqResult> UiReq_GetItemsData() {
             ObjectRef[] usedObjects = configuration.Items.Select(it => it.Variable.Object).Distinct().ToArray();
-            return Common.GetItemsData(Connection, usedObjects);
+            return Common.GetNumericVarItemsData(Connection, usedObjects);
         }
 
         public async Task<ReqResult> UiReq_LoadData(TimeRange timeRange) {

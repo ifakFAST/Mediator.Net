@@ -30,6 +30,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
     public abstract class ViewBase : EventListener
     {
+        public ObjectRef ID { get; set; }
         public DataValue Config { get; set; }
         protected Connection Connection { get; set; } = new ClosedConnection();
         protected ViewContext Context { get; set; } = new EmptyViewContext();

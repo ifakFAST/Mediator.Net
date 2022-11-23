@@ -115,10 +115,10 @@ export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void 
           }
         }, (error) => {
           if (error && error.error) {
-            reject(error.error)
+            reject(new Error(error.error))
           }
           else {
-            reject('Connect error.')
+            reject(new Error('Connect error.'))
           }
         })
 

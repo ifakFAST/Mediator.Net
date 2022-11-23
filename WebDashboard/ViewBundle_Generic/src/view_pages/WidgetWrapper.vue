@@ -17,6 +17,16 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></history-plot>
 
+    <config-edit-numeric v-if="type === 'ConfigEditNumeric'"
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></config-edit-numeric>
+
+    <page-actions-log-View v-if="type === 'PageActionsLogView'"
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></page-actions-log-View>
+
   </v-card>
 
 </template>
@@ -24,10 +34,12 @@
 
 <script lang="ts">
 
-import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 import HistoryPlot from './widgets/HistoryPlot.vue'
 import ReadButton from './widgets/ReadButton.vue'
 import VarTable from './widgets/VarTable.vue'
+import ConfigEditNumeric from './widgets/config_edit/ConfigEditNumeric.vue'
+import PageActionsLogView from './widgets/PageActionsLogView.vue'
 import { TimeRange } from '../utils'
 
 @Component({
@@ -35,6 +47,8 @@ import { TimeRange } from '../utils'
     HistoryPlot,
     ReadButton,
     VarTable,
+    ConfigEditNumeric,
+    PageActionsLogView,
   },
 })
 export default class WidgetWrapper extends Vue {

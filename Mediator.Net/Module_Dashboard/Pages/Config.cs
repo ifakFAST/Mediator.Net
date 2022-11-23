@@ -3,20 +3,54 @@
 // See the LICENSE file in the project root for more information.
 
 using Ifak.Fast.Json.Linq;
+using Ifak.Fast.Mediator.Util;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
-    public class Config
+    public class Config : ModelObject
     {
+        protected override string GetID(IEnumerable<IModelObject> parents) {
+            var parentView = (Dashboard.View)parents.First();
+            return parentView.ID + ".Config";
+        }
+
+        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+            var parentView = (Dashboard.View)parents.First();
+            return parentView.Name + ".Config";
+        }
+
         public Page[] Pages { get; set; } = new Page[0];
     }
 
-    public class Page
+    public class Page : ModelObject 
     {
+        protected override string GetID(IEnumerable<IModelObject> parents) {
+            var parentView = (Dashboard.View)parents.Skip(1).First();
+            return parentView.ID + ".Page." + ID;
+        }
+
         public string ID { get; set; } = "";
         public string Name { get; set; } = "";
         public Row[] Rows { get; set; } = new Row[0];
+
+        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+
+            var variable = new Variable(
+                    name: "ActionLog",
+                    type: DataType.Struct,
+                    defaultValue: DataValue.FromDataType(DataType.Struct, dimension: 1),
+                    typeConstraints: "",
+                    dimension: 1,
+                    dimensionNames: new string[0],
+                    remember: false,
+                    history: History.None,
+                    writable: false,
+                    syncReadable: false);
+
+            return new Variable[] { variable };
+        }
     }
 
     public class Row

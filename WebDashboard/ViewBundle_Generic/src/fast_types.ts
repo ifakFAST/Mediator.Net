@@ -14,6 +14,11 @@ export interface VariableRef {
   Name: string
 }
 
+export interface MemberRef {
+  Object: ObjectRef
+  Name: string
+}
+
 export interface VTQ {
   V: DataValue
   T: Timestamp

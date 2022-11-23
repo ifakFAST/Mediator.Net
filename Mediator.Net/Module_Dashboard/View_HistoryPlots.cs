@@ -16,7 +16,7 @@ using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInf
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
-    [Identify(id: "HistoryPlots", bundle: "Generic", path: "history.html", icon: "mdi-chart-line-variant")]
+    [Identify(id: "HistoryPlots", bundle: "Generic", path: "history.html", configType: typeof(ViewConfig), icon: "mdi-chart-line-variant")]
     public class View_HistoryPlots : ViewBase
     {
         private ViewConfig configuration = new ViewConfig();

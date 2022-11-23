@@ -296,8 +296,9 @@ export default class HistoryPlot extends Vue {
     modules: [],
     selectedModuleID: '',
     selectedObjectID: '',
-    variable: { Object: '', Name: '' },
   }
+
+  currentVariable: Variable = { Object: '', Name: '' }
 
   dataRevision = 0
 
@@ -817,8 +818,8 @@ export default class HistoryPlot extends Vue {
       this.selectObject.selectedModuleID = objForModuleID.substring(0, i)
     }
     this.selectObject.selectedObjectID = currObj
-    this.selectObject.variable = item.Variable
     this.selectObject.show = true
+    this.currentVariable = item.Variable
   }
 
   selectObject_OK(obj: Obj): void {
@@ -826,9 +827,9 @@ export default class HistoryPlot extends Vue {
       Name: obj.Name,
       Variables: obj.Variables,
     }
-    this.selectObject.variable.Object = obj.ID
+    this.currentVariable.Object = obj.ID
     if (obj.Variables.length === 1) {
-      this.selectObject.variable.Name = obj.Variables[0]
+      this.currentVariable.Name = obj.Variables[0]
     }
   }
 

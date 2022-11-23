@@ -11,10 +11,21 @@ using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
+    public sealed class LogAction {
+        public Timestamp Time { get; set; }
+        public string UserID { get; set; } = "";
+        public string UserLogin { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public string Action { get; set; } = "";
+    }
+
     public interface WidgetContext
     {
         Task SendEventToUI(string eventName, object payload);
-        Task SaveWidgetConfiguration(object newConfig);
+        Task SaveWidgetConfiguration(object newConfig);        
+        Task LogPageAction(string action);
+        VariableRef GetPageActionLogVariable();
+        Task<LogAction[]> GetLoggedPageActions(int limit);
     }
 
     public class EmptyWidgetContext : WidgetContext
@@ -25,6 +36,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public Task SendEventToUI(string eventName, object payload) {
             throw new InvalidOperationException("SendEventToUI on empty WidgetContext");
+        }
+
+        public Task LogPageAction(string action) {
+            throw new InvalidOperationException("LogAction on empty WidgetContext");
+        }
+
+        public VariableRef GetPageActionLogVariable() {
+            throw new InvalidOperationException("GetPageActionLogVariable on empty WidgetContext");
+        }
+
+        public Task<LogAction[]> GetLoggedPageActions(int limit) {
+            throw new InvalidOperationException("GetLoggedPageActions on empty WidgetContext");
         }
     }
 

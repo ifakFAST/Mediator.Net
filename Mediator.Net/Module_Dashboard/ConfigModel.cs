@@ -35,6 +35,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         [XmlAttribute("group")]
         public string Group { get; set; } = "";
 
+        [ContainsNestedModel]
         public DataValue Config { get; set; }
 
     }

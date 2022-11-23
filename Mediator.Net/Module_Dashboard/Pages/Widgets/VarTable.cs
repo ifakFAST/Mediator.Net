@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
@@ -36,12 +37,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public Task<ReqResult> UiReq_GetItemsData() {
             ObjectRef[] usedObjects = configuration.Items.Select(it => it.Variable.Object).Distinct().ToArray();
-            return Common.GetItemsData(Connection, usedObjects);
+            return Common.GetNumericAndStringVarItemsData(Connection, usedObjects);
         }
 
         public async Task<ReqResult> UiReq_LoadData() {
             var items = await LoadData(updateTrend: true);
             return ReqResult.OK(items);
+        }
+
+        public async Task<ReqResult> UiReq_ToggleShowTrendColumn() {
+            configuration.ShowTrendColumn = !configuration.ShowTrendColumn;
+            await Context.SaveWidgetConfiguration(configuration);
+            return ReqResult.OK();
         }
 
         public async Task<VarVal[]> LoadData(bool updateTrend) {
@@ -62,18 +69,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         private VarVal[] MakeValues(VarTableConfig config, IList<VariableValue> values) {
 
             var res = new List<VarVal>();
-            foreach (var it in config.Items) {
+            foreach (VarItem it in config.Items) {
 
                 VariableValue vv = values.FirstOrDefault(vv => vv.Variable == it.Variable);
                 if (vv.Variable != it.Variable) continue;
 
                 VTQ vtq = vv.Value;
-                double? value = vtq.V.AsDouble();
+                double? numericValue = vtq.V.AsDouble();
 
                 string? warning = null;
                 string? alarm = null;
-                if (value.HasValue) {
-                    var v = value.Value;
+                if (numericValue.HasValue) {
+                    var v = numericValue.Value;
                     if (IsBelow(v, it.AlarmBelow)) {
                         alarm = $"Value is below alarm limit {it.AlarmBelow!.Value}";
                     }
@@ -111,7 +118,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
                 var itt = new VarVal() {
                     Name = it.Name,
-                    Value = value.HasValue ? FormatDouble(value.Value, 2) : "",
                     Unit = it.Unit,
                     Time = FormatTime(vtq.T),
                     Trend = trend ?? "?",
@@ -119,10 +125,65 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     Alarm = alarm,
                 };
 
+                if (numericValue.HasValue) {
+                    double numValue = numericValue.Value;
+                    itt.Value = FormatDouble(numValue, 2);
+
+                    EnumValEntry[] enums = ParseEnumValues(it.EnumValues);
+                    EnumValEntry? hitOrNulll = enums.FirstOrDefault(enumIt => enumIt.Num == numValue);
+                    if (hitOrNulll != null) {
+                        itt.Value = hitOrNulll.Label;
+                        itt.ValueColor = hitOrNulll.Color ?? "";
+                    }
+                }
+                else {
+
+                    string str = vtq.V.JSON;
+                    try {
+                        str = vtq.V.GetString() ?? "";
+                    }
+                    catch { }
+
+                    itt.Value = str;
+                }
+
                 res.Add(itt);
             }
 
             return res.ToArray();
+        }
+
+        private static EnumValEntry[] ParseEnumValues(string enumDef) {
+            if (string.IsNullOrWhiteSpace(enumDef)) return new EnumValEntry[0];
+            try {
+                string[] vals = enumDef.Split(';');
+                var res = new List<EnumValEntry>();
+                foreach (string item in vals) {
+                    string[] items = item.Split('=');
+                    if (items.Length == 2) {
+                        string key = items[0].Trim();
+                        string value = items[1].Trim();
+                        bool isComplex = value.StartsWith('{') && value.EndsWith('}');
+                        EnumValEntry entry = new EnumValEntry() {
+                            Num = double.Parse(key, CultureInfo.InvariantCulture),
+                            Label = value,
+                        };
+                        if (isComplex) {
+                            string inner = value.Substring(1, value.Length - 2);
+                            string[] props = inner.Split(',');
+                            entry.Label = props[0].Trim();
+                            if (props.Length > 1) {
+                                entry.Color = props[1].Trim();
+                            }
+                        }
+                        res.Add(entry);
+                    }
+                }
+                return res.ToArray();
+            }
+            catch {
+                return new EnumValEntry[0];
+            }
         }
 
         private static bool IsBelow(double v, double? comp) => comp.HasValue ? v < comp.Value : false;
@@ -132,7 +193,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             try {
                 decimal dec = (decimal)v;
                 decimal value = Math.Round(dec, decimalPlaces, MidpointRounding.AwayFromZero);
-                return value.ToString();
+                return value.ToString(CultureInfo.InvariantCulture);
             }
             catch (Exception) {
                 return v.ToString();
@@ -176,11 +237,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public override async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
 
-            VarItem[] varItems = configuration.Items
-                .Where(it => changes.Any(ch => ch.Variable == it.Variable))
-                .ToArray();
+            if (configuration.ShowTrendColumn) {
 
-            await CalcTrendForVarItems(varItems);
+                VarItem[] varItems = configuration.Items
+                    .Where(it => changes.Any(ch => ch.Variable == it.Variable))
+                    .ToArray();
+
+                await CalcTrendForVarItems(varItems);
+            }
         }
 
         private async Task CalcTrendForVarItems(IEnumerable<VarItem> varItems) {
@@ -265,6 +329,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class VarTableConfig
     {
         public VarItem[] Items { get; set; } = new VarItem[0];
+        public bool ShowTrendColumn { get; set; } = true;
     }
 
     public class VarItem
@@ -277,16 +342,24 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         public double? WarnAbove { get; set; } = null;
         public double? AlarmBelow { get; set; } = null;
         public double? AlarmAbove { get; set; } = null;
+        public string EnumValues { get; set; } = "";
     }
 
     public class VarVal
     {
         public string Name { get; set; } = "";
         public string Value { get; set; } = "";
+        public string ValueColor { get; set; } = "";
         public string Unit { get; set; } = "";
         public string Time { get; set; } = "";
         public string Trend { get; set; } = "";
         public string? Warning { get; set; } = null;
         public string? Alarm { get; set; } = null;
+    }
+
+    public sealed class EnumValEntry {
+        public double Num { get; set; }
+        public string Label { get; set; } = "";
+        public string? Color { get; set; } = null;
     }
 }

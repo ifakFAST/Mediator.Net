@@ -20,8 +20,7 @@
 
 <script lang="ts">
 
-import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import * as model from './model'
+import { Component, Vue } from 'vue-property-decorator'
 
 interface Entry {
   id: string

@@ -14,7 +14,7 @@ using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInf
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
-    [Identify(id: "Pages", bundle: "Generic", path: "pages.html", icon: "mdi-chart-line-variant")]
+    [Identify(id: "Pages", bundle: "Generic", path: "pages.html", configType: typeof(Config), icon: "mdi-chart-line-variant")]
     public class View : ViewBase
     {
         private Config configuration = new Config();
@@ -281,7 +281,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return ReqResult.OK(activePage.Page);
         }
 
-        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID) {
+        public enum ObjectFilter {
+            WithVariables,
+            WithMembers
+        }
+
+        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID, ObjectFilter Filter = ObjectFilter.WithVariables) {
 
             ObjectInfos objects;
 
@@ -292,17 +297,66 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 objects = new ObjectInfos();
             }
 
+            ObjInfo[] res = await ReadObjects(Connection, objects, Filter);
             return ReqResult.OK(new {
-                Items = objects.Where(o => o.Variables.Any(IsNumericOrBool)).Select(o => new {
-                    Type = o.ClassName,
-                    ID = o.ID.ToEncodedString(),
-                    Name = o.Name,
-                    Variables = o.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray()
-                }).ToArray()
+                Items = res
             });
         }
 
-        private static bool IsNumericOrBool(Variable v) => v.IsNumeric || v.Type == DataType.Bool;
+        public sealed class ObjInfo {
+            public string ID { get; set; } = "";
+            public string Name { get; set; } = "";
+            public string Type { get; set; } = "";
+            public string[] Members { get; set; } = new string[0];
+            public string[] Variables { get; set; } = new string[0];
+        }
+
+        public static async Task<ObjInfo[]> ReadObjects(Connection Connection, ObjectInfos objects, ObjectFilter filter) {
+
+            if (filter == ObjectFilter.WithMembers) {
+
+                string[] moduleIDs = objects.Select(obj => obj.ID.ModuleID).Distinct().ToArray();
+                var mapMeta = new Dictionary<string, Dictionary<string, ClassInfo>>();
+                foreach (string moduleID in moduleIDs) {
+                    MetaInfos meta = await Connection.GetMetaInfos(moduleID);
+                    mapMeta[moduleID] = meta.Classes.ToDictionary(cls => cls.FullName);
+                }
+
+                Func<SimpleMember, bool> isNumeric = (sm) => sm.Type.IsNumeric() || sm.Type == DataType.Bool || sm.Type == DataType.JSON;
+
+                Func<ObjectInfo, bool> hasMembers = (obj) => {
+                    var mapClasses = mapMeta[obj.ID.ModuleID];
+                    if (!mapClasses.TryGetValue(obj.ClassName, out ClassInfo? cls)) return false;
+                    return cls.SimpleMember.Any(isNumeric);
+                };
+
+                Func<ObjectInfo, string[]> getMembers = (obj) => {
+                    var mapClasses = mapMeta[obj.ID.ModuleID];
+                    if (!mapClasses.TryGetValue(obj.ClassName, out ClassInfo? cls)) return new string[0];
+                    return cls.SimpleMember.Where(isNumeric).Select(sm => sm.Name).ToArray();
+                };
+
+                return objects.Where(hasMembers).Select(o => new ObjInfo() {
+                    Type = o.ClassName,
+                    ID = o.ID.ToEncodedString(),
+                    Name = o.Name,
+                    Members = getMembers(o)
+                }).ToArray();
+
+            }
+            else {
+
+                return objects.Where(o => o.Variables.Any(IsNumericOrBoolOrString))
+                     .Select(o => new ObjInfo() {
+                         Type = o.ClassName,
+                         ID = o.ID.ToEncodedString(),
+                         Name = o.Name,
+                         Variables = o.Variables.Where(IsNumericOrBoolOrString).Select(v => v.Name).ToArray()
+                     }).ToArray();
+            }
+        }
+
+        private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String;
 
         private void CheckActivePage(string pageID) {
             if (activePage == null) {
@@ -342,6 +396,43 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         internal Task SendWidgetEventToUI(string pageID, string widgetID, string eventName, object payload) {
             var msg = new EventMsg(pageID, widgetID, eventName, payload);
             return Context.SendEventToUI("WidgetEvent", msg);
+        }
+
+        private VariableRef GetPageLogRef(string pageID) {
+            ObjectRef viewID = ID;
+            string fullPageID = viewID.LocalObjectID + ".Page." + pageID;
+            return VariableRef.Make(viewID.ModuleID, fullPageID, "ActionLog");
+        }
+
+        internal async Task LogPageAction(string pageID, string action) {            
+            var varRef = GetPageLogRef(pageID);
+            var user = await Connection.GetLoginUser();
+            var logAction = new LogAction() {
+                Time = Timestamp.Now,
+                UserID = user.ID,
+                UserLogin = user.Login,
+                UserName = user.Name,
+                Action = action,
+            };
+            DataValue dv = DataValue.FromObject(logAction, indented: true);
+            VTQ vtq = VTQ.Make(dv, Timestamp.Now, Quality.Good);
+            await Connection.HistorianModify(varRef, ModifyMode.Insert, vtq);
+        }
+
+        internal VariableRef GetPageActionLogVariable(string pageID) {
+            return GetPageLogRef(pageID);
+        }
+
+        internal async Task<LogAction[]> GetLoggedPageActions(string pageID, int limit) {
+            var varRef = GetPageLogRef(pageID);
+            var vttqs = await Connection.HistorianReadRaw(varRef, Timestamp.Empty, Timestamp.Max, limit, BoundingMethod.TakeLastN);
+            var res = new List<LogAction>(vttqs.Count);
+            foreach (var vttq in vttqs) {
+                LogAction? ll = vttq.V.Object<LogAction>();
+                if (ll == null) continue;
+                res.Add(ll);
+            }
+            return res.ToArray();
         }
 
         public class EventMsg
@@ -584,6 +675,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             public Task SendEventToUI(string eventName, object payload) {
                 return view.SendWidgetEventToUI(pageID, widget.ID, eventName, payload);
+            }
+
+            public Task LogPageAction(string action) {
+                return view.LogPageAction(pageID, action);
+            }
+
+            public Task<LogAction[]> GetLoggedPageActions(int limit) {
+                return view.GetLoggedPageActions(pageID, limit);
+            }
+
+            public VariableRef GetPageActionLogVariable() {
+                return view.GetPageActionLogVariable(pageID);
             }
         }
     }

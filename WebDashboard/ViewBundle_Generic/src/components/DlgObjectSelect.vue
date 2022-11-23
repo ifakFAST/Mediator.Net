@@ -15,11 +15,11 @@
               <v-text-field append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>
 
-          <v-data-table dense no-data-text="No objects with numeric variables in selected module" :headers="headers" :items="items"
+          <v-data-table dense no-data-text="No relevant objects in selected module" :headers="headers" :items="items"
                         :search="search" :custom-filter="customObjectFilter" class="elevation-4 mt-2"
                         show-select single-select :footer-props="footer" item-key="ID" v-model="selected">
 
-              <template v-slot:item.Type="{ item }">
+              <template #[`item.Type`]="{ item }">
                 {{ getShortTypeName(item.Type) }}
               </template>
 
@@ -51,7 +51,8 @@ interface Obj {
   Type: string
   ID: string
   Name: string
-  Variables: string[]
+  Variables?: string[]
+  Members?: string[]
 }
 
 @Component({
@@ -64,7 +65,8 @@ export default class DlgObjectSelect extends Vue {
   @Prop(String)  objectId: string
   @Prop(String)  moduleId: string
   @Prop(Array)   modules: ModuleInfo[]
-  @Prop({ type: String, default() { return 'Float64' } }) type: string
+  @Prop({ type: String, default() { return 'Float64'       } }) type: string
+  @Prop({ type: String, default() { return 'WithVariables' } }) filter: string
 
   currModuleID: string = ''
   selected: Obj[] = []
@@ -122,6 +124,7 @@ export default class DlgObjectSelect extends Vue {
     const para = {
       ModuleID: modID,
       ForType: this.type,
+      Filter: this.filter,
     }
     window.parent['dashboardApp'].sendViewRequest('ReadModuleObjects', para, (strResponse) => {
       const response = JSON.parse(strResponse)

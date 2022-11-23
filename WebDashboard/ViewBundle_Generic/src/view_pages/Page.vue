@@ -263,7 +263,8 @@ export default class Page extends Vue {
     const column = page.Rows[row].Columns[col]
     const widgetObj: model.Widget = column.Widgets[widget]
 
-    const newHeight = await this.textInputDlg('Set Widget Height', 'Define the new height of the widget.', widgetObj.Height || '')
+    const msg = 'Define the new height of the widget, e.g. "auto", "100px".'
+    const newHeight = await this.textInputDlg('Set Widget Height', msg, widgetObj.Height || '')
     if (newHeight === null) { return }
     const para = {
       pageID: page.ID,
@@ -281,7 +282,8 @@ export default class Page extends Vue {
     const column = page.Rows[row].Columns[col]
     const widgetObj: model.Widget = column.Widgets[widget]
 
-    const newWidth = await this.textInputDlg('Set Widget Width', 'Define the new width of the widget.', widgetObj.Width || '')
+    const msg = 'Define the new width of the widget, e.g. "auto", "100px", "100%".'
+    const newWidth = await this.textInputDlg('Set Widget Width', msg, widgetObj.Width || '')
     if (newWidth === null) { return }
     const para = {
       pageID: page.ID,
@@ -401,7 +403,6 @@ export default class Page extends Vue {
       row,
       down,
     }
-    const context = this
     window.parent['dashboardApp'].sendViewRequest('ConfigMoveRow', para, this.onGotNewPage)
   }
 
@@ -417,7 +418,6 @@ export default class Page extends Vue {
       pageID: page.ID,
       row,
     }
-    const context = this
     window.parent['dashboardApp'].sendViewRequest('ConfigRemoveRow', para, this.onGotNewPage)
   }
 
@@ -442,7 +442,6 @@ export default class Page extends Vue {
       col,
       right,
     }
-    const context = this
     window.parent['dashboardApp'].sendViewRequest('ConfigMoveCol', para, this.onGotNewPage)
   }
 
@@ -515,8 +514,8 @@ export default class Page extends Vue {
   }
 
   async textInputDlg(title: string, message: string, value: string): Promise<string | null> {
-    const textInput = this.$refs.textInput as any
-    return textInput.open(title, message, value)
+    const textInput = this.$refs.textInput as DlgTextInput
+    return textInput.openWithValidator(title, message, value, (x) => '')
   }
 }
 </script>

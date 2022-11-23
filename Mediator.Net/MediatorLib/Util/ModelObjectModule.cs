@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Util
 {
-    public abstract class ModelObjectModule<T> : ModuleBase where T : IModelObject, new()
+    public abstract class ModelObjectModule<T> : ModuleBase, Unnestable where T : IModelObject, new()
     {
         protected T model = new T();
 
@@ -27,6 +27,8 @@ namespace Ifak.Fast.Mediator.Util
         protected string moduleID = "";
         protected string moduleName = "";
         protected Notifier? notifier = null;
+
+        public virtual IModelObject? UnnestConfig(IModelObject parent, object? obj) => null;
 
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
             this.moduleID = info.ModuleID;
@@ -161,8 +163,8 @@ namespace Ifak.Fast.Mediator.Util
             return Task.FromResult(true);
         }
 
-        protected static void InitFromModelImpl(string moduleID, IModelObject root, Stack<IModelObject> parents, MemberRefIdx? parent, List<ObjectInfo> res, Dictionary<ObjectRef, IModelObject> mapObjests) {
-            ObjInfo info = root.GetObjectInfo(moduleID, parents);
+        protected void InitFromModelImpl(string moduleID, IModelObject root, Stack<IModelObject> parents, MemberRefIdx? parent, List<ObjectInfo> res, Dictionary<ObjectRef, IModelObject> mapObjests) {
+            ObjInfo info = root.GetObjectInfo(moduleID, parents, this);
             res.Add(new ObjectInfo(info.ID, info.DisplayName, info.ClassName, parent, info.Variables, info.Location));
             ObjectRef key = info.ID;
             if (mapObjests.ContainsKey(key)) throw new Exception("Object id is not unique: " + key);

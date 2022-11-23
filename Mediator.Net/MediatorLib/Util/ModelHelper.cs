@@ -8,9 +8,14 @@ using System.Reflection;
 
 namespace Ifak.Fast.Mediator.Util
 {
+    public interface Unnestable 
+    {
+        IModelObject? UnnestConfig(IModelObject parent, object? obj);
+    }
+
     public interface IModelObject
     {
-        ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents);
+        ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents, Unnestable unnestable);
         DataValue GetMemberValueByName(string memberName);
         void SetMemberValue(string memberName, DataValue value);
         void RemoveChildObject(string memberName, IModelObject childObject);
@@ -53,11 +58,11 @@ namespace Ifak.Fast.Mediator.Util
 
     public abstract class ModelObject : IModelObject
     {
-        public ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents) => new ObjInfo(
+        public ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents, Unnestable unnestable) => new ObjInfo(
             ObjectRef.Make(moduleID, GetID(parents)),
             GetDisplayName(parents),
             GetClassName(),
-            GetChildObjectsInMember(),
+            GetChildObjectsInMember(unnestable),
             GetVariablesOrNull(parents),
             GetLocation());
 
@@ -80,7 +85,7 @@ namespace Ifak.Fast.Mediator.Util
 
         protected virtual Variable[]? GetVariablesOrNull(IEnumerable<IModelObject> parents) => null;
 
-        protected virtual List<ChildObjectsInMember> GetChildObjectsInMember() {
+        protected virtual List<ChildObjectsInMember> GetChildObjectsInMember(Unnestable unnestable) {
             var res = new List<ChildObjectsInMember>();
             PropertyInfo[] properties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public);
             foreach (PropertyInfo p in properties) {
@@ -92,6 +97,12 @@ namespace Ifak.Fast.Mediator.Util
                 else if (value is IModelObject) {
                     res.Add(new ChildObjectsInMember(p.Name, (IModelObject)value));
                 }
+                else if (p.GetCustomAttribute<ContainsNestedModel>() != null) {
+                    IModelObject? mm = unnestable.UnnestConfig(this, value);
+                    if (mm != null) {
+                        res.Add(new ChildObjectsInMember(p.Name, mm));
+                    }
+                }
             }
             return res;
         }
@@ -99,21 +110,13 @@ namespace Ifak.Fast.Mediator.Util
         public DataValue GetMemberValueByName(string memberName) {
             PropertyInfo p = GetPropertyByNameOrThrow(memberName);
             object value = p.GetValue(this, null);
-            return DataValue.FromObject(value);
+            return DataValue.FromObject(value); // if value is a DataValue, it will be wrapped. That is intentional!
         }
 
         public void SetMemberValue(string memberName, DataValue value) {
             PropertyInfo p = GetPropertyByNameOrThrow(memberName);
-            if (p.PropertyType == typeof(DataValue)) {
-                p.SetValue(this, value);
-            }
-            else if (value.IsEmpty) {
-                p.SetValue(this, null);
-            }
-            else {
-                object? decodedValue = value.Object(p.PropertyType);
-                p.SetValue(this, decodedValue);
-            }
+            object? decodedValue = value.Object(p.PropertyType);
+            p.SetValue(this, decodedValue);
         }
 
         public void AddChildObject(string memberName, DataValue objectToAdd) {

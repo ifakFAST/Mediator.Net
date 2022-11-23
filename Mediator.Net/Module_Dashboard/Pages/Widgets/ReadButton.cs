@@ -57,6 +57,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     {
         public VariableRef? Variable { get; set; } = null;
 
-        public bool ShouldSerializeFVariable() => Variable.HasValue;
+        public bool ShouldSerializeVariable() => Variable.HasValue;
     }
 }

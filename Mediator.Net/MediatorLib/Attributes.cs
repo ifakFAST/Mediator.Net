@@ -23,6 +23,11 @@ namespace Ifak.Fast.Mediator
     }
 
     [AttributeUsage(AttributeTargets.Property)]
+    public class ContainsNestedModel : AttributeBase {
+
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
     public class Category : AttributeBase
     {
         public string Name { get; set; }

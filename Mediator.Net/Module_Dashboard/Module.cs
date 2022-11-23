@@ -45,6 +45,21 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
+        public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
+            if (obj is DataValue dv && parent is View view) {
+                string type = view.Type;
+                ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name == type);
+                if (viewType != null && viewType.ConfigType != null) {
+                    Type t = viewType.ConfigType;
+                    object? configObj = dv.Object(t);
+                    if (configObj is IModelObject mob) {
+                        return mob;
+                    }
+                }
+            }
+            return null;
+        }
+
         public override async Task Init(ModuleInitInfo info,
                                         VariableValue[] restoreVariableValues,
                                         Notifier notifier,
@@ -88,6 +103,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             viewTypes = ReadAvailableViewTypes(absolutBaseDir, BundlesPrefix, absoluteViewAssemblies);
             uiModel = MakeUiModel(model, viewTypes);
+
+            await base.OnConfigModelChanged(init: false); // required for UnnestConfig to work (viewTypes need to be loaded)
 
             var builder = new WebHostBuilder();
             builder.UseKestrel((KestrelServerOptions options) => {
@@ -499,6 +516,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                             Name = id.ID,
                             HtmlPath = $"/{bundlesPrefx}/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
                             Type = type,
+                            ConfigType = id.ConfigType,
                             Icon = id.Icon ?? ""
                         };
                         result.Add(vt);
@@ -571,6 +589,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public string HtmlPath { get; set; } = "";
         public string Icon { get; set; } = "";
         public Type? Type { get; set; }
+        public Type? ConfigType { get; set; }
     }
 
 

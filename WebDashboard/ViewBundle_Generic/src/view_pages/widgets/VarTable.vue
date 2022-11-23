@@ -2,20 +2,20 @@
   <div>
 
     <div @contextmenu="onContextMenu">
-      <v-simple-table dense>
+      <v-simple-table :height="theHeight" dense>
         <template v-slot:default>
           <thead>
             <tr>
-              <th class="text-left"  style="font-size:15px;">Name</th>
-              <th class="text-right" style="font-size:15px; height:36px; padding-right:0px;">Value</th>
-              <th class="text-right" style="font-size:15px; height:36px;"></th>
-              <th class="text-right" style="font-size:15px; height:36px;">Time</th>
-              <th class="text-center" style="font-size:15px; height:36px;">Trend</th>
+              <th class="text-left"  style="font-size:14px;">Variable</th>
+              <th class="text-right" style="font-size:14px; height:36px; padding-right:0px;">Value</th>
+              <th class="text-right" style="font-size:14px; height:36px;"></th>
+              <th class="text-right" style="font-size:14px; height:36px;">Time</th>
+              <th v-if="config.ShowTrendColumn" class="text-center" style="font-size:14px; height:36px;">Trend</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.Name" :style="varItemStyle(item)">
-              <td class="text-left"  style="font-size:15px; height:36px;">
+              <td class="text-left"  style="font-size:14px; height:36px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
                     <span v-bind="attrs" v-on="on">{{ item.Name }}</span>
@@ -23,15 +23,15 @@
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-right" style="font-size:15px; height:36px; padding-right:0px;">
+              <td class="text-right" style="font-size:14px; height:36px; padding-right:0px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
-                    <span v-bind="attrs" v-on="on">{{ item.Value }}</span>
+                    <span v-bind="attrs" v-on="on"><span v-bind:style="{ color: item.ValueColor }">{{ item.Value }}</span></span>
                   </template>
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-left"  style="font-size:15px; height:36px; padding-left:8px;">
+              <td class="text-left"  style="font-size:14px; height:36px; padding-left:8px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
                     <span v-bind="attrs" v-on="on">{{ item.Unit }}</span>
@@ -39,7 +39,7 @@
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-right" style="font-size:15px; height:36px;">
+              <td class="text-right" style="font-size:14px; height:36px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
                     <span v-bind="attrs" v-on="on">{{ item.Time }}</span>
@@ -47,7 +47,7 @@
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-center" style="font-size:15px; height:36px;">
+              <td v-if="config.ShowTrendColumn" class="text-center" style="font-size:14px; height:36px;">
                 <v-icon :color="varItemColor(item)" v-if="item.Trend === 'up'">mdi-arrow-top-right</v-icon>
                 <v-icon :color="varItemColor(item)" v-if="item.Trend === 'down'">mdi-arrow-bottom-right</v-icon>
                 <v-icon :color="varItemColor(item)" v-if="item.Trend === 'flat'">mdi-arrow-right</v-icon>
@@ -62,6 +62,9 @@
       <v-list>
         <v-list-item @click="onConfigureItems" >
           <v-list-item-title>Configure Items...</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="onToggleShowTrendColumn" >
+          <v-list-item-title> {{ config.ShowTrendColumn ? 'Hide Trend Column' : 'Show Trend Column' }}</v-list-item-title>
         </v-list-item>
 <!--         <v-list-item @click="onConfigurePlot" >
           <v-list-item-title>Configure Plot...</v-list-item-title>
@@ -88,26 +91,30 @@
                   <th class="text-left">Orange Above</th>
                   <th class="text-left">Red Below</th>
                   <th class="text-left">Red Above</th>
+                  <th class="text-left">Enum Values</th>
                   <th>&nbsp;</th>
                   <th>&nbsp;</th>
                 </tr>
               </thead>
-              <template v-for="(item, idx) in editorItems.items">
-                <tr v-bind:key="idx">
-                  <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
-                  <td><v-text-field class="tabcontent" v-model="item.Unit" style="max-width:8ch;"></v-text-field></td>
-                  <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
-                  <td><v-btn class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
-                  <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable.Object)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
-                  <td><v-text-field class="tabcontent" style="max-width:8ch;" v-model="item.TrendFrame"></v-text-field></td>
-                  <td><text-field-nullable-number style="max-width:8ch;" v-model="item.WarnBelow"></text-field-nullable-number></td>
-                  <td><text-field-nullable-number style="max-width:8ch;" v-model="item.WarnAbove"></text-field-nullable-number></td>
-                  <td><text-field-nullable-number style="max-width:8ch;" v-model="item.AlarmBelow"></text-field-nullable-number></td>
-                  <td><text-field-nullable-number style="max-width:8ch;" v-model="item.AlarmAbove"></text-field-nullable-number></td>
-                  <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
-                  <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
-                </tr>
-              </template>
+              
+              <tr v-for="(item, idx) in editorItems.items" v-bind:key="idx">
+                <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
+                <td><v-text-field class="tabcontent" v-model="item.Unit" style="max-width:8ch;"></v-text-field></td>
+                <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
+                <td><v-btn class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
+                <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable.Object)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
+                <td><v-text-field class="tabcontent" style="max-width:8ch;" v-model="item.TrendFrame"></v-text-field></td>
+                <td><text-field-nullable-number style="max-width:8ch;" v-model="item.WarnBelow"></text-field-nullable-number></td>
+                <td><text-field-nullable-number style="max-width:8ch;" v-model="item.WarnAbove"></text-field-nullable-number></td>
+                <td><text-field-nullable-number style="max-width:8ch;" v-model="item.AlarmBelow"></text-field-nullable-number></td>
+                <td><text-field-nullable-number style="max-width:8ch;" v-model="item.AlarmAbove"></text-field-nullable-number></td>
+
+                <td><v-text-field class="tabcontent" style="max-width:8ch;" v-model="item.EnumValues"></v-text-field></td>
+
+                <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
+                <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
+              </tr>
+              
               <tr>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
@@ -148,9 +155,10 @@ import * as fast from '../../fast_types'
 import { TimeRange } from '../../utils'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
-import { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
+import { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
 
 interface Config {
+  ShowTrendColumn: boolean
   Items: ItemConfig[]
 }
 
@@ -163,11 +171,13 @@ interface ItemConfig {
   WarnAbove: number | null
   AlarmBelow: number | null
   AlarmAbove: number | null
+  EnumValues: string
 }
 
 interface VarItem {
   Name: string
   Value: string
+  ValueColor: string
   Unit: string
   Time: string
   Trend: TrendType
@@ -216,12 +226,18 @@ export default class VarTable extends Vue {
     modules: [],
     selectedModuleID: '',
     selectedObjectID: '',
-    variable: { Object: '', Name: '' },
   }
+
+  currentVariable: fast.VariableRef = { Object: '', Name: '' }
 
   editorItems: EditorItems = {
     show: false,
     items: [],
+  }
+
+  get theHeight(): string {
+    if (this.height.trim() === '') { return 'auto' }
+    return this.height
   }
 
   varItemStyle(item: VarItem): object {
@@ -271,6 +287,10 @@ export default class VarTable extends Vue {
     return this.editorItems.items.every(notEmpty) && names.size === this.editorItems.items.length
   }
 
+  async onToggleShowTrendColumn(): Promise<void> {
+    await this.backendAsync('ToggleShowTrendColumn', {})
+  }
+
   async onConfigureItems(): Promise<void> {
 
     const response: {
@@ -299,6 +319,7 @@ export default class VarTable extends Vue {
         for (const at of this.items) {
           if (it.Name === at.Name) {
             at.Value = it.Value
+            at.ValueColor = it.ValueColor
             at.Time = it.Time
             at.Warning = it.Warning
             at.Alarm = it.Alarm
@@ -319,6 +340,7 @@ export default class VarTable extends Vue {
       WarnAbove: null,
       AlarmBelow: null,
       AlarmAbove: null,
+      EnumValues: '',
       Variable: {
         Object: '',
         Name: '',
@@ -381,8 +403,8 @@ export default class VarTable extends Vue {
       this.selectObject.selectedModuleID = objForModuleID.substring(0, i)
     }
     this.selectObject.selectedObjectID = currObj
-    this.selectObject.variable = item.Variable
     this.selectObject.show = true
+    this.currentVariable = item.Variable
   }
 
   selectObject_OK(obj: Obj): void {
@@ -390,9 +412,9 @@ export default class VarTable extends Vue {
       Name: obj.Name,
       Variables: obj.Variables,
     }
-    this.selectObject.variable.Object = obj.ID
+    this.currentVariable.Object = obj.ID
     if (obj.Variables.length === 1) {
-      this.selectObject.variable.Name = obj.Variables[0]
+      this.currentVariable.Name = obj.Variables[0]
     }
   }
 }

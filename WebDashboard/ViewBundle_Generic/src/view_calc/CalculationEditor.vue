@@ -39,22 +39,20 @@
           <tr>
             <th align="left">Name</th>
             <th align="left">Unit</th>
-            <th align="left">Type</th>
+            <th v-if="showInputTypeColumn" align="left">Type</th>
             <th align="left">Value</th>
-            <th align="left">Value Time</th>
+            <th align="left">Time</th>
             <th align="left">Value Source</th>
-            <th align="left">Object</th>
+            <th align="left">Object / Constant</th>
             <th align="left">&nbsp;</th>
             <th align="left">Variable</th>
-            <th align="left"><div class="ml-4">Constant Value</div></th>
-
           </tr>
         </thead>
 
         <tr v-for="{ input, VarVal } in inputList" :key="input.ID" style="vertical-align:top;">
           <td style="padding-top:4px;" class="IOName">{{ input.Name }}</td>
           <td style="padding-top:4px;">{{ input.Unit }}</td>
-          <td style="padding-top:4px;">{{ input.Type }}</td>
+          <td v-if="showInputTypeColumn" style="padding-top:4px;">{{ input.Type }}</td>
 
           <td style="padding-top:4px;"><value-display :vtq="VarVal" :type="input.Type" :dimension="input.Dimension" ></value-display></td>
 
@@ -62,13 +60,14 @@
 
           <td><v-select :value="inputAssignState(input)" @input="onValueTypeChanged(input, $event)" :items="assignStateValuesIn" hide-details class="tabcontent" style="width: 125px;"></v-select></td>
 
-          <td style="padding-top:4px;"> {{ isVar(input) ? getObjectName(input.Variable.Object) : ''  }}</td>
-          <td><v-btn    v-if="isVar(input)" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(input.Variable, input.Type)"><v-icon>edit</v-icon></v-btn></td>
-          <td><v-select v-if="isVar(input)" :items="getObjectVariables(input.Variable.Object)" v-model="input.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
+          <td v-if="isVar(input)" style="padding-top:4px; max-width: 32ch; overflow-wrap: anywhere;"> {{ isVar(input) ? getObjectName(input.Variable.Object) : ''  }}</td>
+          <td v-if="isVar(input)"><v-btn    class="ml-0 mr-3" style="min-width:36px;width:36px;" @click="onSelectObj(input.Variable, input.Type)"><v-icon>edit</v-icon></v-btn></td>
+          <td v-if="isVar(input)"><v-select :items="getObjectVariables(input.Variable.Object)" v-model="input.Variable.Name" hide-details class="tabcontent" style="width:16ch;"></v-select></td>
 
-          <td>
-            <v-text-field class="ml-4 tabcontent" v-if="isConst(input)" v-model="input.Constant" hide-details style="width: 100px;"></v-text-field>
+          <td v-if="isConst(input)" colspan="3">
+            <v-text-field class="ml-0 tabcontent" v-model="input.Constant" hide-details style="width: 120px;"></v-text-field>
           </td>
+
         </tr>
 
       </table>
@@ -83,7 +82,7 @@
           <tr>
             <th align="left">Name</th>
             <th align="left">Unit</th>
-            <th align="left">Type</th>
+            <th v-if="showOutputTypeColumn" align="left">Type</th>
             <th align="left">Value</th>
             <th align="left">Time</th>
             <th align="left">Value Destination</th>
@@ -97,14 +96,14 @@
         <tr v-for="{ output, VarVal } in outputList" :key="output.ID" style="vertical-align:top;">
           <td style="padding-top:4px;" class="IOName">{{ output.Name }}</td>
           <td style="padding-top:4px;">{{ output.Unit }}</td>
-          <td style="padding-top:4px;">{{ output.Type }}</td>
+          <td v-if="showOutputTypeColumn" style="padding-top:4px;">{{ output.Type }}</td>
           <td style="padding-top:4px;"><value-display :vtq="VarVal" :type="output.Type" :dimension="output.Dimension" ></value-display></td>
           <td style="padding-top:4px;">{{ VarVal.T }}</td>
 
           <td><v-select :value="outputAssignState(output)" @input="onOutputValueTypeChanged(output, $event)" :items="assignStateValuesOut" hide-details class="tabcontent" style="width: 130px;"></v-select></td>
 
-          <td style="padding-top:4px;">             {{ output.Variable !== null ? getObjectName(output.Variable.Object) : ''  }}</td>
-          <td><v-btn v-if="outputAssignState(output) === 'Variable'" class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="onSelectObj(output.Variable, output.Type)"><v-icon>edit</v-icon></v-btn></td>
+          <td style="padding-top:4px; max-width: 32ch; overflow-wrap: anywhere;">             {{ output.Variable !== null ? getObjectName(output.Variable.Object) : ''  }}</td>
+          <td><v-btn v-if="outputAssignState(output) === 'Variable'" class="ml-0 mr-3" style="min-width:36px;width:36px;" @click="onSelectObj(output.Variable, output.Type)"><v-icon>edit</v-icon></v-btn></td>
           <td><v-select v-if="output.Variable !== null" :items="getObjectVariables(output.Variable.Object)" v-model="output.Variable.Name" hide-details class="tabcontent" style="width:18ch;"></v-select></td>
         </tr>
 
@@ -209,6 +208,24 @@ export default class CalculationEditor extends Vue {
     enableBasicAutocompletion: true,
   }
 
+  get sortIOs(): boolean {
+    return this.value.Type === 'Simba'
+  }
+
+  get showInputTypeColumn(): boolean {
+    const inputs = this.value.Inputs
+    if (inputs.length === 0) { return false }
+    const type = inputs[0].Type
+    return inputs.some((it) => it.Type !== type)
+  }
+
+  get showOutputTypeColumn(): boolean {
+    const outputs = this.value.Outputs
+    if (outputs.length === 0) { return false }
+    const type = outputs[0].Type
+    return outputs.some((it) => it.Type !== type)
+  }
+
   get adapterTypes(): string[] {
     return this.adapterTypesInfo.map((info) => info.Type)
   }
@@ -259,9 +276,31 @@ export default class CalculationEditor extends Vue {
     require('brace/snippets/csharp')
   }
 
+  shallowCopyArray(arr: any[]): any[] {
+    const res = []
+    for (const it of arr) {
+      res.push(it)
+    }
+    return res
+  }
+
+  get sortedInputs(): calcmodel.Input[] {
+    if (!this.sortIOs) { return this.value.Inputs }
+    const sorted = this.shallowCopyArray(this.value.Inputs)
+    sorted.sort((a, b) => a.Name.localeCompare(b.Name))
+    return sorted
+  }
+
+  get sortedOutputs(): calcmodel.Output[] {
+    if (!this.sortIOs) { return this.value.Outputs }
+    const sorted = this.shallowCopyArray(this.value.Outputs)
+    sorted.sort((a, b) => a.Name.localeCompare(b.Name))
+    return sorted
+  }
+
   get inputList() {
     const map: IoVar[] = this.variables.Inputs
-    return this.value.Inputs.map((input) => {
+    return this.sortedInputs.map((input) => {
       const vtq: fast.VTQ = map.find((it) => it.Key === input.ID)?.Value || { V: '', Q: 'Bad', T: ''}
       return { input, VarVal: vtq }
     })
@@ -269,7 +308,7 @@ export default class CalculationEditor extends Vue {
 
   get outputList() {
     const map: IoVar[] = this.variables.Outputs
-    return this.value.Outputs.map((output) => {
+    return this.sortedOutputs.map((output) => {
       const vtq: fast.VTQ = map.find((it) => it.Key === output.ID)?.Value || { V: '', Q: 'Bad', T: ''}
       return { output, VarVal: vtq }
     })

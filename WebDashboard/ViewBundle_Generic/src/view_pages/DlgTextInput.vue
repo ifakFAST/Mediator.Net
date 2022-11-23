@@ -7,7 +7,7 @@
       </v-card-title>
       <v-card-text>
         {{ message }}
-        <v-text-field v-model="value" ref="editText"></v-text-field>
+        <v-text-field :hint="error" :error="!canOK" v-model="value" ref="editText"></v-text-field>        
       </v-card-text>
       <v-card-actions class="pt-0">
         <v-spacer></v-spacer>
@@ -21,7 +21,7 @@
 
 <script lang="ts">
 
-import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
+import { Component, Vue } from 'vue-property-decorator'
 
 @Component({
   components: {
@@ -34,7 +34,18 @@ export default class DlgTextInput extends Vue {
   message = ''
   value = ''
 
+  isValid: (s: string) => string = (x) => x.length > 0 ? '' : 'Must not be empty'
+
   resolve: (v: string | null) => void = (x) => { }
+
+  openWithValidator(title: string, message: string, value: string, valid: (str: string) => string): Promise<string | null> {
+    this.isValid = valid
+    return this.open(title, message, value)
+  }
+
+  get error(): string {
+    return this.isValid(this.value)
+  }
 
   open(title: string, message: string, value: string): Promise<string | null> {
     this.title = title
@@ -52,7 +63,7 @@ export default class DlgTextInput extends Vue {
   }
 
   get canOK(): boolean {
-    return this.value.length > 0
+    return this.isValid(this.value) === ''
   }
 
   ok(): void {
