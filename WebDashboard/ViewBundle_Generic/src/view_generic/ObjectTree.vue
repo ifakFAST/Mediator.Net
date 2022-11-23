@@ -12,7 +12,7 @@
       <span v-if=" showStruct && showVariableValue && firstVar.Struct" @click="showStruct = !showStruct" style="cursor: pointer;"><v-icon>keyboard_arrow_down</v-icon></span>
     </div>
     <struct-view v-if="showStruct && showVariableValue && firstVar.Struct" :value="firstVar.V" :vertical="firstVar.Dim !== 1"></struct-view>
-    <ul v-if="open">
+    <ul style="padding-left:1em;" v-if="open">
       <object-tree v-for="child in modelChildren" :key="child.ID" :model="child"
           :selection-id="selectionId"
           :initial-open="false"
@@ -87,6 +87,7 @@ export default class ObjectTree extends Vue {
       }
       if (typeName === this.model.Name) { return typeName }
       if (typeName === 'DataItem') { return this.model.Name }
+      if (typeName === 'Node') { return this.model.Name }
       return typeName + ' ' + this.model.Name
     }
     return ''

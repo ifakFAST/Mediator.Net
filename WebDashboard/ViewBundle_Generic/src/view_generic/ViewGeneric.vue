@@ -4,8 +4,8 @@
 
     <v-container fluid>
       <v-row  >
-        <v-col cols="4" style="min-width: 250px;">
-          <ul>
+        <v-col cols="auto" style="min-width: 400px; max-width: 660px;">
+          <ul style="padding-left:0px;">
 
             <object-tree
                 :model="objectTree"
@@ -17,7 +17,7 @@
 
           </ul>
         </v-col>
-        <v-col cols="8">
+        <v-col cols="fill" style="max-width: 850px;">
 
           <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse"
               :selection="selectedObject"

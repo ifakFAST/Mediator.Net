@@ -45,8 +45,8 @@ export interface ObjectMember {
   Browseable: boolean
   BrowseValues: string[]
   BrowseValuesLoading: boolean
-  Value: string
-  ValueOriginal: string
+  Value: any
+  ValueOriginal: any
   EnumValues: string[]
   StructMembers: StructMember[]
   DefaultValue: string

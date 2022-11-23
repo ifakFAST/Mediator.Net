@@ -19,12 +19,12 @@
     <div v-for="cat in categoryMembers" :key="cat.Category">
       <div v-if="currentTab === cat.Category">
           <form>
-            <table cellspacing="10">
+            <table cellspacing="10" style="width: 100%;">
 
                 <template v-for="row in cat.Members">
 
                   <tr v-if="row.IsScalar" :key="row.Key">
-                      <td>
+                      <td style="width:100%">
                         <v-text-field v-model="row.Value" v-if="row.Type === 'String'"   :label="row.Name" :readonly="row.Name ==='ID'"></v-text-field>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'JSON'"     :label="row.Name"></v-text-field>
                         <v-checkbox   v-model="row.Value" v-if="row.Type === 'Bool'"     :label="row.Name"></v-checkbox>
@@ -46,7 +46,7 @@
                   </tr>
 
                   <tr v-if="row.IsOption && row.Value !== null" :key="row.Key">
-                      <td>
+                      <td style="width:100%">
                         <v-text-field v-model="row.Value" v-if="row.Type === 'String'"   :label="row.Name"></v-text-field>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'JSON'"     :label="row.Name"></v-text-field>
                         <v-checkbox   v-model="row.Value" v-if="row.Type === 'Bool'"     :label="row.Name"></v-checkbox>
