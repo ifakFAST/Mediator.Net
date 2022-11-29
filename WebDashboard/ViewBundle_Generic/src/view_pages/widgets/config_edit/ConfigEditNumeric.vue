@@ -133,7 +133,7 @@
               return 'Minimum value is ' + it.MinValue
             }
             if (it.MaxValue !== null  && num > it.MaxValue) {
-              return 'Maximum value is ' + it.MinValue
+              return 'Maximum value is ' + it.MaxValue
             }
             return ''
           }
