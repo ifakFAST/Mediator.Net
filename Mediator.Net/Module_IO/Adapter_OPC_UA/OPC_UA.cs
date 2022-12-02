@@ -30,11 +30,19 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         public override bool SupportsScheduledReading => true;
 
         private string lastConnectErrMsg = "";
+        private bool excludeUnderscore = true;
 
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
+
+            const string Config_Underscore = "ExcludeUnderscoreNodes";
+            string strExcludeUnderscore = "true";
+            if (config.Config.Any(nv => nv.Name == Config_Underscore)) {
+                strExcludeUnderscore = config.Config.First(nv => nv.Name == Config_Underscore).Value.ToLowerInvariant().Trim();
+            }
+            excludeUnderscore = strExcludeUnderscore == "true";
 
             string appName = "Mediator.IO.OPC_UA";
 
@@ -596,6 +604,16 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return new DataItemBrowseInfo(n.ID.ToString(), path);
         }
 
+        private bool IncludeNode(NodeId id, ReferenceDescription item) {
+
+            if (id.NamespaceIndex == 0) return false;
+            if (item.BrowseName == null) return false;
+            if (item.BrowseName.Name == null) return false;
+            if (excludeUnderscore && item.BrowseName.Name.StartsWith('_')) return false;
+
+            return true;
+        }
+
         private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result, HashSet<BrowseNode> set) {
 
             var children = await BrowseTree(parent.ID);
@@ -603,12 +621,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             foreach (ReferenceDescription item in children) {
                 if (item.NodeId == null) continue;
                 NodeId id = ExpandedNodeId.ToNodeId(item.NodeId, connection.NamespaceUris);
-                if (item.NodeClass == NodeClass.Object && id.NamespaceIndex != 0 && item.BrowseName != null) {
-                    var nodeObject = new BrowseNode(id, item.BrowseName, parent);
+                if (item.NodeClass == NodeClass.Object && IncludeNode(id, item)) {
+                    var nodeObject = new BrowseNode(id, item.BrowseName!, parent);
                     await BrowseEntireTree(nodeObject, result, set);
                 }
-                else if (item.NodeClass == NodeClass.Variable && id.NamespaceIndex != 0 && item.BrowseName != null) {
-                    var nodeVariable = new BrowseNode(id, item.BrowseName, parent);
+                else if (item.NodeClass == NodeClass.Variable && IncludeNode(id, item)) {
+                    var nodeVariable = new BrowseNode(id, item.BrowseName!, parent);
                     if (!set.Contains(nodeVariable)) {
                         result.Add(nodeVariable);
                         set.Add(nodeVariable);
