@@ -20,7 +20,6 @@ import axios from "axios";
 import Login from "./Login.vue";
 import Dashboard from "./Dashboard.vue";
 import globalState from "./Global.js";
-import { setTimeout } from 'timers';
 
 export default {
   data() {
