@@ -17,5 +17,10 @@ module.exports = {
   ],
   css: {
     extract: { ignoreOrder: true },
+    loaderOptions: {
+      sass: {
+        warnRuleAsWarning: false
+      },
+    }
   },
 }

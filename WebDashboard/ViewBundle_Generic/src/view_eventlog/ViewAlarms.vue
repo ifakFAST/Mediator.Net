@@ -137,6 +137,16 @@ export default class ViewAlarms extends Vue {
       max-width: 1300px;
     }
   }
+  @media only screen and (min-width: 1500px) {
+    .container {
+      max-width: 1400px;
+    }
+  }
+  @media only screen and (min-width: 1600px) {
+    .container {
+      max-width: 1500px;
+    }
+  }
   @media only screen and (min-width: 1700px) {
     .container {
       max-width: 1600px;

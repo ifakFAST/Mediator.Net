@@ -6,8 +6,7 @@
          <span class="headline">{{ title }}</span>
        </v-card-title>
        <v-card-text>
-         {{ message }}
-
+        <p>{{ message }}</p>
          <v-container>
           <v-row>
             <v-btn class="mx-2" v-for="it in values" :key="it" :color="it === value ? 'primary' : ''" @click="value = it">
