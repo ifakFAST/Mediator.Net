@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-main>
-      <v-container>
+      <v-container fluid>
 
         <div v-if="loading">
           <p class="text-center">Loading ...</p>

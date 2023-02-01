@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-main>
-      <v-container>
+      <v-container fluid>
 
         <v-tabs v-model="currentTab">
 
@@ -131,26 +131,6 @@ export default class ViewAlarms extends Vue {
 <style>
  html {
     font-size: 16px;
-  }
-  @media only screen and (min-width: 1400px) {
-    .container {
-      max-width: 1300px;
-    }
-  }
-  @media only screen and (min-width: 1500px) {
-    .container {
-      max-width: 1400px;
-    }
-  }
-  @media only screen and (min-width: 1600px) {
-    .container {
-      max-width: 1500px;
-    }
-  }
-  @media only screen and (min-width: 1700px) {
-    .container {
-      max-width: 1600px;
-    }
   }
   .v-data-table > .v-data-table__wrapper > table > thead > tr > th {
     font-size: 16px;
