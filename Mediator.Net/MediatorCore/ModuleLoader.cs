@@ -4,8 +4,6 @@
 
 using Ifak.Fast.Mediator.Util;
 using System;
-using System.IO;
-using System.Linq;
 
 namespace Ifak.Fast.Mediator
 {
@@ -22,56 +20,66 @@ namespace Ifak.Fast.Mediator
                 //typeof(Ifak.Fast.Mediator.Publish.Module),
             };
 
+            if (typeName == Module.ExternalModule) {
+                return new ExternalModule();
+            }
+            
             Type? t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
 
             if (t != null) {
                 return (ModuleBase)(Activator.CreateInstance(t) ?? throw new Exception($"CreateInstance of module type '{t}' returned null"));
             }
 
-            assemblyName = assemblyName.Trim();
+            // Loading third-party modules in-process currently not supported
+            // To add support: https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support
 
-            if (string.IsNullOrEmpty(assemblyName)) {
-                throw new Exception($"Module type '{typeName}' not found in domain base dir and no assembly file given.");
-            }
+            throw new Exception($"Failed to load module type '{typeName}'.");
 
-            string fullAssemblyFile;
-            if (Path.IsPathRooted(assemblyName)) {
-                fullAssemblyFile = Path.GetFullPath(assemblyName);
-            }
-            else if (assemblyName[0] == '.' || assemblyName.Contains('/') || assemblyName.Contains(Path.DirectorySeparatorChar)) {
-                fullAssemblyFile = Path.GetFullPath(assemblyName);
-            }
-            else {
-                fullAssemblyFile = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? "", assemblyName));
-            }
 
-            t = LoadTypeFromAssemblyFile(fullAssemblyFile, typeName);
+            //assemblyName = assemblyName.Trim();
 
-            if (t != null) {
-                return (ModuleBase)(Activator.CreateInstance(t) ?? throw new Exception($"CreateInstance of module type '{t}' returned null"));
-            }
+            //if (string.IsNullOrEmpty(assemblyName)) {
+            //    throw new Exception($"Module type '{typeName}' not found in domain base dir and no assembly file given.");
+            //}
 
-            throw new Exception($"Module type '{typeName}' not found in assembly {fullAssemblyFile}.");
+            //string fullAssemblyFile;
+            //if (Path.IsPathRooted(assemblyName)) {
+            //    fullAssemblyFile = Path.GetFullPath(assemblyName);
+            //}
+            //else if (assemblyName[0] == '.' || assemblyName.Contains('/') || assemblyName.Contains(Path.DirectorySeparatorChar)) {
+            //    fullAssemblyFile = Path.GetFullPath(assemblyName);
+            //}
+            //else {
+            //    fullAssemblyFile = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory ?? "", assemblyName));
+            //}
+
+            //t = LoadTypeFromAssemblyFile(fullAssemblyFile, typeName);
+
+            //if (t != null) {
+            //    return (ModuleBase)(Activator.CreateInstance(t) ?? throw new Exception($"CreateInstance of module type '{t}' returned null"));
+            //}
+
+            //throw new Exception($"Module type '{typeName}' not found in assembly {fullAssemblyFile}.");
         }
 
-        private static Type? LoadTypeFromAssemblyFile(string fileName, string typeName) {
-            try {
-                Type baseClass = typeof(ModuleBase);
+        //private static Type? LoadTypeFromAssemblyFile(string fileName, string typeName) {
+        //    try {
+        //        Type baseClass = typeof(ModuleBase);
 
-                var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
-                        fileName,
-                        sharedTypes: new Type[] { baseClass });
+        //        var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
+        //                fileName,
+        //                sharedTypes: new Type[] { baseClass });
 
-                return loader.LoadDefaultAssembly()
-                    .GetExportedTypes()
-                    .FirstOrDefault(t => t.IsSubclassOf(baseClass) && !t.IsAbstract && typeName.Equals(t.FullName, StringComparison.InvariantCultureIgnoreCase));
-            }
-            catch (Exception exp) {
-                Console.Error.WriteLine($"Failed to load module types from assembly '{fileName}': {exp.Message}");
-                Console.Error.Flush();
-                return null;
-            }
-        }
+        //        return loader.LoadDefaultAssembly()
+        //            .GetExportedTypes()
+        //            .FirstOrDefault(t => t.IsSubclassOf(baseClass) && !t.IsAbstract && typeName.Equals(t.FullName, StringComparison.InvariantCultureIgnoreCase));
+        //    }
+        //    catch (Exception exp) {
+        //        Console.Error.WriteLine($"Failed to load module types from assembly '{fileName}': {exp.Message}");
+        //        Console.Error.Flush();
+        //        return null;
+        //    }
+        //}
 
     }
 }

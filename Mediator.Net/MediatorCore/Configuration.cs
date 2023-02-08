@@ -27,6 +27,8 @@ namespace Ifak.Fast.Mediator
 
     public class Module
     {
+        public const string ExternalModule = "Ifak.Fast.Mediator.ExternalModule";
+
         [XmlAttribute("id")]
         public string ID { get; set; } = Guid.NewGuid().ToString();
 
@@ -41,7 +43,7 @@ namespace Ifak.Fast.Mediator
 
         public string VariablesFileName { get; set; } = "";
         public string ImplAssembly { get; set; } = "";
-        public string ImplClass { get; set; } = "Ifak.Fast.Mediator.ExternalModule";
+        public string ImplClass { get; set; } = ExternalModule;
 
         public string ExternalCommand { get; set; } = "";
         public string ExternalArgs { get; set; } = "";
