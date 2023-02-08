@@ -389,6 +389,10 @@ namespace Ifak.Fast.Mediator
             return new DateTime(DotNetTicks, DateTimeKind.Utc);
         }
 
+        public DateTime ToDateTimeUnspecified() {
+            return new DateTime(DotNetTicks, DateTimeKind.Unspecified);
+        }
+
         public override string ToString() {
             var d = ToDateTime();
             if (ticks % 1000 != 0)
