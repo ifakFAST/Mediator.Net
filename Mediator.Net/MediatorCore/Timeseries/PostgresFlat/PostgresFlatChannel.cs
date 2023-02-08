@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using NpgsqlTypes;
+using Npgsql;
 
 namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 {
@@ -53,33 +54,33 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             NpgsqlDbType quality = NpgsqlDbType.Smallint;
             NpgsqlDbType data = NpgsqlDbType.Text;
 
-            stmtUpdate          = new PreparedStatement(connection, $"UPDATE channel_data SET diffDB = @1, quality = @2, data = @3 WHERE varID = {varID} AND time = @4", 4, diffDB, quality, data, time);
-            stmtInsert          = new PreparedStatement(connection, $"INSERT INTO channel_data VALUES ({varID}, @1, @2, @3, @4)", 4, time, diffDB, quality, data);
-            stmtUpsert          = new PreparedStatement(connection, $"INSERT INTO channel_data VALUES ({varID}, @1, @2, @3, @4) ON CONFLICT (varID, time) DO UPDATE SET diffDB = @2, quality = @3, data = @4", 4, time, diffDB, quality, data);
-            stmtDelete          = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2", 2, time, time);
-            stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time = @1", 1, time);
-            stmtLast            = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} ORDER BY time DESC LIMIT 1", 0);
-            stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2, time, time);
+            stmtUpdate          = new PreparedStatement(connection, $"UPDATE channel_data SET diffDB = $1, quality = $2, data = $3 WHERE varID = {varID} AND time =$4", diffDB, quality, data, time);
+            stmtInsert          = new PreparedStatement(connection, $"INSERT INTO channel_data VALUES ({varID}, $1, $2, $3,$4)", time, diffDB, quality, data);
+            stmtUpsert          = new PreparedStatement(connection, $"INSERT INTO channel_data VALUES ({varID}, $1, $2, $3,$4) ON CONFLICT (varID, time) DO UPDATE SET diffDB = $2, quality = $3, data =$4", time, diffDB, quality, data);
+            stmtDelete          = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2", time, time);
+            stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time = $1", time);
+            stmtLast            = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} ORDER BY time DESC LIMIT 1");
+            stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", time, time);
             
-            stmtRawFirstN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
-            stmtRawFirstN_NonBad     = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality <> 0 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
-            stmtRawFirstN_Good       = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality  = 1 ORDER BY time ASC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawFirstN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY time ASC LIMIT $3", time, time, NpgsqlDbType.Integer);
+            stmtRawFirstN_NonBad     = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality <> 0 ORDER BY time ASC LIMIT $3", time, time, NpgsqlDbType.Integer);
+            stmtRawFirstN_Good       = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality  = 1 ORDER BY time ASC LIMIT $3", time, time, NpgsqlDbType.Integer);
 
-            stmtRawLastN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
-            stmtRawLastN_NonBad     = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality <> 0 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
-            stmtRawLastN_Good       = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality  = 1 ORDER BY time DESC LIMIT @3", 3, time, time, NpgsqlDbType.Integer);
+            stmtRawLastN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY time DESC LIMIT $3", time, time, NpgsqlDbType.Integer);
+            stmtRawLastN_NonBad     = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality <> 0 ORDER BY time DESC LIMIT $3", time, time, NpgsqlDbType.Integer);
+            stmtRawLastN_Good       = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality  = 1 ORDER BY time DESC LIMIT $3", time, time, NpgsqlDbType.Integer);
 
-            stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 ORDER BY time ASC", 2, time, time);
-            stmtCount           = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID}", 0);
-            stmtCountAllQuality = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2", 2, time, time);
-            stmtCountNonBad     = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality <> 0", 2, time, time);
-            stmtCountGood       = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN @1 AND @2 AND quality = 1", 2, time, time);
+            stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY time ASC", time, time);
+            stmtCount           = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID}");
+            stmtCountAllQuality = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2", time, time);
+            stmtCountNonBad     = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality <> 0", time, time);
+            stmtCountGood       = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality = 1", time, time);
         }
 
         public override ChannelInfo Info => info;
 
         public override long CountAll() {
-            return (long)stmtCount.ExecuteScalar();
+            return (long)stmtCount.ExecuteScalar()!;
         }
 
         public override long CountData(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
@@ -90,9 +91,9 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             else if (filter == QualityFilter.ExcludeNonGood) {
                 stmt = stmtCountGood;
             }
-            stmt[0] = startInclusive.ToDateTime();
-            stmt[1] = endInclusive.ToDateTime();
-            return (long)stmt.ExecuteScalar();
+            stmt[0] = startInclusive.ToDateTimeUnspecified();
+            stmt[1] = endInclusive.ToDateTimeUnspecified();
+            return (long)stmt.ExecuteScalar()!;
         }
 
         public override long DeleteAll() {
@@ -105,7 +106,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             return stmtDeleteOne.RunTransaction(stmt => {
                 long counter = 0;
                 for (int i = 0; i < timestamps.Length; ++i) {
-                    stmt[0] = timestamps[i].ToDateTime();
+                    stmt[0] = timestamps[i].ToDateTimeUnspecified();
                     counter += stmt.ExecuteNonQuery();
                 }
                 return counter;
@@ -114,8 +115,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public override long DeleteData(Timestamp startInclusive, Timestamp endInclusive) {
             return stmtDelete.RunTransaction(stmt => {
-                stmt[0] = startInclusive.ToDateTime();
-                stmt[1] = endInclusive.ToDateTime();
+                stmt[0] = startInclusive.ToDateTimeUnspecified();
+                stmt[1] = endInclusive.ToDateTimeUnspecified();
                 return stmt.ExecuteNonQuery();
             });
         }
@@ -135,8 +136,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         public override VTTQ? GetLatestTimestampDB(Timestamp startInclusive, Timestamp endInclusive) {
-            stmtLatestTimeDb[0] = startInclusive.ToDateTime();
-            stmtLatestTimeDb[1] = endInclusive.ToDateTime();
+            stmtLatestTimeDb[0] = startInclusive.ToDateTimeUnspecified();
+            stmtLatestTimeDb[1] = endInclusive.ToDateTimeUnspecified();
             using (var reader = stmtLatestTimeDb.ExecuteReader()) {
                 if (reader.Read()) {
                     return ReadVTTQ(reader);
@@ -245,7 +246,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                     stmt[0] = (timeDB - x.T).TotalMilliseconds / 1000L;
                     stmt[1] = (int)x.Q;
                     stmt[2] = x.V.JSON;
-                    stmt[3] = x.T.ToDateTime();
+                    stmt[3] = x.T.ToDateTimeUnspecified();
                     int updatedRows = stmt.ExecuteNonQuery();
                     if (updatedRows != 1) {
                         throw new Exception("Update of missing timestamp '" + x.T + "' would fail.");
@@ -324,8 +325,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                     throw new Exception($"Unknown BoundingMethod: {bounding}");
             }
 
-            statement[0] = startInclusive.ToDateTime();
-            statement[1] = endInclusive.ToDateTime();
+            statement[0] = startInclusive.ToDateTimeUnspecified();
+            statement[1] = endInclusive.ToDateTimeUnspecified();
             statement[2] = maxValues;
 
             int initSize = N < maxValues ? (int)N : maxValues;
@@ -347,8 +348,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private List<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count, QualityFilter filter) {
 
             PreparedStatement statement = stmtRawFirst;
-            statement[0] = startInclusive.ToDateTime();
-            statement[1] = endInclusive.ToDateTime();
+            statement[0] = startInclusive.ToDateTimeUnspecified();
+            statement[1] = endInclusive.ToDateTimeUnspecified();
 
             var result = new List<VTTQ>(maxValues);
 
@@ -458,7 +459,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         private void WriteVTQ(PreparedStatement stmt, VTQ data, Timestamp timeDB) {
-            stmt[0] = data.T.ToDateTime();
+            stmt[0] = data.T.ToDateTimeUnspecified();
             stmt[1] = (int)((timeDB - data.T).TotalMilliseconds / 1000L);
             stmt[2] = (short)(int)data.Q;
             stmt[3] = data.V.JSON;
@@ -476,10 +477,10 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private static readonly string[] indices = new string[] { "1", "2", "3", "4"};
         private NpgsqlDbType[] types;
 
-        internal PreparedStatement(DbConnection connection, string sql, int countParameters, params NpgsqlDbType[] types) {
+        internal PreparedStatement(DbConnection connection, string sql, params NpgsqlDbType[] types) {
             this.connection = connection;
             this.sql = sql;
-            this.countParameters = countParameters;
+            this.countParameters = types.Length;
             this.types = types;
         }
 
@@ -489,7 +490,8 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             }
             var cmd = (Npgsql.NpgsqlCommand)Factory.MakeCommand(sql, connection);
             for (int i = 0; i < countParameters; ++i) {
-                cmd.Parameters.Add(indices[i], types[i]);
+                var pp = new NpgsqlParameter(parameterName: null, parameterType: types[i]);
+                cmd.Parameters.Add(pp);
             }
             cmd.Prepare();
 
@@ -514,7 +516,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             return command.ExecuteNonQuery();
         }
 
-        internal object ExecuteScalar(DbTransaction? transaction = null) {
+        internal object? ExecuteScalar(DbTransaction? transaction = null) {
             var command = GetCommand();
             if (transaction != null) {
                 command.Transaction = transaction;
