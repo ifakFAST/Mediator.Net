@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 using System.IO;
@@ -14,9 +13,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using Ifak.Fast.Mediator.Util;
 using NLog;
 
@@ -38,46 +36,16 @@ namespace Ifak.Fast.Mediator
         private bool shutdown = false;
         private bool starting = true;
 
-        private static MediatorCore? theCore = null;
         private static SynchronizationContext? theSyncContext = null;
 
         private readonly Dictionary<string, ReqDef> mapRequests = new Dictionary<string, ReqDef>();
 
         public MediatorCore() {
-            if (theCore == null) {
-                theCore = this;
-                reqHandler = new HandleClientRequests(this);
-            }
-            else {
-                reqHandler = new HandleClientRequests(this); // only for compiler so that reqHandler is never null
-            }
+            reqHandler = new HandleClientRequests(this);
         }
 
         public void RequestShutdown() {
             requestShutdown = true;
-        }
-
-        public void ConfigureServices(IServiceCollection services) {
-
-        }
-
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory) {
-
-            //loggerFactory.AddConsole(Microsoft.Extensions.Logging.LogLevel.Trace);
-
-            var webSocketOptions = new WebSocketOptions() {
-                KeepAliveInterval = TimeSpan.FromSeconds(60),
-                ReceiveBufferSize = 8 * 1024
-            };
-            app.UseWebSockets(webSocketOptions);
-            app.Run((context) => {
-                var promise = new TaskCompletionSource<bool>();
-                theSyncContext!.Post(_ => {
-                    Task task = theCore!.HandleClientRequest(context);
-                    task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
-                }, null);
-                return promise.Task;
-            });
         }
 
         internal async Task Run(string configFileName, bool clearDBs, string fileStartComplete) {
@@ -95,19 +63,28 @@ namespace Ifak.Fast.Mediator
 
             listenPort = config.ClientListenPort;
             string host = config.ClientListenHost;
+            
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.None);
 
-            var builder = new WebHostBuilder();
-            builder.UseKestrel((KestrelServerOptions options) => {
-                if (host.Equals("localhost", StringComparison.InvariantCultureIgnoreCase)) {
-                    options.ListenLocalhost(listenPort);
-                }
-                else {
-                    options.Listen(IPAddress.Parse(host), listenPort);
-                }
+            WebApplication app = builder.Build();
+            app.Urls.Add($"http://{host}:{listenPort}");
+
+            var webSocketOptions = new WebSocketOptions() {
+                KeepAliveInterval = TimeSpan.FromSeconds(60)
+            };
+            app.UseWebSockets(webSocketOptions);
+            app.Run((context) => {
+                //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
+                var promise = new TaskCompletionSource<bool>();
+                theSyncContext!.Post(_ => {
+                    Task task = HandleClientRequest(context);
+                    task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
+                }, null);
+                return promise.Task;
             });
-            builder.UseStartup<MediatorCore>();
-            IWebHost webHost = builder.Build();
-            webHost.Start();
+
+            Task _ = app.StartAsync();
 
             Module[] enabledModules = config.Modules.Where(a => a.Enabled).ToArray();
             this.modules = enabledModules.Select(m => new ModuleState(m, this)).ToArray();
@@ -175,7 +152,7 @@ namespace Ifak.Fast.Mediator
                 catch (Exception) { }
             }
 
-            Task ignored = webHost.StopAsync(); // Don't wait for StopAsync to finish (takes a few seconds)
+            Task ignored = app.StopAsync(); // Don't wait for StopAsync to finish (takes a few seconds)
         }
 
         private Variable? GetVariableDescription(VariableRef varRef) {
