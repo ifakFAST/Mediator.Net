@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -15,7 +14,7 @@ namespace Ifak.Fast.Mediator
 {
     class ModuleVariables
     {
-        private static Logger logger = LogManager.GetLogger("Mediator.Core");
+        private static readonly Logger logger = LogManager.GetLogger("Mediator.Core");
 
         private readonly string moduleID;
         private readonly string moduleName;
@@ -25,8 +24,8 @@ namespace Ifak.Fast.Mediator
         private bool closed = false;
         private long updateCounter = 0;
 
-        private readonly Dictionary<VariableRef, VTQ> map = new Dictionary<VariableRef, VTQ>();
-        private IList<ObjectInfo> allObjects = new ObjectInfo[0];
+        private readonly Dictionary<VariableRef, VTQ> map = new();
+        private IList<ObjectInfo> allObjects = Array.Empty<ObjectInfo>();
 
         private Util.FileStore? fileStore = null;
 
@@ -44,7 +43,7 @@ namespace Ifak.Fast.Mediator
             foreach (ObjectInfo obj in allObjects) {
                 if (obj.Variables == null || obj.Variables.Length == 0) continue;
                 foreach (Variable v in obj.Variables) {
-                    VariableRef vref = new VariableRef(obj.ID, v.Name);
+                    var vref = new VariableRef(obj.ID, v.Name);
                     validVarRefs.Add(vref);
                     if (!map.ContainsKey(vref)) {
                         map[vref] = new VTQ(tEmpty, Quality.Bad, v.DefaultValue);
@@ -55,9 +54,7 @@ namespace Ifak.Fast.Mediator
             List<VariableRef>? varsToRemove = null;
             foreach (VariableRef vref in map.Keys) {
                 if (!validVarRefs.Contains(vref)) {
-                    if (varsToRemove == null) {
-                        varsToRemove = new List<VariableRef>();
-                    }
+                    varsToRemove ??= new List<VariableRef>();
                     varsToRemove.Add(vref);
                 }
             }
@@ -157,9 +154,8 @@ namespace Ifak.Fast.Mediator
                 map.Clear();
                 if (!string.IsNullOrEmpty(fileName)) {
                     if (File.Exists(fileName)) {
-                        using (var reader = new XmlTextReader(fileName)) {
-                            ReadModuleVariables(reader);
-                        }
+                        using var reader = new XmlTextReader(fileName);
+                        ReadModuleVariables(reader);
                     }
                     else {
                         logger.Info($"No file {fileName} found for variables of module {moduleName}");
@@ -180,10 +176,9 @@ namespace Ifak.Fast.Mediator
             using (var sw = new StringWriter()) {
 
                 try {
-                    using (var writer = new XmlTextWriter(sw)) {
-                        writer.Formatting = Formatting.Indented;
-                        WriteVariables(writer, moduleID, moduleName);
-                    }
+                    using var writer = new XmlTextWriter(sw);
+                    writer.Formatting = Formatting.Indented;
+                    WriteVariables(writer, moduleID, moduleName);
                 }
                 catch (Exception exp) {
                     logger.Error(exp, "Failed to persist variables for module " + moduleName);
@@ -227,9 +222,8 @@ namespace Ifak.Fast.Mediator
                 foreach (Variable v in obj.Variables) {
 
                     if (v.Remember) {
-                        VariableRef vref = new VariableRef(obj.ID, v.Name);
-                        VTQ vtq;
-                        if (map.TryGetValue(vref, out vtq)) {
+                        var vref = new VariableRef(obj.ID, v.Name);
+                        if (map.TryGetValue(vref, out VTQ vtq)) {
                             writer.WriteStartElement("Var");
                             writer.WriteAttributeString("name", v.Name);
                             writer.WriteAttributeString("time", vtq.T.ToString());
@@ -269,13 +263,14 @@ namespace Ifak.Fast.Mediator
 
                         switch (reader.Name) {
                             case "Obj":
-                                currentObj = ObjectRef.Make(moduleID, reader.GetAttribute("id"));
+                                string id = reader.GetAttribute("id") ?? throw new Exception($"Missing id attribute for object");
+                                currentObj = ObjectRef.Make(moduleID, id);                                
                                 break;
 
                             case "Var":
-                                var_Name = reader.GetAttribute("name");
-                                var_Time = reader.GetAttribute("time");
-                                var_Quality = reader.GetAttribute("quality");
+                                var_Name = reader.GetAttribute("name") ?? throw new Exception($"Missing name attribute for object {currentObj}");
+                                var_Time = reader.GetAttribute("time") ?? throw new Exception($"Missing time attribute for object {currentObj}");
+                                var_Quality = reader.GetAttribute("quality") ?? throw new Exception($"Missing quality attribute for object {currentObj}");
                                 inVar = true;
                                 break;
                         }
@@ -305,11 +300,11 @@ namespace Ifak.Fast.Mediator
         }
 
         private static Quality QualityFromString(string q) {
-            switch (q) {
-                case "Good": return Quality.Good;
-                case "Uncertain": return Quality.Uncertain;
-                default: return Quality.Bad;
-            }
+            return q switch {
+                "Good" => Quality.Good,
+                "Uncertain" => Quality.Uncertain,
+                _ => Quality.Bad,
+            };
         }
 
         private static Timestamp TimestampFromString(string time) {

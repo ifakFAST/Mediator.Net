@@ -113,7 +113,7 @@ namespace Ifak.Fast.Mediator
 
                         if (isModuleSession) {
 
-                            ModuleState module = core.modules.FirstOrDefault(m => m.ID == moduleID);
+                            ModuleState? module = core.modules.FirstOrDefault(m => m.ID == moduleID);
                             if (module == null) {
                                 return Result_BAD($"Invalid login (unknown module id {moduleID})");
                             }
@@ -131,7 +131,7 @@ namespace Ifak.Fast.Mediator
                             string login = req.Login ?? "";
                             string[] roles = req.Roles ?? new string[0];
 
-                            User user = core.userManagement.Users.FirstOrDefault(u => u.Login == login);
+                            User? user = core.userManagement.Users.FirstOrDefault(u => u.Login == login);
 
                             if (user == null || user.Inactive) {
                                 return Result_BAD("Invalid login: " + login);
@@ -376,7 +376,7 @@ namespace Ifak.Fast.Mediator
                             if (id == null || info.Origin.Type != OriginType.User) {
                                 return Result_BAD("Not a user login");
                             }
-                            User user = core.userManagement.Users.FirstOrDefault(u => u.ID == id);
+                            User? user = core.userManagement.Users.FirstOrDefault(u => u.ID == id);
                             if (user == null) {
                                 return Result_BAD("Current user not found");
                             }
@@ -387,7 +387,7 @@ namespace Ifak.Fast.Mediator
                             var req = (GetRootObjectReq)request;
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
-                            var res = module.AllObjects.FirstOrDefault(obj => !obj.Parent.HasValue);
+                            ObjectInfo res = module.AllObjects.First(obj => !obj.Parent.HasValue);
                             return Result_OK(res);
                         }
 
@@ -886,7 +886,7 @@ namespace Ifak.Fast.Mediator
                             return WriteResult.Failure(writableErrors);
                         }
                         else {
-                            var list = writeResult.FailedVariables.ToList();
+                            var list = writeResult.FailedVariables!.ToList();
                             list.AddRange(writableErrors);
                             return WriteResult.Failure(list.ToArray());
                         }
@@ -915,7 +915,7 @@ namespace Ifak.Fast.Mediator
                     writeResult = WriteResult.Failure(ignoredVars);
                 }
                 else {
-                    var list = writeResult.FailedVariables.ToList();
+                    var list = writeResult.FailedVariables!.ToList();
                     list.AddRange(ignoredVars);
                     writeResult = WriteResult.Failure(list.ToArray());
                 }

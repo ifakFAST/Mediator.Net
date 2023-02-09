@@ -633,7 +633,7 @@ namespace Ifak.Fast.Mediator
                     return;
                 }
                 else {
-                    WorkItem readReq = localQueue.FirstOrDefault(x => x.IsReadRequest);
+                    WorkItem? readReq = localQueue.FirstOrDefault(x => x.IsReadRequest);
                     if (readReq != null) {
                         WorkItem[] other = localQueue.Where(x => x != readReq).ToArray();
                         localQueue.Clear();

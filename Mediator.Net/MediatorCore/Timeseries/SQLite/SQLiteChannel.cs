@@ -68,7 +68,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         public override ChannelInfo Info => info;
 
         public override long CountAll() {
-            return (long)stmtCount.ExecuteScalar();
+            return (long)stmtCount.ExecuteScalar()!;
         }
 
         public override long CountData(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
@@ -81,7 +81,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
             stmt[0] = startInclusive.JavaTicks;
             stmt[1] = endInclusive.JavaTicks;
-            return (long)stmt.ExecuteScalar();
+            return (long)stmt.ExecuteScalar()!;
         }
 
         public override long DeleteAll() {
@@ -514,7 +514,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             return command.ExecuteNonQuery();
         }
 
-        internal object ExecuteScalar(DbTransaction? transaction = null) {
+        internal object? ExecuteScalar(DbTransaction? transaction = null) {
             var command = GetCommand();
             if (transaction != null) {
                 command.Transaction = transaction;

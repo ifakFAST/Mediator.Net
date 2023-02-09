@@ -82,7 +82,7 @@ namespace Ifak.Fast.Mediator
 
             var core = new MediatorCore();
 
-            Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) {
+            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
                 e.Cancel = true;
                 core.RequestShutdown();
                 logger.Info($"{title} terminate requested...");

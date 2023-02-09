@@ -157,7 +157,7 @@ namespace Ifak.Fast.Mediator
 
         private Variable? GetVariableDescription(VariableRef varRef) {
             string moduleID = varRef.Object.ModuleID;
-            ModuleState module = modules.FirstOrDefault(m => m.ID == moduleID);
+            ModuleState? module = modules.FirstOrDefault(m => m.ID == moduleID);
             if (module == null) return null;
             return module.GetVarDescription(varRef);
         }
@@ -395,7 +395,7 @@ namespace Ifak.Fast.Mediator
                 }
 
                 var accept = request.Headers["Accept"];
-                bool binaryResponse = accept.Any(a => a.Contains(mediaBinary));
+                bool binaryResponse = accept.Any(a => a != null && a.Contains(mediaBinary));
                 ret.ReturnBinaryResponse = binaryResponse;
 
                 return ret;
@@ -478,7 +478,7 @@ namespace Ifak.Fast.Mediator
                 Origin origin = initiator.Value;
                 string id = origin.ID;
                 if (origin.Type == OriginType.User) {
-                    User user = userManagement.Users.FirstOrDefault(u => u.ID == id);
+                    User? user = userManagement.Users.FirstOrDefault(u => u.ID == id);
                     if (user != null) {
                         origin.Name = user.Name;
                     }
