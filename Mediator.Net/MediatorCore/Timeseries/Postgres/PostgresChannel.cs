@@ -2,7 +2,6 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -14,7 +13,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
 {
     public class PostgresChannel : Channel
     {
-        private static Logger logger = LogManager.GetLogger("PostgresChannel");
+        // private static NLog.Logger logger = NLog.LogManager.GetLogger("PostgresChannel");
 
         private readonly DbConnection connection;
         private readonly ChannelInfo info;

@@ -2,7 +2,6 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -14,7 +13,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 {
     public class PostgresFlatChannel : Channel
     {
-        private static Logger logger = LogManager.GetLogger("PostgresFlatChannel");
+        // private static NLog.Logger logger = NLog.LogManager.GetLogger("PostgresFlatChannel");
 
         private readonly DbConnection connection;
         private readonly ChannelInfo info;
@@ -474,7 +473,6 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private readonly int countParameters;
 
         private DbCommand? command = null;
-        private static readonly string[] indices = new string[] { "1", "2", "3", "4"};
         private NpgsqlDbType[] types;
 
         internal PreparedStatement(DbConnection connection, string sql, params NpgsqlDbType[] types) {
