@@ -21,7 +21,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private ApplicationDescription appDescription = new ApplicationDescription();
         private ICertificateStore? certificateStore;
         private string certificateLocation = "";
-        private UaTcpSessionChannel? connection;
+        private ClientSessionChannel? connection;
 
         private Adapter? config;
         private AdapterCallback? callback;
@@ -118,7 +118,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                 IUserIdentity identity = GetIdentity();
 
-                var channel = new UaTcpSessionChannel(
+                var channel = new ClientSessionChannel(
                             localDescription: appDescription,
                             certificateStore: certificateStore,
                             userIdentity: identity,
@@ -205,7 +205,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private async Task CloseChannel() {
-            UaTcpSessionChannel? connection = this.connection;
+            ClientSessionChannel? connection = this.connection;
             if (connection == null) return;
             this.connection = null;
             try {

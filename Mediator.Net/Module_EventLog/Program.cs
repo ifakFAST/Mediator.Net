@@ -19,7 +19,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
             // Required to suppress premature shutdown when
             // pressing CTRL+C in parent Mediator console window:
-            Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) {
+            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
                 e.Cancel = true;
             };
 

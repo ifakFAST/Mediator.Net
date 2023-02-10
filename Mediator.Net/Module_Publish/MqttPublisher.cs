@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Security.Cryptography.X509Certificates;
 using MQTTnet.Client;
-using MQTTnet.Client.Options;
 using MQTTnet;
 using System.Threading;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
@@ -76,11 +75,11 @@ namespace Ifak.Fast.Mediator.Publish
             }
         }
 
-        private static Task<IMqttClient?> EnsureConnect(IMqttClientOptions? mqttOptions, IMqttClient? mqttClient) {
+        private static Task<IMqttClient?> EnsureConnect(MqttClientOptions? mqttOptions, IMqttClient? mqttClient) {
             return EnsureConnectIntern(mqttOptions, mqttClient, 0);
         }
 
-        private static async Task<IMqttClient?> EnsureConnectIntern(IMqttClientOptions? mqttOptions, IMqttClient? mqttClient, int retry) {
+        private static async Task<IMqttClient?> EnsureConnectIntern(MqttClientOptions? mqttOptions, IMqttClient? mqttClient, int retry) {
 
             const int MaxRetry = 2;
 
@@ -132,7 +131,7 @@ namespace Ifak.Fast.Mediator.Publish
 
         private static readonly string TheGuid = Guid.NewGuid().ToString().Replace("-", "");
 
-        private static IMqttClientOptions MakeMqttOptions(string certDir, MqttConfig config, string suffix) {
+        private static MqttClientOptions MakeMqttOptions(string certDir, MqttConfig config, string suffix) {
 
             string clientID = $"{config.ClientIDPrefix}_{suffix}_{TheGuid}";
 

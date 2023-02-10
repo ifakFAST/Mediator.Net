@@ -47,7 +47,11 @@ namespace Ifak.Fast.Mediator.Publish
                     var messages = MakeMessages(payload, topic, config.MaxPayloadSize);
 
                     try {
-                        await clientMQTT.PublishAsync(messages);
+
+                        foreach (var msg in messages) {
+                            await clientMQTT.PublishAsync(msg);
+                        }
+
                         if (configPub.PrintPayload) {
                             Console.Out.WriteLine($"PUB: {topic}: {payload}");
                         }

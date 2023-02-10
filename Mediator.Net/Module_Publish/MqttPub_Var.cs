@@ -7,8 +7,8 @@ using Ifak.Fast.Mediator.Util;
 using Ifak.Fast.Json.Linq;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using System.Collections.Generic;
-using MQTTnet.Client.Options;
 using Ifak.Fast.Mediator.BinSeri;
+using MQTTnet;
 
 namespace Ifak.Fast.Mediator.Publish
 {
@@ -185,7 +185,13 @@ namespace Ifak.Fast.Mediator.Publish
                     }
 
                     try {
-                        await clientMQTT.PublishAsync(topic, msg);
+
+                        var applicationMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic(topic)
+                            .WithPayload(msg)
+                            .Build();
+
+                        await clientMQTT.PublishAsync(applicationMessage);
 
                         foreach (var vv in chunck) {
                             registeredVars.Add(vv.Var);
@@ -239,7 +245,7 @@ namespace Ifak.Fast.Mediator.Publish
             private State state;
 
             private IMqttClient? clientMQTT = null;
-            private readonly IMqttClientOptions mqttOptions;
+            private readonly MqttClientOptions mqttOptions;
             private readonly MqttConfig config;
             private readonly MqttVarPub varPub;
             private readonly RegCache reg;
@@ -385,7 +391,12 @@ namespace Ifak.Fast.Mediator.Publish
                     }
 
                     try {
-                        await clientMQTT.PublishAsync(topic, msg);
+                        var applicationMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic(topic)
+                            .WithPayload(msg)
+                            .Build();
+
+                        await clientMQTT.PublishAsync(applicationMessage);
                         if (varPub.PrintPayload) {
                             Console.Out.WriteLine($"PUB: {topic}: {msg}");
                         }

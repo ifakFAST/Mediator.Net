@@ -479,20 +479,20 @@ namespace Ifak.Fast.Mediator.IO.Config
         public XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
-            string m = reader["mode"];
+            string? m = reader["mode"];
             switch (m) {
                 case "None": Mode = SchedulingMode.None; break;
                 case "Interval": Mode = SchedulingMode.Interval; break;
             }
-            string intv = reader["interval"];
+            string? intv = reader["interval"];
             if (intv != null) {
                 Interval = Duration.Parse(intv);
             }
-            string off = reader["offset"];
+            string? off = reader["offset"];
             if (off != null) {
                 Offset = Duration.Parse(off);
             }
-            string useTSource = reader["useTimestampFromSource"];
+            string? useTSource = reader["useTimestampFromSource"];
             if (useTSource != null) {
                 UseTimestampFromSource = bool.Parse(useTSource);
             }

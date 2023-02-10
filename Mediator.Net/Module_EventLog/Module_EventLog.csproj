@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <RootNamespace>Ifak.Fast.Mediator.EventLog</RootNamespace>
-    <LangVersion>9.0</LangVersion>
+    <LangVersion>11.0</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="2.15.0" />
+    <PackageReference Include="MailKit" Version="3.5.0" />
   </ItemGroup>
 
   <ItemGroup>

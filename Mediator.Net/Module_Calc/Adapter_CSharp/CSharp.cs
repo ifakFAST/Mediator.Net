@@ -122,7 +122,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             stepAction = (Action<Timestamp, Duration>)step.CreateDelegate(typeof(Action<Timestamp, Duration>), obj);
 
             foreach (StateValue v in parameter.LastState) {
-                AbstractState state = states.FirstOrDefault(s => s.ID == v.StateID);
+                AbstractState? state = states.FirstOrDefault(s => s.ID == v.StateID);
                 if (state != null) {
                     state.SetValueFromDataValue(v.Value);
                 }
@@ -185,7 +185,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
 
             foreach (InputValue v in inputValues) {
-                InputBase input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
+                InputBase? input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
                 if (input != null) {
                     input.VTQ = v.Value;
                 }

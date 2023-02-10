@@ -116,7 +116,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         var para = parameters.Object<LoadHistoryParams>() ?? throw new Exception("LoadHistoryParams is null");
 
-                        TabState tabState = tabStates.FirstOrDefault(ts => ts.TabName == para.TabName);
+                        TabState? tabState = tabStates.FirstOrDefault(ts => ts.TabName == para.TabName);
                         if (tabState == null) {
                             throw new Exception($"Failed to load history data: tab '{para.TabName}' not found");
                         }
@@ -251,7 +251,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         tabState.Variables = newVariables;
 
-                        TabConfig tabConfig = configuration.Tabs.FirstOrDefault(t => t.Name == para.TabName);
+                        TabConfig tabConfig = configuration.Tabs.First(t => t.Name == para.TabName);
                         tabConfig.Items = para.Items;
 
                         DataValue newConfig = ConfigToIndentedDataValue(configuration);

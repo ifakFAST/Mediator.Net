@@ -120,7 +120,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return HexStr(code);
         }
 
-        static SensorType[] SensorTypes = new SensorType[] {
+        static readonly SensorType[] SensorTypes = new SensorType[] {
             new SensorType(0x0101, "SensoLyt700IQ",       "pH", "mV"),
             new SensorType(0x0201, "TetraCon700IQ",       "mS/cm", "SAL", "TDS", "S/m"),
             new SensorType(0x0301, "TriOxmatic700IQ",     "mg/l O2", "% O2"),
@@ -174,7 +174,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         };
 
         SensorType SensorModel(ushort code) {
-            SensorType sensor = SensorTypes.FirstOrDefault(sensor => sensor.Code == code);
+            SensorType? sensor = SensorTypes.FirstOrDefault(sensor => sensor.Code == code);
             return sensor ?? new SensorType(code, HexStr(code));
         }
 

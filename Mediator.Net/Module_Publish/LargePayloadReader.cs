@@ -4,7 +4,6 @@ using System.Text;
 using System.IO;
 using System.Linq;
 
-
 namespace Ifak.Fast.Mediator.Publish
 {
     public class LargePayloadReader
@@ -73,9 +72,8 @@ namespace Ifak.Fast.Mediator.Publish
         }
 
         private static string GetHash(Stream stream) {
-            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider()) {
-                return string.Concat(sha1.ComputeHash(stream).Select(x => x.ToString("X2")));
-            }
+            using var sha1 = System.Security.Cryptography.SHA1.Create();
+            return string.Concat(sha1.ComputeHash(stream).Select(x => x.ToString("X2")));
         }
     }
 }

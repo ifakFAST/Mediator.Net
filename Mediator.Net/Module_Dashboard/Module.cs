@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Text;
@@ -17,33 +16,25 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
     public class Module : ModelObjectModule<DashboardModel>
     {
         private string absolutBaseDir = "";
-        private string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
+        private readonly string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
         private int clientPort;
-        private ViewType[] viewTypes = new ViewType[0];
+        private ViewType[] viewTypes = Array.Empty<ViewType>();
         private DashboardUI uiModel = new DashboardUI();
 
         private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
 
-        private static Module? theModule = null;
         private static SynchronizationContext? theSyncContext = null;
-        private IWebHost? webHost = null;
+        private WebApplication? webHost = null;
         private bool isRunning = false;
-
-        public Module() {
-            if (theModule == null) {
-                theModule = this;
-            }
-        }
 
         public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
             if (obj is DataValue dv && parent is View view) {
@@ -106,44 +97,25 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             await base.OnConfigModelChanged(init: false); // required for UnnestConfig to work (viewTypes need to be loaded)
 
-            var builder = new WebHostBuilder();
-            builder.UseKestrel((KestrelServerOptions options) => {
-                if (host.Equals("localhost", StringComparison.InvariantCultureIgnoreCase)) {
-                    options.ListenLocalhost(port);
-                }
-                else {
-                    options.Listen(IPAddress.Parse(host), port);
-                }
+
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions {
+                ContentRootPath = Directory.GetCurrentDirectory(),
+                WebRootPath = absolutBaseDir
             });
-            builder.UseWebRoot(absolutBaseDir);
-            builder.UseStartup<Module>();
-            //builder.ConfigureLogging(logging => {
-            //    logging.AddConsole(); // Microsoft.Extensions.Logging.Console
-            //    logging.SetMinimumLevel(LogLevel.Information);
-            //});
-            webHost = builder.Build();
-            webHost.Start();
-        }
+            builder.Logging.SetMinimumLevel(LogLevel.Warning);
+            builder.Services.AddCors();
 
-        public async override Task InitAbort() {
-            try {
-                await webHost!.StopAsync();
-            }
-            catch (Exception) { }
-        }
+            WebApplication app = builder.Build();
+            app.Urls.Add($"http://{host}:{port}");
 
-        public void ConfigureServices(IServiceCollection services) {
+            var webSocketOptions = new WebSocketOptions() {
+                KeepAliveInterval = TimeSpan.FromSeconds(60)
+            };
+            app.UseWebSockets(webSocketOptions);
 
-            services.AddCors(options => { // necessary to allow web frontend debugging
-                options.AddPolicy("AllowLocalhost8080", builder => {
-                    builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader();
-                });
-            });
-        }
-
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory) {
-
-            //loggerFactory.AddConsole(Microsoft.Extensions.Logging.LogLevel.Trace);
+            string regex = $"^{BundlesPrefix}/(.*)";
+            var rewriteOptions = new RewriteOptions().AddRewrite(regex, "/$1", skipRemainingRules: true);
+            app.UseRewriter(rewriteOptions);
 
             app.Use(async (context, nextMiddleware) => {
                 string path = context.Request.Path;
@@ -156,19 +128,6 @@ namespace Ifak.Fast.Mediator.Dashboard
                 await nextMiddleware();
             });
 
-            app.UseCors("AllowLocalhost8080");
-
-            var webSocketOptions = new WebSocketOptions() {
-                KeepAliveInterval = TimeSpan.FromSeconds(60),
-                ReceiveBufferSize = 4 * 1024
-            };
-            app.UseWebSockets(webSocketOptions);
-
-            string regex = $"^{theModule!.BundlesPrefix}/(.*)";
-            var rewriteOptions = new RewriteOptions().AddRewrite(regex, "/$1", skipRemainingRules: true);
-
-            app.UseRewriter(rewriteOptions);
-
             var options = new DefaultFilesOptions();
             options.DefaultFileNames.Clear();
             options.DefaultFileNames.Add("App/index.html");
@@ -176,16 +135,30 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             app.UseStaticFiles();
 
+            app.UseCors(builder => {
+                builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader();
+            });
+
             app.Run((context) => {
+                //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
                 var promise = new TaskCompletionSource<bool>();
                 theSyncContext!.Post(_ => {
-                    Task task = theModule.HandleClientRequest(context);
+                    Task task = HandleClientRequest(context);
                     task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
                 }, null);
                 return promise.Task;
             });
+
+            Task _ = app.StartAsync();
         }
 
+        public async override Task InitAbort() {
+            try {
+                await webHost!.StopAsync();
+            }
+            catch (Exception) { }
+        }
+        
         public override async Task Run(Func<bool> fShutdown) {
 
             await Task.Delay(1000);
@@ -262,7 +235,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 }
             }
             catch (Exception exp) {
-                if (!(exp is InvalidSessionException)) {
+                if (exp is not InvalidSessionException) {
                     Exception e = exp.GetBaseException() ?? exp;
                     logWarn("Error handling web socket request: " + e.Message);
                 }
@@ -555,7 +528,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             foreach (View v in model.Views) {
 
-                ViewType viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(v.Type, StringComparison.InvariantCultureIgnoreCase));
+                ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(v.Type, StringComparison.InvariantCultureIgnoreCase));
                 if (viewType == null) throw new Exception($"No view type '{v.Type}' found!");
 
                 bool url = viewType.Type == typeof(View_ExtURL);

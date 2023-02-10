@@ -70,7 +70,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     var result = new ReadModuleVariables_Result() {
                         Modules = modules,
                         ModuleID = moduleID,
-                        ModuleName = modules.FirstOrDefault(m => m.ID == moduleID).Name,
+                        ModuleName = modules.First(m => m.ID == moduleID).Name,
                         Variables = entries,
                         Locations = locations.ToArray(),
                     };

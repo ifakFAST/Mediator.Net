@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
@@ -18,15 +17,15 @@ namespace Ifak.Fast.Mediator.Calc
 {
     public class Module : ModelObjectModule<Config.Calc_Model>
     {
-        public Func<string, Type[]> fLoadCalcTypesFromAssembly = (s) => new Type[0];
+        public Func<string, Type[]> fLoadCalcTypesFromAssembly = (s) => Array.Empty<Type>();
 
-        private readonly List<CalcInstance> adapters = new List<CalcInstance>();
-        private readonly Dictionary<string, Type> mapAdapterTypes = new Dictionary<string, Type>();
-        private readonly List<Identify> adapterTypesAttribute = new List<Identify>();
+        private readonly List<CalcInstance> adapters = new();
+        private readonly Dictionary<string, Type> mapAdapterTypes = new();
+        private readonly List<Identify> adapterTypesAttribute = new();
         private ModuleInitInfo initInfo;
         private ModuleThread? moduleThread = null;
         private Connection connection = new ClosedConnection();
-        private Mediator.Config moduleConfig = new Mediator.Config(new NamedValue[0]);
+        private Mediator.Config moduleConfig = new(Array.Empty<NamedValue>());
         private bool moduleShutdown = false;
 
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
@@ -127,7 +126,8 @@ namespace Ifak.Fast.Mediator.Calc
 
             foreach (CalcInstance adapter in adapters) {
 
-                bool changed = adapter.SetConfig(enabledAdapters.FirstOrDefault(x => x.ID == adapter.CalcConfig.ID));
+                Config.Calculation config = enabledAdapters.First(x => x.ID == adapter.CalcConfig.ID);
+                bool changed = adapter.SetConfig(config);
                 if (changed) {
                     restartAdapters.Add(adapter);
                 }
@@ -221,9 +221,9 @@ namespace Ifak.Fast.Mediator.Calc
 
                     if (changedMembers.Count > 0) {
                         await UpdateConfig(GetModuleOrigin(),
-                            updateOrDeleteObjects: new ObjectValue[0],
+                            updateOrDeleteObjects: Array.Empty<ObjectValue>(),
                             updateOrDeleteMembers: changedMembers.ToArray(),
-                            addArrayElements: new AddArrayElement[0]);
+                            addArrayElements: Array.Empty<AddArrayElement>());
                     }
 
                     adapter.State = State.InitComplete;
@@ -238,27 +238,27 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private static Config.Input MakeInput(InputDef input, Config.Calculation calc) {
-            Config.Input old = calc.Inputs.FirstOrDefault(x => x.ID == input.ID);
+            Config.Input? old = calc.Inputs.FirstOrDefault(x => x.ID == input.ID);
             return new Config.Input() {
                 ID = input.ID,
                 Name = input.Name,
                 Unit = input.Unit,
                 Dimension = input.Dimension,
                 Type = input.Type,
-                Constant = old != null ? old.Constant : (input.DefaultValue.HasValue ? input.DefaultValue.Value: (DataValue?)null),
-                Variable = old != null ? old.Variable : null,
+                Constant = old != null ? old.Constant : input.DefaultValue,
+                Variable = old?.Variable,
             };
         }
 
         private static Config.Output MakeOutput(OutputDef output, Config.Calculation calc) {
-            Config.Output old = calc.Outputs.FirstOrDefault(x => x.ID == output.ID);
+            Config.Output? old = calc.Outputs.FirstOrDefault(x => x.ID == output.ID);
             return new Config.Output() {
                 ID = output.ID,
                 Name = output.Name,
                 Unit = output.Unit,
                 Dimension = output.Dimension,
                 Type = output.Type,
-                Variable = old != null ? old.Variable : null,
+                Variable = old?.Variable,
             };
         }
 
@@ -489,8 +489,8 @@ namespace Ifak.Fast.Mediator.Calc
                 }
                 StepResult result = await instance.Step(t, inputValues);
 
-                OutputValue[] outValues = result.Output ?? new OutputValue[0];
-                StateValue[] stateValues = result.State ?? new StateValue[0];
+                OutputValue[] outValues = result.Output ?? Array.Empty<OutputValue>();
+                StateValue[] stateValues = result.State ?? Array.Empty<StateValue>();
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
                 var listVarValues = new List<VariableValue>(outValues.Length + stateValues.Length);
@@ -589,7 +589,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                     int N = inputs.Count;
                     var invalidInputVars = new List<int>();
-                    VTQs res = new VTQs(N);
+                    var res = new VTQs(N);
 
                     for (int i = 0; i < N; ++i) {
                         VariableRef variable = inputVars[i];
@@ -706,7 +706,7 @@ namespace Ifak.Fast.Mediator.Calc
                 ReturnToNormal = returnToNormal,
                 Message = msg,
                 Details = details ?? "",
-                AffectedObjects = affectedObjects ?? new ObjectRef[0],
+                AffectedObjects = affectedObjects ?? Array.Empty<ObjectRef>(),
                 Initiator = initiator
             };
 
@@ -719,8 +719,10 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private void Do_Notify_NeedRestart(string reason, Calculation adapter) {
-            CalcInstance ast = adapters.FirstOrDefault(a => a.CalcConfig.ID == adapter.ID);
-            Task ignored = RestartAdapter(ast, reason);
+            CalcInstance? ast = adapters.FirstOrDefault(a => a.CalcConfig.ID == adapter.ID);
+            if (ast != null) {
+                Task ignored = RestartAdapter(ast, reason);
+            }
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!

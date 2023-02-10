@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Protocol;
+using MQTTnet.Packets;
 using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Publish
@@ -51,14 +51,14 @@ namespace Ifak.Fast.Mediator.Publish
                     Topic = $"{topic}/{obj.ID.LocalObjectID}"
                 }).ToArray();
 
-                clientMQTT.UseApplicationMessageReceivedHandler((arg) => {
+                clientMQTT.ApplicationMessageReceivedAsync += e => {
                     var promise = new TaskCompletionSource<bool>();
                     theSyncContext!.Post(_ => {
-                        Task task = OnReceivedVarWriteRequest(varRec, clientFAST, arg);
+                        Task task = OnReceivedVarWriteRequest(varRec, clientFAST, e);
                         task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
                     }, null);
                     return promise.Task;
-                });
+                };
 
                 foreach (var top in topics) {
                     Console.WriteLine($"Subscribing to topic {top.Topic}");

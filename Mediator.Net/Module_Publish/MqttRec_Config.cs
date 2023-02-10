@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Protocol;
+using MQTTnet.Packets;
+using MQTTnet.Server;
 using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Publish
@@ -35,14 +37,14 @@ namespace Ifak.Fast.Mediator.Publish
                 clientFAST = await EnsureConnectOrThrow(info, clientFAST);
                 var reader = new LargePayloadReader(configRec.MaxBuckets);
 
-                clientMQTT.UseApplicationMessageReceivedHandler((arg) => {
+                clientMQTT.ApplicationMessageReceivedAsync += e => {
                     var promise = new TaskCompletionSource<bool>();
                     theSyncContext!.Post(_ => {
-                        Task task = OnReceivedConfigWriteRequest(clientMQTT, reader, configRec.ModuleID, topic, clientFAST, arg);
+                        Task task = OnReceivedConfigWriteRequest(clientMQTT, reader, configRec.ModuleID, topic, clientFAST, e);
                         task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
                     }, null);
                     return promise.Task;
-                });
+                };
 
                 var topics = GetTopicsToSubscribe(topic, bucktesCount: configRec.MaxBuckets);
 

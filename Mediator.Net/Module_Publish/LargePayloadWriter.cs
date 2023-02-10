@@ -37,9 +37,8 @@ namespace Ifak.Fast.Mediator.Publish
         }
 
         private static string GetHash(byte[] data) {
-            using (var sha1 = new System.Security.Cryptography.SHA1CryptoServiceProvider()) {
-                return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
-            }
+            using var sha1 = System.Security.Cryptography.SHA1.Create();
+            return string.Concat(sha1.ComputeHash(data).Select(x => x.ToString("X2")));
         }
     }
 }

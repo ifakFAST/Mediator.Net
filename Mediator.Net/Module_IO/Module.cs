@@ -148,7 +148,7 @@ namespace Ifak.Fast.Mediator.IO
             var newDataItems = new List<ItemState>();
             foreach (AdapterState adapter in adapters) {
 
-                bool changed = adapter.SetConfig(enabledAdapters.FirstOrDefault(x => x.ID == adapter.Config.ID));
+                bool changed = adapter.SetConfig(enabledAdapters.First(x => x.ID == adapter.Config.ID));
                 if (changed) {
                     restartAdapters.Add(adapter);
                 }
@@ -617,7 +617,7 @@ namespace Ifak.Fast.Mediator.IO
 
             VariableError[] failures = list
                 .Where(r => r.Failed())
-                .SelectMany(x => x.FailedDataItems.Select(di => new VariableError(ObjectRef.Make(moduleID, di.ID), VariableName, di.Error)))
+                .SelectMany(x => x.FailedDataItems!.Select(di => new VariableError(ObjectRef.Make(moduleID, di.ID), VariableName, di.Error)))
                 .ToArray();
 
             return WriteResult.Failure(failures);
@@ -1094,8 +1094,10 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         private void Do_Notify_NeedRestart(string reason, Adapter adapter) {
-            AdapterState ast = adapters.FirstOrDefault(a => a.Config.ID == adapter.ID);
-            Task ignored = RestartAdapter(ast, reason);
+            AdapterState? ast = adapters.FirstOrDefault(a => a.Config.ID == adapter.ID);
+            if (ast != null) {
+                Task ignored = RestartAdapter(ast, reason);
+            }
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!

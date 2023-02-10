@@ -18,8 +18,8 @@ namespace Ifak.Fast.Mediator.EventLog
 
         private VariableRef Var = VariableRef.Make(Module, "Root", "LastEvent");
 
-        private ActiveError[] lastAlarms = new ActiveError[0];
-        private ActiveError[] lastEvents = new ActiveError[0];
+        private ActiveError[] lastAlarms = Array.Empty<ActiveError>();
+        private ActiveError[] lastEvents = Array.Empty<ActiveError>();
         private TimeRange lastTimeRange = new TimeRange();
 
         public override Task OnActivate() {
@@ -29,7 +29,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
         public override async Task<NaviAugmentation?> GetNaviAugmentation() {
             DataValue res = await Connection.CallMethod(Module, "GetActiveAlarms");
-            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? new AggregatedEvent[0];
+            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? Array.Empty<AggregatedEvent>();
             bool anyAlarm = errors.Any(err => err.Severity == Severity.Alarm && !err.ReturnedToNormal);
             bool anyWarn  = errors.Any(err => err.Severity == Severity.Warning && !err.ReturnedToNormal);
             if (anyWarn || anyAlarm) {
@@ -94,7 +94,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
         private async Task<ActiveError[]> GetActiveAlarms() {
             DataValue res = await Connection.CallMethod(Module, "GetActiveAlarms");
-            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? new AggregatedEvent[0];
+            AggregatedEvent[] errors = res.Object<AggregatedEvent[]>() ?? Array.Empty<AggregatedEvent>();
             return errors.Select(Transform).Reverse().ToArray();
         }
 
@@ -106,15 +106,11 @@ namespace Ifak.Fast.Mediator.EventLog
             var data = await Connection.HistorianReadRaw(Var, tStart, tEnd, 10000, BoundingMethod.TakeLastN);
             var events = data.Select(VTTQ2Event).Where(x => x != null).Cast<ActiveError>().ToList();
 
-            Func<Timestamp, bool> isInRange = t => (t >= tStart && t <= tEnd);
+            bool isInRange(Timestamp t) => (t >= tStart && t <= tEnd);
 
             return events.Concat(alarms.Where(a => !isInRange(a.TimeFirst) && isInRange(a.TimeLast)))
                 .OrderByDescending(x => x.T)
                 .ToArray();
-        }
-
-        private static bool IsInRange(Timestamp x, Timestamp rangeStart, Timestamp rangeEnd) {
-            return (x >= rangeStart && x <= rangeEnd);
         }
 
         private static ActiveError? VTTQ2Event(VTTQ vttq) {
@@ -218,7 +214,7 @@ namespace Ifak.Fast.Mediator.EventLog
         public string ModuleName { get; set; } = "";
         public bool System { get; set; } = false; // if true, then this notification originates from the Meditor core instead of a module
         public string Type { get; set; } = ""; // module specific category e.g. "SensorFailure", "ModuleRestart", "CommunicationLoss"
-        public ObjectRef[] Objects { get; set; } = new ObjectRef[0]; // optional, specifies which objects are affected
+        public ObjectRef[] Objects { get; set; } = Array.Empty<ObjectRef>(); // optional, specifies which objects are affected
         public Origin? Initiator { get; set; } = null;
         public bool RTN { get; set; } = false; // ReturnToNormal
         public InfoRTN? InfoRTN { get; set; } = null;
@@ -231,7 +227,7 @@ namespace Ifak.Fast.Mediator.EventLog
     {
         public bool Ack { get; set; }
         public string Comment { get; set; } = "";
-        public long[] Timestamps { get; set; } = new long[0];
+        public long[] Timestamps { get; set; } = Array.Empty<long>();
         public TimeRange TimeRange { get; set; } = new TimeRange();
     }
 }

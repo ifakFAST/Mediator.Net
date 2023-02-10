@@ -46,7 +46,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         objects = await Connection.GetAllObjects(moduleID);
 
                         mapVariables.Clear();
-                        ObjectInfo root = objects.FirstOrDefault(o => !o.Parent.HasValue);
+                        ObjectInfo root = objects.First(o => !o.Parent.HasValue);
                         List<VariableValue> variables = await Connection.ReadAllVariablesOfObjectTree(root.ID);
                         await Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), root.ID);
 
