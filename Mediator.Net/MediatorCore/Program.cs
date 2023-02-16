@@ -6,6 +6,7 @@ using CommandLine;
 using NLog;
 using NLog.LayoutRenderers;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
@@ -114,6 +115,18 @@ namespace Ifak.Fast.Mediator
                     logger.Info($"{title} terminate requested...");
                     return;
                 }
+            }
+        }
+
+        public static bool IsSelfContained {
+            get {
+                ProcessModule? mainModule = Process.GetCurrentProcess().MainModule;
+                if (mainModule != null) {
+                    string fullFile = mainModule.FileName;
+                    string file = Path.GetFileNameWithoutExtension(fullFile);
+                    return file != "dotnet";
+                }
+                return false;
             }
         }
     }

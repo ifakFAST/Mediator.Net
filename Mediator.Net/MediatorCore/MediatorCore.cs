@@ -58,6 +58,8 @@ namespace Ifak.Fast.Mediator
             }
 
             Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
+            config.Normalize(configFileName, logger);
+
             userManagement = config.UserManagement;
             locations = config.Locations;
 

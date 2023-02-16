@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
 namespace Ifak.Fast.Mediator
@@ -16,6 +17,12 @@ namespace Ifak.Fast.Mediator
         public List<Module> Modules { get; set; } = new List<Module>();
         public UserManagement UserManagement { get; set; } = new UserManagement();
         public List<Location> Locations { get; set; } = new List<Location>();
+
+        public void Normalize(string configFileName, NLog.Logger logger) {
+            foreach (var m in Modules) {
+                m.Normalize(configFileName, logger);
+            }
+        }
     }
 
     public enum TimestampWarnMode
@@ -51,6 +58,71 @@ namespace Ifak.Fast.Mediator
         public List<NamedValue> Config { get; set; } = new List<NamedValue>();
 
         public List<HistoryDB> HistoryDBs { get; set; } = new List<HistoryDB>();
+
+        public void Normalize(string configFileName, NLog.Logger logger) {
+
+            ExternalCommand = ExternalCommand.Trim();
+            ExternalArgs = ExternalArgs.Trim();
+
+            string extCmdOrig = ExternalCommand;
+            string extArgsOrig = ExternalArgs;
+
+            if (ExternalCommand == "dotnet") {
+
+                string pattern = @"^\.\/Bin\/Module_(\w+)\/Module_\1\.dll\s+\{PORT\}$";
+                Match match = Regex.Match(ExternalArgs, pattern);
+
+                if (match.Success) {
+                    string moduleName = match.Groups[1].Value;
+                    ExternalArgs = $"./Bin/Mediator/Module_{moduleName}.dll" + " {PORT}";
+                }
+            }
+
+            if (Program.IsSelfContained && ExternalCommand == "dotnet") {
+
+                string pattern = @"^\.\/Bin\/Mediator\/Module_(\w+)\.dll\s+\{PORT\}$";
+                Match match = Regex.Match(ExternalArgs, pattern);
+
+                if (match.Success) {
+                    string moduleName = match.Groups[1].Value;
+                    ExternalCommand = $"./Bin/Mediator/Module_{moduleName}";
+                    ExternalArgs = "{PORT}";
+                }
+            }
+
+            bool externalCmdChanged  = extCmdOrig  != ExternalCommand;
+            bool externalArgsChanged = extArgsOrig != ExternalArgs;
+
+            if (externalCmdChanged || externalArgsChanged) {
+                logger.Info($"In file {configFileName}:");
+                if (externalCmdChanged) {
+                    logger.Info($"- Changed ExternalCommand of Module {Name}:");
+                    logger.Info($"  * From: {extCmdOrig}");
+                    logger.Info($"  *   To: {ExternalCommand}");
+                }
+                if (externalArgsChanged) {
+                    logger.Info($"- Changed ExternalArgs of Module {Name}:");
+                    logger.Info($"  * From: {extArgsOrig}");
+                    logger.Info($"  *   To: {ExternalArgs}");
+                }
+                logger.Info($"Consider updating the corresponding entries in file {configFileName}.");
+            }
+
+            for (int i = 0; i < Config.Count; i++) {
+                NamedValue nv = Config[i];
+                if (nv.Name == "view-assemblies") {
+                    string v = nv.Value;
+                    v = v.Replace("./Bin/Module_EventLog/Module_EventLog.dll", "./Bin/Mediator/Module_EventLog.dll");
+                    v = v.Replace("./Bin/Module_Calc/Module_Calc.dll", "./Bin/Mediator/Module_Calc.dll");
+                    if (v != nv.Value) {
+                        Config[i] = new NamedValue(nv.Name, v);
+                        logger.Info($"- Changed <NamedValue name=\"view-assemblies\"> of Module {Name}:");
+                        logger.Info($"  * From: {nv.Value}");
+                        logger.Info($"  *   To: {v}");
+                    }
+                }
+            }
+        }
     }
 
     public class HistoryDB
