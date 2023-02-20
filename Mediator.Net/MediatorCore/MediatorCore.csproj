@@ -21,9 +21,9 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="Microsoft.Data.SQLite" Version="7.0.2" />
-    <PackageReference Include="NLog" Version="5.1.1" />
-    <PackageReference Include="Npgsql" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Data.SQLite" Version="7.0.3" />
+    <PackageReference Include="NLog" Version="5.1.2" />
+    <PackageReference Include="Npgsql" Version="7.0.2" />
   </ItemGroup>
 
   <ItemGroup>
