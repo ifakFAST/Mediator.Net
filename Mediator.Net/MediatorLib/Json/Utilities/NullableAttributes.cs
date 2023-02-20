@@ -23,7 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !NETSTANDARD2_0
+#if !HAVE_NULLABLE_ATTRIBUTES
 
 namespace System.Diagnostics.CodeAnalysis
 {

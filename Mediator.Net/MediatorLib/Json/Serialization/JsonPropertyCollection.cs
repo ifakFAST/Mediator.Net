@@ -109,7 +109,7 @@ namespace Ifak.Fast.Json.Serialization
                             // current property is hidden by the existing so don't add it
                             return;
                         }
-
+                        
                         if (_type.ImplementInterface(existingProperty.DeclaringType) && _type.ImplementInterface(property.DeclaringType))
                         {
                             // current property was already defined on another interface
@@ -144,8 +144,8 @@ namespace Ifak.Fast.Json.Serialization
 
             return property;
         }
-#if NETSTANDARD2_1
-        private new bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
+
+        private bool TryGetProperty(string key, [NotNullWhen(true)]out JsonProperty? item)
         {
             if (Dictionary == null)
             {
@@ -155,18 +155,7 @@ namespace Ifak.Fast.Json.Serialization
 
             return Dictionary.TryGetValue(key, out item);
         }
-#else
-        private bool TryGetValue(string key, [NotNullWhen(true)]out JsonProperty? item)
-        {
-            if (Dictionary == null)
-            {
-                item = default;
-                return false;
-            }
 
-            return Dictionary.TryGetValue(key, out item);
-        }
-#endif
         /// <summary>
         /// Gets a property by property name.
         /// </summary>
@@ -178,7 +167,7 @@ namespace Ifak.Fast.Json.Serialization
             // KeyedCollection has an ordinal comparer
             if (comparisonType == StringComparison.Ordinal)
             {
-                if (TryGetValue(propertyName, out JsonProperty? property))
+                if (TryGetProperty(propertyName, out JsonProperty? property))
                 {
                     return property;
                 }

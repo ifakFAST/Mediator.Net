@@ -28,19 +28,30 @@ using System;
 namespace Ifak.Fast.Json.Linq
 {
     /// <summary>
-    /// Specifies how null value properties are merged.
+    /// Specifies the settings used when cloning JSON.
     /// </summary>
-    [Flags]
-    public enum MergeNullValueHandling
+    public class JsonCloneSettings
     {
-        /// <summary>
-        /// The content's null value properties will be ignored during merging.
-        /// </summary>
-        Ignore = 0,
+        internal static readonly JsonCloneSettings SkipCopyAnnotations = new JsonCloneSettings
+        {
+            CopyAnnotations = false
+        };
 
         /// <summary>
-        /// The content's null value properties will be merged.
+        /// Initializes a new instance of the <see cref="JsonCloneSettings"/> class.
         /// </summary>
-        Merge = 1
+        public JsonCloneSettings()
+        {
+            CopyAnnotations = true;
+        }
+
+        /// <summary>
+        /// Gets or sets a flag that indicates whether to copy annotations when cloning a <see cref="JToken"/>.
+        /// The default value is <c>true</c>.
+        /// </summary>
+        /// <value>
+        /// A flag that indicates whether to copy annotations when cloning a <see cref="JToken"/>.
+        /// </value>
+        public bool CopyAnnotations { get; set; }
     }
 }

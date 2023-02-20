@@ -182,7 +182,7 @@ namespace Ifak.Fast.Json.Converters
 
             while (reader.TokenType == JsonToken.PropertyName)
             {
-                string propertyName = reader.Value!.ToString();
+                string propertyName = reader.Value!.ToString()!;
                 if (string.Equals(propertyName, CasePropertyName, StringComparison.OrdinalIgnoreCase))
                 {
                     reader.ReadAndAssert();

@@ -129,7 +129,7 @@ namespace Ifak.Fast.Json.Converters
             reader.ReadAndAssert();
             string? type = reader.Value?.ToString();
 
-            Type t = Type.GetType(type);
+            Type t = Type.GetType(type!)!;
 
             ReadAndAssertProperty(reader, ValuePropertyName);
             reader.ReadAndAssert();

@@ -34,7 +34,25 @@ using Ifak.Fast.Json.Utilities;
 namespace Ifak.Fast.Json
 {
     public abstract partial class JsonReader
+#if HAVE_ASYNC_DISPOSABLE
+        : IAsyncDisposable
+#endif
     {
+#if HAVE_ASYNC_DISPOSABLE
+        ValueTask IAsyncDisposable.DisposeAsync()
+        {
+            try
+            {
+                Dispose(true);
+                return default;
+            }
+            catch (Exception exc)
+            {
+                return ValueTask.FromException(exc);
+            }
+        }
+#endif
+
         /// <summary>
         /// Asynchronously reads the next JSON token from the source.
         /// </summary>

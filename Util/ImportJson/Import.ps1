@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$dirJson = "D:\Sonstiges\NoBackup\Newtonsoft.Json_13.0.1"
+$dirJson = "D:\Sonstiges\NoBackup\Newtonsoft.Json_13.0.2"
 $dirJsonSrc = Join-Path -Path $dirJson -ChildPath "Src/Newtonsoft.Json"
 
 $baseDir  = $PSScriptRoot
@@ -30,6 +30,8 @@ Remove-Item -Recurse (Join-Path -Path $dirDst -ChildPath "Properties")
 Remove-Item (Join-Path -Path $dirDst -ChildPath "Dynamic.snk")
 Remove-Item (Join-Path -Path $dirDst -ChildPath "Newtonsoft.Json.csproj")
 Remove-Item (Join-Path -Path $dirDst -ChildPath "Newtonsoft.Json.ruleset")
+Remove-Item (Join-Path -Path $dirDst -ChildPath "packageIcon.png")
+Remove-Item (Join-Path -Path $dirDst -ChildPath "README.md")
 
 Get-ChildItem -Path $dirDst -Recurse |
 ForEach-Object {
