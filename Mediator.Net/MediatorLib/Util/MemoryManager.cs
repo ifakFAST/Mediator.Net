@@ -11,7 +11,7 @@ namespace Ifak.Fast.Mediator.Util
     public static class MemoryManager
     {
         // The two classes RecyclableMemoryStreamManager and RecyclableMemoryStream
-        // are copies from the library "Microsoft.IO.RecyclableMemoryStream" version 2.0.
+        // are copies from the library "Microsoft.IO.RecyclableMemoryStream" version 2.3.1+ (a0b79e7092e2f1a565e9a43b41b84b586aad4ba5).
         // Some events have been disabled that are not used. Some minor performance improvements
         // have been made.
 
@@ -61,7 +61,7 @@ namespace Ifak.Fast.Mediator.Util
     {
         private const int InitialCapacity = 32 * 1024;
         private bool disposed;
-        private string context;
+        private readonly string context;
 
         public string Context => context;
 

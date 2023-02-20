@@ -25,13 +25,11 @@
 namespace Ifak.Fast.Mediator.Util
 {
     using System;
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
     using System.Buffers;
 #endif
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
     using System.IO;
     using System.Runtime.CompilerServices;
     using System.Threading;
@@ -93,7 +91,7 @@ namespace Ifak.Fast.Mediator.Util
     /// the maximum array size supported by .NET.
     /// </para>
     /// </remarks>
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
     public sealed class RecyclableMemoryStream : MemoryStream, IBufferWriter<byte>
 #else
     public sealed class RecyclableMemoryStream : MemoryStream
@@ -102,15 +100,17 @@ namespace Ifak.Fast.Mediator.Util
         private static readonly byte[] emptyArray = new byte[0];
 
         /// <summary>
-        /// All of these blocks must be the same size
+        /// All of these blocks must be the same size.
         /// </summary>
-        private readonly List<byte[]> blocks = new List<byte[]>(1);
+        private readonly List<byte[]> blocks;
 
         private readonly Guid id;
 
         private readonly RecyclableMemoryStreamManager memoryManager;
 
         private readonly string tag;
+
+        private readonly long creationTimestamp;
 
         /// <summary>
         /// This list is used to store buffers once they're replaced by something larger.
@@ -131,9 +131,9 @@ namespace Ifak.Fast.Mediator.Util
         private byte[] largeBuffer;
 
         /// <summary>
-        /// Unique identifier for this stream across its entire lifetime
+        /// Unique identifier for this stream across its entire lifetime.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         internal Guid Id
         {
             get
@@ -146,7 +146,7 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// A temporary identifier for the current usage of this stream.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         internal string Tag
         {
             get
@@ -159,7 +159,7 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Gets the memory manager being used by this stream.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         internal RecyclableMemoryStreamManager MemoryManager
         {
             get
@@ -182,83 +182,83 @@ namespace Ifak.Fast.Mediator.Util
         internal string DisposeStack { get; private set; }
 
         #region Constructors
-        ///// <summary>
-        ///// Allocate a new RecyclableMemoryStream object.
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager)
-        //    : this(memoryManager, Guid.NewGuid(), null, 0, null) { }
-
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object.
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id)
-        //    : this(memoryManager, id, null, 0, null) { }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager)
+            : this(memoryManager, Guid.NewGuid(), null, 0, null) { }
 
         /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
         /// </summary>
-        /// <param name="memoryManager">The memory manager</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id)
+            : this(memoryManager, id, null, 0, null) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
         internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag)
             : this(memoryManager, Guid.NewGuid(), tag, 0, null) { }
 
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag)
-        //    : this(memoryManager, id, tag, 0, null) { }
-
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize)
-        //    : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
-
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, long requestedSize)
-        //    : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
-
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, int requestedSize)
-        //    : this(memoryManager, id, tag, requestedSize, null) { }
-
-        ///// <summary>
-        ///// Allocate a new <c>RecyclableMemoryStream</c> object
-        ///// </summary>
-        ///// <param name="memoryManager">The memory manager</param>
-        ///// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        ///// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        ///// <param name="requestedSize">The initial requested size to prevent future allocations</param>
-        //public RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, long requestedSize)
-        //    : this(memoryManager, id, tag, requestedSize, null) { }
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag)
+            : this(memoryManager, id, tag, 0, null) { }
 
         /// <summary>
-        /// Allocate a new <c>RecyclableMemoryStream</c> object
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        /// <param name="requestedSize">The initial requested size to prevent future allocations.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, int requestedSize)
+            : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        /// <param name="requestedSize">The initial requested size to prevent future allocations.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, string tag, long requestedSize)
+            : this(memoryManager, Guid.NewGuid(), tag, requestedSize, null) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        /// <param name="requestedSize">The initial requested size to prevent future allocations.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, int requestedSize)
+            : this(memoryManager, id, tag, (long)requestedSize) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
         /// </summary>
         /// <param name="memoryManager">The memory manager</param>
         /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
-        /// <param name="tag">A string identifying this stream for logging and debugging purposes</param>
-        /// <param name="requestedSize">The initial requested size to prevent future allocations</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        /// <param name="requestedSize">The initial requested size to prevent future allocations.</param>
+        internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, long requestedSize)
+            : this(memoryManager, id, tag, requestedSize, null) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RecyclableMemoryStream"/> class.
+        /// </summary>
+        /// <param name="memoryManager">The memory manager.</param>
+        /// <param name="id">A unique identifier which can be used to trace usages of the stream.</param>
+        /// <param name="tag">A string identifying this stream for logging and debugging purposes.</param>
+        /// <param name="requestedSize">The initial requested size to prevent future allocations.</param>
         /// <param name="initialLargeBuffer">An initial buffer to use. This buffer will be owned by the stream and returned to the memory manager upon Dispose.</param>
         internal RecyclableMemoryStream(RecyclableMemoryStreamManager memoryManager, Guid id, string tag, long requestedSize, byte[] initialLargeBuffer)
             : base(emptyArray)
@@ -266,12 +266,10 @@ namespace Ifak.Fast.Mediator.Util
             this.memoryManager = memoryManager;
             this.id = id;
             this.tag = tag;
+            this.blocks = new List<byte[]>();
+            this.creationTimestamp = Stopwatch.GetTimestamp();
 
-            var actualRequestedSize = requestedSize;
-            if (actualRequestedSize < this.memoryManager.BlockSize)
-            {
-                actualRequestedSize = this.memoryManager.BlockSize;
-            }
+            var actualRequestedSize = Math.Max(requestedSize, this.memoryManager.BlockSize);
 
             if (initialLargeBuffer == null)
             {
@@ -288,6 +286,7 @@ namespace Ifak.Fast.Mediator.Util
             }
 
             this.memoryManager.ReportStreamCreated(this.id, this.tag, requestedSize, actualRequestedSize);
+            // this.memoryManager.ReportUsageReport();
         }
         #endregion
 
@@ -304,7 +303,7 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Returns the memory used by this stream back to the pool.
         /// </summary>
-        /// <param name="disposing">Whether we're disposing (true), or being called by the finalizer (false)</param>
+        /// <param name="disposing">Whether we're disposing (true), or being called by the finalizer (false).</param>
         protected override void Dispose(bool disposing)
         {
             if (this.disposed)
@@ -315,18 +314,19 @@ namespace Ifak.Fast.Mediator.Util
                 //    doubleDisposeStack = Environment.StackTrace;
                 //}
 
-                //this.memoryManager.ReportStreamDoubleDisposed(this.id, this.tag, this.AllocationStack, this.DisposeStack, doubleDisposeStack);
+                // this.memoryManager.ReportStreamDoubleDisposed(this.id, this.tag, this.AllocationStack, this.DisposeStack, doubleDisposeStack);
                 return;
             }
 
             this.disposed = true;
+            var lifetime = TimeSpan.FromTicks((Stopwatch.GetTimestamp() - this.creationTimestamp) * TimeSpan.TicksPerSecond / Stopwatch.Frequency);
 
             if (this.memoryManager.GenerateCallStacks)
             {
                 this.DisposeStack = Environment.StackTrace;
             }
 
-            this.memoryManager.ReportStreamDisposed(this.id, this.tag, this.AllocationStack, this.DisposeStack);
+            this.memoryManager.ReportStreamDisposed(this.id, this.tag, lifetime, this.AllocationStack, this.DisposeStack);
 
             if (disposing)
             {
@@ -335,7 +335,7 @@ namespace Ifak.Fast.Mediator.Util
             else
             {
                 // We're being finalized.
-                //this.memoryManager.ReportStreamFinalized(this.id, this.tag, this.AllocationStack);
+                // this.memoryManager.ReportStreamFinalized(this.id, this.tag, this.AllocationStack);
 
                 if (AppDomain.CurrentDomain.IsFinalizingForUnload())
                 {
@@ -345,10 +345,9 @@ namespace Ifak.Fast.Mediator.Util
                     base.Dispose(disposing);
                     return;
                 }
-
             }
 
-            //this.memoryManager.ReportStreamLength(this.length);
+            // this.memoryManager.ReportStreamLength(this.length);
 
             if (this.largeBuffer != null)
             {
@@ -364,13 +363,14 @@ namespace Ifak.Fast.Mediator.Util
             }
 
             this.memoryManager.ReturnBlocks(this.blocks, this.id, this.tag);
+            // this.memoryManager.ReportUsageReport();
             this.blocks.Clear();
 
             base.Dispose(disposing);
         }
 
         /// <summary>
-        /// Equivalent to <c>Dispose</c>
+        /// Equivalent to <c>Dispose</c>.
         /// </summary>
         public override void Close()
         {
@@ -380,12 +380,12 @@ namespace Ifak.Fast.Mediator.Util
 
         #region MemoryStream overrides
         /// <summary>
-        /// Gets or sets the capacity
+        /// Gets or sets the capacity.
         /// </summary>
         /// <remarks>
         /// <para>
         /// Capacity is always in multiples of the memory manager's block size, unless
-        /// the large buffer is in use.  Capacity never decreases during a stream's lifetime.
+        /// the large buffer is in use. Capacity never decreases during a stream's lifetime.
         /// Explicitly setting the capacity to a lower value than the current value will have no effect.
         /// This is because the buffers are all pooled by chunks and there's little reason to
         /// allow stream truncation.
@@ -394,11 +394,12 @@ namespace Ifak.Fast.Mediator.Util
         /// Writing past the current capacity will cause <see cref="Capacity"/> to automatically increase, until MaximumStreamCapacity is reached.
         /// </para>
         /// <para>
-        /// If the capacity is larger than <c>int.MaxValue</c>, then <c>int.MaxValue</c> will be returned. If you anticipate using
+        /// If the capacity is larger than <c>int.MaxValue</c>, then <c>InvalidOperationException</c> will be thrown. If you anticipate using
         /// larger streams, use the <see cref="Capacity64"/> property instead.
         /// </para>
         /// </remarks>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="InvalidOperationException">Capacity is larger than int.MaxValue.</exception>
         public override int Capacity
         {
             get
@@ -412,14 +413,13 @@ namespace Ifak.Fast.Mediator.Util
                 long size = (long)this.blocks.Count * this.memoryManager.BlockSize;
                 if (size > int.MaxValue)
                 {
-                    throw new InvalidOperationException("Capacity is larger than int.MaxValue. Use Capacity64 instead");
+                    throw new InvalidOperationException($"{nameof(Capacity)} is larger than int.MaxValue. Use {nameof(Capacity64)} instead.");
                 }
                 return (int)size;
             }
             set
             {
-                this.CheckDisposed();
-                this.EnsureCapacity(value);
+                this.Capacity64 = value;
             }
         }
 
@@ -451,7 +451,7 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Gets the number of bytes written to this stream.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         /// <remarks>If the buffer has already been converted to a large buffer, then the maximum length is limited by the maximum allowed array length in .NET.</remarks>
         public override long Length
         {
@@ -465,10 +465,10 @@ namespace Ifak.Fast.Mediator.Util
         private long position;
 
         /// <summary>
-        /// Gets the current position in the stream
+        /// Gets the current position in the stream.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="ArgumentOutOfRangeException">A negative value was passed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">A negative value was passed.</exception>
         /// <exception cref="InvalidOperationException">Stream is in large-buffer mode, but an attempt was made to set the position past the maximum allowed array length.</exception>
         /// <remarks>If the buffer has already been converted to a large buffer, then the maximum length (and thus position) is limited by the maximum allowed array length in .NET.</remarks>
         public override long Position
@@ -483,34 +483,34 @@ namespace Ifak.Fast.Mediator.Util
                 this.CheckDisposed();
                 if (value < 0)
                 {
-                    throw new ArgumentOutOfRangeException("value", "value must be non-negative");
+                    throw new ArgumentOutOfRangeException(nameof(value), $"{nameof(value)} must be non-negative.");
                 }
 
                 if (this.largeBuffer != null && value > RecyclableMemoryStreamManager.MaxArrayLength)
                 {
-                    throw new InvalidOperationException($"Once the stream is converted to a single large buffer, position cannot be set past {RecyclableMemoryStreamManager.MaxArrayLength}");
+                    throw new InvalidOperationException($"Once the stream is converted to a single large buffer, position cannot be set past {RecyclableMemoryStreamManager.MaxArrayLength}.");
                 }
                 this.position = value;
             }
         }
 
         /// <summary>
-        /// Whether the stream can currently read
+        /// Whether the stream can currently read.
         /// </summary>
         public override bool CanRead => !this.Disposed;
 
         /// <summary>
-        /// Whether the stream can currently seek
+        /// Whether the stream can currently seek.
         /// </summary>
         public override bool CanSeek => !this.Disposed;
 
         /// <summary>
-        /// Always false
+        /// Always false.
         /// </summary>
         public override bool CanTimeout => false;
 
         /// <summary>
-        /// Whether the stream can currently write
+        /// Whether the stream can currently write.
         /// </summary>
         public override bool CanWrite => !this.Disposed;
 
@@ -518,11 +518,11 @@ namespace Ifak.Fast.Mediator.Util
         /// Returns a single buffer containing the contents of the stream.
         /// The buffer may be longer than the stream length.
         /// </summary>
-        /// <returns>A byte[] buffer</returns>
+        /// <returns>A byte[] buffer.</returns>
         /// <remarks>IMPORTANT: Doing a <see cref="Write(byte[], int, int)"/> after calling <c>GetBuffer</c> invalidates the buffer. The old buffer is held onto
         /// until <see cref="Dispose(bool)"/> is called, but the next time <c>GetBuffer</c> is called, a new buffer from the pool will be required.</remarks>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="OutOfMemoryException">stream is too large for a contiguous buffer</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="OutOfMemoryException">stream is too large for a contiguous buffer.</exception>
         public override byte[] GetBuffer()
         {
             this.CheckDisposed();
@@ -546,7 +546,7 @@ namespace Ifak.Fast.Mediator.Util
 
             // InternalRead will check for existence of largeBuffer, so make sure we
             // don't set it until after we've copied the data.
-            AssertLengthIsSmall();
+            this.AssertLengthIsSmall();
             this.InternalRead(newBuffer, 0, (int)this.length, 0);
             this.largeBuffer = newBuffer;
 
@@ -559,13 +559,21 @@ namespace Ifak.Fast.Mediator.Util
             return this.largeBuffer;
         }
 
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1
+        /// <inheritdoc/>
+        public override void CopyTo(Stream destination, int bufferSize)
+        {
+            WriteTo(destination, this.position, this.length - this.position);
+        }
+#endif
+
         /// <summary>Asynchronously reads all the bytes from the current position in this stream and writes them to another stream.</summary>
         /// <param name="destination">The stream to which the contents of the current stream will be copied.</param>
         /// <param name="bufferSize">This parameter is ignored.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task that represents the asynchronous copy operation.</returns>
         /// <exception cref="T:System.ArgumentNullException">
-        ///   <paramref name="destination" /> is <see langword="null" />.</exception>
+        ///   <paramref name="destination"/> is <see langword="null"/>.</exception>
         /// <exception cref="T:System.ObjectDisposedException">Either the current stream or the destination stream is disposed.</exception>
         /// <exception cref="T:System.NotSupportedException">The current stream does not support reading, or the destination stream does not support writing.</exception>
         /// <remarks>Similarly to <c>MemoryStream</c>'s behavior, <c>CopyToAsync</c> will adjust the source stream's position by the number of bytes written to the destination stream, as a Read would do.</remarks>
@@ -576,7 +584,7 @@ namespace Ifak.Fast.Mediator.Util
                 throw new ArgumentNullException(nameof(destination));
             }
 
-            CheckDisposed();
+            this.CheckDisposed();
 
             if (this.length == 0)
             {
@@ -603,24 +611,7 @@ namespace Ifak.Fast.Mediator.Util
                     }
                     else
                     {
-                        return CopyToAsyncImpl(cancellationToken, count);
-
-                        async Task CopyToAsyncImpl(CancellationToken ct, long totalBytesToWrite)
-                        {
-                            var bytesRemaining = totalBytesToWrite;
-                            var totalBytesToaDd = bytesRemaining;
-                            var blockAndOffset = this.GetBlockAndRelativeOffset(startPos);
-                            int currentBlock = blockAndOffset.Block;
-                            var currentOffset = blockAndOffset.Offset;
-                            while (bytesRemaining > 0)
-                            {
-                                int amountToCopy = (int)Math.Min(this.blocks[currentBlock].Length - currentOffset, bytesRemaining);
-                                await destination.WriteAsync(this.blocks[currentBlock], currentOffset, amountToCopy, ct);
-                                bytesRemaining -= amountToCopy;
-                                ++currentBlock;
-                                currentOffset = 0;
-                            }
-                        }
+                        return CopyToAsyncImpl(destination, this.GetBlockAndRelativeOffset(startPos), count, this.blocks, cancellationToken);
                     }
                 }
                 else
@@ -629,9 +620,25 @@ namespace Ifak.Fast.Mediator.Util
                     return destination.WriteAsync(this.largeBuffer, (int)startPos, (int)count, cancellationToken);
                 }
             }
+
+            static async Task CopyToAsyncImpl(Stream destination, BlockAndOffset blockAndOffset, long count, List<byte[]> blocks, CancellationToken cancellationToken)
+            {
+                var bytesRemaining = count;
+                int currentBlock = blockAndOffset.Block;
+                var currentOffset = blockAndOffset.Offset;
+                while (bytesRemaining > 0)
+                {
+                    byte[] block = blocks[currentBlock];
+                    int amountToCopy = (int)Math.Min(block.Length - currentOffset, bytesRemaining);
+                    await destination.WriteAsync(block, currentOffset, amountToCopy, cancellationToken);
+                    bytesRemaining -= amountToCopy;
+                    ++currentBlock;
+                    currentOffset = 0;
+                }
+            }
         }
 
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
         private byte[] bufferWriterTempBuffer;
 
         /// <summary>
@@ -641,10 +648,10 @@ namespace Ifak.Fast.Mediator.Util
         /// <remarks>
         /// You must request a new buffer after calling Advance to continue writing more data and cannot write to a previously acquired buffer.
         /// </remarks>
-        /// <param name="count">How many bytes to advance</param>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative</exception>
-        /// <exception cref="InvalidOperationException"><paramref name="count"/> is larger than the size of the previously requested buffer</exception>
+        /// <param name="count">How many bytes to advance.</param>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
+        /// <exception cref="InvalidOperationException"><paramref name="count"/> is larger than the size of the previously requested buffer.</exception>
         public void Advance(int count)
         {
             this.CheckDisposed();
@@ -703,7 +710,7 @@ namespace Ifak.Fast.Mediator.Util
         /// <inheritdoc/>
         /// <remarks>
         /// IMPORTANT: Calling Write(), GetBuffer(), TryGetBuffer(), Seek(), GetLength(), Advance(),
-        /// or setting Position after calling GetMemory() invalidates the memory.
+        /// or setting Position after calling GetSpan() invalidates the span.
         /// </remarks>
         public Span<byte> GetSpan(int sizeHint = 0) => this.GetWritableBuffer(sizeHint);
 
@@ -711,18 +718,15 @@ namespace Ifak.Fast.Mediator.Util
         /// When callers to GetSpan() or GetMemory() request a buffer that is larger than the remaining size of the current block
         /// this method return a temp buffer. When Advance() is called, that temp buffer is then copied into the stream.
         /// </summary>
-        private ArraySegment<byte> GetWritableBuffer(int minimumBufferSize)
+        private ArraySegment<byte> GetWritableBuffer(int sizeHint)
         {
             this.CheckDisposed();
-            if (minimumBufferSize < 0)
+            if (sizeHint < 0)
             {
-                throw new ArgumentOutOfRangeException("sizeHint", $"sizeHint must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(sizeHint), $"{nameof(sizeHint)} must be non-negative.");
             }
 
-            if (minimumBufferSize == 0)
-            {
-                minimumBufferSize = 1;
-            }
+            var minimumBufferSize = Math.Max(sizeHint, 1);
 
             this.EnsureCapacity(this.position + minimumBufferSize);
             if (this.bufferWriterTempBuffer != null)
@@ -753,29 +757,29 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Returns a sequence containing the contents of the stream.
         /// </summary>
-        /// <returns>A ReadOnlySequence of bytes</returns>
+        /// <returns>A ReadOnlySequence of bytes.</returns>
         /// <remarks>IMPORTANT: Calling Write(), GetMemory(), GetSpan(), Dispose(), or Close() after calling GetReadOnlySequence() invalidates the sequence.</remarks>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        public ReadOnlySequence<byte> GetReadOnlySequence()
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        public ReadOnlySequence<byte> GetReadOnlySequence() 
         {
             this.CheckDisposed();
 
-            if (this.largeBuffer != null)
+            if (this.largeBuffer != null) 
             {
                 AssertLengthIsSmall();
                 return new ReadOnlySequence<byte>(this.largeBuffer, 0, (int)this.length);
             }
 
-            if (this.blocks.Count == 1)
+            if (this.blocks.Count == 1) 
             {
                 AssertLengthIsSmall();
                 return new ReadOnlySequence<byte>(this.blocks[0], 0, (int)this.length);
             }
 
-            BlockSegment first = new BlockSegment(this.blocks[0]);
-            BlockSegment last = first;
+            var first = new BlockSegment(this.blocks[0]);
+            var last = first;
 
-            for (int blockIdx = 1; blockIdx < blocks.Count; blockIdx++)
+            for (int blockIdx = 1; last.RunningIndex + last.Memory.Length < this.length; blockIdx++) 
             {
                 last = last.Append(this.blocks[blockIdx]);
             }
@@ -783,11 +787,11 @@ namespace Ifak.Fast.Mediator.Util
             return new ReadOnlySequence<byte>(first, 0, last, (int)(this.length - last.RunningIndex));
         }
 
-        private sealed class BlockSegment : ReadOnlySequenceSegment<byte>
+        private sealed class BlockSegment : ReadOnlySequenceSegment<byte> 
         {
             public BlockSegment(Memory<byte> memory) => Memory = memory;
 
-            public BlockSegment Append(Memory<byte> memory)
+            public BlockSegment Append(Memory<byte> memory) 
             {
                 var nextSegment = new BlockSegment(memory) { RunningIndex = RunningIndex + Memory.Length };
                 Next = nextSegment;
@@ -800,7 +804,7 @@ namespace Ifak.Fast.Mediator.Util
         /// Returns an <c>ArraySegment</c> that wraps a single buffer containing the contents of the stream.
         /// </summary>
         /// <param name="buffer">An <c>ArraySegment</c> containing a reference to the underlying bytes.</param>
-        /// <returns>Returns true if a buffer can be returned; otherwise, false</returns>
+        /// <returns>Returns <see langword="true"/> if a buffer can be returned; otherwise, <see langword="false"/>.</returns>
         public override bool TryGetBuffer(out ArraySegment<byte> buffer)
         {
             this.CheckDisposed();
@@ -813,12 +817,11 @@ namespace Ifak.Fast.Mediator.Util
                     return true;
                 }
             }
-            catch(OutOfMemoryException)
+            catch (OutOfMemoryException)
             {
-
             }
 
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1
             buffer = ArraySegment<byte>.Empty;
 #else
             buffer = new ArraySegment<byte>();
@@ -831,17 +834,17 @@ namespace Ifak.Fast.Mediator.Util
         /// access the bytes in this stream. Calling <c>ToArray</c> will destroy the benefits of pooled buffers, but it is included
         /// for the sake of completeness.
         /// </summary>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         /// <exception cref="NotSupportedException">The current <see cref="RecyclableMemoryStreamManager"/>object disallows <c>ToArray</c> calls.</exception>
-        /// <exception cref="OutOfMemoryException">The length of the stream is too long for a contiguous array</exception>
+        /// <exception cref="OutOfMemoryException">The length of the stream is too long for a contiguous array.</exception>
 #pragma warning disable CS0809
         [Obsolete("This method has degraded performance vs. GetBuffer and should be avoided.")]
         public override byte[] ToArray()
         {
             this.CheckDisposed();
 
-            string stack = this.memoryManager.GenerateCallStacks ? Environment.StackTrace : null;
-            //this.memoryManager.ReportStreamToArray(this.id, this.tag, stack, this.length);
+            // string stack = this.memoryManager.GenerateCallStacks ? Environment.StackTrace : null;
+            // this.memoryManager.ReportStreamToArray(this.id, this.tag, stack, this.length);
 
             if (this.memoryManager.ThrowExceptionOnToArray)
             {
@@ -850,7 +853,7 @@ namespace Ifak.Fast.Mediator.Util
 
             var newBuffer = new byte[this.Length];
 
-            Debug.Assert(this.length <= Int32.MaxValue);
+            Debug.Assert(this.length <= int.MaxValue);
             this.InternalRead(newBuffer, 0, (int)this.length, 0);
 
             return newBuffer;
@@ -858,34 +861,34 @@ namespace Ifak.Fast.Mediator.Util
 #pragma warning restore CS0809
 
         /// <summary>
-        /// Reads from the current position into the provided buffer
+        /// Reads from the current position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
+        /// <param name="buffer">Destination buffer.</param>
         /// <param name="offset">Offset into buffer at which to start placing the read bytes.</param>
         /// <param name="count">Number of bytes to read.</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ArgumentNullException">buffer is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">offset or count is less than 0</exception>
-        /// <exception cref="ArgumentException">offset subtracted from the buffer length is less than count</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ArgumentNullException">buffer is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">offset or count is less than 0.</exception>
+        /// <exception cref="ArgumentException">offset subtracted from the buffer length is less than count.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override int Read(byte[] buffer, int offset, int count)
         {
             return this.SafeRead(buffer, offset, count, ref this.position);
         }
 
         /// <summary>
-        /// Reads from the specified position into the provided buffer
+        /// Reads from the specified position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
+        /// <param name="buffer">Destination buffer.</param>
         /// <param name="offset">Offset into buffer at which to start placing the read bytes.</param>
         /// <param name="count">Number of bytes to read.</param>
-        /// <param name="streamPosition">Position in the stream to start reading from</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ArgumentNullException">buffer is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">offset or count is less than 0</exception>
-        /// <exception cref="ArgumentException">offset subtracted from the buffer length is less than count</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c></exception>
+        /// <param name="streamPosition">Position in the stream to start reading from.</param>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="buffer"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="offset"/> or <paramref name="count"/> is less than 0.</exception>
+        /// <exception cref="ArgumentException"><paramref name="offset"/> subtracted from the buffer length is less than <paramref name="count"/>.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c>.</exception>
         public int SafeRead(byte[] buffer, int offset, int count, ref int streamPosition)
         {
             long longPosition = streamPosition;
@@ -899,17 +902,17 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         /// <summary>
-        /// Reads from the specified position into the provided buffer
+        /// Reads from the specified position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
+        /// <param name="buffer">Destination buffer.</param>
         /// <param name="offset">Offset into buffer at which to start placing the read bytes.</param>
         /// <param name="count">Number of bytes to read.</param>
-        /// <param name="streamPosition">Position in the stream to start reading from</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ArgumentNullException">buffer is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">offset or count is less than 0</exception>
-        /// <exception cref="ArgumentException">offset subtracted from the buffer length is less than count</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="streamPosition">Position in the stream to start reading from.</param>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="buffer"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="offset"/> or <paramref name="count"/> is less than 0.</exception>
+        /// <exception cref="ArgumentException"><paramref name="offset"/> subtracted from the buffer length is less than <paramref name="count"/>.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public int SafeRead(byte[] buffer, int offset, int count, ref long streamPosition)
         {
             this.CheckDisposed();
@@ -920,17 +923,17 @@ namespace Ifak.Fast.Mediator.Util
 
             if (offset < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(offset), "offset cannot be negative");
+                throw new ArgumentOutOfRangeException(nameof(offset), $"{nameof(offset)} cannot be negative.");
             }
 
             if (count < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "count cannot be negative");
+                throw new ArgumentOutOfRangeException(nameof(count), $"{nameof(count)} cannot be negative.");
             }
 
             if (offset + count > buffer.Length)
             {
-                throw new ArgumentException("buffer length must be at least offset + count");
+                throw new ArgumentException($"{nameof(buffer)} length must be at least {nameof(offset)} + {nameof(count)}.");
             }
 
             int amountRead = this.InternalRead(buffer, offset, count, streamPosition);
@@ -938,26 +941,26 @@ namespace Ifak.Fast.Mediator.Util
             return amountRead;
         }
 
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
         /// <summary>
-        /// Reads from the current position into the provided buffer
+        /// Reads from the current position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="buffer">Destination buffer.</param>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override int Read(Span<byte> buffer)
         {
             return this.SafeRead(buffer, ref this.position);
         }
 
         /// <summary>
-        /// Reads from the specified position into the provided buffer
+        /// Reads from the specified position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
-        /// <param name="streamPosition">Position in the stream to start reading from</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c></exception>
+        /// <param name="buffer">Destination buffer.</param>
+        /// <param name="streamPosition">Position in the stream to start reading from.</param>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c>.</exception>
         public int SafeRead(Span<byte> buffer, ref int streamPosition)
         {
             long longPosition = streamPosition;
@@ -971,12 +974,12 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         /// <summary>
-        /// Reads from the specified position into the provided buffer
+        /// Reads from the specified position into the provided buffer.
         /// </summary>
-        /// <param name="buffer">Destination buffer</param>
-        /// <param name="streamPosition">Position in the stream to start reading from</param>
-        /// <returns>The number of bytes read</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="buffer">Destination buffer.</param>
+        /// <param name="streamPosition">Position in the stream to start reading from.</param>
+        /// <returns>The number of bytes read.</returns>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public int SafeRead(Span<byte> buffer, ref long streamPosition)
         {
             this.CheckDisposed();
@@ -988,15 +991,15 @@ namespace Ifak.Fast.Mediator.Util
 #endif
 
         /// <summary>
-        /// Writes the buffer to the stream
+        /// Writes the buffer to the stream.
         /// </summary>
-        /// <param name="buffer">Source buffer</param>
-        /// <param name="offset">Start position</param>
-        /// <param name="count">Number of bytes to write</param>
-        /// <exception cref="ArgumentNullException">buffer is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">offset or count is negative</exception>
-        /// <exception cref="ArgumentException">buffer.Length - offset is not less than count</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="buffer">Source buffer.</param>
+        /// <param name="offset">Start position.</param>
+        /// <param name="count">Number of bytes to write.</param>
+        /// <exception cref="ArgumentNullException">buffer is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">offset or count is negative.</exception>
+        /// <exception cref="ArgumentException">buffer.Length - offset is not less than count.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override void Write(byte[] buffer, int offset, int count)
         {
             this.CheckDisposed();
@@ -1008,17 +1011,17 @@ namespace Ifak.Fast.Mediator.Util
             if (offset < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(offset), offset,
-                                                      "Offset must be in the range of 0 - buffer.Length-1");
+                    $"{nameof(offset)} must be in the range of 0 - {nameof(buffer)}.{nameof(buffer.Length)}-1.");
             }
 
             if (count < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), count, "count must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(count), count, $"{nameof(count)} must be non-negative.");
             }
 
             if (count + offset > buffer.Length)
             {
-                throw new ArgumentException("count must be greater than buffer.Length - offset");
+                throw new ArgumentException($"{nameof(count)} must be greater than {nameof(buffer)}.{nameof(buffer.Length)} - {nameof(offset)}.");
             }
 
             int blockSize = this.memoryManager.BlockSize;
@@ -1056,13 +1059,13 @@ namespace Ifak.Fast.Mediator.Util
             this.length = Math.Max(this.position, this.length);
         }
 
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
         /// <summary>
-        /// Writes the buffer to the stream
+        /// Writes the buffer to the stream.
         /// </summary>
-        /// <param name="source">Source buffer</param>
-        /// <exception cref="ArgumentNullException">buffer is null</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="source">Source buffer.</param>
+        /// <exception cref="ArgumentNullException">buffer is null.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override void Write(ReadOnlySpan<byte> source)
         {
             this.CheckDisposed();
@@ -1072,11 +1075,11 @@ namespace Ifak.Fast.Mediator.Util
 
             this.EnsureCapacity(end);
 
-            if (this.largeBuffer == null)
+            if (this.largeBuffer == null) 
             {
                 var blockAndOffset = this.GetBlockAndRelativeOffset(this.position);
 
-                while (source.Length > 0)
+                while (source.Length > 0) 
                 {
                     byte[] currentBlock = this.blocks[blockAndOffset.Block];
                     int remainingInBlock = blockSize - blockAndOffset.Offset;
@@ -1091,7 +1094,7 @@ namespace Ifak.Fast.Mediator.Util
                     blockAndOffset.Offset = 0;
                 }
             }
-            else
+            else 
             {
                 source.CopyTo(this.largeBuffer.AsSpan((int)this.position));
             }
@@ -1105,14 +1108,22 @@ namespace Ifak.Fast.Mediator.Util
         /// </summary>
         public override string ToString()
         {
-            return $"Id = {this.Id}, Tag = {this.Tag}, Length = {this.Length:N0} bytes";
+            if (!this.disposed)
+            {
+                return $"Id = {this.Id}, Tag = {this.Tag}, Length = {this.Length:N0} bytes";
+            }
+            else
+            {
+                // Avoid properties because of the dispose check, but the fields themselves are not cleared.
+                return $"Disposed: Id = {this.id}, Tag = {this.tag}, Final Length: {this.length:N0} bytes";
+            }
         }
 
         /// <summary>
         /// Writes a single byte to the current position in the stream.
         /// </summary>
-        /// <param name="value">byte value to write</param>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="value">byte value to write.</param>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override void WriteByte(byte value)
         {
             this.CheckDisposed();
@@ -1123,14 +1134,14 @@ namespace Ifak.Fast.Mediator.Util
             {
                 var blockSize = this.memoryManager.BlockSize;
 
-                var block = (int)(this.position / blockSize);
+                var block = (int)Math.DivRem(this.position, blockSize, out var index);
 
                 if (block >= this.blocks.Count)
                 {
                     this.EnsureCapacity(end);
                 }
 
-                this.blocks[block][this.position % blockSize] = value;
+                this.blocks[block][index] = value;
             }
             else
             {
@@ -1154,7 +1165,7 @@ namespace Ifak.Fast.Mediator.Util
         /// Reads a single byte from the current position in the stream.
         /// </summary>
         /// <returns>The byte at the current position, or -1 if the position is at the end of the stream.</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override int ReadByte()
         {
             return this.SafeReadByte(ref this.position);
@@ -1163,10 +1174,10 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Reads a single byte from the specified position in the stream.
         /// </summary>
-        /// <param name="streamPosition">The position in the stream to read from</param>
+        /// <param name="streamPosition">The position in the stream to read from.</param>
         /// <returns>The byte at the current position, or -1 if the position is at the end of the stream.</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c></exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="InvalidOperationException">Stream position is beyond <c>int.MaxValue</c>.</exception>
         public int SafeReadByte(ref int streamPosition)
         {
             long longPosition = streamPosition;
@@ -1182,9 +1193,9 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Reads a single byte from the specified position in the stream.
         /// </summary>
-        /// <param name="streamPosition">The position in the stream to read from</param>
+        /// <param name="streamPosition">The position in the stream to read from.</param>
         /// <returns>The byte at the current position, or -1 if the position is at the end of the stream.</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public int SafeReadByte(ref long streamPosition)
         {
             this.CheckDisposed();
@@ -1207,16 +1218,16 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         /// <summary>
-        /// Sets the length of the stream
+        /// Sets the length of the stream.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">value is negative or larger than <see cref="RecyclableMemoryStreamManager.MaximumStreamCapacity"/></exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ArgumentOutOfRangeException">value is negative or larger than <see cref="RecyclableMemoryStreamManager.MaximumStreamCapacity"/>.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override void SetLength(long value)
         {
             this.CheckDisposed();
             if (value < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), "value must be non-negative");
+                throw new ArgumentOutOfRangeException(nameof(value), $"{nameof(value)} must be non-negative.");
             }
 
             this.EnsureCapacity(value);
@@ -1229,37 +1240,28 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         /// <summary>
-        /// Sets the position to the offset from the seek location
+        /// Sets the position to the offset from the seek location.
         /// </summary>
-        /// <param name="offset">How many bytes to move</param>
-        /// <param name="loc">From where</param>
-        /// <returns>The new position</returns>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
-        /// <exception cref="ArgumentOutOfRangeException">offset is larger than <see cref="RecyclableMemoryStreamManager.MaximumStreamCapacity"/></exception>
-        /// <exception cref="ArgumentException">Invalid seek origin</exception>
-        /// <exception cref="IOException">Attempt to set negative position</exception>
+        /// <param name="offset">How many bytes to move.</param>
+        /// <param name="loc">From where.</param>
+        /// <returns>The new position.</returns>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="offset"/> is larger than <see cref="RecyclableMemoryStreamManager.MaximumStreamCapacity"/>.</exception>
+        /// <exception cref="ArgumentException">Invalid seek origin.</exception>
+        /// <exception cref="IOException">Attempt to set negative position.</exception>
         public override long Seek(long offset, SeekOrigin loc)
         {
             this.CheckDisposed();
-
-            long newPosition;
-            switch (loc)
+            long newPosition = loc switch
             {
-            case SeekOrigin.Begin:
-                newPosition = offset;
-                break;
-            case SeekOrigin.Current:
-                newPosition = offset + this.position;
-                break;
-            case SeekOrigin.End:
-                newPosition = offset + this.length;
-                break;
-            default:
-                throw new ArgumentException("Invalid seek origin", nameof(loc));
-            }
+                SeekOrigin.Begin => offset,
+                SeekOrigin.Current => offset + this.position,
+                SeekOrigin.End => offset + this.length,
+                _ => throw new ArgumentException("Invalid seek origin.", nameof(loc)),
+            };
             if (newPosition < 0)
             {
-                throw new IOException("Seek before beginning");
+                throw new IOException("Seek before beginning.");
             }
             this.position = newPosition;
             return this.position;
@@ -1268,10 +1270,10 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Synchronously writes this stream's bytes to the argument stream.
         /// </summary>
-        /// <param name="stream">Destination stream</param>
-        /// <remarks>Important: This does a synchronous write, which may not be desired in some situations</remarks>
-        /// <exception cref="ArgumentNullException">stream is null</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="stream">Destination stream.</param>
+        /// <remarks>Important: This does a synchronous write, which may not be desired in some situations.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="stream"/> is null.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public override void WriteTo(Stream stream)
         {
             this.WriteTo(stream, 0, this.length);
@@ -1280,12 +1282,14 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Synchronously writes this stream's bytes, starting at offset, for count bytes, to the argument stream.
         /// </summary>
-        /// <param name="stream">Destination stream</param>
-        /// <param name="offset">Offset in source</param>
-        /// <param name="count">Number of bytes to write</param>
-        /// <exception cref="ArgumentNullException">stream is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Offset is less than 0, or offset + count is beyond  this stream's length.</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="stream">Destination stream.</param>
+        /// <param name="offset">Offset in source.</param>
+        /// <param name="count">Number of bytes to write.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="stream"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="offset"/> is less than 0, or <paramref name="offset"/> + <paramref name="count"/> is beyond  this <paramref name="stream"/>'s length.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public void WriteTo(Stream stream, int offset, int count)
         {
             this.WriteTo(stream, (long)offset, (long)count);
@@ -1294,12 +1298,14 @@ namespace Ifak.Fast.Mediator.Util
         /// <summary>
         /// Synchronously writes this stream's bytes, starting at offset, for count bytes, to the argument stream.
         /// </summary>
-        /// <param name="stream">Destination stream</param>
-        /// <param name="offset">Offset in source</param>
-        /// <param name="count">Number of bytes to write</param>
-        /// <exception cref="ArgumentNullException">stream is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Offset is less than 0, or offset + count is beyond  this stream's length.</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="stream">Destination stream.</param>
+        /// <param name="offset">Offset in source.</param>
+        /// <param name="count">Number of bytes to write.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="stream"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="offset"/> is less than 0, or <paramref name="offset"/> + <paramref name="count"/> is beyond  this <paramref name="stream"/>'s length.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public void WriteTo(Stream stream, long offset, long count)
         {
             this.CheckDisposed();
@@ -1310,20 +1316,23 @@ namespace Ifak.Fast.Mediator.Util
 
             if (offset < 0 || offset + count > this.length)
             {
-                throw new ArgumentOutOfRangeException(message: "offset must not be negative and offset + count must not exceed the length of the stream", innerException: null);
+                throw new ArgumentOutOfRangeException(
+                    message: $"{nameof(offset)} must not be negative and {nameof(offset)} + {nameof(count)} must not exceed the length of the {nameof(stream)}.",
+                    innerException: null);
             }
 
             if (this.largeBuffer == null)
             {
-                var blockAndOffset = GetBlockAndRelativeOffset(offset);
+                var blockAndOffset = this.GetBlockAndRelativeOffset(offset);
                 long bytesRemaining = count;
                 int currentBlock = blockAndOffset.Block;
                 int currentOffset = blockAndOffset.Offset;
 
                 while (bytesRemaining > 0)
                 {
-                    int amountToCopy = (int)Math.Min((long)this.blocks[currentBlock].Length - currentOffset, bytesRemaining);
-                    stream.Write(this.blocks[currentBlock], currentOffset, amountToCopy);
+                    byte[] block = this.blocks[currentBlock];
+                    int amountToCopy = (int)Math.Min((long)block.Length - currentOffset, bytesRemaining);
+                    stream.Write(block, currentOffset, amountToCopy);
 
                     bytesRemaining -= amountToCopy;
 
@@ -1338,42 +1347,48 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         /// <summary>
-        /// Writes bytes from the current stream to a destination <c>byte</c> array
+        /// Writes bytes from the current stream to a destination <c>byte</c> array.
         /// </summary>
-        /// <param name="buffer">Target buffer</param>
+        /// <param name="buffer">Target buffer.</param>
         /// <remarks>The entire stream is written to the target array.</remarks>
-        /// <exception cref="ArgumentNullException"><c>buffer</c> is null</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="buffer"/>> is null.</exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public void WriteTo(byte[] buffer)
         {
             this.WriteTo(buffer, 0, this.Length);
         }
 
         /// <summary>
-        /// Writes bytes from the current stream to a destination <c>byte</c> array
+        /// Writes bytes from the current stream to a destination <c>byte</c> array.
         /// </summary>
-        /// <param name="buffer">Target buffer</param>
-        /// <param name="offset">Offset in the source stream, from which to start</param>
-        /// <param name="count">Number of bytes to write</param>
-        /// <exception cref="ArgumentNullException"><c>buffer</c> is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Offset is less than 0, or offset + count is beyond  this stream's length.</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <param name="buffer">Target buffer.</param>
+        /// <param name="offset">Offset in the source stream, from which to start.</param>
+        /// <param name="count">Number of bytes to write.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="buffer"/>> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="offset"/> is less than 0, or <paramref name="offset"/> + <paramref name="count"/> is beyond this stream's length.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public void WriteTo(byte[] buffer, long offset, long count)
         {
             this.WriteTo(buffer, offset, count, 0);
         }
 
         /// <summary>
-        /// Writes bytes from the current stream to a destination <c>byte</c> array
+        /// Writes bytes from the current stream to a destination <c>byte</c> array.
         /// </summary>
-        /// <param name="buffer">Target buffer</param>
-        /// <param name="offset">Offset in the source stream, from which to start</param>
-        /// <param name="count">Number of bytes to write</param>
+        /// <param name="buffer">Target buffer.</param>
+        /// <param name="offset">Offset in the source stream, from which to start.</param>
+        /// <param name="count">Number of bytes to write.</param>
         /// <param name="targetOffset">Offset in the target byte array to start writing</param>
         /// <exception cref="ArgumentNullException"><c>buffer</c> is null</exception>
-        /// <exception cref="ArgumentOutOfRangeException">Offset is less than 0, or offset + count is beyond  this stream's length.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">targetOffset is less than 0, or targetOffset + count is beyond the target buffer's length.</exception>
-        /// <exception cref="ObjectDisposedException">Object has been disposed</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="offset"/> is less than 0, or <paramref name="offset"/> + <paramref name="count"/> is beyond this stream's length.
+        /// </exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="targetOffset"/> is less than 0, or <paramref name="targetOffset"/> + <paramref name="count"/> is beyond the target <paramref name="buffer"/>'s length.
+        /// </exception>
+        /// <exception cref="ObjectDisposedException">Object has been disposed.</exception>
         public void WriteTo(byte[] buffer, long offset, long count, int targetOffset)
         {
             this.CheckDisposed();
@@ -1384,12 +1399,16 @@ namespace Ifak.Fast.Mediator.Util
 
             if (offset < 0 || offset + count > this.length)
             {
-                throw new ArgumentOutOfRangeException(message: "offset must not be negative and offset + count must not exceed the length of the stream", innerException: null);
+                throw new ArgumentOutOfRangeException(
+                    message: $"{nameof(offset)} must not be negative and {nameof(offset)} + {nameof(count)} must not exceed the length of the stream.",
+                    innerException: null);
             }
 
             if (targetOffset < 0 || count + targetOffset > buffer.Length)
             {
-                throw new ArgumentOutOfRangeException(message: "targetOffset must not be negative and targetOffset + count must not exceed the length of the target buffer", innerException: null);
+                throw new ArgumentOutOfRangeException(
+                    message: $"{nameof(targetOffset)} must not be negative and {nameof(targetOffset)} + {nameof(count)} must not exceed the length of the target {nameof(buffer)}.",
+                    innerException: null);
             }
 
             if (this.largeBuffer == null)
@@ -1402,8 +1421,9 @@ namespace Ifak.Fast.Mediator.Util
 
                 while (bytesRemaining > 0)
                 {
-                    int amountToCopy = (int)Math.Min((long)this.blocks[currentBlock].Length - currentOffset, bytesRemaining);
-                    Buffer.BlockCopy(this.blocks[currentBlock], currentOffset, buffer, currentTargetOffset, amountToCopy);
+                    byte[] block = this.blocks[currentBlock];
+                    int amountToCopy = (int)Math.Min((long)block.Length - currentOffset, bytesRemaining);
+                    Buffer.BlockCopy(block, currentOffset, buffer, currentTargetOffset, amountToCopy);
 
                     bytesRemaining -= amountToCopy;
 
@@ -1423,7 +1443,7 @@ namespace Ifak.Fast.Mediator.Util
         #region Helper Methods
         private bool Disposed => this.disposed;
 
-        [MethodImpl((MethodImplOptions)256)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CheckDisposed()
         {
             if (this.Disposed)
@@ -1455,9 +1475,10 @@ namespace Ifak.Fast.Mediator.Util
 
                 while (bytesRemaining > 0)
                 {
-                    amountToCopy = Math.Min(this.blocks[blockAndOffset.Block].Length - blockAndOffset.Offset,
+                    byte[] block = this.blocks[blockAndOffset.Block];
+                    amountToCopy = Math.Min(block.Length - blockAndOffset.Offset,
                                                 bytesRemaining);
-                    Buffer.BlockCopy(this.blocks[blockAndOffset.Block], blockAndOffset.Offset, buffer,
+                    Buffer.BlockCopy(block, blockAndOffset.Offset, buffer,
                                      bytesWritten + offset, amountToCopy);
 
                     bytesWritten += amountToCopy;
@@ -1473,7 +1494,7 @@ namespace Ifak.Fast.Mediator.Util
             return amountToCopy;
         }
 
-#if NETCOREAPP2_1 || NETSTANDARD2_1
+#if NETSTANDARD2_1
         private int InternalRead(Span<byte> buffer, long fromPosition)
         {
             if (this.length - fromPosition <= 0)
@@ -1491,9 +1512,10 @@ namespace Ifak.Fast.Mediator.Util
 
                 while (bytesRemaining > 0)
                 {
-                    amountToCopy = Math.Min(this.blocks[blockAndOffset.Block].Length - blockAndOffset.Offset,
+                    byte[] block = this.blocks[blockAndOffset.Block];
+                    amountToCopy = Math.Min(block.Length - blockAndOffset.Offset,
                                             bytesRemaining);
-                    this.blocks[blockAndOffset.Block].AsSpan(blockAndOffset.Offset, amountToCopy)
+                    block.AsSpan(blockAndOffset.Offset, amountToCopy)
                         .CopyTo(buffer.Slice(bytesWritten));
 
                     bytesWritten += amountToCopy;
@@ -1522,23 +1544,21 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
-        [MethodImpl((MethodImplOptions)256)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private BlockAndOffset GetBlockAndRelativeOffset(long offset)
         {
             var blockSize = this.memoryManager.BlockSize;
-            int blockIndex = (int)(offset / blockSize);
-            int offsetIndex = (int)(offset % blockSize);
-            return new BlockAndOffset(blockIndex, offsetIndex);
+            int blockIndex = (int)Math.DivRem(offset, blockSize, out long offsetIndex);
+            return new BlockAndOffset(blockIndex, (int)offsetIndex);
         }
 
         private void EnsureCapacity(long newCapacity)
         {
             if (newCapacity > this.memoryManager.MaximumStreamCapacity && this.memoryManager.MaximumStreamCapacity > 0)
             {
-                //this.memoryManager.ReportStreamOverCapacity(this.id, this.tag, newCapacity, this.AllocationStack);
-                throw new OutOfMemoryException(
-                    "Requested capacity is too large: " + newCapacity.ToString(CultureInfo.InvariantCulture) +
-                    ". Limit is " + this.memoryManager.MaximumStreamCapacity.ToString(CultureInfo.InvariantCulture));
+                // this.memoryManager.ReportStreamOverCapacity(this.id, this.tag, newCapacity, this.AllocationStack);
+
+                throw new OutOfMemoryException($"Requested capacity is too large: {newCapacity}. Limit is {this.memoryManager.MaximumStreamCapacity}.");
             }
 
             if (this.largeBuffer != null)
@@ -1578,11 +1598,8 @@ namespace Ifak.Fast.Mediator.Util
             }
             else
             {
-                if (this.dirtyBuffers == null)
-                {
-                    // We most likely will only ever need space for one
-                    this.dirtyBuffers = new List<byte[]>(1);
-                }
+                // We most likely will only ever need space for one
+                this.dirtyBuffers ??= new List<byte[]>(1);
                 this.dirtyBuffers.Add(this.largeBuffer);
             }
 
