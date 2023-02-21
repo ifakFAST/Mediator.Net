@@ -38,7 +38,7 @@ namespace WinService
                     throw new Exception("Args file does not exist: " + fileArgs);
                 }
 
-                StartCmd = Path.Combine(dirBin, "MediatorCore\\MediatorCore.exe");
+                StartCmd = Path.Combine(dirBin, "Mediator\\MediatorCore.exe");
 
                 if (!File.Exists(StartCmd)) {
                     throw new Exception("StartCmd does not exist: " + StartCmd);
