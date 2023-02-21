@@ -2,7 +2,7 @@
 
 ## Create project
 
-* Create a new console application project targeting .Net Core 3.1 or .Net 4.6.1 or higher
+* Create a new console application project targeting .Net 7 or .Net 4.6.1 or higher
 * Add a reference to **MediatorLib**
 
 ## Create module class
@@ -86,7 +86,8 @@ public class Module : ModelObjectModule<Config>
 
     public override Task<WriteResult> WriteVariables(Origin origin,
                                                      VariableValue[] values,
-                                                     Duration? timeout)
+                                                     Duration? timeout, 
+                                                     bool sync)
     {
         // TODO: Write variable values and return WriteResult to indicate
         // individual write errors

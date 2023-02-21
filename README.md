@@ -6,7 +6,7 @@ The [ifak*FAST*](https://fast.ifak.eu/) Mediator enables the composition and int
 
 The Mediator core is responsible for supervision and integration of the modules and provides time series data management and role-based rights management. Higher-level functionality needs to be provided by modules. A module is a software component with a specific configuration model (typically in form of an XML file) that defines a set of variables. A variable represents a runtime changing value with timestamp and quality, e.g. a measurement or set-point. A module may read and write variables and the configuration of other modules and may provide specific services for use by other modules.
 
-Running the Mediator requires [.Net Core 3.1](https://www.microsoft.com/net/download). Future versions of the Mediator will allow for creating modules with Java.
+Running the generic Mediator distribution requires that [.Net 7](https://dotnet.microsoft.com) has been installed. Platform specific distributions for Windows x64 and Linux x64 are provided that do not require a .Net runtime installation.
 
 The Mediator core and all generic modules in this repository are licensed under the MIT License. We offer [professional support](https://fast.ifak.eu/contact) for development and customization of ifak*FAST* based solutions.
 
@@ -14,7 +14,7 @@ The Mediator core and all generic modules in this repository are licensed under 
 
 ### Module **IO**
 
-* Used for signal-based data acquisition, e.g. via OPC DA
+* Used for signal-based data acquisition, e.g. via OPC DA, OPC UA, ModbusTCP, SQL
 * Extensible through adapters for different protocols
 * Configuration of scheduling and historization
 
@@ -39,7 +39,7 @@ The Mediator core and all generic modules in this repository are licensed under 
 ## Quick Start
 1. Get the [latest release](https://github.com/ifakFAST/Mediator.Net/releases/latest)
 2. Unzip
-3. Run: Either start *Run.bat* on Windows or type *sh Run.bat* on Linux
+3. Run: Either start *Run.bat* on Windows or *sh Run.bat* on Linux
 4. Navigate to http://localhost:8082/ using the browser
 5. Login with user name and password, for default values see ReadMe.txt
 

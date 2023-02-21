@@ -2,8 +2,10 @@
 
 ## Create project
 
-* Create a new class library project targeting .Net 4.6.1 or .Net Core 3.1
-* Add a reference to **MediatorLib**
+* Create a new class library project targeting .Net 7
+* Add a reference to **MediatorLib** (in folder Bin\MediatorLib\netstandard2.1)
+
+Note: If you need to target classic .Net (4.8 or lower) or 32 Bit architecture, you would have to create a console app instead. Each adapter instance would start a separate process of this console app. For details see last chapter.
 
 ## Create adapter class
 
@@ -22,11 +24,11 @@ The public class needs to have an attribute of type `Identify(string id)` attach
 The following methods need to be implemented:
 
 * bool **SupportsScheduledReading** { get; }
-* Task<Group[]> **Initialize**(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos)
-* Task<VTQ[]> **ReadDataItems**(string group, IList<ReadRequest> items, Duration? timeout)
-* Task<WriteDataItemsResult> **WriteDataItems**(string group, IList<DataItemValue> values, Duration? timeout)
-* Task<string[]> **BrowseAdapterAddress**()
-* Task<string[]> **BrowseDataItemAddress**(string idOrNull)
+* Task\<Group[]\> **Initialize**(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos)
+* Task\<VTQ[]\> **ReadDataItems**(string group, IList\<ReadRequest\> items, Duration? timeout)
+* Task\<WriteDataItemsResult\> **WriteDataItems**(string group, IList\<DataItemValue\> values, Duration? timeout)
+* Task\<string[]\> **BrowseAdapterAddress**()
+* Task\<string[]\> **BrowseDataItemAddress**(string? idOrNull)
 * Task **Shutdown**()
 
 Each IO adapter instance is run on a dedicated thread. Therefore, it is possible to implement the adapter in a purely synchronous fashion, i.e. without using the asynchronous features of C# async/await.
@@ -89,6 +91,7 @@ public class Adapter
     public string Name;
     public string Type;
     public string Address;
+    public Login? Login;
     public List<NamedValue> Config;
     public List<Node> Nodes;
     public List<DataItem> DataItems;
@@ -139,6 +142,7 @@ The `Notify_DataItemsChanged` method can also be used for batch reporting value 
 ```csharp
 public interface AdapterCallback
 {
+    void Notify_NeedRestart(string reason);
     void Notify_DataItemsChanged(DataItemValue[] values);
     void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo);
 }
@@ -146,7 +150,7 @@ public interface AdapterCallback
 
 ## Making the Adapter available to the IO Module
 
-The IO module can only use the adapter implementation if the corresponding class can be found. Therefore, you need to add the file name of the assembly to the **adapter-assemblies** config item of the IO module in the global AppConfig.xml (several files are separated by semicolon).
+The IO module can only use the adapter implementation if the corresponding class can be found. Therefore, you need to add the file name of the assembly to the **adapter-assemblies** config item of the IO module in the global AppConfig.xml (several files are separated by semicolon or newline).
 
 ## Example configuration for Module IO
 
@@ -186,3 +190,71 @@ The example configuration below defines a single adapter instance for OPC DA wit
   </Adapters>
 </IO_Model>
 ```
+
+## Targeting classic .Net (4.8 or lower)
+
+If you need to target classic .Net (4.8 or lower) or 32 Bit architecture, you would have to create a console app instead of a class library. Each adapter instance would start a separate process of this console app.
+
+The following code show the Program.Main part of the console app. It connects to the parent IO module process via TCP/IP using the port number that is passed in by the IO module when starting the Adapter instance. The implementation of the MyAdapter class is the same as described above.
+
+```csharp
+using System;
+using Ifak.Fast.Mediator.IO;
+
+namespace MyConsoleApp {
+
+    class Program {
+
+        static void Main(string[] args) {
+
+            if (args.Length < 1) {
+                Console.Error.WriteLine("Missing argument: port");
+                return;
+            }
+
+            int port = int.Parse(args[0]);
+
+
+            // Required to suppress premature shutdown when
+            // pressing CTRL+C in parent Mediator console window:
+            Console.CancelKeyPress += 
+                delegate (object sender, ConsoleCancelEventArgs e) {
+                  e.Cancel = true;
+                };
+
+            var adapter = new MyAdapter();
+            ExternalAdapterHost.ConnectAndRunAdapter("localhost", port, adapter);
+            Console.WriteLine("Terminated.");
+        }
+    }
+}
+
+```
+
+To make this external adapter known in the Mediator IO module, you need to create a simple .Net 7 class library with just one class:
+
+```csharp
+using System;
+using System.IO;
+
+namespace MyAdapter
+{
+    [Identify("MyAdapter")]
+    public class MyAdapter : ExternalAdapter
+    {
+        public override bool SupportsScheduledReading => true;
+
+        protected override string GetCommand(Mediator.Config config) {
+            string assemblyLoc = GetType().Assembly.Location;
+            string baseDir = Path.GetDirectoryName(assemblyLoc) ?? "";
+            return Path.Combine(baseDir, @"MyConsoleApp\MyConsoleApp.exe");            
+        }
+
+        protected override string GetArgs(Mediator.Config config) {
+            return "{PORT}";
+        }
+    }
+}
+```
+ 
+ Finally, you need to add the file name of the assembly to the **adapter-assemblies** config item of the IO module in the global AppConfig.xml (several files are separated by semicolon or newline).
