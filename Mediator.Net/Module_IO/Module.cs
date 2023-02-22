@@ -15,11 +15,11 @@ namespace Ifak.Fast.Mediator.IO
 {
     public class Module : ModelObjectModule<Config.IO_Model>
     {
-        private readonly Dictionary<string, ItemState> dataItemsState = new Dictionary<string, ItemState>();
-        private readonly List<AdapterState> adapters = new List<AdapterState>();
+        private readonly Dictionary<string, ItemState> dataItemsState = new();
+        private readonly List<AdapterState> adapters = new();
         private ModuleThread? moduleThread = null;
 
-        private readonly Dictionary<string, Type> mapAdapterTypes = new Dictionary<string, Type>();
+        private readonly Dictionary<string, Type> mapAdapterTypes = new();
 
         private const string VariableName = "Value";
 
@@ -236,7 +236,7 @@ namespace Ifak.Fast.Mediator.IO
                     // Environment.Exit(1); // will result in restart of entire module by Mediator
                     int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
                     await Task.Delay(delayMS);
-                    Task ignored = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                    _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
                 }
                 else {
                     adapter.IsRestarting = false;
@@ -272,9 +272,10 @@ namespace Ifak.Fast.Mediator.IO
 
                     Duration maxInitDelayForGoodQuality = adapter.Config.MaxInitDelayForGoodQuality;
                     if (adapter.ScheduledDataItems.Length > 0 && maxInitDelayForGoodQuality.TotalMilliseconds > 0) {
-                        VTQ empty = new VTQ();
+                        var empty = new VTQ();
                         ReadRequest[] requests = adapter.ScheduledDataItems.Select(di => new ReadRequest(di.DataItemID, empty)).ToArray();
-                        Func<VTQ, bool> NonGood = x => x.Q != Quality.Good;
+
+                        static bool NonGood(VTQ x) => x.Q != Quality.Good;
 
                         VTQ[] readResults = await DoAdapterRead(adapter, requests, maxInitDelayForGoodQuality, hideWarnings: true);
                         if (readResults.Any(NonGood)) {
@@ -358,10 +359,11 @@ namespace Ifak.Fast.Mediator.IO
 
                 if (staleWriteItems.Length == 0) continue;
 
-                Origin origin = new Origin();
-                origin.Type = OriginType.Module;
-                origin.ID = moduleID;
-                origin.Name = moduleName;
+                var origin = new Origin {
+                    Type = OriginType.Module,
+                    ID = moduleID,
+                    Name = moduleName
+                };
 
                 var varValues = staleWriteItems.Select(di => {
                     ItemState state = dataItemsState[di.ID];
@@ -806,7 +808,7 @@ namespace Ifak.Fast.Mediator.IO
                                             DataItemValue[] result;
 
                                             if (completedReadTask.IsFaulted) {
-                                                Exception exp = completedReadTask.Exception.GetBaseException() ?? completedReadTask.Exception;
+                                                Exception exp = completedReadTask.Exception!.GetBaseException() ?? completedReadTask.Exception;
                                                 Task ignored = RestartAdapter(adapter, "Scheduled read exception: " + exp.Message);
 
                                                 Timestamp now = Timestamp.Now;
@@ -1105,7 +1107,7 @@ namespace Ifak.Fast.Mediator.IO
             moduleThread?.Post(Do_Notify_DataItemsChanged, result);
         }
 
-        private readonly CompareDataItemValue compare = new CompareDataItemValue();
+        private readonly CompareDataItemValue compare = new();
 
         private void Do_Notify_DataItemsChanged(DataItemValue[] result) {
 
@@ -1266,8 +1268,7 @@ namespace Ifak.Fast.Mediator.IO
                     throw new Exception($"No adapter type '{Config.Type}' found.");
                 }
                 Type type = mapAdapterTypes[Config.Type];
-                AdapterBase? rawAdapter = (AdapterBase?)Activator.CreateInstance(type);
-                if (rawAdapter == null) throw new Exception($"Failed to create instance of adapter type {type}");
+                AdapterBase rawAdapter = (AdapterBase)(Activator.CreateInstance(type) ?? throw new Exception($"Failed to create instance of adapter type {type}"));
                 instance = new SingleThreadIOAdapter(rawAdapter);
                 State = State.Created;
                 SetOfPendingReadItems.Clear();
@@ -1327,7 +1328,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             public ItemSchedule[] ScheduledDataItems { get; set; } = new ItemSchedule[0];
-            public HashSet<string> NonStrictScheduledDataItems { get; set; } = new HashSet<string>();
+            public HashSet<string> NonStrictScheduledDataItems { get; set; } = new();
 
             public SingleThreadIOAdapter? Instance => instance;
 
@@ -1339,16 +1340,16 @@ namespace Ifak.Fast.Mediator.IO
 
             public string LastError { get; set; } = "";
 
-            public readonly HashSet<string> SetOfPendingReadItems = new HashSet<string>();
-            public readonly HashSet<string> SetOfPendingWriteItems = new HashSet<string>();
+            public readonly HashSet<string> SetOfPendingReadItems = new();
+            public readonly HashSet<string> SetOfPendingWriteItems = new();
 
-            public readonly Dictionary<string, string> BadItems = new Dictionary<string, string>();
+            public readonly Dictionary<string, string> BadItems = new();
 
             public Timestamp? TimeOfLastSkippedWarning;
             public Timestamp? TimeOfLastWriteDelayWarning;
             public Timestamp? TimeOfLastReadDelayWarning;
 
-            private readonly Dictionary<string, string> MapItem2GroupID = new Dictionary<string, string>();
+            private readonly Dictionary<string, string> MapItem2GroupID = new();
             private Group[] ItemGroups { get; set; } = new Group[0];
 
             public void SetGroups(Group[] groups) {
@@ -1362,8 +1363,8 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             public IList<ReadTask> ReadItems(IList<ReadRequest> values, Duration? timeout) {
-
-                Func<Task<VTQ[]>, IList<ReadRequest>, DataItemValue[]> f = (task, vals) => {
+                
+                static DataItemValue[] f(Task<VTQ[]> task, IList<ReadRequest> vals) {
                     VTQ[] vtqs = task.Result;
                     if (vtqs.Length != vals.Count) throw new Exception("ReadDataItems returned wrong number of VTQs");
                     DataItemValue[] divalues = new DataItemValue[vtqs.Length];
@@ -1371,10 +1372,9 @@ namespace Ifak.Fast.Mediator.IO
                         divalues[i] = new DataItemValue(vals[i].ID, vtqs[i]);
                     }
                     return divalues;
-                };
+                }
 
-                var instance = Instance;
-                if (instance == null) throw new Exception("ReadItems: Instance is null");
+                SingleThreadIOAdapter instance = Instance ?? throw new Exception("ReadItems: Instance is null");
 
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
@@ -1394,8 +1394,7 @@ namespace Ifak.Fast.Mediator.IO
 
             public IList<WriteTask> WriteItems(IList<DataItemValue> values, Duration? timeout) {
 
-                var instance = Instance;
-                if (instance == null) throw new Exception("WriteItems: Instance is null");
+                SingleThreadIOAdapter instance = Instance ?? throw new Exception("WriteItems: Instance is null");
 
                 if (ItemGroups.Length == 1 || values.Count == 1) {
                     string group = ItemGroups.Length == 1 ? ItemGroups[0].ID : MapItem2GroupID[values[0].ID];
@@ -1516,6 +1515,6 @@ namespace Ifak.Fast.Mediator.IO
         public bool SupportsBrowsing { get; set; } = false;
         public string BrowsingError { get; set; } = "";
         public string ClientCertificate { get; set; } = "";
-        public DataItemBrowseInfo[] DataItems { get; set; } = new DataItemBrowseInfo[0];
+        public DataItemBrowseInfo[] DataItems { get; set; } = Array.Empty<DataItemBrowseInfo>();
     }
 }
