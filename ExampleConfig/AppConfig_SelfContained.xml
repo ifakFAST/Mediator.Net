@@ -15,6 +15,7 @@
                 <HistoryDB name="EventLog" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_EventLog.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>
                         <string>page_size=8192</string>
                         <string>cache_size=2000</string>
                     </Settings>
@@ -49,6 +50,7 @@
                 <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
@@ -71,6 +73,7 @@
                 <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_Calc.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>                    
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
@@ -90,6 +93,7 @@
                 <HistoryDB name="PUB" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_Pub.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
