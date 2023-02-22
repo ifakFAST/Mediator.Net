@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "PublishFAST": {
+      "commandName": "Project",
+      "commandLineArgs": "Mediator.Net",
+      "workingDirectory": "D:\\Fast"
+    }
+  }
+}
