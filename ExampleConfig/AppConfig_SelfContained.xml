@@ -15,7 +15,7 @@
                 <HistoryDB name="EventLog" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_EventLog.db</ConnectionString>
                     <Settings>
-                        <string>journal_mode=WAL</string>
+                        <string>journal_mode=DELETE</string>
                         <string>page_size=8192</string>
                         <string>cache_size=2000</string>
                     </Settings>
