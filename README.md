@@ -8,13 +8,13 @@ The Mediator core is responsible for supervision and integration of the modules 
 
 Running the generic Mediator distribution requires that [.Net 7](https://dotnet.microsoft.com) has been installed. Platform specific distributions for Windows x64 and Linux x64 are provided that do not require a .Net runtime installation.
 
-The Mediator core and all generic modules in this repository are licensed under the MIT License. We offer [professional support](https://fast.ifak.eu/contact) for development and customization of ifak*FAST* based solutions.
+The Mediator core and all generic modules in this repository are licensed under the MIT License. We offer [professional support](https://www.ifak-ts.com/#kontakt) for development and customization of ifak*FAST* based solutions.
 
 ## Available generic modules
 
 ### Module **IO**
 
-* Used for signal-based data acquisition, e.g. via OPC DA, OPC UA, ModbusTCP, SQL
+* Used for signal-based data acquisition, e.g. via OPC DA, OPC UA, ModbusTCP, SQL, MQTT
 * Extensible through adapters for different protocols
 * Configuration of scheduling and historization
 
