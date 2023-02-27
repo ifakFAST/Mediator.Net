@@ -31,7 +31,7 @@
                 <NamedValue name="model-file"  value="Model_Dashboard.xml"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
-                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/netcoreapp3.1/Module_Calc.dll
+                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Calc.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>

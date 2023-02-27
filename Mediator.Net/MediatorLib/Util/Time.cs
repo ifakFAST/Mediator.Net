@@ -24,6 +24,10 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
+        public static Task WaitSeconds(int secondsWait, Func<bool> abort) {
+            return Time.WaitUntil(Timestamp.Now + Duration.FromSeconds(secondsWait), abort);
+        }
+
         private static long InRange(long v, long min, long max) {
             if (v < min) return min;
             if (v > max) return max;

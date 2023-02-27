@@ -154,7 +154,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public async override Task InitAbort() {
             try {
-                await webHost!.StopAsync();
+                var host = webHost;
+                if (host != null) {
+                    await host.StopAsync();
+                }
             }
             catch (Exception) { }
         }
