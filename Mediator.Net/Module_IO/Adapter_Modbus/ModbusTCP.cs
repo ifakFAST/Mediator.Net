@@ -22,8 +22,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
         public override bool SupportsScheduledReading => true;
 
-        protected virtual ModbusAddress GetModbusAddress(DataItem item)
-        {
+        protected virtual ModbusAddress GetModbusAddress(DataItem item) {
             bool is8Bit = item.Type == DataType.Byte || item.Type == DataType.SByte;
             int dimension = Math.Max(1, item.Dimension);
             string address = item.Address;
@@ -32,8 +31,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 (ushort)(dimension / 2 + dimension % 2) :
                 (ushort)(RegisterPerType(item.Type) * dimension);
 
-            if (is8Bit && (address.EndsWith('L') || address.EndsWith('H')))
-            {
+            if (is8Bit && (address.EndsWith('L') || address.EndsWith('H'))) {
                 address = address.Substring(0, address.Length - 1);
             }
             ushort add = ushort.Parse(address);
@@ -41,20 +39,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return ModbusAddress.Make(add, count);
         }
 
-        protected virtual VTQ ParseModbusResponse(DataItem item, ushort[] words, Timestamp now)
-        {
+        protected virtual VTQ ParseModbusResponse(DataItem item, ushort[] words, Timestamp now) {
 
-            if (item.Dimension <= 1)
-            {
+            if (item.Dimension <= 1) {
 
-                switch (item.Type)
-                {
+                switch (item.Type) {
 
-                    case DataType.Float32:
-                        {
+                    case DataType.Float32: {
                             string wordOrder = GetWordOrder(item);
-                            if (wordOrder.Equals("little-endian"))
-                            {
+                            if (wordOrder.Equals("little-endian")) {
                                 ushort temp = words[0];
                                 words[0] = words[1];
                                 words[1] = temp;
@@ -64,28 +57,24 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                             return VTQ.Make(v, now, Quality.Good);
                         }
 
-                    case DataType.Int16:
-                        {
+                    case DataType.Int16: {
                             int v = (short)words[0];
                             return VTQ.Make(v, now, Quality.Good);
                         }
 
-                    case DataType.UInt16:
-                        {
+                    case DataType.UInt16: {
                             int v = words[0];
                             return VTQ.Make(v, now, Quality.Good);
                         }
 
-                    case DataType.Byte:
-                        {
+                    case DataType.Byte: {
                             bool low = item.Address.EndsWith('L');
                             int v = words[0];
                             v = low ? (v & 0xFF) : (v >> 8);
                             return VTQ.Make(v, now, Quality.Good);
                         }
 
-                    case DataType.SByte:
-                        {
+                    case DataType.SByte: {
                             bool low = item.Address.EndsWith('L');
                             int v = words[0];
                             v = (sbyte)(low ? (v & 0xFF) : (v >> 8));
@@ -93,31 +82,25 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         }
                 }
             }
-            else
-            {
+            else {
                 int n = item.Dimension;
                 int offset = 0;
-                switch (item.Type)
-                {
+                switch (item.Type) {
 
-                    case DataType.Float32:
-                        {
+                    case DataType.Float32: {
 
                             float[] values = new float[n];
-                            for (int i = 0; i < n; ++i)
-                            {
+                            for (int i = 0; i < n; ++i) {
                                 values[i] = ReadFloat32FromWords(words, offset);
                                 offset += 2;
                             }
                             return VTQ.Make(DataValue.FromFloatArray(values), now, Quality.Good);
                         }
 
-                    case DataType.Int16:
-                        {
+                    case DataType.Int16: {
 
                             int[] values = new int[n];
-                            for (int i = 0; i < n; ++i)
-                            {
+                            for (int i = 0; i < n; ++i) {
                                 values[i] = (short)words[offset];
                                 offset += 1;
                             }
@@ -125,12 +108,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                         }
 
-                    case DataType.UInt16:
-                        {
+                    case DataType.UInt16: {
 
                             int[] values = new int[n];
-                            for (int i = 0; i < n; ++i)
-                            {
+                            for (int i = 0; i < n; ++i) {
                                 values[i] = words[offset];
                                 offset += 1;
                             }
@@ -138,13 +119,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                         }
 
-                    case DataType.Byte:
-                        {
+                    case DataType.Byte: {
 
                             int[] values = new int[n];
                             bool low = false;
-                            for (int i = 0; i < n; ++i)
-                            {
+                            for (int i = 0; i < n; ++i) {
                                 int word = words[offset];
                                 values[i] = low ? (word & 0xFF) : (word >> 8);
                                 offset += (i % 2);
@@ -154,13 +133,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                         }
 
-                    case DataType.SByte:
-                        {
+                    case DataType.SByte: {
 
                             int[] values = new int[n];
                             bool low = false;
-                            for (int i = 0; i < n; ++i)
-                            {
+                            for (int i = 0; i < n; ++i) {
                                 int word = words[offset];
                                 values[i] = (sbyte)(low ? (word & 0xFF) : (word >> 8));
                                 offset += (i % 2);
@@ -175,11 +152,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return new VTQ();
         }
 
-        protected virtual byte GetModbusFunctionCode(Adapter adapter, DataItem item)
-        { //=> 3 = Read Holding Registers; // 4 = Read Input Register
+        protected virtual byte GetModbusFunctionCode(Adapter adapter, DataItem item) { //=> 3 = Read Holding Registers; // 4 = Read Input Register
             List<string> names = new List<string>();
-            foreach (NamedValue nv in item.Config)
-            {
+            foreach (NamedValue nv in item.Config) {
                 names.Add(nv.Name);
             }
 
@@ -194,11 +169,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return (byte)val;
         }
 
-        protected string GetWordOrder(DataItem item)
-        {
+        protected string GetWordOrder(DataItem item) {
             List<string> names = new List<string>();
-            foreach (NamedValue nv in item.Config)
-            {
+            foreach (NamedValue nv in item.Config) {
                 names.Add(nv.Name);
             }
 
@@ -208,33 +181,27 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             string val = "na";
 
             // if defined, use defined value
-            if (pos != -1)
-            { val = item.Config[pos].Value; }
+            if (pos != -1) { val = item.Config[pos].Value; }
 
             return val;
         }
 
         protected virtual byte GetModbusHeaderAddress(Adapter adapter, DataItem item) => 1; // doesn't seem to matter
 
-        public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos)
-        {
+        public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
 
             PrintLine(config.Address);
 
-            foreach (var di in config.GetAllDataItems())
-            {
-                try
-                {
-                    if (!string.IsNullOrEmpty(di.Address))
-                    {
+            foreach (var di in config.GetAllDataItems()) {
+                try {
+                    if (!string.IsNullOrEmpty(di.Address)) {
                         GetModbusAddress(di);
                     }
                 }
-                catch (Exception exp)
-                {
+                catch (Exception exp) {
                     throw new Exception($"Invalid Address '{di.Address}' for DataItem {di.Name}: {exp.Message}");
                 }
             }
@@ -244,18 +211,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return new Group[0];
         }
 
-        private async Task<bool> TryConnect()
-        {
+        private async Task<bool> TryConnect() {
 
-            if (connection != null)
-            {
+            if (connection != null) {
                 return true;
             }
 
             if (config == null || string.IsNullOrWhiteSpace(config.Address)) return false;
 
-            try
-            {
+            try {
 
                 var (host, port) = GetHostAndPort(config);
 
@@ -271,8 +235,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                 return true;
             }
-            catch (Exception exp)
-            {
+            catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
                 LogWarn("Connect", "Connection error: " + baseExp.Message, details: baseExp.StackTrace);
                 CloseConnection();
@@ -280,12 +243,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             }
         }
 
-        protected float ReadFloat32FromWords(ushort[] words, int offset)
-        {
+        protected float ReadFloat32FromWords(ushort[] words, int offset) {
             ushort w0 = words[offset];
             ushort w1 = words[offset + 1];
             Span<byte> bytes = stackalloc byte[4];
-
             bytes[3] = (byte)((w0 & 0xFF00) >> 8);
             bytes[2] = (byte)((w0 & 0xFF));
             bytes[1] = (byte)((w1 & 0xFF00) >> 8);
@@ -293,10 +254,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return BitConverter.ToSingle(bytes);
         }
 
-        protected int RegisterPerType(DataType t)
-        {
-            switch (t)
-            {
+        protected int RegisterPerType(DataType t) {
+            switch (t) {
                 case DataType.Bool: return 1;
                 case DataType.Byte: return 1;
                 case DataType.SByte: return 1;
@@ -312,33 +271,28 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             }
         }
 
-        private void CloseConnection()
-        {
+        private void CloseConnection() {
             if (connection == null) return;
 
-            try
-            {
+            try {
                 networkStream?.Close(0);
             }
             catch (Exception) { }
             networkStream = null;
 
-            try
-            {
+            try {
                 connection.Close();
             }
             catch (Exception) { }
             connection = null;
         }
 
-        public override Task Shutdown()
-        {
+        public override Task Shutdown() {
             CloseConnection();
             return Task.FromResult(true);
         }
 
-        private static (string host, int port) GetHostAndPort(Adapter config)
-        {
+        private static (string host, int port) GetHostAndPort(Adapter config) {
 
             string address = config.Address;
 
@@ -350,43 +304,36 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
             host = address.Substring(0, idxPortSep);
             string strPort = address.Substring(idxPortSep + 1);
-            if (!int.TryParse(strPort, out port))
-            {
+            if (!int.TryParse(strPort, out port)) {
                 throw new Exception("Port part of address is not a number: " + address);
             }
 
             return (host, port);
         }
 
-        public override Task<string[]> BrowseAdapterAddress()
-        {
+        public override Task<string[]> BrowseAdapterAddress() {
             return Task.FromResult(new string[0]);
         }
 
-        public override Task<string[]> BrowseDataItemAddress(string? idOrNull)
-        {
+        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
             return Task.FromResult(new string[0]);
         }
 
-        public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout)
-        {
+        public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
             int N = items.Count;
 
-            if (!await TryConnect() || networkStream == null || config == null)
-            {
+            if (!await TryConnect() || networkStream == null || config == null) {
                 return GetBadVTQs(items);
             }
 
             VTQ[] vtqs = new VTQ[N];
 
-            byte[] writeBuffer = new byte[7 + 5]; // 7: Header, 5: PDU
+            byte[] writeBuffer = new byte[7+5]; // 7: Header, 5: PDU
 
-            for (int i = 0; i < N; ++i)
-            {
+            for (int i = 0; i < N; ++i) {
                 ReadRequest request = items[i];
-                if (mapId2Info.ContainsKey(request.ID))
-                {
+                if (mapId2Info.ContainsKey(request.ID)) {
                     ItemInfo item = mapId2Info[request.ID];
                     ModbusAddress address = item.Address;
                     WriteUShort(writeBuffer, 0, (ushort)i); // Transaction-ID
@@ -398,12 +345,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     WriteUShort(writeBuffer, 10, address.Count);
 
                     //PrintLine("Sending read request: " + BitConverter.ToString(writeBuffer));
-                    try
-                    {
+                    try {
                         await networkStream.WriteAsync(writeBuffer);
                     }
-                    catch (Exception exp)
-                    {
+                    catch (Exception exp) {
                         Exception e = exp.GetBaseException() ?? exp;
                         LogWarn("ReadExcept", $"Failed to read item {item.Item.Name}: {e.Message}");
                         vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
@@ -412,22 +357,18 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                     bool respReceived = false;
 
-                    while (respReceived == false)
-                    {
-                        try
-                        {
+                    while (respReceived == false) {
+                        try {
                             var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
                             respReceived = readSuccess;
-                            if (!readSuccess)
-                            {
+                            if (!readSuccess) {
                                 continue;
                             }
                             //PrintLine("Response received for read request: " + BitConverter.ToString(writeBuffer));
                             vtqs[i] = ParseModbusResponse(item.Item, res, Timestamp.Now);
                             //PrintLine("Response parsed.");
                         }
-                        catch (Exception exp)
-                        {
+                        catch (Exception exp) {
                             Exception e = exp.GetBaseException() ?? exp;
                             LogWarn("ReadExcept", $"Failed to read item {item.Item.Name}: {e.Message}");
                             vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
@@ -436,8 +377,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     }
 
                 }
-                else
-                {
+                else {
                     vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
                 }
             }
@@ -445,8 +385,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return vtqs;
         }
 
-        private async Task<(ushort[] res, bool readSuccess)> ReadResponse(NetworkStream networkStream, int wordCount)
-        {
+        private async Task<(ushort[] res, bool readSuccess)> ReadResponse(NetworkStream networkStream, int wordCount) {
 
             // read only the head of the message (first 8 bytes)
             const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
@@ -456,8 +395,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             if (readCount == 0) throw new Exception("Failed to read response head."); ;
 
             // make sure to get the whole head of the response
-            while (readCount < ResponseHeadLen)
-            {
+            while (readCount < ResponseHeadLen) {
                 int responseInc = await networkStream.ReadAsync(headBuffer, readCount, ResponseHeadLen - readCount);
                 if (responseInc == 0)
                     throw new Exception("Failed to read response head after " + readCount.ToString() + " bytes."); ;
@@ -475,8 +413,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 //PrintLine("response length: " + ResponseLen.ToString());
                 byte[] readBuffer = new byte[ResponseLen];
 
-                if ((ResponseLen - 1) != (2 * wordCount))
-                {
+                if ((ResponseLen - 1) != (2 * wordCount)) {
                     throw new Exception("Response length - 1 does not match expected number of bytes: " + (2 * wordCount).ToString() + ".");
                 }
 
@@ -485,8 +422,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 if (readCount == 0) throw new Exception("Failed to read response message (read request).");
 
                 // make sure to get the whole message
-                while (readCount < ResponseLen)
-                {
+                while (readCount < ResponseLen) {
                     int responseInc = await networkStream.ReadAsync(readBuffer, readCount, ResponseLen - readCount);
                     if (responseInc == 0)
                         throw new Exception("Failed to read response message (read request)."); ;
@@ -496,8 +432,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 ushort[] res = new ushort[wordCount];
                 int off = 1; // first byte contains the number of bytes that follow
                              // collect transmitted numbers (every 2 byte = 1 short)
-                for (int i = 0; i < wordCount; ++i)
-                {
+                for (int i = 0; i < wordCount; ++i) {
                     res[i] = (ushort)(((readBuffer[off] & 0xFF) << 8) | ((readBuffer[off + 1] & 0xFF)));
                     off += 2;
                 }
@@ -518,8 +453,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 if (readCount == 0) throw new Exception("Failed to read response message (write request).");
 
                 // make sure to get the whole message
-                while (readCount < remainingBytes)
-                {
+                while (readCount < remainingBytes) {
                     int responseInc = await networkStream.ReadAsync(restBuffer, readCount, remainingBytes - readCount);
                     if (responseInc == 0)
                         throw new Exception("Failed to read response message (write request)."); ;
@@ -532,19 +466,16 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             }
         }
 
-        private static void WriteUShort(byte[] bytes, int offset, ushort value)
-        {
-            bytes[offset] = (byte)((value & 0xFF00) >> 8);
-            bytes[offset + 1] = (byte)(value & 0x00FF);
+        private static void WriteUShort(byte[] bytes, int offset, ushort value) {
+            bytes[offset]   = (byte)((value & 0xFF00) >> 8);
+            bytes[offset+1] = (byte)(value & 0x00FF);
         }
 
-        private static VTQ[] GetBadVTQs(IList<ReadRequest> items)
-        {
+        private static VTQ[] GetBadVTQs(IList<ReadRequest> items) {
             int N = items.Count;
             var t = Timestamp.Now;
             VTQ[] res = new VTQ[N];
-            for (int i = 0; i < N; ++i)
-            {
+            for (int i = 0; i < N; ++i) {
                 VTQ vtq = items[i].LastValue;
                 vtq.Q = Quality.Bad;
                 vtq.T = t;
@@ -553,18 +484,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return res;
         }
 
-        public override async Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout)
-        {
+        public override async Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
 
             int N = values.Count;
             bool connected = await TryConnect();
 
             // return error if connection is not OK
-            if (!connected || networkStream == null || config == null)
-            {
+            if (!connected || networkStream == null || config == null) {
                 var failed = new FailedDataItemWrite[N];
-                for (int i = 0; i < N; ++i)
-                {
+                for (int i = 0; i < N; ++i) {
                     DataItemValue request = values[i];
                     failed[i] = new FailedDataItemWrite(request.ID, "No connection to Modbus TCP server");
                 }
@@ -577,14 +505,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             List<FailedDataItemWrite>? listFailed = null;
 
             // loop through values to write
-            for (int i = 0; i < N; ++i)
-            {
+            for (int i = 0; i < N; ++i) {
                 DataItemValue request = values[i];
                 string id = request.ID;
                 VTQ value = request.Value;
 
-                if (mapId2Info.ContainsKey(id))
-                {
+                if (mapId2Info.ContainsKey(id)) {
                     ItemInfo item = mapId2Info[id];
                     ModbusAddress address = item.Address;
 
@@ -602,8 +528,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
                         string wordOrder = GetWordOrder(item.Item);
 
-                        if (wordOrder.Equals("little-endian"))
-                        {
+                        if (wordOrder.Equals("little-endian")) {
                             // badc
                             writeBuffer_float[13] = bytes[1];
                             writeBuffer_float[14] = bytes[0];
@@ -631,8 +556,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         writeBuffer_float[12] = 4; // number of bytes until end of message
 
                     }
-                    else
-                    {
+                    else {
                         length = 6; // message length
                         funcCode = 6; // function code
                         // value to write
@@ -648,39 +572,32 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         WriteUShort(writeBuffer, 10, val);
                     }
 
-                    try
-                    {
-                        if (item.Item.Type == DataType.Float32)
-                        {
+                    try {
+                        if (item.Item.Type == DataType.Float32) {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer_float));
                             await networkStream.WriteAsync(writeBuffer_float);
                             var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer_float));
                         }
-                        else
-                        {
+                        else {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer));
                             await networkStream.WriteAsync(writeBuffer);
                             var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer));
                         }
                     }
-                    catch (Exception exp)
-                    {
+                    catch (Exception exp) {
                         Exception e = exp.GetBaseException() ?? exp;
                         LogWarn("WriteExcept", $"Failed to write item {item.Item.Name}: {e.Message}");
-                        if (listFailed == null)
-                        {
+                        if (listFailed == null) {
                             listFailed = new List<FailedDataItemWrite>();
                         }
                         listFailed.Add(new FailedDataItemWrite(id, exp.Message));
                         CloseConnection();
                     }
                 }
-                else
-                {
-                    if (listFailed == null)
-                    {
+                else {
+                    if (listFailed == null) {
                         listFailed = new List<FailedDataItemWrite>();
                     }
                     listFailed.Add(new FailedDataItemWrite(id, $"No writeable data item with id '{id}' found."));
@@ -693,17 +610,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 return WriteDataItemsResult.Failure(listFailed.ToArray());
         }
 
-        private void PrintLine(string msg)
-        {
+        private void PrintLine(string msg) {
             string name = config?.Name ?? "";
             Console.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarn(string type, string msg, string[]? dataItems = null, string? details = null)
-        {
+        private void LogWarn(string type, string msg, string[]? dataItems = null, string? details = null) {
 
-            var ae = new AdapterAlarmOrEvent()
-            {
+            var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
                 Severity = Severity.Warning,
                 Type = type,
@@ -715,11 +629,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             callback?.Notify_AlarmOrEvent(ae);
         }
 
-        private void LogError(string type, string msg, string[]? dataItems = null, string? details = null)
-        {
+        private void LogError(string type, string msg, string[]? dataItems = null, string? details = null) {
 
-            var ae = new AdapterAlarmOrEvent()
-            {
+            var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
                 Severity = Severity.Alarm,
                 Type = type,
@@ -737,8 +649,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         public DataItem Item { get; private set; }
         public ModbusAddress Address { get; private set; }
 
-        public ItemInfo(DataItem item, ModbusAddress address)
-        {
+        public ItemInfo(DataItem item, ModbusAddress address) {
             Item = item;
             Address = address;
         }
@@ -749,14 +660,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         public ushort Start { get; set; }
         public ushort Count { get; set; }
 
-        public ModbusAddress(ushort startRegister, ushort count)
-        {
+        public ModbusAddress(ushort startRegister, ushort count) {
             Start = startRegister;
             Count = count;
         }
 
-        public static ModbusAddress Make(int startRegister, int count)
-        {
+        public static ModbusAddress Make(int startRegister, int count) {
             if (startRegister < 1) throw new Exception("Modbus register start at 1");
             if (startRegister > 0xFFFF) throw new Exception("Modbus register must be smaller than 0xFFFF");
             if (count < 1) throw new Exception("Count must be greater than 0");
