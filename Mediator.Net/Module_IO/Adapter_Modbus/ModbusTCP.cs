@@ -347,6 +347,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     //PrintLine("Sending read request: " + BitConverter.ToString(writeBuffer));
                     try {
                         await networkStream.WriteAsync(writeBuffer);
+                        ushort[] words = await ReadResponse(networkStream, address.Count);
+                        vtqs[i] = ParseModbusResponse(item.Item, words, Timestamp.Now);
                     }
                     catch (Exception exp) {
                         Exception e = exp.GetBaseException() ?? exp;
@@ -354,29 +356,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
                         CloseConnection();
                     }
-
-                    bool respReceived = false;
-
-                    while (respReceived == false) {
-                        try {
-                            var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
-                            respReceived = readSuccess;
-                            if (!readSuccess) {
-                                continue;
-                            }
-                            //PrintLine("Response received for read request: " + BitConverter.ToString(writeBuffer));
-                            vtqs[i] = ParseModbusResponse(item.Item, res, Timestamp.Now);
-                            //PrintLine("Response parsed.");
-                        }
-                        catch (Exception exp) {
-                            Exception e = exp.GetBaseException() ?? exp;
-                            LogWarn("ReadExcept", $"Failed to read item {item.Item.Name}: {e.Message}");
-                            vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
-                            CloseConnection();
-                        }
-                    }
-
                 }
+
                 else {
                     vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
                 }
@@ -385,7 +366,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return vtqs;
         }
 
-        private async Task<(ushort[] res, bool readSuccess)> ReadResponse(NetworkStream networkStream, int wordCount) {
+        private async Task<ushort[]> ReadResponse(NetworkStream networkStream, int wordCount) {
 
             // read only the head of the message (first 8 bytes)
             const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
@@ -437,8 +418,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     off += 2;
                 }
 
-                bool readSuccess = true;
-                return (res, readSuccess);
+                return res;
             }
 
             else // it's a response to a write request or an error - read the remaining bytes of the message from the network stream
@@ -460,9 +440,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     readCount += responseInc;
                 }
 
-                ushort[] res = new ushort[1];
-                bool readSuccess = false;
-                return (res, readSuccess);
+                ushort[] res = new ushort[1]; // response is not evaluated for write request/errors
+                return res;
             }
         }
 
@@ -576,13 +555,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         if (item.Item.Type == DataType.Float32) {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer_float));
                             await networkStream.WriteAsync(writeBuffer_float);
-                            var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
+                            ushort[] res = await ReadResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer_float));
                         }
                         else {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer));
                             await networkStream.WriteAsync(writeBuffer);
-                            var (res, readSuccess) = await ReadResponse(networkStream, address.Count);
+                            ushort[] res = await ReadResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer));
                         }
                     }
