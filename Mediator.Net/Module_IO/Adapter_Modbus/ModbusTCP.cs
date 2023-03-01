@@ -46,6 +46,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 switch (item.Type) {
 
                     case DataType.Float32: {
+                            string wordOrder = GetWordOrder(item);
+                            if (wordOrder.Equals("little-endian")) {
+                                ushort temp = words[0];
+                                words[0] = words[1];
+                                words[1] = temp;
+                            }
+
                             float v = ReadFloat32FromWords(words, 0);
                             return VTQ.Make(v, now, Quality.Good);
                         }
@@ -145,7 +152,39 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return new VTQ();
         }
 
-        protected virtual byte GetModbusFunctionCode(Adapter adapter, DataItem item) => 4; // 4 = Read Input Register
+        protected virtual byte GetModbusFunctionCode(Adapter adapter, DataItem item) { //=> 3 = Read Holding Registers; // 4 = Read Input Register
+            List<string> names = new List<string>();
+            foreach (NamedValue nv in item.Config) {
+                names.Add(nv.Name);
+            }
+
+            int pos = names.IndexOf("FunctionCode");
+
+            // default: Input Register
+            int val = 4;
+
+            //if defined, use defined value
+            if (pos != -1) { val = Int16.Parse(item.Config[pos].Value); }
+
+            return (byte)val;
+        }
+
+        protected string GetWordOrder(DataItem item) {
+            List<string> names = new List<string>();
+            foreach (NamedValue nv in item.Config) {
+                names.Add(nv.Name);
+            }
+
+            int pos = names.IndexOf("WordOrder");
+
+            // default: "na"
+            string val = "na";
+
+            // if defined, use defined value
+            if (pos != -1) { val = item.Config[pos].Value; }
+
+            return val;
+        }
 
         protected virtual byte GetModbusHeaderAddress(Adapter adapter, DataItem item) => 1; // doesn't seem to matter
 
@@ -304,6 +343,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     writeBuffer[7] = GetModbusFunctionCode(config, item.Item);
                     WriteUShort(writeBuffer, 8, (ushort)(address.Start - 1));
                     WriteUShort(writeBuffer, 10, address.Count);
+
+                    //PrintLine("Sending read request: " + BitConverter.ToString(writeBuffer));
                     try {
                         await networkStream.WriteAsync(writeBuffer);
                         ushort[] words = await ReadResponse(networkStream, address.Count);
@@ -316,6 +357,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         CloseConnection();
                     }
                 }
+
                 else {
                     vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
                 }
@@ -326,27 +368,81 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
         private async Task<ushort[]> ReadResponse(NetworkStream networkStream, int wordCount) {
 
-            const int ResponseHeadLen = 9;
-            int ResponseLen = ResponseHeadLen + 2 * wordCount;
-            byte[] readBuffer = new byte[ResponseLen];
+            // read only the head of the message (first 8 bytes)
+            const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
+            byte[] headBuffer = new byte[ResponseHeadLen];
 
-            int readCount = await networkStream.ReadAsync(readBuffer, 0, ResponseLen);
-            if (readCount == 0) throw new Exception("Failed to read response.");
+            int readCount = await networkStream.ReadAsync(headBuffer, 0, ResponseHeadLen); // read n=responseHeadLength bytes from network stream and store in headBuffer
+            if (readCount == 0) throw new Exception("Failed to read response head."); ;
 
-            while (readCount < ResponseLen) {
-                int responseInc = await networkStream.ReadAsync(readBuffer, readCount, ResponseLen - readCount);
+            // make sure to get the whole head of the response
+            while (readCount < ResponseHeadLen) {
+                int responseInc = await networkStream.ReadAsync(headBuffer, readCount, ResponseHeadLen - readCount);
                 if (responseInc == 0)
-                    throw new Exception("Failed to read response."); ;
+                    throw new Exception("Failed to read response head after " + readCount.ToString() + " bytes."); ;
                 readCount += responseInc;
             }
 
-            ushort[] res = new ushort[wordCount];
-            int off = ResponseHeadLen;
-            for (int i = 0; i < wordCount; ++i) {
-                res[i] = (ushort)(((readBuffer[off] & 0xFF) << 8) | ((readBuffer[off+1] & 0xFF)));
-                off += 2;
+            // figure out what kind of message it is (write or read response)
+            int funcCode = headBuffer[7]; // check func. code
+            //PrintLine("function code: " + funcCode.ToString());
+
+            if (funcCode == 3 | funcCode == 4) // function code 3 or 4: response to a read request
+            {
+                int messageLength = (ushort)((headBuffer[4] << 8) | headBuffer[5]);
+                int ResponseLen = messageLength - 2; // calculate number of remaining bytes
+                //PrintLine("response length: " + ResponseLen.ToString());
+                byte[] readBuffer = new byte[ResponseLen];
+
+                if ((ResponseLen - 1) != (2 * wordCount)) {
+                    throw new Exception("Response length - 1 does not match expected number of bytes: " + (2 * wordCount).ToString() + ".");
+                }
+
+                // read message part of the response
+                readCount = await networkStream.ReadAsync(readBuffer, 0, ResponseLen);
+                if (readCount == 0) throw new Exception("Failed to read response message (read request).");
+
+                // make sure to get the whole message
+                while (readCount < ResponseLen) {
+                    int responseInc = await networkStream.ReadAsync(readBuffer, readCount, ResponseLen - readCount);
+                    if (responseInc == 0)
+                        throw new Exception("Failed to read response message (read request)."); ;
+                    readCount += responseInc;
+                }
+
+                ushort[] res = new ushort[wordCount];
+                int off = 1; // first byte contains the number of bytes that follow
+                             // collect transmitted numbers (every 2 byte = 1 short)
+                for (int i = 0; i < wordCount; ++i) {
+                    res[i] = (ushort)(((readBuffer[off] & 0xFF) << 8) | ((readBuffer[off + 1] & 0xFF)));
+                    off += 2;
+                }
+
+                return res;
             }
-            return res;
+
+            else // it's a response to a write request or an error - read the remaining bytes of the message from the network stream
+            {
+                int messageLength = (ushort)((headBuffer[4] << 8) | headBuffer[5]);
+                int remainingBytes = messageLength - 2; // calculate number of remaining bytes
+                //PrintLine("remaining bytes: " + remainingBytes.ToString());
+                byte[] restBuffer = new byte[remainingBytes];
+
+                // read message part of the response
+                readCount = await networkStream.ReadAsync(restBuffer, 0, remainingBytes);
+                if (readCount == 0) throw new Exception("Failed to read response message (write request).");
+
+                // make sure to get the whole message
+                while (readCount < remainingBytes) {
+                    int responseInc = await networkStream.ReadAsync(restBuffer, readCount, remainingBytes - readCount);
+                    if (responseInc == 0)
+                        throw new Exception("Failed to read response message (write request)."); ;
+                    readCount += responseInc;
+                }
+
+                ushort[] res = new ushort[1]; // response is not evaluated for write request/errors
+                return res;
+            }
         }
 
         private static void WriteUShort(byte[] bytes, int offset, ushort value) {
@@ -367,9 +463,130 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return res;
         }
 
-        public override Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
-            var failed = values.Select(div => new FailedDataItemWrite(div.ID, "Write not implemented")).ToArray();
-            return Task.FromResult(WriteDataItemsResult.Failure(failed));
+        public override async Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
+
+            int N = values.Count;
+            bool connected = await TryConnect();
+
+            // return error if connection is not OK
+            if (!connected || networkStream == null || config == null) {
+                var failed = new FailedDataItemWrite[N];
+                for (int i = 0; i < N; ++i) {
+                    DataItemValue request = values[i];
+                    failed[i] = new FailedDataItemWrite(request.ID, "No connection to Modbus TCP server");
+                }
+                return WriteDataItemsResult.Failure(failed);
+            }
+
+            // assign variables for write buffer and status
+            byte[] writeBuffer = new byte[7 + 5]; // 7: Header, 5: PDU
+            byte[] writeBuffer_float = new byte[7 + 10]; // 7: Header, 10: PDU
+            List<FailedDataItemWrite>? listFailed = null;
+
+            // loop through values to write
+            for (int i = 0; i < N; ++i) {
+                DataItemValue request = values[i];
+                string id = request.ID;
+                VTQ value = request.Value;
+
+                if (mapId2Info.ContainsKey(id)) {
+                    ItemInfo item = mapId2Info[id];
+                    ModbusAddress address = item.Address;
+
+                    // here come the differences between floats and ints
+                    byte funcCode;
+                    ushort length;
+
+                    if (item.Item.Type == DataType.Float32) // more than 16 bit = multiple registers
+                    {
+                        length = 11; // message length
+                        funcCode = 16; // function code
+                        // value to write
+                        float fl_val = (float)value.V.GetValue(dt: item.Item.Type, dimension: item.Item.Dimension)!;
+                        byte[] bytes = BitConverter.GetBytes(fl_val);
+
+                        string wordOrder = GetWordOrder(item.Item);
+
+                        if (wordOrder.Equals("little-endian")) {
+                            // badc
+                            writeBuffer_float[13] = bytes[1];
+                            writeBuffer_float[14] = bytes[0];
+                            writeBuffer_float[15] = bytes[3];
+                            writeBuffer_float[16] = bytes[2];
+                        }
+                        else // big-endian
+                        {
+                            // dcba
+                            writeBuffer_float[13] = bytes[3];
+                            writeBuffer_float[14] = bytes[2];
+                            writeBuffer_float[15] = bytes[1];
+                            writeBuffer_float[16] = bytes[0];
+                        }
+
+                        // put Modbus message together
+                        WriteUShort(writeBuffer_float, 0, (ushort)(i + 1000)); // Transaction-ID
+                        WriteUShort(writeBuffer_float, 2, 0); // Protocol-ID
+                        WriteUShort(writeBuffer_float, 4, length); // length
+                        writeBuffer_float[6] = GetModbusHeaderAddress(config, item.Item);
+                        writeBuffer_float[7] = funcCode; // function code
+                        WriteUShort(writeBuffer_float, 8, (ushort)(address.Start - 1)); // start address
+                        writeBuffer_float[10] = 0; // number of registers hi byte
+                        writeBuffer_float[11] = 2; // number of registers lo byte
+                        writeBuffer_float[12] = 4; // number of bytes until end of message
+
+                    }
+                    else {
+                        length = 6; // message length
+                        funcCode = 6; // function code
+                        // value to write
+                        ushort val = (ushort)value.V.GetValue(dt: item.Item.Type, dimension: item.Item.Dimension)!;
+
+                        // put Modbus message together
+                        WriteUShort(writeBuffer, 0, (ushort)(i + 1000)); // Transaction-ID
+                        WriteUShort(writeBuffer, 2, 0); // Protocol-ID
+                        WriteUShort(writeBuffer, 4, length); // length
+                        writeBuffer[6] = GetModbusHeaderAddress(config, item.Item);
+                        writeBuffer[7] = funcCode; // function code
+                        WriteUShort(writeBuffer, 8, (ushort)(address.Start - 1)); // start address
+                        WriteUShort(writeBuffer, 10, val);
+                    }
+
+                    try {
+                        if (item.Item.Type == DataType.Float32) {
+                            //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer_float));
+                            await networkStream.WriteAsync(writeBuffer_float);
+                            ushort[] res = await ReadResponse(networkStream, address.Count);
+                            //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer_float));
+                        }
+                        else {
+                            //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer));
+                            await networkStream.WriteAsync(writeBuffer);
+                            ushort[] res = await ReadResponse(networkStream, address.Count);
+                            //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer));
+                        }
+                    }
+                    catch (Exception exp) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        LogWarn("WriteExcept", $"Failed to write item {item.Item.Name}: {e.Message}");
+                        if (listFailed == null) {
+                            listFailed = new List<FailedDataItemWrite>();
+                        }
+                        listFailed.Add(new FailedDataItemWrite(id, exp.Message));
+                        CloseConnection();
+                    }
+                }
+                else {
+                    if (listFailed == null) {
+                        listFailed = new List<FailedDataItemWrite>();
+                    }
+                    listFailed.Add(new FailedDataItemWrite(id, $"No writeable data item with id '{id}' found."));
+                }
+            }
+
+            if (listFailed == null)
+                return WriteDataItemsResult.OK;
+            else
+                return WriteDataItemsResult.Failure(listFailed.ToArray());
         }
 
         private void PrintLine(string msg) {
