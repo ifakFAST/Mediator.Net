@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
@@ -226,18 +227,32 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 connection = new TcpClient();
                 connection.SendTimeout = TimeOutMS;
                 connection.ReceiveTimeout = TimeOutMS;
-                await connection.ConnectAsync(host, port);
+
+                using var cancelSource = new CancellationTokenSource(TimeOutMS);
+
+                PrintLine($"Connecting to ModbusTCP device {host}:{port}...");
+
+                await connection.ConnectAsync(host, port, cancelSource.Token);
                 networkStream = connection.GetStream();
 
                 this.mapId2Info = config.GetAllDataItems().Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                     item => /* key */ item.ID,
                     item => /* val */ new ItemInfo(item, GetModbusAddress(item)));
 
+                PrintLine($"Connected to ModbusTCP device {host}:{port}.");
+                ReturnToNormal("Connect", $"Reconnected to ModbusTCP device {host}:{port}.");
+
                 return true;
             }
             catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
-                LogWarn("Connect", "Connection error: " + baseExp.Message, details: baseExp.StackTrace);
+
+                string msg = baseExp.Message;
+                if (baseExp is OperationCanceledException) {
+                    msg = "Timeout";
+                }
+
+                LogWarn("Connect", $"Connection error: {msg}", details: baseExp.StackTrace);
                 CloseConnection();
                 return false;
             }
@@ -333,7 +348,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
 
             for (int i = 0; i < N; ++i) {
                 ReadRequest request = items[i];
-                if (mapId2Info.ContainsKey(request.ID)) {
+                if (networkStream != null  && mapId2Info.ContainsKey(request.ID)) {
+
                     ItemInfo item = mapId2Info[request.ID];
                     ModbusAddress address = item.Address;
                     WriteUShort(writeBuffer, 0, (ushort)i); // Transaction-ID
@@ -345,19 +361,28 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     WriteUShort(writeBuffer, 10, address.Count);
 
                     //PrintLine("Sending read request: " + BitConverter.ToString(writeBuffer));
+
+                    ushort[] words;
                     try {
                         await networkStream.WriteAsync(writeBuffer);
-                        ushort[] words = await ReadResponse(networkStream, address.Count);
+                        words = await ReadResponse(networkStream, address.Count);                        
+                    }
+                    catch (Exception) {
+                        vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
+                        CloseConnection();
+                        continue;
+                    }
+
+                    try {
                         vtqs[i] = ParseModbusResponse(item.Item, words, Timestamp.Now);
                     }
                     catch (Exception exp) {
                         Exception e = exp.GetBaseException() ?? exp;
-                        LogWarn("ReadExcept", $"Failed to read item {item.Item.Name}: {e.Message}");
+                        LogWarn("ReadExcept", $"Failed to convert read response for {item.Item.Name}: {e.Message}");
                         vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
-                        CloseConnection();
                     }
-                }
 
+                }
                 else {
                     vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
                 }
@@ -606,6 +631,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             };
 
             callback?.Notify_AlarmOrEvent(ae);
+        }
+
+        private void ReturnToNormal(string type, string msg, params string[] affectedDataItems) {
+            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems));
         }
 
         private void LogError(string type, string msg, string[]? dataItems = null, string? details = null) {
