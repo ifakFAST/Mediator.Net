@@ -365,7 +365,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                     ushort[] words;
                     try {
                         await networkStream.WriteAsync(writeBuffer);
-                        words = await ReadResponse(networkStream, address.Count);                        
+                        words = await ConsumeReadResponse(networkStream, address.Count);                        
                     }
                     catch (Exception) {
                         vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
@@ -391,83 +391,41 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return vtqs;
         }
 
-        private async Task<ushort[]> ReadResponse(NetworkStream networkStream, int wordCount) {
+        private const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
 
-            // read only the head of the message (first 8 bytes)
-            const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
+        private async Task<ushort[]> ConsumeReadResponse(NetworkStream networkStream, int wordCount) {
+                    
             byte[] headBuffer = new byte[ResponseHeadLen];
+            await networkStream.ReadExactlyAsync(headBuffer);
 
-            int readCount = await networkStream.ReadAsync(headBuffer, 0, ResponseHeadLen); // read n=responseHeadLength bytes from network stream and store in headBuffer
-            if (readCount == 0) throw new Exception("Failed to read response head."); ;
+            int messageLength = (headBuffer[4] << 8) | headBuffer[5];
+            int remainingBytes = messageLength - 2;
 
-            // make sure to get the whole head of the response
-            while (readCount < ResponseHeadLen) {
-                int responseInc = await networkStream.ReadAsync(headBuffer, readCount, ResponseHeadLen - readCount);
-                if (responseInc == 0)
-                    throw new Exception("Failed to read response head after " + readCount.ToString() + " bytes."); ;
-                readCount += responseInc;
+            if ((remainingBytes - 1) != (2 * wordCount)) {
+                throw new Exception($"Response length - 1 does not match expected number of bytes: {2 * wordCount}.");
             }
 
-            // figure out what kind of message it is (write or read response)
-            int funcCode = headBuffer[7]; // check func. code
-            //PrintLine("function code: " + funcCode.ToString());
+            byte[] buffer = new byte[remainingBytes];
+            await networkStream.ReadExactlyAsync(buffer);
 
-            if (funcCode == 3 | funcCode == 4) // function code 3 or 4: response to a read request
-            {
-                int messageLength = (ushort)((headBuffer[4] << 8) | headBuffer[5]);
-                int ResponseLen = messageLength - 2; // calculate number of remaining bytes
-                //PrintLine("response length: " + ResponseLen.ToString());
-                byte[] readBuffer = new byte[ResponseLen];
-
-                if ((ResponseLen - 1) != (2 * wordCount)) {
-                    throw new Exception("Response length - 1 does not match expected number of bytes: " + (2 * wordCount).ToString() + ".");
-                }
-
-                // read message part of the response
-                readCount = await networkStream.ReadAsync(readBuffer, 0, ResponseLen);
-                if (readCount == 0) throw new Exception("Failed to read response message (read request).");
-
-                // make sure to get the whole message
-                while (readCount < ResponseLen) {
-                    int responseInc = await networkStream.ReadAsync(readBuffer, readCount, ResponseLen - readCount);
-                    if (responseInc == 0)
-                        throw new Exception("Failed to read response message (read request)."); ;
-                    readCount += responseInc;
-                }
-
-                ushort[] res = new ushort[wordCount];
-                int off = 1; // first byte contains the number of bytes that follow
-                             // collect transmitted numbers (every 2 byte = 1 short)
-                for (int i = 0; i < wordCount; ++i) {
-                    res[i] = (ushort)(((readBuffer[off] & 0xFF) << 8) | ((readBuffer[off + 1] & 0xFF)));
-                    off += 2;
-                }
-
-                return res;
+            ushort[] res = new ushort[wordCount];
+            int off = 1; // first byte contains the number of bytes that follow
+                         // collect transmitted numbers (every 2 byte = 1 short)
+            for (int i = 0; i < wordCount; ++i) {
+                res[i] = (ushort)(((buffer[off] & 0xFF) << 8) | ((buffer[off + 1] & 0xFF)));
+                off += 2;
             }
 
-            else // it's a response to a write request or an error - read the remaining bytes of the message from the network stream
-            {
-                int messageLength = (ushort)((headBuffer[4] << 8) | headBuffer[5]);
-                int remainingBytes = messageLength - 2; // calculate number of remaining bytes
-                //PrintLine("remaining bytes: " + remainingBytes.ToString());
-                byte[] restBuffer = new byte[remainingBytes];
+            return res;
+        }
 
-                // read message part of the response
-                readCount = await networkStream.ReadAsync(restBuffer, 0, remainingBytes);
-                if (readCount == 0) throw new Exception("Failed to read response message (write request).");
-
-                // make sure to get the whole message
-                while (readCount < remainingBytes) {
-                    int responseInc = await networkStream.ReadAsync(restBuffer, readCount, remainingBytes - readCount);
-                    if (responseInc == 0)
-                        throw new Exception("Failed to read response message (write request)."); ;
-                    readCount += responseInc;
-                }
-
-                ushort[] res = new ushort[1]; // response is not evaluated for write request/errors
-                return res;
-            }
+        private async Task ConsumeWriteResponse(NetworkStream networkStream, int wordCount) {            
+            byte[] header = new byte[ResponseHeadLen];
+            await networkStream.ReadExactlyAsync(header);
+            int messageLength = (header[4] << 8) | header[5];
+            int remainingBytes = messageLength - 2;
+            byte[] buffer = new byte[remainingBytes];
+            await networkStream.ReadExactlyAsync(buffer);
         }
 
         private static void WriteUShort(byte[] bytes, int offset, ushort value) {
@@ -580,13 +538,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         if (item.Item.Type == DataType.Float32) {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer_float));
                             await networkStream.WriteAsync(writeBuffer_float);
-                            ushort[] res = await ReadResponse(networkStream, address.Count);
+                            await ConsumeWriteResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer_float));
                         }
                         else {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer));
                             await networkStream.WriteAsync(writeBuffer);
-                            ushort[] res = await ReadResponse(networkStream, address.Count);
+                            await ConsumeWriteResponse(networkStream, address.Count);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer));
                         }
                     }
