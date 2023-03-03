@@ -47,8 +47,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                 switch (item.Type) {
 
                     case DataType.Float32: {
-                            string wordOrder = GetWordOrder(item);
-                            if (wordOrder.Equals("little-endian")) {
+
+                            if (IsLittleEndianWordOrder(item)) {
                                 ushort temp = words[0];
                                 words[0] = words[1];
                                 words[1] = temp;
@@ -154,37 +154,21 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         }
 
         protected virtual byte GetModbusFunctionCode(Adapter adapter, DataItem item) { //=> 3 = Read Holding Registers; // 4 = Read Input Register
-            List<string> names = new List<string>();
-            foreach (NamedValue nv in item.Config) {
-                names.Add(nv.Name);
+            foreach (var it in item.Config) {
+                if (it.Name == "FunctionCode") {
+                    return byte.Parse(it.Value);
+                }
             }
-
-            int pos = names.IndexOf("FunctionCode");
-
-            // default: Input Register
-            int val = 4;
-
-            //if defined, use defined value
-            if (pos != -1) { val = Int16.Parse(item.Config[pos].Value); }
-
-            return (byte)val;
+            return 4;
         }
 
-        protected string GetWordOrder(DataItem item) {
-            List<string> names = new List<string>();
-            foreach (NamedValue nv in item.Config) {
-                names.Add(nv.Name);
+        protected bool IsLittleEndianWordOrder(DataItem item) {
+            foreach (var it in item.Config) {
+                if (it.Name == "WordOrder") {
+                    return it.Value == "little-endian";
+                }
             }
-
-            int pos = names.IndexOf("WordOrder");
-
-            // default: "na"
-            string val = "na";
-
-            // if defined, use defined value
-            if (pos != -1) { val = item.Config[pos].Value; }
-
-            return val;
+            return false;
         }
 
         protected virtual byte GetModbusHeaderAddress(Adapter adapter, DataItem item) => 1; // doesn't seem to matter
@@ -429,8 +413,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
         }
 
         private static void WriteUShort(byte[] bytes, int offset, ushort value) {
-            bytes[offset]   = (byte)((value & 0xFF00) >> 8);
-            bytes[offset+1] = (byte)(value & 0x00FF);
+            bytes[offset + 0] = (byte)((value & 0xFF00) >> 8);
+            bytes[offset + 1] = (byte) (value & 0x00FF);
         }
 
         private static VTQ[] GetBadVTQs(IList<ReadRequest> items) {
@@ -488,9 +472,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         float fl_val = (float)value.V.GetValue(dt: item.Item.Type, dimension: item.Item.Dimension)!;
                         byte[] bytes = BitConverter.GetBytes(fl_val);
 
-                        string wordOrder = GetWordOrder(item.Item);
-
-                        if (wordOrder.Equals("little-endian")) {
+                        if (IsLittleEndianWordOrder(item.Item)) {
                             // badc
                             writeBuffer_float[13] = bytes[1];
                             writeBuffer_float[14] = bytes[0];
