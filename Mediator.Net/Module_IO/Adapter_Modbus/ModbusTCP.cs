@@ -351,9 +351,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         await networkStream.WriteAsync(writeBuffer);
                         words = await ConsumeReadResponse(networkStream, address.Count);                        
                     }
-                    catch (Exception) {
-                        vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);
-                        CloseConnection();
+                    catch (Exception exp) {
+                        Exception e = exp.GetBaseException() ?? exp;
+                        if (e is ModbusException) {
+                            LogWarn("ReadExcept", $"Got exception response for reading {item.Item.Name}: {e.Message}");
+                        }
+                        else {
+                            CloseConnection();
+                        }
+                        vtqs[i] = VTQ.Make(request.LastValue.V, Timestamp.Now, Quality.Bad);                        
                         continue;
                     }
 
@@ -375,42 +381,74 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             return vtqs;
         }
 
-        private const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
+        
 
         private async Task<ushort[]> ConsumeReadResponse(NetworkStream networkStream, int wordCount) {
-                    
-            byte[] headBuffer = new byte[ResponseHeadLen];
-            await networkStream.ReadExactlyAsync(headBuffer);
 
-            int messageLength = (headBuffer[4] << 8) | headBuffer[5];
-            int remainingBytes = messageLength - 2;
+            const int ResponseHeadLen = 9; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code, 1b exception code or length of content
+            byte[] header = new byte[ResponseHeadLen];
+            await networkStream.ReadExactlyAsync(header);
 
-            if ((remainingBytes - 1) != (2 * wordCount)) {
-                throw new Exception($"Response length - 1 does not match expected number of bytes: {2 * wordCount}.");
+            byte fc = header[7];
+            if ((fc & 0x80) != 0) {
+                byte exceptionCode = header[8];
+                string error = GetExceptionDescription(exceptionCode);
+                throw new ModbusException(error);
+            }
+
+            int messageLength = (header[4] << 8) | header[5];
+            int remainingBytes = messageLength - 3;
+
+            if (remainingBytes != (2 * wordCount)) {
+                throw new Exception($"Response length {remainingBytes} does not match expected number of bytes: {2 * wordCount}.");
             }
 
             byte[] buffer = new byte[remainingBytes];
             await networkStream.ReadExactlyAsync(buffer);
 
             ushort[] res = new ushort[wordCount];
-            int off = 1; // first byte contains the number of bytes that follow
-                         // collect transmitted numbers (every 2 byte = 1 short)
+            int off = 0;
             for (int i = 0; i < wordCount; ++i) {
-                res[i] = (ushort)(((buffer[off] & 0xFF) << 8) | ((buffer[off + 1] & 0xFF)));
+                res[i] = (ushort)(((buffer[off] & 0xFF) << 8) | (buffer[off + 1] & 0xFF));
                 off += 2;
             }
 
             return res;
         }
 
-        private async Task ConsumeWriteResponse(NetworkStream networkStream, int wordCount) {            
+        private async Task ConsumeWriteResponse(NetworkStream networkStream) {
+
+            const int ResponseHeadLen = 8; // 2b transaction ID, 2b protocol ID, 2b message length, 1b dev. address, 1b func. code
             byte[] header = new byte[ResponseHeadLen];
             await networkStream.ReadExactlyAsync(header);
+
+            byte fc = header[7];
+            if ((fc & 0x80) != 0) {
+                byte[] exceptionCode = new byte[1];
+                await networkStream.ReadExactlyAsync(exceptionCode);
+                string error = GetExceptionDescription(exceptionCode[0]);
+                throw new ModbusException(error);
+            }
+
             int messageLength = (header[4] << 8) | header[5];
             int remainingBytes = messageLength - 2;
-            byte[] buffer = new byte[remainingBytes];
+            if (remainingBytes != 4) throw new Exception("Unexpected message length");
+            byte[] buffer = new byte[4];
             await networkStream.ReadExactlyAsync(buffer);
         }
+
+        private static string GetExceptionDescription(byte exceptionCode) => exceptionCode switch {
+            1 => "Illegal Function - The function code in the request is not supported by the server",
+            2 => "Illegal Data Address - The data address specified in the request is not valid",
+            3 => "Illegal Data Value - The value specified in the request is not valid",
+            4 => "Server Device Failure - An unrecoverable error occurred while the server was attempting to perform the requested action",
+            5 => "Acknowledge - The server has received the request but is currently busy processing other requests",
+            6 => "Server Device Busy - The server is currently unable to perform the requested action",
+            8 => "Memory Parity Error - The server has detected a parity error in memory",
+            10 => "Gateway Path Unavailable - The gateway device is unable to establish a connection to the target device",
+            11 => "Gateway Target Device Failed to Respond - The gateway device has not received a response from the target device",
+            _ => "Unknown Exception Code",
+        };
 
         private static void WriteUShort(byte[] bytes, int offset, ushort value) {
             bytes[offset + 0] = (byte)((value & 0xFF00) >> 8);
@@ -520,19 +558,26 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
                         if (item.Item.Type == DataType.Float32) {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer_float));
                             await networkStream.WriteAsync(writeBuffer_float);
-                            await ConsumeWriteResponse(networkStream, address.Count);
+                            await ConsumeWriteResponse(networkStream);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer_float));
                         }
                         else {
                             //PrintLine("Sending write request: " + BitConverter.ToString(writeBuffer));
                             await networkStream.WriteAsync(writeBuffer);
-                            await ConsumeWriteResponse(networkStream, address.Count);
+                            await ConsumeWriteResponse(networkStream);
                             //PrintLine("Response received for write request: " + BitConverter.ToString(writeBuffer));
                         }
                     }
                     catch (Exception exp) {
                         Exception e = exp.GetBaseException() ?? exp;
-                        LogWarn("WriteExcept", $"Failed to write item {item.Item.Name}: {e.Message}");
+
+                        if (e is ModbusException) {
+                            // keep connection
+                        }
+                        else {
+                            CloseConnection();
+                        }
+
                         if (listFailed == null) {
                             listFailed = new List<FailedDataItemWrite>();
                         }
@@ -620,5 +665,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Modbus
             if (count > 0xFFFF) throw new Exception("Count must be smaller than 0xFFFF");
             return new ModbusAddress((ushort)startRegister, (ushort)count);
         }
+    }
+
+    public sealed class ModbusException : Exception {
+        public ModbusException(string message) : base(message) { }
     }
 }
