@@ -17,7 +17,7 @@ namespace Ifak.Fast.Mediator.Test
         private Connection? con = null;
         private Notifier? notifier = null;
         private string moduleID = "";
-        private const int VariablesCount = 1000;
+        private const int VariablesCount = 200;
 
         public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
             this.notifier = notifier;
