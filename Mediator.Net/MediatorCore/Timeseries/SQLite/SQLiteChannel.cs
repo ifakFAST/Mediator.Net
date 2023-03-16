@@ -20,6 +20,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private readonly PreparedStatement stmtUpsert;
         private readonly PreparedStatement stmtDelete;
         private readonly PreparedStatement stmtDeleteOne;
+        private readonly PreparedStatement stmtFirst;
         private readonly PreparedStatement stmtLast;
         private readonly PreparedStatement stmtLatestTimeDb;
 
@@ -47,6 +48,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             stmtUpsert          = new PreparedStatement(connection, $"INSERT OR REPLACE INTO {table} VALUES (@1, @2, @3, @4)", 4);
             stmtDelete          = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time BETWEEN @1 AND @2", 2);
             stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = @1", 1);
+            stmtFirst           = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time ASC LIMIT 1", 0);
             stmtLast            = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1", 0);
             stmtLatestTimeDb         = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2);
 
@@ -64,8 +66,6 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             stmtCountNonBad     = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0", 2);
             stmtCountGood       = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2 AND quality = 1", 2);
         }
-
-        public override ChannelInfo Info => info;
 
         public override long CountAll() {
             return (long)stmtCount.ExecuteScalar()!;
@@ -107,6 +107,20 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 stmt[1] = endInclusive.JavaTicks;
                 return stmt.ExecuteNonQuery();
             });
+        }
+
+        public VTTQ? GetFirst() => GetFirst(null);
+
+        protected VTTQ? GetFirst(DbTransaction? transaction) {
+
+            using (var reader = stmtFirst.ExecuteReader(transaction)) {
+                if (reader.Read()) {
+                    return ReadVTTQ(reader);
+                }
+                else {
+                    return null;
+                }
+            }
         }
 
         public override VTTQ? GetLatest() => GetLatest(null);
@@ -188,39 +202,6 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 }
                 return true;
             });
-        }
-
-        public override void Append(VTQ[] data, bool ignoreOldDataSets = false) {
-
-            if (data.Length == 0) return;
-
-            CheckIncreasingTimestamps(data);
-
-            VTTQ? lastItem = GetLatest();
-
-            if (lastItem.HasValue && data[0].T <= lastItem.Value.T) {
-
-                if (ignoreOldDataSets) {
-                    Timestamp t = lastItem.Value.T;
-                    VTQ[] filtered = data.Where(x => x.T > t).ToArray();
-                    Insert(filtered);
-                }
-                else {
-                    throw new Exception("Timestamp is smaller or equal than last dataset timestamp in channel DB!\n\tLastItem in Database: " + lastItem.Value.ToString() + "\n\tFirstItem to Append:  " + data[0].ToString());
-                }
-            }
-            else {
-                Insert(data);
-            }
-        }
-
-        private static void CheckIncreasingTimestamps(VTQ[] data) {
-            Timestamp tPrev = Timestamp.Empty;
-            for (int i = 0; i < data.Length; ++i) {
-                Timestamp t = data[i].T;
-                if (t <= tPrev) throw new Exception("Dataset timestamps are not monotonically increasing!");
-                tPrev = t;
-            }
         }
 
         public override void Update(VTQ[] data) {

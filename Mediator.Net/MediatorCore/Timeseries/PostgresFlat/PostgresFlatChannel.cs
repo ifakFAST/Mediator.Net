@@ -76,8 +76,6 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             stmtCountGood       = new PreparedStatement(connection, $"SELECT COUNT(*) FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 AND quality = 1", time, time);
         }
 
-        public override ChannelInfo Info => info;
-
         public override long CountAll() {
             return (long)stmtCount.ExecuteScalar()!;
         }
@@ -199,39 +197,6 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                 }
                 return true;
             });
-        }
-
-        public override void Append(VTQ[] data, bool ignoreOldDataSets = false) {
-
-            if (data.Length == 0) return;
-
-            CheckIncreasingTimestamps(data);
-
-            VTTQ? lastItem = GetLatest();
-
-            if (lastItem.HasValue && data[0].T <= lastItem.Value.T) {
-
-                if (ignoreOldDataSets) {
-                    Timestamp t = lastItem.Value.T;
-                    VTQ[] filtered = data.Where(x => x.T > t).ToArray();
-                    Insert(filtered);
-                }
-                else {
-                    throw new Exception("Timestamp is smaller or equal than last dataset timestamp in channel DB!\n\tLastItem in Database: " + lastItem.Value.ToString() + "\n\tFirstItem to Append:  " + data[0].ToString());
-                }
-            }
-            else {
-                Insert(data);
-            }
-        }
-
-        private static void CheckIncreasingTimestamps(VTQ[] data) {
-            Timestamp tPrev = Timestamp.Empty;
-            for (int i = 0; i < data.Length; ++i) {
-                Timestamp t = data[i].T;
-                if (t <= tPrev) throw new Exception("Dataset timestamps are not monotonically increasing!");
-                tPrev = t;
-            }
         }
 
         public override void Update(VTQ[] data) {

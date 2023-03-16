@@ -4,12 +4,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator.Timeseries
 {
     public abstract class Channel {
-
-        public abstract ChannelInfo Info { get; }
 
         /// <summary>
         /// update of existing data sets. if at least one data set does not exist
@@ -46,7 +45,38 @@ namespace Ifak.Fast.Mediator.Timeseries
         /// <param name="data"></param>
         /// <param name="ignoreOldDataSets">if true, datasets older than the last dataset in the channel
         /// will be ignored, so that only the new datasets are appended</param>
-        public abstract void Append(VTQ[] data, bool ignoreOldDataSets = false);
+        public virtual void Append(VTQ[] data, bool ignoreOldDataSets = false) {
+
+            if (data.Length == 0) return;
+
+            CheckIncreasingTimestamps(data);
+
+            VTTQ? lastItem = GetLatest();
+
+            if (lastItem.HasValue && data[0].T <= lastItem.Value.T) {
+
+                if (ignoreOldDataSets) {
+                    Timestamp t = lastItem.Value.T;
+                    VTQ[] filtered = data.Where(x => x.T > t).ToArray();
+                    Insert(filtered);
+                }
+                else {
+                    throw new Exception("Timestamp is smaller or equal than last dataset timestamp in channel DB!\n\tLastItem in Database: " + lastItem.Value.ToString() + "\n\tFirstItem to Append:  " + data[0].ToString());
+                }
+            }
+            else {
+                Insert(data);
+            }
+        }
+
+        protected static void CheckIncreasingTimestamps(VTQ[] data) {
+            Timestamp tPrev = Timestamp.Empty;
+            for (int i = 0; i < data.Length; ++i) {
+                Timestamp t = data[i].T;
+                if (t <= tPrev) throw new Exception("Dataset timestamps are not monotonically increasing!");
+                tPrev = t;
+            }
+        }
 
         /// <summary>
         /// Prepare an append function that will be executed later. This function shall return null on success,
@@ -102,7 +132,7 @@ namespace Ifak.Fast.Mediator.Timeseries
         ExcludeNonGood,
     }
 
-    internal class QualityFilterHelper
+    internal sealed class QualityFilterHelper
     {
         private readonly bool IncludeAll;
         private readonly bool IncludeUncertain;
