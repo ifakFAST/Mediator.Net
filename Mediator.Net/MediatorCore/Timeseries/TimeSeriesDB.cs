@@ -66,17 +66,11 @@ namespace Ifak.Fast.Mediator.Timeseries
         public abstract string[] BatchExecute(Func<PrepareContext, string?>[] updateActions);
     }
 
-    public class ChannelInfo
-    {
-        public ChannelInfo(string @object, string variable, DataType type) {
-            Object = @object;
-            Variable = variable;
-            Type = type;
-        }
+    public record ChannelInfo(
+        string Object, 
+        string Variable, 
+        DataType Type) {
 
-        public string Object { get; private set; }
-        public string Variable { get; private set; }
-        public DataType Type { get; private set; }
     }
 
     public struct ChannelRef : IEquatable<ChannelRef>
