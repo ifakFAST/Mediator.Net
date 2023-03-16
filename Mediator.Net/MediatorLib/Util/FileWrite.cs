@@ -53,6 +53,12 @@ namespace Ifak.Fast.Mediator.Util
                 try {
 
                     if (!File.Exists(file)) {
+
+                        string dir = Path.GetDirectoryName(file);
+                        if (!Directory.Exists(dir)) {
+                            Directory.CreateDirectory(dir);
+                        }
+
                         File.WriteAllText(file, "", Encoding.UTF8);
                     }
 
