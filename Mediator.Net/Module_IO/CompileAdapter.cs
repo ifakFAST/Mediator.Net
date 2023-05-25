@@ -70,7 +70,7 @@ namespace Ifak.Fast.Mediator.IO
         private static CSharpCompilation GenerateCode(string assemblyName, string sourceCode) {
 
             var codeString = SourceText.From(sourceCode);
-            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp8);
+            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
 
             var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
 

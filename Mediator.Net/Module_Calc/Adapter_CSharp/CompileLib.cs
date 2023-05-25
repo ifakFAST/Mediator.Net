@@ -92,7 +92,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private static CSharpCompilation GenerateCode(string assemblyName, string sourceCode, IList<Assembly> refAssemblies) {
 
             var codeString = SourceText.From(sourceCode);
-            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp8);
+            var options = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
 
             var parsedSyntaxTree = SyntaxFactory.ParseSyntaxTree(codeString, options);
 
