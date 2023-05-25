@@ -41,6 +41,25 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class OutputInt32 : OutputBase {
+
+        public OutputInt32(string name, string unit = "") :
+            base(name: name, unit: unit, type: DataType.Int32, dimension: 1) {
+        }
+
+        public int? Value {
+            set {
+                if (!value.HasValue) {
+                    VTQ = VTQ.WithValue(DataValue.Empty);
+                }
+                else {
+                    int v = value.Value;
+                    VTQ = VTQ.WithValue(DataValue.FromInt(v));
+                }
+            }
+        }
+    }
+
     public class OutputFloat64Array : OutputBase {
 
         public OutputFloat64Array(string name, int dimension = 0) :
@@ -48,7 +67,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("OutputFloat64Array: dimension must be >= 0");
         }
 
-        public double[] Value {
+        public double[]? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromDoubleArray(value));
             }
@@ -62,7 +81,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("OutputFloat32Array: dimension must be >= 0");
         }
 
-        public float[] Value {
+        public float[]? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromFloatArray(value));
             }
@@ -88,7 +107,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
         }
 
-        public T Value {
+        public T? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromObject(value));
             }
@@ -101,7 +120,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.String, dimension: 1) {
         }
 
-        public string Value {
+        public string? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromString(value));
             }
@@ -114,7 +133,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
         }
 
-        public object Value {
+        public object? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromObject(value));
             }
@@ -128,7 +147,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
         }
 
-        public T[] Value {
+        public T[]? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromObject(value));
             }
@@ -142,7 +161,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("OutputClassArray: dimension must be >= 0");
         }
 
-        public T[] Value {
+        public T[]? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromObject(value));
             }
@@ -156,7 +175,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
         }
 
-        public Array Value {
+        public Array? Value {
             set {
                 VTQ = VTQ.WithValue(DataValue.FromObject(value));
             }
