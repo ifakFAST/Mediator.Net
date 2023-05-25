@@ -100,8 +100,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             object obj = await objMaker.MakeObjectFromCode(parameter.Calculation.Name, code, referencedAssemblies);
 
-            inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: false).ToArray();
-            outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: false).ToArray();
+            inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: true).ToArray();
+            outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: true).ToArray();
             states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
 
             var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
