@@ -25,6 +25,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             }
         }
         public double? ValueOrNull => VTQ.V.AsDouble();
+        public double ValueOrElse(double value) => ValueOrNull ?? value;
+
         public bool HasValidValue => ValueOrNull.HasValue;
 
         public static implicit operator double(InputFloat64 d) => d.Value;
@@ -120,6 +122,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
         }
+        public T ValueOrElse(T value) => ValueOrNull ?? value;
         public bool HasValidValue => ValueOrNull.HasValue;
         public static implicit operator T(InputStruct<T> d) => d.Value;
 
@@ -260,27 +263,29 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
     public class InputTimestamp : InputBase {
 
         public Timestamp? DefaultValue { get; private set; }
-        public Timestamp? Value {
+
+        public Timestamp Value {
+            get {
+                Timestamp? x = ValueOrNull;
+                if (x.HasValue) return x.Value;
+                if (IsNull) throw new Exception($"Input {ID}: Value is null");
+                throw new Exception($"Input {ID}: Value is not a Timestamp value: {VTQ.V.JSON}");
+            }
+        }
+        public Timestamp? ValueOrNull {
             get {
                 try {
-                    return VTQ.V.GetTimestampOrNull();
+                    return VTQ.V.Object<Timestamp?>();
                 }
                 catch (Exception) {
-                    throw new Exception($"Input {ID}: Value is not a timestamp value: {VTQ.V.JSON}");
+                    return null;
                 }
             }
         }
-        public bool HasValidValue {
-            get {
-                try {
-                    return Value != null;
-                }
-                catch (Exception) {
-                    return false;
-                }
-            }
-        }
-        public static implicit operator Timestamp?(InputTimestamp d) => d.Value;
+        public Timestamp ValueOrElse(Timestamp value) => ValueOrNull ?? value;
+        public bool HasValidValue => ValueOrNull.HasValue;
+        public static implicit operator Timestamp(InputTimestamp d) => d.Value;
+        public static implicit operator Timestamp?(InputTimestamp d) => d.ValueOrNull;
 
         public InputTimestamp(string name, Timestamp? defaultValue) :
             base(name: name, unit: "", type: DataType.Timestamp, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromTimestamp(defaultValue.Value) : DataValue.Empty) {

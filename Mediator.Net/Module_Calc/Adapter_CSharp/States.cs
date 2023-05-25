@@ -279,25 +279,34 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
     public class StateTimestamp : StateBase {
 
         public Timestamp? DefaultValue { get; private set; }
-        public Timestamp? Value { get; set; }
-        public static implicit operator Timestamp?(StateTimestamp d) => d.Value;
+        public Timestamp Value {
+            get {
+                return ValueOrNull ?? throw new Exception($"State {ID}: Value is null");
+            }
+            set {
+                ValueOrNull = value;
+            }
+        }
+        public Timestamp? ValueOrNull { get; set; }
+        public static implicit operator Timestamp(StateTimestamp d) => d.Value;
+        public static implicit operator Timestamp?(StateTimestamp d) => d.ValueOrNull;
 
         public StateTimestamp(string name, Timestamp? defaultValue) :
             base(name: name, unit: "", type: DataType.Timestamp, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromTimestamp(defaultValue.Value) : DataValue.Empty) {
             DefaultValue = defaultValue;
-            Value = defaultValue;
+            ValueOrNull = defaultValue;
         }
 
         internal override DataValue GetValue() {
-            return Value.HasValue ? DataValue.FromTimestamp(Value.Value) : DataValue.Empty;
+            return ValueOrNull.HasValue ? DataValue.FromTimestamp(Value) : DataValue.Empty;
         }
 
         internal override void SetValueFromDataValue(DataValue v) {
             try {
-                Value = v.GetTimestampOrNull();
+                ValueOrNull = v.GetTimestampOrNull();
             }
             catch (Exception) {
-                Value = DefaultValue;
+                ValueOrNull = DefaultValue;
             }
         }
     }
