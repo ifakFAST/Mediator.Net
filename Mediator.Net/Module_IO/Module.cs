@@ -2,6 +2,7 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
@@ -245,8 +246,37 @@ namespace Ifak.Fast.Mediator.IO
             }
         }
 
+        private Adapter ModifyAdapter(Adapter info) {
+            try {
+                string hostname = System.Net.Dns.GetHostName();
+                string file = $"{info.ID}@{hostname}.config";
+                string configDir = Path.GetDirectoryName(modelFileName) ?? "";
+                string fullFileName = Path.Combine(configDir, file);
+                if (File.Exists(fullFileName)) {
+                    string str = File.ReadAllText(fullFileName, System.Text.Encoding.UTF8);
+                    var obj = StdJson.JObjectFromString(str);
+                    string? address = (string?)obj["Address"];
+                    if (!string.IsNullOrEmpty(address)) {
+                        info.Address = address;
+                    }
+                    var config = obj["Config"];
+                    if (config != null) {
+                        info.Config = StdJson.ObjectFromJToken<List<NamedValue>>(config) ?? info.Config;
+                    }
+                    var login = obj["Login"];
+                    if (login != null) {
+                        info.Login = StdJson.ObjectFromJToken<Login?>(login);
+                    }
+                }
+                return info;
+            }
+            catch (Exception) {
+                return info;
+            }
+        }
+
         private async Task InitAdapter(AdapterState adapter) {
-            Adapter info = adapter.Config.ToAdapter();
+            Adapter info = ModifyAdapter(adapter.Config.ToAdapter());
             try {
 
                 adapter.UpdateScheduledItems(model);
