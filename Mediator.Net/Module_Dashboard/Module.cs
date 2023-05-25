@@ -322,7 +322,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                     var session = new Session();
                     Connection connection;
                     try {
-                        connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session, timeoutSeconds: 90);
+                        const int timeoutSeconds = 15 * 60;
+                        connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session, timeoutSeconds);
                     }
                     catch (Exception exp) {
                         logWarn(exp.Message);
