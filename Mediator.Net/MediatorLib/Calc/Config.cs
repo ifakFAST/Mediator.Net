@@ -8,6 +8,8 @@ namespace Ifak.Fast.Mediator.Calc
 
         public string Name { get; set; } = "";
 
+        public string Subtype { get; set; } = "";
+
         public Duration Cycle { get; set; }
 
         public Duration Offset { get; set; }

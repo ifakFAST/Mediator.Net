@@ -21,7 +21,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         private readonly List<CalcInstance> adapters = new();
         private readonly Dictionary<string, Type> mapAdapterTypes = new();
-        private readonly List<Identify> adapterTypesAttribute = new();
+        private readonly List<AdapterInfo> adapterTypesAttribute = new();
         private ModuleInitInfo initInfo;
         private ModuleThread? moduleThread = null;
         private Connection connection = new ClosedConnection();
@@ -66,7 +66,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Identify? id = type.GetCustomAttribute<Identify>();
                 if (id != null) {
                     mapAdapterTypes[id.ID] = type;
-                    adapterTypesAttribute.Add(id);
+                    adapterTypesAttribute.Add(AdapterInfoFromIdentify(id));
                 }
             }
 
@@ -98,12 +98,23 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
+        private static AdapterInfo AdapterInfoFromIdentify(Identify att) {
+            return new AdapterInfo {
+                Type = att.ID,
+                Show_WindowVisible = att.Show_WindowVisible,
+                Show_Definition = att.Show_Definition,
+                DefinitionLabel = att.DefinitionLabel,
+                DefinitionIsCode = att.DefinitionIsCode,
+                Subtypes = att.Subtypes,
+            };
+        }
+
         protected override async Task OnConfigModelChanged(bool init) {
 
             await base.OnConfigModelChanged(init);
 
             // model.ValidateOrThrow();
-            model.Normalize();
+            model.Normalize(adapterTypesAttribute);
 
             Config.Calculation[] enabledAdapters = model.GetAllCalculations()
                 .Where(a => a.Enabled && !string.IsNullOrWhiteSpace(a.Type) && !string.IsNullOrWhiteSpace(a.Definition))
@@ -403,16 +414,7 @@ namespace Ifak.Fast.Mediator.Calc
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 
             if (methodName == "GetAdapterInfo") {
-
-                var result = adapterTypesAttribute.Select(att => new {
-                    Type = att.ID,
-                    Show_WindowVisible = att.Show_WindowVisible,
-                    Show_Definition = att.Show_Definition,
-                    DefinitionLabel = att.DefinitionLabel,
-                    DefinitionIsCode = att.DefinitionIsCode,
-                }).ToArray();
-
-                DataValue dv = DataValue.FromObject(result);
+                DataValue dv = DataValue.FromObject(adapterTypesAttribute);
                 return Task.FromResult(Result<DataValue>.OK(dv));
 
             }
@@ -766,4 +768,12 @@ namespace Ifak.Fast.Mediator.Calc
         }
     }
 
+    public class AdapterInfo {
+        public string Type { get; set; } = "";
+        public bool Show_WindowVisible { get; set; }
+        public bool Show_Definition { get; set; }
+        public string DefinitionLabel { get; set; } = "";
+        public bool DefinitionIsCode { get; set; }
+        public string[] Subtypes { get; set; } = Array.Empty<string>();
+    }
 }

@@ -191,6 +191,8 @@ namespace Ifak.Fast.Mediator.Calc
             DataValue resGetAdapterInfo = await Connection.CallMethod(moduleID, "GetAdapterInfo");
             AdapterInfo[] adapterTypesInfo = resGetAdapterInfo.Object<AdapterInfo[]>() ?? new AdapterInfo[0];
 
+            model.Normalize(adapterTypesInfo);
+
             var res = new {
                 model = model,
                 objectInfos = objectInfos,
@@ -316,15 +318,6 @@ namespace Ifak.Fast.Mediator.Calc
                 T = t;
                 Q = q;
             }
-        }
-
-        public class AdapterInfo
-        {
-            public string Type { get; set; } = "";
-            public bool Show_WindowVisible { get; set; }
-            public bool Show_Definition { get; set; }
-            public string DefinitionLabel { get; set; } = "";
-            public bool DefinitionIsCode { get; set; }
         }
     }
 }

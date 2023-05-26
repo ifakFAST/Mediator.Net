@@ -8,7 +8,7 @@ using System.IO;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_Simba
 {
-    [Identify(id: "Simba", showWindowVisible: true, showDefinition: true, definitionLabel: "Simu Model", definitionIsCode: false)]
+    [Identify(id: "Simba", showWindowVisible: true, showDefinition: true, definitionLabel: "Simu Model", definitionIsCode: false, subtypes: new string[] { "Control", "OnlineSimulation" })]
     public class Simba : ExternalAdapter
     {
         protected override string GetCommand(Mediator.Config config) {

@@ -22,6 +22,7 @@
     </Folders>
     <Calculations>
       <Calculation id="cs" name="CSharp" type="CSharp" enabled="true">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>1 s</Cycle>
         <Definition>using Std;
 
@@ -79,7 +80,8 @@ class Script {
           <State id="pt1.yLast" name="pt1.yLast" />
         </States>
       </Calculation>
-      <Calculation id="simba" name="Control" type="Simba" enabled="false">
+      <Calculation id="simba" name="Control" type="Simba" subtype="Control" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <WindowVisible>true</WindowVisible>
         <Cycle>5 s</Cycle>
         <Definition>SimbaControl\Test1\Test.simu</Definition>

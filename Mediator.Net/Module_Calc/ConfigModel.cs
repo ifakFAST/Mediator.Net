@@ -26,8 +26,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
             return RootFolder == null ? new List<Calculation>() : RootFolder.GetAllCalculations();
         }
 
-        public void Normalize() {
-            RootFolder.Normalize();
+        public void Normalize(IEnumerable<AdapterInfo> adapters) {
+            RootFolder.Normalize(adapters);
         }
     }
 
@@ -67,18 +67,18 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeSignals() => Signals != null && Signals.Count > 0;
         public bool ShouldSerializeCalculations() => Calculations != null && Calculations.Count > 0;
 
-        public void Normalize() {
+        public void Normalize(IEnumerable<AdapterInfo> adapters) {
             if (History.HasValue) {
                 History = History.Value.Normalize();
             }
             foreach (var folder in Folders) {
-                folder.Normalize();
+                folder.Normalize(adapters);
             }
             foreach (var signal in Signals) {
                 signal.Normalize();
             }
             foreach (var calc in Calculations) {
-                calc.Normalize();
+                calc.Normalize(adapters);
             }
         }
     }
@@ -167,6 +167,9 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("type")]
         public string Type { get; set; } = ""; // e.g. C#, SIMBA, ...
 
+        [XmlAttribute("subtype")]
+        public string Subtype { get; set; } = ""; // e.g. Control, OnlineSimulation, ...
+
         [XmlAttribute("enabled")]
         public bool Enabled { get; set; } = false;
 
@@ -201,6 +204,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 Definition = Definition,
                 RealTimeScale = RealTimeScale,
                 WindowVisible = WindowVisible,
+                Subtype = Subtype,
             };
         }
 
@@ -244,9 +248,24 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public bool ShouldSerializeRealTimeScale() => RealTimeScale != 1.0;
 
-        public void Normalize() {
+        public bool ShouldSerializeSubtype() => !string.IsNullOrEmpty(Subtype);
+
+        public void Normalize(IEnumerable<AdapterInfo> adapters) {
             if (History.HasValue) {
                 History = History.Value.Normalize();
+            }
+
+            AdapterInfo? adapterFromType = adapters.FirstOrDefault(x => x.Type == Type);
+            if (adapterFromType != null) {
+                string[] subtypes = adapterFromType.Subtypes;
+                if (subtypes.Length == 0) {
+                    this.Subtype = "";
+                }
+                else {
+                    if (this.Subtype == "") {
+                        this.Subtype = subtypes[0];
+                    }
+                }
             }
         }
     }

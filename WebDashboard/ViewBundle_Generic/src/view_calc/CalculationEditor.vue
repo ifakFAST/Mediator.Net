@@ -14,6 +14,7 @@
       <table cellspacing="10">
         <member-row name="Name"            v-model="value.Name"          type="String"   :optional="false"></member-row>
         <member-row name="Type"            v-model="value.Type"          type="Enum"     :optional="false" :enumValues="adapterTypes"></member-row>
+        <member-row name="Subtype"         v-model="value.Subtype"       type="Enum"     :optional="false" :enumValues="adapterSubtypes" v-if="showSubtypes"></member-row>
         <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
         <member-row name="Cycle Offset"    v-model="value.Offset"        type="Duration" :optional="false"></member-row>
@@ -150,7 +151,7 @@
 
 <script lang="ts">
 
-import { Component, Prop, Vue } from 'vue-property-decorator'
+import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import * as calcmodel from './model'
 import MemberRow from './util/MemberRow.vue'
 import ValueDisplay from './util/ValueDisplay.vue'
@@ -229,6 +230,30 @@ export default class CalculationEditor extends Vue {
 
   get adapterTypes(): string[] {
     return this.adapterTypesInfo.map((info) => info.Type)
+  }
+
+  get adapterSubtypes(): string[] {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return [] }
+    return info.Subtypes || []
+  }
+
+  @Watch('value.Type')
+  watch_Type(): void {
+    const subtypes = this.adapterSubtypes
+    if (subtypes.length === 0) { 
+      this.value.Subtype = ''
+    }
+    else {
+      if (this.value.Subtype === '') {
+        this.value.Subtype = subtypes[0]
+      }
+    }
+  }
+
+  get showSubtypes(): boolean {
+    return this.adapterSubtypes.length > 0
   }
 
   get hasCode(): boolean {
