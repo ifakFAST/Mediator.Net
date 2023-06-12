@@ -18,6 +18,7 @@
         <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
         <member-row name="Cycle Offset"    v-model="value.Offset"        type="Duration" :optional="false"></member-row>
+        <member-row name="Ignore Offset For Timestamps" v-model="value.IgnoreOffsetForTimestamps" type="Boolean" :optional="false" v-if="value.Offset !== '0 s'"></member-row>
         <member-row name="Enabled"         v-model="value.Enabled"       type="Boolean"  :optional="false"></member-row>
         <member-row name="Enable Output Var Write" v-model="value.EnableOutputVarWrite" type="Boolean" :optional="false"></member-row>
         <member-row name="WindowVisible"   v-model="value.WindowVisible" type="Boolean"  :optional="false" v-if="showWindowVisible"></member-row>

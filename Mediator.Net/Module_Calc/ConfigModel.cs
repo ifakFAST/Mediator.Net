@@ -183,6 +183,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public Duration Offset { get; set; } = Duration.FromSeconds(0);
 
+        public bool IgnoreOffsetForTimestamps { get; set; } = false;
+
         public double RealTimeScale { get; set; } = 1;
 
         public string Definition { get; set; } = ""; // e.g. C# code, SIMBA project file name
@@ -194,6 +196,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public List<State> States { get; set; } = new List<State>();
 
         public bool ShouldSerializeOffset() => Offset.TotalMilliseconds != 0;
+        public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
 
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {

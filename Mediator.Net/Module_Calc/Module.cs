@@ -438,10 +438,12 @@ namespace Ifak.Fast.Mediator.Calc
         private async Task AdapterRunLoopTask(CalcInstance adapter) {
 
             adapter.State = State.Running;
+            bool ignoreOffsetForTimestamps = adapter.CalcConfig.IgnoreOffsetForTimestamps;
 
             Duration cycle = adapter.ScaledCycle();
             Duration offset = adapter.ScaledOffset();
             Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+            Timestamp t0 = ignoreOffsetForTimestamps ? t - offset : t;
             string moduleID = base.moduleID;
 
             await adapter.WaitUntil(t);
@@ -470,7 +472,7 @@ namespace Ifak.Fast.Mediator.Calc
                 // Config.Input[] inputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToArray();
                 // VariableRef[] inputVars = inputs.Select(inp => inp.Variable.Value).ToArray();
 
-                VTQs values = await ReadInputVars(adapter, inputs, inputVars, t);
+                VTQs values = await ReadInputVars(adapter, inputs, inputVars, t0);
 
                 // sw.Stop();
                 // double dd = sw.ElapsedTicks;
@@ -480,16 +482,16 @@ namespace Ifak.Fast.Mediator.Calc
 
                 adapter.UpdateInputValues(inputVars, values);
 
-                InputValue[] inputValues = adapter.CurrentInputValues(t);
+                InputValue[] inputValues = adapter.CurrentInputValues(t0);
 
-                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
+                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t0))).ToList();
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 var instance = adapter.Instance;
                 if (instance == null || adapter.State != State.Running) {
                     break;
                 }
-                StepResult result = await instance.Step(t, inputValues);
+                StepResult result = await instance.Step(t0, inputValues);
 
                 OutputValue[] outValues = result.Output ?? Array.Empty<OutputValue>();
                 StateValue[] stateValues = result.State ?? Array.Empty<StateValue>();
@@ -501,7 +503,7 @@ namespace Ifak.Fast.Mediator.Calc
                     listVarValues.Add(vv);
                 }
                 foreach (StateValue v in stateValues) {
-                    var vv = VariableValue.Make(adapter.GetStateVarRef(v.StateID), VTQ.Make(v.Value, t, Quality.Good));
+                    var vv = VariableValue.Make(adapter.GetStateVarRef(v.StateID), VTQ.Make(v.Value, t0, Quality.Good));
                     listVarValues.Add(vv);
                 }
 
@@ -530,6 +532,7 @@ namespace Ifak.Fast.Mediator.Calc
                 //notifier.Notify_VariableValuesChanged(listVarValueTimer);
 
                 t = GetNextNormalizedTimestamp(t, cycle, offset, adapter);
+                t0 = ignoreOffsetForTimestamps ? t - offset : t;
 
                 await adapter.WaitUntil(t);
             }
