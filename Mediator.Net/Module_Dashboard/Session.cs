@@ -103,7 +103,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public bool IsAbandoned => closed || (Timestamp.Now - lastActivity) > Duration.FromMinutes(15);
 
-        public async Task OnActivateView(string viewID) {
+        public async Task<bool> OnActivateView(string viewID) {
 
             if (!views.ContainsKey(viewID))
                 throw new Exception("Unknown viewID " + viewID);
@@ -115,6 +115,10 @@ namespace Ifak.Fast.Mediator.Dashboard
             ViewBase view = views[viewID];
             await view.OnActivate();
             currentView = view;
+
+            MemberRef mr = MemberRef.Make(view.ID, nameof(View.Config));
+            bool canUpdateConfig = await connection.CanUpdateConfig(mr);
+            return canUpdateConfig;
         }
 
         public async Task<string> OnDuplicateView(string viewID) {

@@ -91,8 +91,11 @@
       clientY: 0,
     }
 
+    canUpdateConfig = false
+
     async mounted(): Promise<void> {
       await this.readValues()
+      this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
     }
 
     async readValues(): Promise<void> {
@@ -110,7 +113,14 @@
     }
 
     writeEnabled(it: ConfigItem): boolean {
-      return it.Object !== undefined && it.Object !== null && it.Object !== '' && it.Member !== undefined && it.Member !== null && it.Member !== ''
+      const hasConfig = it.Object !== undefined && it.Object !== null && it.Object !== '' && it.Member !== undefined && it.Member !== null && it.Member !== ''
+      if (!hasConfig) { return false }
+      for (const entry of this.result) {
+        if (entry.Object === it.Object && entry.Member === it.Member) {
+          return entry.CanEdit
+        }
+      }
+      return false
     }
   
     async onWriteItem(it: ConfigItem): Promise<void> {
@@ -297,15 +307,17 @@
     }
 
     onContextMenu(e: any): void {
-      e.preventDefault()
-      e.stopPropagation()
-      this.contextMenu.show = false
-      this.contextMenu.clientX = e.clientX
-      this.contextMenu.clientY = e.clientY
-      const context = this
-      this.$nextTick(() => {
-        context.contextMenu.show = true
-      })
+      if (this.canUpdateConfig) {
+        e.preventDefault()
+        e.stopPropagation()
+        this.contextMenu.show = false
+        this.contextMenu.clientX = e.clientX
+        this.contextMenu.clientY = e.clientY
+        const context = this
+        this.$nextTick(() => {
+          context.contextMenu.show = true
+        })
+      }
     }
 
     async onConfigureItems(): Promise<void> {

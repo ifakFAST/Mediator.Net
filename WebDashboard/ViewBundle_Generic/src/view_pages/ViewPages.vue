@@ -10,7 +10,7 @@
         <v-btn v-if="editPage" icon @click="editPage = false">
           <v-icon>check</v-icon>
         </v-btn>
-        <v-menu bottom left offset-y>
+        <v-menu v-if="canUpdateConfig" bottom left offset-y>
           <template v-slot:activator="{ on }">
             <v-btn v-on="on" icon><v-icon>more_vert</v-icon></v-btn>
           </template>
@@ -74,6 +74,7 @@ export default class ViewPages extends Vue {
   widgetMap = new Map<string, model.Widget>()
   editPage = false
   dateWindow: number[] = null
+  canUpdateConfig = false
 
   mounted(): void {
     const context = this
@@ -103,6 +104,7 @@ export default class ViewPages extends Vue {
         }
       }
     })
+    this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
     this.loadAllPages()
   }
 
@@ -174,10 +176,16 @@ export default class ViewPages extends Vue {
       pageID: utils.findUniqueID('P', 4, this.getAllPageIDs()),
       title,
     }
-    const pages: model.Page[] = await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageAdd', para)
-    this.pages = pages
-    this.editPage = true
-    this.switchPage(para.pageID)
+    try {
+      const pages: model.Page[] = await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageAdd', para)
+      this.pages = pages
+      this.editPage = true
+      this.switchPage(para.pageID)
+    }
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
+    }
   }
 
   async page_Rename(): Promise<void> {
@@ -189,8 +197,14 @@ export default class ViewPages extends Vue {
       pageID: page.ID,
       title,
     }
-    await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageRename', para)
-    page.Name = title
+    try {
+      await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageRename', para)
+      page.Name = title
+    }
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
+    }    
   }
 
   async page_MoveLeft(): Promise<void> {
@@ -199,12 +213,18 @@ export default class ViewPages extends Vue {
     const pageIdx = this.pages.findIndex((p) => p.ID === page.ID)
     if (pageIdx < 0) { return }
 
-    await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageMoveLeft', { pageID: page.ID })
+    try {
+      await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageMoveLeft', { pageID: page.ID })
 
-    const arr = this.pages
-    const tmp = arr[pageIdx]
-    Vue.set(arr, pageIdx, arr[pageIdx - 1])
-    Vue.set(arr, pageIdx - 1, tmp)
+      const arr = this.pages
+      const tmp = arr[pageIdx]
+      Vue.set(arr, pageIdx, arr[pageIdx - 1])
+      Vue.set(arr, pageIdx - 1, tmp)
+    }
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
+    }
   }
 
   async page_MoveRight(): Promise<void> {
@@ -213,12 +233,18 @@ export default class ViewPages extends Vue {
     const pageIdx = this.pages.findIndex((p) => p.ID === page.ID)
     if (pageIdx < 0) { return }
 
-    await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageMoveRight', { pageID: page.ID })
+    try {
+      await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageMoveRight', { pageID: page.ID })
 
-    const arr = this.pages
-    const tmp = arr[pageIdx]
-    Vue.set(arr, pageIdx, arr[pageIdx + 1])
-    Vue.set(arr, pageIdx + 1, tmp)
+      const arr = this.pages
+      const tmp = arr[pageIdx]
+      Vue.set(arr, pageIdx, arr[pageIdx + 1])
+      Vue.set(arr, pageIdx + 1, tmp)
+    }
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
+    }
   }
 
   async page_Duplicate(): Promise<void> {
@@ -229,9 +255,15 @@ export default class ViewPages extends Vue {
       newPageID: utils.findUniqueID('P', 4, this.getAllPageIDs()),
       title: 'Copy of ' + page.Name,
     }
-    const pages: model.Page[] = await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageDuplicate', para)
-    this.pages = pages
-    this.switchPage(para.pageID)
+    try {
+      const pages: model.Page[] = await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageDuplicate', para)
+      this.pages = pages
+      this.switchPage(para.pageID)
+    }
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
+    }
   }
 
   async page_Delete(): Promise<void> {
@@ -245,21 +277,28 @@ export default class ViewPages extends Vue {
       return
     }
 
-    await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageDelete', { pageID: page.ID })
+    try {
+      
+      await window.parent['dashboardApp'].sendViewRequestAsync('ConfigPageDelete', { pageID: page.ID })
 
-    this.pages.splice(pageIdx, 1)
+      this.pages.splice(pageIdx, 1)
 
-    let newPageID = ''
-    if (pageCount === 1) {
-      newPageID = ''
+      let newPageID = ''
+      if (pageCount === 1) {
+        newPageID = ''
+      }
+      else if (pageIdx === pageCount - 1) {
+        newPageID = this.pages[pageIdx - 1].ID
+      }
+      else {
+        newPageID = this.pages[pageIdx].ID
+      }
+      this.switchPage(newPageID)
     }
-    else if (pageIdx === pageCount - 1) {
-      newPageID = this.pages[pageIdx - 1].ID
+    catch (err) {
+      const exp = err as Error
+      alert(exp.message)
     }
-    else {
-      newPageID = this.pages[pageIdx].ID
-    }
-    this.switchPage(newPageID)
   }
 
   getAllPageIDs(): Set<string> {

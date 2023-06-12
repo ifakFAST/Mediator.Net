@@ -129,7 +129,7 @@ namespace Ifak.Fast.Mediator
                             }
 
                             string login = req.Login ?? "";
-                            string[] roles = req.Roles ?? new string[0];
+                            string[] roles = req.Roles ?? Array.Empty<string>();
 
                             User? user = core.userManagement.Users.FirstOrDefault(u => u.Login == login);
 
@@ -139,7 +139,11 @@ namespace Ifak.Fast.Mediator
 
                             string[] invalidRoles = roles.Where(r => user.Roles.All(rr => rr != r)).ToArray();
 
-                            if (invalidRoles.Length > 0) {
+                            if (invalidRoles.Length == 1) {
+                                return Result_BAD($"Invalid role: {invalidRoles[0]}");
+                            }
+
+                            if (invalidRoles.Length > 1) {
                                 return Result_BAD("Invalid roles: " + string.Join(", ", invalidRoles));
                             }
 
@@ -147,9 +151,17 @@ namespace Ifak.Fast.Mediator
                                 return Result_BAD("EncryptedPassword may not be empty!");
                             }
 
+                            if (roles.Length == 0) {
+                                roles = user.Roles;
+                                if (roles.Length == 0) {
+                                    return Result_BAD($"No role defined for user {login}!");
+                                }
+                            }
+
                             origin.Type = OriginType.User;
                             origin.ID = user.ID;
                             origin.Name = user.Name;
+                            origin.UserRole = roles[0];
                             password = SimpleEncryption.Decrypt(user.EncryptedPassword);
                         }
 
@@ -518,13 +530,32 @@ namespace Ifak.Fast.Mediator
                             return Result_BAD("No object found with id " + objectID);
                         }
 
+                    case CanUpdateConfigReq.ID: {
+
+                            var req = (CanUpdateConfigReq)request;
+                            bool[] result = req.Members.Select(member => {
+                                ModuleState module = ModuleFromIdOrThrow(member.Object.ModuleID);
+                                var checkPermission = module.GetChecker(info.Origin);
+                                try {
+                                    checkPermission(member, "");
+                                    return true;
+                                }
+                                catch (Exception) {
+                                    return false;
+                                }
+
+                            }).ToArray();
+
+                            return Result_OK(result);
+                        }
+
                     case UpdateConfigReq.ID: {
 
                             var req = (UpdateConfigReq)request;
 
-                            ObjectValue[] updateOrDeleteObjects = req.UpdateOrDeleteObjects ?? new ObjectValue[0];
-                            MemberValue[] updateOrDeleteMembers = req.UpdateOrDeleteMembers ?? new MemberValue[0];
-                            AddArrayElement[] addArrayElements = req.AddArrayElements ?? new AddArrayElement[0];
+                            ObjectValue[] updateOrDeleteObjects = req.UpdateOrDeleteObjects ?? Array.Empty<ObjectValue>();
+                            MemberValue[] updateOrDeleteMembers = req.UpdateOrDeleteMembers ?? Array.Empty<MemberValue>();
+                            AddArrayElement[] addArrayElements = req.AddArrayElements ?? Array.Empty<AddArrayElement>();
 
                             string[] moduleIDs = updateOrDeleteObjects.Select(x => x.Object.ModuleID)
                                 .Concat(updateOrDeleteMembers.Select(x => x.Member.Object.ModuleID))
@@ -539,6 +570,23 @@ namespace Ifak.Fast.Mediator
                                 var myAddArrays = addArrayElements.Where(x => x.ArrayMember.Object.ModuleID == moduleID).ToArray();
 
                                 ModuleState module = ModuleFromIdOrThrow(moduleID);
+                                var checkPermission = module.GetChecker(info.Origin);
+
+                                foreach (ObjectValue ov in updateOrDeleteObjects) {
+                                    ObjectInfo objInfo = module.GetObjectInfo(ov.Object) ?? throw new Exception($"Failed to find object {ov.Object}");
+                                    MemberRefIdx? parent = objInfo.Parent;
+                                    if (!parent.HasValue) throw new Exception("Failed to modify object " + ov.Object + " because there is no parent object.");
+                                    checkPermission(parent.Value.ToMemberRef(), "No permission to modify object!");
+                                }
+
+                                foreach (MemberValue m in updateOrDeleteMembers) {
+                                    checkPermission(m.Member, "No permission to modify value!");
+                                }
+
+                                foreach (AddArrayElement element in addArrayElements) {
+                                    checkPermission(element.ArrayMember, "No permission to add object!");
+                                }
+
                                 return RestartOnExp(module, m => m.UpdateConfig(info.Origin, myObjects, myMembers, myAddArrays));
                             }).ToArray();
 

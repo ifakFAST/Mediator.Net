@@ -455,6 +455,12 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        public override async Task<bool[]> CanUpdateConfig(MemberRef[] members) {
+            var request = MakeSessionRequest<CanUpdateConfigReq>();
+            request.Members = members;
+            return await Post<bool[]>(request);
+        }
+
         public override async Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             var request = MakeSessionRequest<UpdateConfigReq>();
             request.UpdateOrDeleteObjects = updateOrDeleteObjects ?? new ObjectValue[0];

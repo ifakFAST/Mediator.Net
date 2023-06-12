@@ -161,6 +161,7 @@ namespace Ifak.Fast.Mediator
         public OriginType Type { get; set; }
         public string ID { get; set; }
         public string Name { get; set; }
+        public string UserRole { get; set; } // only relavant when Type == OriginType.User
 
         public override bool Equals(object obj) {
             if (obj is Origin) {

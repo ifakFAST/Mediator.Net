@@ -107,6 +107,9 @@ window.dashboardApp = new Vue({
     setEventBurstCount(count) {
       // console.info("setEventBurstCount: " + count);
       globalState.eventBurstCount = count;
+    },
+    canUpdateViewConfig() {
+      return globalState.canUpdateViewConfig;
     }
   }
 })

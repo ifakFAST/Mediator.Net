@@ -1,7 +1,9 @@
 export default {
   sessionID: "",
+  canUpdateViews: false,
   model: {},
   currentViewID: "",
+  canUpdateViewConfig: false,
   intervalVar: 0,
   eventSocket: {},
   busy: false,

@@ -12,10 +12,10 @@
 
     <v-menu v-model="contextMenu.show" :position-x="contextMenu.clientX" :position-y="contextMenu.clientY" absolute offset-y>
       <v-list>
-        <v-list-item @click="onConfigurePlotItems" >
+        <v-list-item v-if="canUpdateConfig" @click="onConfigurePlotItems" >
           <v-list-item-title>Configure Plot Items...</v-list-item-title>
         </v-list-item>
-        <v-list-item @click="onConfigurePlot" >
+        <v-list-item v-if="canUpdateConfig" @click="onConfigurePlot" >
           <v-list-item-title>Configure Plot...</v-list-item-title>
         </v-list-item>
         <v-list-item @click="downloadCSV">
@@ -246,6 +246,8 @@ export default class HistoryPlot extends Vue {
 
   qualityFilterValues = QualityFilterValues
 
+  canUpdateConfig = false
+
   contextMenu = {
     show: false,
     clientX: 0,
@@ -456,6 +458,7 @@ export default class HistoryPlot extends Vue {
     }
 
     this.onLoadDataForNextTab(false)
+    this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
   }
 
   @Watch('dateWindow')
@@ -755,12 +758,17 @@ export default class HistoryPlot extends Vue {
       items: this.editorItems.items,
     }
 
-    const response: {
-        ReloadData: boolean,
-      } = await this.backendAsync('SaveItems', para)
+    try {
+      const response: {
+          ReloadData: boolean,
+        } = await this.backendAsync('SaveItems', para)
 
-    if (response.ReloadData) {
-      this.onLoadDataForNextTab(true)
+      if (response.ReloadData) {
+        this.onLoadDataForNextTab(true)
+      }
+    }
+    catch (err) {
+      alert(err.message)
     }
   }
 
@@ -791,12 +799,17 @@ export default class HistoryPlot extends Vue {
       plot: this.editorPlot.plot,
     }
 
-    const response: {
-        ReloadData: boolean,
-      } = await this.backendAsync('SavePlot', para)
+    try {
+      const response: {
+          ReloadData: boolean,
+        } = await this.backendAsync('SavePlot', para)
 
-    if (response.ReloadData) {
-      this.onLoadDataForNextTab(true)
+      if (response.ReloadData) {
+        this.onLoadDataForNextTab(true)
+      }
+    } 
+    catch (err) {
+      alert(err.message)
     }
   }
 

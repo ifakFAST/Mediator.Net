@@ -18,7 +18,7 @@
         </v-list-item-group>
       </v-list>
 
-      <v-menu v-model="contextMenuViewEntry.show" :position-x="contextMenuViewEntry.clientX" :position-y="contextMenuViewEntry.clientY" absolute offset-y>
+      <v-menu v-if="canUpdateViews" v-model="contextMenuViewEntry.show" :position-x="contextMenuViewEntry.clientX" :position-y="contextMenuViewEntry.clientY" absolute offset-y>
         <v-list>
           <v-list-item @click="onContextViewRename">
             <v-list-item-title>Rename</v-list-item-title>
@@ -163,6 +163,7 @@
       currViewID: String,
       currViewSrc: String,
       views: Array,
+      canUpdateViews: Boolean,
       busy: Boolean,
       connectionState: Number,
       showTime: Boolean,

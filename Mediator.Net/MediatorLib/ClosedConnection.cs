@@ -16,6 +16,10 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("CallMethod on closed connection");
         }
 
+        public override Task<bool[]> CanUpdateConfig(MemberRef[] members) {
+            throw new InvalidOperationException("CanUpdateConfig on closed connection");
+        }
+
         public override Task Close() {
             return Task.FromResult(true);
         }

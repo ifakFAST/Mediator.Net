@@ -18,4 +18,5 @@ export interface ItemValue {
   Object: string
   Member: string
   Value: string
+  CanEdit: boolean
 }

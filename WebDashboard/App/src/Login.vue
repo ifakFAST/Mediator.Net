@@ -67,7 +67,8 @@ export default {
             model: response.data.model,
             user: context.loginUser,
             pass: context.loginPass,
-            viewID: context.viewID
+            viewID: context.viewID,
+            canUpdateViews: response.data.canUpdateViews
           });
           context.loginPass = "";
         })

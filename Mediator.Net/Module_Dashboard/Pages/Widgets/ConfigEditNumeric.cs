@@ -112,11 +112,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
             if (members.Length > 0) {
 
                 MemberValues memValues = await Connection.GetMemberValues(members);
+                bool[] canEdit = await Connection.CanUpdateConfig(members);
 
                 var res = new List<ResultEntry>();
 
-                foreach (MemberValue it in memValues) {
+                for (int i = 0; i < memValues.Count; i++) {
 
+                    MemberValue it = memValues[i];
                     bool isStrValue = it.Value.JSON.StartsWith('"');
 
                     if (isStrValue) { // assume type of member is JSON/DataValue
@@ -127,6 +129,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
                         Object = it.Member.Object,
                         Member = it.Member.Name,
                         Value = isStrValue ? it.Value.GetString()! : it.Value.JSON,
+                        CanEdit = canEdit[i],
                     };
 
                     res.Add(entry);
@@ -134,7 +137,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
                 return res.ToArray();
             }
             else {
-                return new ResultEntry[0];
+                return Array.Empty<ResultEntry>();
             }
         }
 
@@ -222,5 +225,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
         public ObjectRef Object { get; set; } = ObjectRef.Make("", "");
         public string Member { get; set; } = "";
         public string Value { get; set; } = "";
+        public bool CanEdit { get; set; } = false;
     }
 }

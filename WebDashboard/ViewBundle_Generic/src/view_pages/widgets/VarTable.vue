@@ -156,6 +156,7 @@ import { TimeRange } from '../../utils'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
+import { StyleValue } from 'vue/types/jsx'
 
 interface Config {
   ShowTrendColumn: boolean
@@ -235,12 +236,14 @@ export default class VarTable extends Vue {
     items: [],
   }
 
+  canUpdateConfig = false
+
   get theHeight(): string {
     if (this.height.trim() === '') { return 'auto' }
     return this.height
   }
 
-  varItemStyle(item: VarItem): object {
+  varItemStyle(item: VarItem): StyleValue {
     const style = {}
     if (!!item.Alarm || !!item.Warning) {
       style['font-weight'] = 'bold'
@@ -263,18 +266,21 @@ export default class VarTable extends Vue {
 
   mounted(): void {
     this.onLoadData()
+    this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
   }
 
   onContextMenu(e: any): void {
-    e.preventDefault()
-    e.stopPropagation()
-    this.contextMenu.show = false
-    this.contextMenu.clientX = e.clientX
-    this.contextMenu.clientY = e.clientY
-    const context = this
-    this.$nextTick(() => {
-      context.contextMenu.show = true
-    })
+    if (this.canUpdateConfig) {
+      e.preventDefault()
+      e.stopPropagation()
+      this.contextMenu.show = false
+      this.contextMenu.clientX = e.clientX
+      this.contextMenu.clientY = e.clientY
+      const context = this
+      this.$nextTick(() => {
+        context.contextMenu.show = true
+      })
+    }
   }
 
   get configItems(): ItemConfig[] {
@@ -288,7 +294,12 @@ export default class VarTable extends Vue {
   }
 
   async onToggleShowTrendColumn(): Promise<void> {
-    await this.backendAsync('ToggleShowTrendColumn', {})
+    try {
+      await this.backendAsync('ToggleShowTrendColumn', {})
+    } 
+    catch (err) {
+      alert(err.message)
+    }
   }
 
   async onConfigureItems(): Promise<void> {
@@ -369,8 +380,13 @@ export default class VarTable extends Vue {
     const para = {
       items: this.editorItems.items,
     }
-    const items: VarItem[] = await this.backendAsync('SaveItems', para)
-    this.items = items
+    try {
+      const items: VarItem[] = await this.backendAsync('SaveItems', para)
+      this.items = items
+    } 
+    catch (err) {
+      alert(err.message)
+    }
   }
 
   editorItems_ObjectID2Name(id: string): string {

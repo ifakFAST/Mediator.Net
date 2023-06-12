@@ -6,7 +6,7 @@
 
         <template v-else>
             <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
-                       :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector"
+                       :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector" :canUpdateViews="canUpdateViews"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
                         @duplicateView="duplicateView" @renameView="renameView"
                         @duplicateConvertView="duplicateConvertView"
@@ -44,6 +44,7 @@ export default {
       console.info('Login success')
       this.sessionID = event.session;
       this.model = event.model;
+      this.canUpdateViews = event.canUpdateViews;
       this.openWebSocket(event.user, event.pass)
       const viewIdx = this.model.views.findIndex((v) => v.viewID === event.viewID)
       if (viewIdx >= 0) {
@@ -189,6 +190,7 @@ export default {
         .then(function(response) {
           context.eventBurstCount = 1;
           context.currentViewID = viewID;
+          context.canUpdateViewConfig = response.data.canUpdateViewConfig;
           context.showTimeRangeSelector = false;
         })
         .catch(function(error) {
@@ -218,10 +220,7 @@ export default {
           context.model = response.data.model;
           context.doActivateView(viewID);
         })
-        .catch(function(error) {
-          console.info('Duplicate View failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
     },
     duplicateConvertView(viewID) {
       const context = this;
@@ -233,10 +232,7 @@ export default {
           context.model = response.data.model;
           context.doActivateView(viewID);
         })
-        .catch(function(error) {
-          console.info('Duplicate Convert View failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
     },
     renameView(viewID, newName) {
       const context = this;
@@ -246,10 +242,7 @@ export default {
           console.info('renameView success.');
           context.model = response.data.model;
         })
-        .catch(function(error) {
-          console.info('renameView failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
     },
     moveUpView(viewID) {
       const context = this;
@@ -259,10 +252,7 @@ export default {
           console.info('moveUpView success.');
           context.model = response.data.model;
         })
-        .catch(function(error) {
-          console.info('moveUpView failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
     },
     moveDownView(viewID) {
       const context = this;
@@ -272,10 +262,7 @@ export default {
           console.info('moveDownView success.');
           context.model = response.data.model;
         })
-        .catch(function(error) {
-          console.info('moveDownView failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
     },
     deleteView(viewID) {
       const context = this;
@@ -288,10 +275,15 @@ export default {
             context.currentViewID = '';
           }
         })
-        .catch(function(error) {
-          console.info('deleteView failed!');
-          alert(error);
-        });
+        .catch(this.handleError);
+    }, 
+    handleError(error) {
+      if (error.response && error.response.data && error.response.data.error) {
+        alert(error.response.data.error)
+      }
+      else {
+        alert(error.message);
+      }
     }
   }
 };

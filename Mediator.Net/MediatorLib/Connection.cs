@@ -15,6 +15,9 @@ using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberVa
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
+using System.Xml.Linq;
+using System.Xml.Schema;
+using System.Xml;
 
 namespace Ifak.Fast.Mediator
 {
@@ -230,6 +233,18 @@ namespace Ifak.Fast.Mediator
         #endregion
 
         #region UpdateConfig
+
+        /// <summary>
+        /// Returns which MemberRefs can be updated by the current user/role.
+        /// </summary>
+        public abstract Task<bool[]> CanUpdateConfig(MemberRef[] members);
+
+        /// <summary>
+        /// Returns whether the given MemberRef can be updated by the current user/role.
+        /// </summary>
+        public virtual async Task<bool> CanUpdateConfig(MemberRef member) {
+            return (await CanUpdateConfig(new MemberRef[] { member }))[0];
+        }
 
         /// <summary>
         /// Updates the configuration (objects) of one or several modules by updating or deleting specific objects.
@@ -681,11 +696,55 @@ namespace Ifak.Fast.Mediator
         public string[] Roles { get; set; } = new string[0];
 
         public List<NamedValue> Attributes { get; set; } = new List<NamedValue>();
+
+        public override string ToString() => Name;
     }
 
     public class Role
     {
         [XmlAttribute("name")]
         public string Name { get; set; } = "";
+        
+        public bool RestrictConfigChanges { get; set; } = false;
+
+        public List<ConfigRule> ConfigRules { get; set; } = new List<ConfigRule>();
+
+        public override string ToString() => Name;
+    }
+
+    public class ConfigRule : IXmlSerializable 
+    {
+        public Mode Mode { get; set; } = Mode.Allow;
+        public ObjectRef RootObject { get; set; }
+        public string ObjectTypes { get; set; } = "*"; // *: all types, comma separated list of types
+        public string WithID { get; set; } = "*"; // *: all IDs
+        public string Members { get; set; } = "*"; // *: all members, comma separated list of members
+
+        public XmlSchema? GetSchema() => null;
+
+        public void ReadXml(XmlReader reader) {
+            string mode = reader["mode"];
+            if (mode == "Allow") { Mode = Mode.Allow; }
+            else if (mode == "Deny") { Mode = Mode.Deny; }
+            else { throw new Exception("Invalid mode: " + mode); }
+            RootObject = ObjectRef.FromEncodedString(reader["root"]);
+            ObjectTypes = reader["types"];
+            WithID = reader["id"];
+            Members = reader["members"];
+            reader.Read();
+        }
+
+        public void WriteXml(XmlWriter writer) {
+            writer.WriteAttributeString("mode", Mode.ToString());
+            writer.WriteAttributeString("root", RootObject.ToEncodedString());
+            writer.WriteAttributeString("types", ObjectTypes);
+            writer.WriteAttributeString("id", WithID);
+            writer.WriteAttributeString("members", Members);
+        }
+    }
+
+    public enum Mode {
+        Allow,
+        Deny
     }
 }

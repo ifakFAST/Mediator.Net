@@ -191,7 +191,8 @@ namespace Ifak.Fast.Mediator
                 };
                 await module.Instance.Init(initInfo, restoreVariableValues, module, null);
                 ObjectInfo[] allObjs = await module.Instance.GetAllObjects();
-                module.SetAllObjects(allObjs);
+                MetaInfos meta = await module.Instance.GetMetaInfo();
+                module.SetAllObjectsInitial(meta, allObjs);
                 module.State = State.InitComplete;
                 logger.Info($"Init of module {module.Name} completed.");
             }
@@ -590,6 +591,7 @@ namespace Ifak.Fast.Mediator
         private ModuleVariables variables;
 
         public bool IsRestarting = false;
+        private readonly ModuleConfigPermission configPermission;
 
         public ModuleState(Module config, MediatorCore core) {
             this.logger = LogManager.GetLogger(config.Name);
@@ -598,6 +600,7 @@ namespace Ifak.Fast.Mediator
             this.State = State.Created;
             this.Password = Guid.NewGuid().ToString();
             this.variables = new ModuleVariables(config.ID, config.Name, config.VariablesFileName);
+            this.configPermission = new ModuleConfigPermission(config.ID);
         }
 
         public List<ObjectInfo> AllObjects => allObjects;
@@ -606,6 +609,12 @@ namespace Ifak.Fast.Mediator
         private Dictionary<ObjectRef, ObjectInfo> mapObjects = new Dictionary<ObjectRef, ObjectInfo>();
         private HashSet<ObjectRef> objectsWithChildren = new HashSet<ObjectRef>();
         private SingleThreadModule? instance;
+        private MetaInfos? meta;
+
+        public void SetAllObjectsInitial(MetaInfos meta, ObjectInfo[] allObjs) {
+            this.meta = meta;
+            SetAllObjects(allObjs);
+        }
 
         public void SetAllObjects(ObjectInfo[] allObjs) {
             allObjects = new List<ObjectInfo>(allObjs);
@@ -619,7 +628,13 @@ namespace Ifak.Fast.Mediator
                 }
             }
             variables.Sync(allObjects);
+            configPermission.InitUserRoles(allObjects, GetObjectParent, core.userManagement.Roles, meta!);
         }
+
+        public Action<MemberRef, string> GetChecker(Origin origin) {
+            return configPermission.GetChecker(origin);
+        }
+
         public VTQ GetVarValue(VariableRef varRef) => variables.GetVarValue(varRef);
         public bool HasVarValue(VariableRef varRef) => variables.HasVarValue(varRef);
         public Variable? GetVarDescription(VariableRef varRef) {

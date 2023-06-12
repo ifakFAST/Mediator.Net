@@ -332,11 +332,15 @@ namespace Ifak.Fast.Mediator.Dashboard
                     await session.SetConnection(connection, model, moduleID, viewTypes);
                     sessions[session.ID] = session;
 
+                    MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
+                    bool canUpdateViews = await connection.CanUpdateConfig(mr);
+
                     var result = new JObject();
                     result["sessionID"] = session.ID;
                     string str = StdJson.ObjectToString(uiModel);
                     JRaw raw = new JRaw(str);
                     result["model"] = raw;
+                    result["canUpdateViews"] = canUpdateViews;
                     return ReqResult.OK(result);
                 }
                 else if (path.StartsWith(Path_ViewReq)) {
@@ -354,8 +358,10 @@ namespace Ifak.Fast.Mediator.Dashboard
                 else if (path == Path_ActivateView) {
 
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
-                    await session.OnActivateView(viewID);
-                    return ReqResult.OK();
+                    bool canUpdateViewConfig = await session.OnActivateView(viewID);
+                    return ReqResult.OK(new {
+                        canUpdateViewConfig
+                    });
                 }
                 else if (path == Path_DuplicateView) {
 

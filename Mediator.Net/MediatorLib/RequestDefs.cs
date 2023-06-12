@@ -87,6 +87,7 @@ namespace Ifak.Fast.Mediator
         public static readonly ReqDef Ping = ReqDef.Make<PingReq>();
         public static readonly ReqDef EnableEventPing = ReqDef.Make<EnableEventPingReq>();
         public static readonly ReqDef Logout = ReqDef.Make<LogoutReq>();
+        public static readonly ReqDef CanUpdateConfig = ReqDef.Make<CanUpdateConfigReq>();
 
         public static readonly ReadOnlyList<ReqDef> Definitions = new ReadOnlyList<ReqDef>(
             Login, Auth,
@@ -99,7 +100,8 @@ namespace Ifak.Fast.Mediator
             DisableChangeEvents, EnableAlarmsAndEvents, DisableAlarmsAndEvents,
             HistorianReadRaw, HistorianCount, HistorianDeleteInterval, HistorianModify, HistorianDeleteAllVariablesOfObjectTree,
             HistorianDeleteVariables, HistorianGetLatestTimestampDB,
-            CallMethod, BrowseObjectMemberValues, GetMetaInfos, Ping, EnableEventPing, Logout
+            CallMethod, BrowseObjectMemberValues, GetMetaInfos, Ping, EnableEventPing, Logout,
+            CanUpdateConfig
         );
     }
 
@@ -905,6 +907,16 @@ namespace Ifak.Fast.Mediator
         public override string GetPath() => "Logout";
     }
 
+    public class CanUpdateConfigReq : RequestBase 
+    {
+        public const int ID = 44;
+
+        public override int GetID() => ID;
+        public override string GetPath() => "CanUpdateConfig";
+
+        [JsonProperty("members")]
+        public MemberRef[] Members = Array.Empty<MemberRef>();
+    }
 
     //////////////////////////////////////////////////////////////
 
