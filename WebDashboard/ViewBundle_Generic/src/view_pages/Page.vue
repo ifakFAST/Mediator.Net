@@ -83,6 +83,9 @@
               </template>
 
               <v-list>
+                <v-list-item @click="onContextWidgetSetTitle(i, j, k)" v-if="editPage">
+                  <v-list-item-title>Widget Set Title</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="onContextWidgetSetWidth(i, j, k)" v-if="editPage">
                   <v-list-item-title>Widget Set Width</v-list-item-title>
                 </v-list-item>
@@ -109,6 +112,7 @@
           <widget-wrapper
             :id="widget.ID"
             :type="widget.Type"
+            :title="widget.Title || ''"
             :width="widget.Width || ''"
             :height="widget.Height || ''"
             :config="widget.Config || {}"
@@ -275,6 +279,26 @@ export default class Page extends Vue {
     }
     window.parent['dashboardApp'].sendViewRequest('ConfigWidgetSetHeight', para, this.onGotNewPage)
   }
+
+  async onContextWidgetSetTitle(row: number, col: number, widget: number): Promise<void> {
+    const page = this.page
+    if (page === null) { return }
+    const column = page.Rows[row].Columns[col]
+    const widgetObj: model.Widget = column.Widgets[widget]
+
+    const msg = 'Define the new title of the widget.'
+    const newTitle = await this.textInputDlg('Set Widget Title', msg, widgetObj.Title || '')
+    if (newTitle === null) { return }
+    const para = {
+      pageID: page.ID,
+      row,
+      col,
+      widget,
+      newTitle,
+    }
+    window.parent['dashboardApp'].sendViewRequest('ConfigWidgetSetTitle', para, this.onGotNewPage)
+  }
+
 
   async onContextWidgetSetWidth(row: number, col: number, widget: number): Promise<void> {
     const page = this.page

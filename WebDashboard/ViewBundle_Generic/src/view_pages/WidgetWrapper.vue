@@ -2,6 +2,8 @@
 
   <v-card elevation="1" class="pa-3" outlined >
 
+    <span v-if="title !== ''" class="pl-4 pb-5" style="font-weight: 500;">{{ title }}</span>
+
     <read-button v-if="type === 'ReadButton'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
@@ -55,6 +57,7 @@ export default class WidgetWrapper extends Vue {
 
   @Prop({ default() { return '' } }) id: string
   @Prop({ default() { return '' } }) type: string
+  @Prop({ default() { return '' } }) title: string
   @Prop({ default() { return '' } }) width: string
   @Prop({ default() { return '' } }) height: string
   @Prop({ default() { return {} } }) config: object

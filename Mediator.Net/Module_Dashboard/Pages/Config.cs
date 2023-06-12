@@ -69,10 +69,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         public string ID { get; set; } = "";   // id of the instance (unique per page)
         public string Type { get; set; } = ""; // id of the widget type
 
+        public string Title { get; set; } = "";
         public string Width { get; set; } = "";
         public string Height { get; set; } = "";
 
         public JObject Config { get; set; } = new JObject();
+
+        public bool ShouldSerializeTitle() => Title != "";
 
         public Widget() { }
 

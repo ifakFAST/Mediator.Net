@@ -40,6 +40,10 @@ export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void 
 
   window['dashboardApp'] = {
 
+    canUpdateViewConfig() {
+      return true
+    },
+
     sendViewRequest(request: string, payload, successHandler) {
 
       if (viewReady === false) {

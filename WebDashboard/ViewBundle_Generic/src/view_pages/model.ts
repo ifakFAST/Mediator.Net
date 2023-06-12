@@ -21,6 +21,7 @@ export type ColumnWidth = 'Fill' | 'Auto' | 'OneOfTwelve' | 'TwoOfTwelve' | 'Thr
 export interface Widget {
   ID: string
   Type: string
+  Title: string
   Height?: string
   Width?: string
   Config?: object
