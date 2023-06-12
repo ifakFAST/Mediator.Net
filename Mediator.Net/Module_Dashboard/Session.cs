@@ -50,6 +50,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             _ = DoRegularGetNaviAugmentation();
         }
 
+        public string UserRole => connection.UserRole;
+
         private async Task DoRegularGetNaviAugmentation() {
 
             await Task.Delay(5000);

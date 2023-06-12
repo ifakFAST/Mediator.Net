@@ -190,6 +190,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("bin_methods")]
         public int[] BinMethods { get; set; } = Array.Empty<int>(); // the ids of those methods that may be requested in binary format
+
+        [JsonProperty("role")]
+        public string Role { get; set; } = "";
     }
 
     public class AuthenticateReq : RequestBase

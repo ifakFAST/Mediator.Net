@@ -8,6 +8,8 @@ namespace Ifak.Fast.Mediator
     {
         public override bool IsClosed => true;
 
+        public override string UserRole => "";
+
         public override Task<BrowseResult> BrowseObjectMemberValues(MemberRef member, int? continueID = null) {
             throw new InvalidOperationException("BrowseObjectMemberValues on closed connection");
         }

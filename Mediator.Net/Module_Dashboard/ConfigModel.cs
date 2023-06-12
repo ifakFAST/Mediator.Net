@@ -35,8 +35,14 @@ namespace Ifak.Fast.Mediator.Dashboard
         [XmlAttribute("group")]
         public string Group { get; set; } = "";
 
+        public bool RestrictVisibility { get; set; } = false;
+
+        public string VisibleForRoles { get; set; } = "";
+
         [ContainsNestedModel]
         public DataValue Config { get; set; }
 
+        public bool ShouldSerializeRestrictVisibility() => RestrictVisibility;
+        public bool ShouldSerializeVisibleForRoles() => !string.IsNullOrEmpty(VisibleForRoles);
     }
 }

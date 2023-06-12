@@ -175,6 +175,7 @@ namespace Ifak.Fast.Mediator
                             BinaryVersion = BinSeri.Common.CurrentBinaryVersion,
                             BinMethods = RequestDefinitions.Definitions.Where(x => x.IsBinSerializable).Select(x => x.NumericID).ToArray(),
                             EventDataVersion = HttpConnection.CurrentEventDataFormatVersion,
+                            Role = origin.UserRole ?? "",
                         };
 
                         sessions[session] = new SessionInfo(session, challenge, origin, password, TerminateSession);

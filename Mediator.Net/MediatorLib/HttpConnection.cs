@@ -30,6 +30,7 @@ namespace Ifak.Fast.Mediator
         private string login = "";
         private Timestamp tLogin = Timestamp.Now;
         private byte binaryVersion;
+        private string role = "";
 
         private readonly bool[] MapBinaryMessages = new bool[64];
 
@@ -90,6 +91,7 @@ namespace Ifak.Fast.Mediator
             LoginResponse loginResponse = await Post<LoginResponse>(reqLogin);
             string session = loginResponse.Session;
             string challenge = loginResponse.Challenge;
+            role = loginResponse.Role ?? "";
             if (string.IsNullOrEmpty(session) || string.IsNullOrEmpty(challenge))
                 throw new ConnectivityException("Invalid response");
 
@@ -129,6 +131,8 @@ namespace Ifak.Fast.Mediator
                 await eventManager.StartWebSocket(this.session, wsUri, OnConnectionBroken);
             }
         }
+
+        public override string UserRole => role;
 
         public override bool IsClosed => session == null;
 

@@ -28,7 +28,6 @@ namespace Ifak.Fast.Mediator.Dashboard
         private readonly string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
         private int clientPort;
         private ViewType[] viewTypes = Array.Empty<ViewType>();
-        private DashboardUI uiModel = new DashboardUI();
 
         private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
 
@@ -93,7 +92,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
 
             viewTypes = ReadAvailableViewTypes(absolutBaseDir, BundlesPrefix, absoluteViewAssemblies);
-            uiModel = MakeUiModel(model, viewTypes);
+            DashboardUI uiModel = MakeUiModel(model, viewTypes);
 
             await base.OnConfigModelChanged(init: false); // required for UnnestConfig to work (viewTypes need to be loaded)
 
@@ -335,11 +334,12 @@ namespace Ifak.Fast.Mediator.Dashboard
                     MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
                     bool canUpdateViews = await connection.CanUpdateConfig(mr);
 
+                    DashboardUI uiModel = MakeUiModel(model, viewTypes, session.UserRole);
+
                     var result = new JObject();
                     result["sessionID"] = session.ID;
                     string str = StdJson.ObjectToString(uiModel);
-                    JRaw raw = new JRaw(str);
-                    result["model"] = raw;
+                    result["model"] = new JRaw(str);
                     result["canUpdateViews"] = canUpdateViews;
                     return ReqResult.OK(result);
                 }
@@ -368,11 +368,9 @@ namespace Ifak.Fast.Mediator.Dashboard
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
                     string newViewID = await session.OnDuplicateView(viewID);
 
-                    uiModel = MakeUiModel(model, viewTypes);
-
                     return ReqResult.OK(new {
                         newViewID,
-                        model = uiModel
+                        model = MakeUiModel(model, viewTypes, session.UserRole)
                     });
                 }
                 else if (path == Path_DuplicateConvertView) {
@@ -380,11 +378,9 @@ namespace Ifak.Fast.Mediator.Dashboard
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
                     string newViewID = await session.OnDuplicateConvertHistoryPlot(viewID);
 
-                    uiModel = MakeUiModel(model, viewTypes);
-
                     return ReqResult.OK(new {
                         newViewID,
-                        model = uiModel
+                        model = MakeUiModel(model, viewTypes, session.UserRole)
                     });
                 }
                 else if (path == Path_RenameView) {
@@ -402,10 +398,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     await session.OnRenameView(viewID, newViewName);
 
-                    uiModel = MakeUiModel(model, viewTypes);
-
                     return ReqResult.OK(new {
-                        model = uiModel
+                        model = MakeUiModel(model, viewTypes, session.UserRole)
                     });
                 }
                 else if (path == Path_MoveView) {
@@ -420,10 +414,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     await session.OnMoveView(viewID, up);
 
-                    uiModel = MakeUiModel(model, viewTypes);
-
                     return ReqResult.OK(new {
-                        model = uiModel
+                        model = MakeUiModel(model, viewTypes, session.UserRole)
                     });
                 }
                 else if (path == Path_DeleteView) {
@@ -431,10 +423,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                     (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
                     await session.OnDeleteView(viewID);
 
-                    uiModel = MakeUiModel(model, viewTypes);
-
                     return ReqResult.OK(new {
-                        model = uiModel
+                        model = MakeUiModel(model, viewTypes, session.UserRole)
                     });
                 }
                 else if (path == Path_Logout) {
@@ -532,11 +522,18 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
 
-        private static DashboardUI MakeUiModel(DashboardModel model, ViewType[] viewTypes) {
+        private static DashboardUI MakeUiModel(DashboardModel model, ViewType[] viewTypes, string? userRole = null) {
 
             DashboardUI result = new DashboardUI();
 
             foreach (View v in model.Views) {
+
+                if (v.RestrictVisibility && userRole != null) {
+                    string[] roles = v.VisibleForRoles.Split(',');
+                    if (roles.All(r => r != userRole)) {
+                        continue;
+                    }
+                }
 
                 ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(v.Type, StringComparison.InvariantCultureIgnoreCase));
                 if (viewType == null) throw new Exception($"No view type '{v.Type}' found!");

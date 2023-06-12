@@ -24,6 +24,11 @@ namespace Ifak.Fast.Mediator
     public abstract class Connection : IDisposable
     {
         /// <summary>
+        /// Returns the user role of the user that is logged in via this connection.
+        /// </summary>
+        public abstract string UserRole { get; }
+
+        /// <summary>
         /// Close the connection. Never throws an exception.
         /// </summary>
         public abstract Task Close();
