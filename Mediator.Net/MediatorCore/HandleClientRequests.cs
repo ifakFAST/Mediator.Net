@@ -404,7 +404,7 @@ namespace Ifak.Fast.Mediator
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
                             string className = req.ClassName ?? "";
                             ModuleState module = ModuleFromIdOrThrow(moduleID);
-                            ObjectInfos res = module.AllObjects.Where(x => x.ClassName == className).ToList();
+                            ObjectInfos res = module.AllObjects.Where(x => x.ClassNameFull == className).ToList();
                             return Result_OK(res);
                         }
 

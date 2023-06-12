@@ -27,6 +27,8 @@ namespace Ifak.Fast.Mediator
         public string FullName { get; set; } = "";
         public string Name { get; set; } = "";
         public List<SimpleMember> Member { get; set; } = new List<SimpleMember>();
+
+        public override string ToString() => Name;
     }
 
     public class ClassInfo
@@ -39,6 +41,8 @@ namespace Ifak.Fast.Mediator
         public string BaseClassName { get; set; } = "";
         public List<SimpleMember> SimpleMember { get; set; } = new List<SimpleMember>();
         public List<ObjectMember> ObjectMember { get; set; } = new List<ObjectMember>();
+
+        public override string ToString() => Name;
     }
 
     public class SimpleMember
@@ -75,6 +79,8 @@ namespace Ifak.Fast.Mediator
         /// Can be specified with the Mediator.Category attribute.
         /// </summary>
         public string Category { get; set; } = "";
+
+        public override string ToString() => Name;
     }
 
     public class ObjectMember
@@ -96,6 +102,8 @@ namespace Ifak.Fast.Mediator
         /// Can be specified with the Mediator.Browseable attribute.
         /// </summary>
         public bool Browseable { get; set; }
+
+        public override string ToString() => Name;
     }
 
     public enum Dimension
@@ -121,5 +129,7 @@ namespace Ifak.Fast.Mediator
 
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
+
+        public override string ToString() => Name;
     }
 }

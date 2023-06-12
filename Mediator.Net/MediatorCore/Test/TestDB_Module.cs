@@ -32,7 +32,7 @@ namespace Ifak.Fast.Mediator.Test
                 variables[i] = new Variable("Variable_" + i.ToString(), DataType.Float64, DataValue.FromDouble(0), History.Complete);
             }
             var res = new ObjectInfo[] {
-                new ObjectInfo(ObjectRef.Make(moduleID, "obj"), "Obj", "Test", null, variables)
+                new ObjectInfo(ObjectRef.Make(moduleID, "obj"), "Obj", "Test", "Test", null, variables)
             };
             return Task.FromResult(res);
         }

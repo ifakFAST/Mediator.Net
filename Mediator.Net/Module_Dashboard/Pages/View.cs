@@ -326,18 +326,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
                 Func<ObjectInfo, bool> hasMembers = (obj) => {
                     var mapClasses = mapMeta[obj.ID.ModuleID];
-                    if (!mapClasses.TryGetValue(obj.ClassName, out ClassInfo? cls)) return false;
+                    if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return false;
                     return cls.SimpleMember.Any(isNumeric);
                 };
 
                 Func<ObjectInfo, string[]> getMembers = (obj) => {
                     var mapClasses = mapMeta[obj.ID.ModuleID];
-                    if (!mapClasses.TryGetValue(obj.ClassName, out ClassInfo? cls)) return new string[0];
+                    if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return new string[0];
                     return cls.SimpleMember.Where(isNumeric).Select(sm => sm.Name).ToArray();
                 };
 
                 return objects.Where(hasMembers).Select(o => new ObjInfo() {
-                    Type = o.ClassName,
+                    Type = o.ClassNameFull,
                     ID = o.ID.ToEncodedString(),
                     Name = o.Name,
                     Members = getMembers(o)
@@ -348,7 +348,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
                 return objects.Where(o => o.Variables.Any(IsNumericOrBoolOrString))
                      .Select(o => new ObjInfo() {
-                         Type = o.ClassName,
+                         Type = o.ClassNameFull,
                          ID = o.ID.ToEncodedString(),
                          Name = o.Name,
                          Variables = o.Variables.Where(IsNumericOrBoolOrString).Select(v => v.Name).ToArray()

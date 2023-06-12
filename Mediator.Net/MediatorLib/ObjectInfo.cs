@@ -14,10 +14,11 @@ namespace Ifak.Fast.Mediator
     {
         public ObjectInfo() { }
 
-        public ObjectInfo(ObjectRef id, string name, string className, MemberRefIdx? parent = null, Variable[]? variables = null, LocationRef? location = null) {
+        public ObjectInfo(ObjectRef id, string name, string classNameFull, string classNameShort, MemberRefIdx? parent = null, Variable[]? variables = null, LocationRef? location = null) {
             ID = id;
             Name = name ?? throw new ArgumentNullException(nameof(name), nameof(name) + " may not be null");
-            ClassName = className ?? throw new ArgumentNullException(nameof(className), nameof(className) + " may not be null");
+            ClassNameFull = classNameFull ?? throw new ArgumentNullException(nameof(classNameFull), nameof(classNameFull) + " may not be null");
+            ClassNameShort = classNameShort ?? throw new ArgumentNullException(nameof(classNameShort), nameof(classNameShort) + " may not be null");
             Variables = variables ?? Array.Empty<Variable>();
             Parent = parent;
             Location = location;
@@ -27,7 +28,9 @@ namespace Ifak.Fast.Mediator
 
         public string Name { get; set; } = "";
 
-        public string ClassName { get; set; } = "";
+        public string ClassNameFull { get; set; } = "";
+
+        public string ClassNameShort { get; set; } = "";
 
         public LocationRef? Location { get; set; } = null;
 
@@ -35,7 +38,7 @@ namespace Ifak.Fast.Mediator
 
         public Variable[] Variables { get; set; } = Array.Empty<Variable>();
 
-        public override string ToString() => Name + " " + ID.ToString() + " (" + ClassName + ")";
+        public override string ToString() => Name + " " + ID.ToString() + " (" + ClassNameFull + ")";
 
         public bool Equals(ObjectInfo? other) {
             if (ReferenceEquals(other, null)) return false;
@@ -43,7 +46,8 @@ namespace Ifak.Fast.Mediator
             return
                 ID == other.ID &&
                 Name == other.Name &&
-                ClassName == other.ClassName &&
+                ClassNameFull == other.ClassNameFull &&
+                ClassNameShort == other.ClassNameShort &&
                 Equals(Parent, other.Parent) &&
                 Equals(Location, other.Location) &&
                 Arrays.Equals(Variables, other.Variables);
@@ -435,8 +439,8 @@ namespace Ifak.Fast.Mediator
         public bool Equals(MemberRef other) => Object == other.Object && Name == other.Name;
 
         public override bool Equals(object obj) {
-            if (obj is MemberRef) {
-                return Equals((MemberRef)obj);
+            if (obj is MemberRef mref) {
+                return Equals(mref);
             }
             return false;
         }

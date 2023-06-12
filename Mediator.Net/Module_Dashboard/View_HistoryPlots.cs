@@ -92,7 +92,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                                     infos.Add(await Connection.GetObjectByID(obj));
                                 }
                                 catch (Exception) {
-                                    infos.Add(new ObjectInfo(obj, "???", "???"));
+                                    infos.Add(new ObjectInfo(obj, "???", "???", "???"));
                                 }
                             }
                         }
@@ -416,7 +416,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         return ReqResult.OK(new {
                             Items = objects.Where(o => o.Variables.Any(IsNumericOrBool)).Select(o => new Obj() {
-                                Type = o.ClassName,
+                                Type = o.ClassNameFull,
                                 ID = o.ID.ToEncodedString(),
                                 Name = o.Name,
                                 Variables = o.Variables.Where(IsNumericOrBool).Select(v => v.Name).ToArray()

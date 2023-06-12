@@ -822,7 +822,7 @@ namespace Ifak.Fast.Mediator
 
         public static ObjectRef FromEncodedString(string encodedObjectRef) {
             int i = encodedObjectRef.IndexOf(':');
-            if (i < 1) throw new ArgumentException("Separator not found", nameof(encodedObjectRef));
+            if (i < 1) throw new ArgumentException("Separator not found in: " + encodedObjectRef, nameof(encodedObjectRef));
             string m = encodedObjectRef.Substring(0, i);
             string o = encodedObjectRef.Substring(i + 1);
             return new ObjectRef(m, o);
@@ -980,13 +980,13 @@ namespace Ifak.Fast.Mediator
         public bool IsOK { get; set; }
         public string? Error { get; set; } // only used when IsOK == false
 
-        public bool Failed() => !IsOK;
+        public readonly bool Failed() => !IsOK;
 
-        public bool Equals(Result other) => IsOK == other.IsOK && Error == other.Error;
+        public readonly bool Equals(Result other) => IsOK == other.IsOK && Error == other.Error;
 
-        public override bool Equals(object obj) {
-            if (obj is Result) {
-                return Equals((Result)obj);
+        public override readonly bool Equals(object obj) {
+            if (obj is Result result) {
+                return Equals(result);
             }
             return false;
         }
@@ -995,9 +995,9 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(Result lhs, Result rhs) => !(lhs.Equals(rhs));
 
-        public override string ToString() => IsOK ? "OK" : "Failed: " + Error;
+        public override readonly string ToString() => IsOK ? "OK" : "Failed: " + Error;
 
-        public override int GetHashCode() => ToString().GetHashCode();
+        public override readonly int GetHashCode() => ToString().GetHashCode();
     }
 
     public struct Result<T> : IEquatable<Result<T>>

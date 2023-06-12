@@ -165,7 +165,7 @@ namespace Ifak.Fast.Mediator.Util
 
         protected void InitFromModelImpl(string moduleID, IModelObject root, Stack<IModelObject> parents, MemberRefIdx? parent, List<ObjectInfo> res, Dictionary<ObjectRef, IModelObject> mapObjests) {
             ObjInfo info = root.GetObjectInfo(moduleID, parents, this);
-            res.Add(new ObjectInfo(info.ID, info.DisplayName, info.ClassName, parent, info.Variables, info.Location));
+            res.Add(new ObjectInfo(info.ID, info.DisplayName, info.ClassNameFull, info.ClassNameShort, parent, info.Variables, info.Location));
             ObjectRef key = info.ID;
             if (mapObjests.ContainsKey(key)) throw new Exception("Object id is not unique: " + key);
             mapObjests[key] = root;

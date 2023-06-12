@@ -24,17 +24,19 @@ namespace Ifak.Fast.Mediator.Util
 
     public struct ObjInfo
     {
-        public ObjInfo(ObjectRef id, string displayName, string className, IEnumerable<ChildObjectsInMember> childObjects, Variable[]? variables, LocationRef? location) {
+        public ObjInfo(ObjectRef id, string displayName, string classNameFull, string classNameShort, IEnumerable<ChildObjectsInMember> childObjects, Variable[]? variables, LocationRef? location) {
             ID = id;
             DisplayName = displayName;
-            ClassName = className;
+            ClassNameFull = classNameFull;
+            ClassNameShort = classNameShort;
             ChildObjects = childObjects;
             Variables = variables;
             Location = location;
         }
         public ObjectRef ID { get; set; }
         public string DisplayName { get; set; }
-        public string ClassName { get; set; }
+        public string ClassNameFull { get; set; }
+        public string ClassNameShort { get; set; }
         public LocationRef? Location { get; set; }
         public IEnumerable<ChildObjectsInMember> ChildObjects { get; }
         public Variable[]? Variables { get; set; }
@@ -62,6 +64,7 @@ namespace Ifak.Fast.Mediator.Util
             ObjectRef.Make(moduleID, GetID(parents)),
             GetDisplayName(parents),
             GetClassName(),
+            GetClassNameSimple(),
             GetChildObjectsInMember(unnestable),
             GetVariablesOrNull(parents),
             GetLocation());
@@ -71,6 +74,8 @@ namespace Ifak.Fast.Mediator.Util
         protected virtual string GetDisplayName(IEnumerable<IModelObject> parents) => GetPropertyByNameOrThrow("Name").GetValue(this, null).ToString();
 
         protected virtual string GetClassName() => GetType().FullName;
+
+        protected virtual string GetClassNameSimple() => GetType().Name;
 
         protected virtual LocationRef? GetLocation() {
             PropertyInfo prop = GetPropertyByNameOrNull("Location");

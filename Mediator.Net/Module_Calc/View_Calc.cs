@@ -137,7 +137,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                         return ReqResult.OK(new {
                             Items = objects.Where(o => o.Variables.Any(isMatch)).Select(o => new {
-                                Type = o.ClassName,
+                                Type = o.ClassNameFull,
                                 ID = o.ID.ToEncodedString(),
                                 Name = o.Name,
                                 Variables = o.Variables.Where(isMatch).Select(v => v.Name).ToArray()
@@ -168,7 +168,7 @@ namespace Ifak.Fast.Mediator.Calc
                         infos.Add(await Connection.GetObjectByID(obj));
                     }
                     catch (Exception) {
-                        infos.Add(new ObjectInfo(obj, "???", "???"));
+                        infos.Add(new ObjectInfo(obj, "???", "???", "???"));
                     }
                 }
             }

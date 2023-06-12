@@ -53,7 +53,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                         infos.Add(await connection.GetObjectByID(obj));
                     }
                     catch (Exception) {
-                        infos.Add(new ObjectInfo(obj, "???", "???"));
+                        infos.Add(new ObjectInfo(obj, "???", "???", "???"));
                     }
                 }
             }

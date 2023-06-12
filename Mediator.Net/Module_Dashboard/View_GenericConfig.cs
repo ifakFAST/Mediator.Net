@@ -385,7 +385,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             int maxN = 0;
 
             foreach (ObjectInfo obj in objects) {
-                if (obj.ClassName == type) {
+                if (obj.ClassNameFull == type) {
                     string localID = obj.ID.LocalObjectID;
                     if (localID.StartsWith(prefix)) {
                         string num = localID.Substring(prefixLen);
@@ -565,7 +565,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 first: idx == 0,
                 last: idx + 1 == count,
                 name: obj.Name,
-                type: obj.ClassName,
+                type: obj.ClassNameFull,
                 children: children,
                 variables: listVariables
             );

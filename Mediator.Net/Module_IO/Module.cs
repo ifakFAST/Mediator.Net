@@ -1042,7 +1042,7 @@ namespace Ifak.Fast.Mediator.IO
             try {
 
                 ObjectInfo info = mapObjectInfos[member.Object];
-                string type = info.ClassName;
+                string type = info.ClassNameFull;
 
                 string dataItemID = member.Object.LocalObjectID;
                 if (type == typeof(Config.DataItem).FullName && member.Name == "Address") {
