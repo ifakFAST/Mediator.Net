@@ -21,11 +21,11 @@
                     <td class="text-right" style="font-size:14px; height:36px; padding-right:0px;">
                       <span v-bind:style="{ color: colorForItem(it) }"> {{ valueForItem(it, '') }} </span>
                     </td>
-                    <td v-if="hasUnitColumn" class="text-left" style="font-size:14px; height:36px; padding-left:8px;">
+                    <td v-if="hasUnitColumn" class="text-left" style="font-size:14px; height:36px; padding-left:8px; padding-right:0px;">
                       {{ it.Unit }}
                     </td>
-                    <td style="font-size:14px; height:36px;">
-                      <v-btn small text class="mx-0" :disabled="!writeEnabled(it)" @click="onWriteItem(it)">Write</v-btn>
+                    <td style="font-size:14px; height:36px;" class="pl-5 pr-4">
+                      <v-icon style="font-size: 21px;" :disabled="!writeEnabled(it)" @click="onWriteItem(it)">edit</v-icon>                      
                     </td>
                   </tr>
                 </tbody>
