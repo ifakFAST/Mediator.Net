@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using MQTTnet;
 using MQTTnet.Client;
@@ -189,8 +190,10 @@ public class MQTT : AdapterBase {
         }
 
         if (mapTopicsToReadableDataItemIDs.TryGetValue(msg.Topic, out List<string>? ids)) {
+            
             byte[] payloadBytes = msg.Payload;
-            DataValue value = DataValue.Empty;
+            var vtq = VTQ.Make(DataValue.Empty, Now, Quality.Good);
+
             if (payloadBytes != null && payloadBytes.Length > 0) {
                 string payload;
                 try {
@@ -202,14 +205,25 @@ public class MQTT : AdapterBase {
                     return;
                 }
                 try {
-                    StdJson.JTokenFromString(payload); // test if valid JSON
-                    value = DataValue.FromJSON(payload);
+                    JToken token = StdJson.JTokenFromString(payload); // test if valid JSON
+                    if (token is JObject obj) {
+                        VTQ? vtqFromObj = TryParseVTQ(obj);
+                        if (vtqFromObj.HasValue) {
+                            vtq = vtqFromObj.Value;
+                        }
+                        else {
+                            vtq.V = DataValue.FromJSON(payload);
+                        }
+                    }
+                    else {
+                        vtq.V = DataValue.FromJSON(payload);
+                    }
                 }
                 catch (Exception) {
-                    value = DataValue.FromString(payload);
+                    vtq.V = DataValue.FromString(payload);
                 }
             }
-            var vtq = VTQ.Make(value, Now, Quality.Good);
+            
             var dataItems = new DataItemValue[ids.Count];
             for (int i = 0; i < ids.Count; i++) {
                 string id = ids[i];
@@ -217,6 +231,58 @@ public class MQTT : AdapterBase {
             }
             callback?.Notify_DataItemsChanged(dataItems);
         }
+    }
+
+    public static VTQ? TryParseVTQ(JObject obj) {
+        try {
+
+            JToken? va = obj["value"];
+            JToken? ts = obj["timestamp"];
+            
+            if (va is null || ts is not JValue jvalue_ts) {
+                return null;
+            }
+
+            DataValue value = TryParseValue(va);
+            Timestamp timestamp = TryParseTimestamp(jvalue_ts);
+
+            DateTime Now = DateTime.UtcNow;
+            Timestamp tsMin = Timestamp.FromDateTime(Now.AddYears(-15));
+            Timestamp tsMax = Timestamp.FromDateTime(Now.AddYears(15));
+
+            if (timestamp < tsMin || timestamp > tsMax) {
+                return null;
+            }
+
+            return VTQ.Make(value, timestamp, Quality.Good);
+        }
+        catch (Exception) {
+            return null;
+        }
+    }
+
+    private static DataValue TryParseValue(JToken va) {
+        try {
+            double value = (double)va;
+            return DataValue.FromDouble(value);
+        }
+        catch (Exception) {
+            return DataValue.FromObject(va);
+        }
+    }
+
+    private static Timestamp TryParseTimestamp(JValue ts) {
+        object? vv = ts.Value;
+        if (vv is long timestamp) {
+            if (timestamp < uint.MaxValue) { // heuristic to test for seconds vs. milliseconds
+                timestamp *= 1000;
+            }
+            return Timestamp.FromJavaTicks(timestamp);
+        }
+        else if (vv is string str) {
+            return Timestamp.FromISO8601(str);
+        }
+        throw new Exception("Invalid timestamp");
     }
 
     public override Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
