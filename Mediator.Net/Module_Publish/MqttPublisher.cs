@@ -22,7 +22,7 @@ namespace Ifak.Fast.Mediator.Publish
                 Retain = true,
                 Topic = $"{topicBase}/info",
                 PayloadFormatIndicator = MqttPayloadFormatIndicator.CharacterData,
-                Payload = listData[0].ToArray(),
+                PayloadSegment = listData[0].ToArray(),
             };
 
             var res = new List<MqttApplicationMessage>(listData.Count);
@@ -35,7 +35,7 @@ namespace Ifak.Fast.Mediator.Publish
                     Retain = true,
                     Topic = $"{topicBase}/data{i - 1}",
                     PayloadFormatIndicator = MqttPayloadFormatIndicator.Unspecified,
-                    Payload = listData[i].ToArray(),
+                    PayloadSegment = listData[i].ToArray(),
                 };
                 res.Add(msgBucket);
             }

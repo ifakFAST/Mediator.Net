@@ -108,16 +108,16 @@ namespace Ifak.Fast.Mediator.Publish
             await arg.AcknowledgeAsync(CancellationToken.None);
 
             if (msg.Topic.EndsWith("/info")) {
-                reader.SetInfo(msg.Payload);
-                string payload = Encoding.UTF8.GetString(msg.Payload);
+                reader.SetInfo(msg.PayloadSegment);
+                string payload = Encoding.UTF8.GetString(msg.PayloadSegment);
                 Console.WriteLine($"Got Info msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; QOS: {msg.QualityOfServiceLevel}; Payload: {payload}");
             }
             else {
 
                 int bucket = GetBucketNumberFromTopicName(msg.Topic);
-                reader.SetBucket(bucket, msg.Payload);
+                reader.SetBucket(bucket, msg.PayloadSegment.ToArray());
 
-                Console.WriteLine($"Got Data msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; Bucket: {bucket}; QOS: {msg.QualityOfServiceLevel}; Payload.Len: {msg.Payload.Length}");
+                Console.WriteLine($"Got Data msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; Bucket: {bucket}; QOS: {msg.QualityOfServiceLevel}; Payload.Len: {msg.PayloadSegment.Count}");
             }
 
             string? content = reader.Content();
@@ -144,7 +144,7 @@ namespace Ifak.Fast.Mediator.Publish
                         Retain = true,
                         Topic = $"{topicBase}/error",
                         PayloadFormatIndicator = MqttPayloadFormatIndicator.CharacterData,
-                        Payload = payload,
+                        PayloadSegment = payload,
                     };
 
                     await clientMQTT.PublishAsync(msgInfo);

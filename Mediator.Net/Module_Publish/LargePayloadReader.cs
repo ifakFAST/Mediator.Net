@@ -24,7 +24,7 @@ namespace Ifak.Fast.Mediator.Publish
             }
         }
 
-        public void SetInfo(byte[] content) {
+        public void SetInfo(ArraySegment<byte> content) {
 
             string info = Encoding.UTF8.GetString(content);
 

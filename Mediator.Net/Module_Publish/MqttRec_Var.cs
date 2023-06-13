@@ -102,8 +102,8 @@ namespace Ifak.Fast.Mediator.Publish
 
             Console.WriteLine($"On got write req for {objID}");
 
-            byte[] payloadBytes = msg.Payload;
-            if (payloadBytes != null && payloadBytes.Length > 0) {
+            ArraySegment<byte> payloadBytes = msg.PayloadSegment;
+            if (payloadBytes.Array != null && payloadBytes.Count > 0) {
 
                 string payload = Encoding.UTF8.GetString(payloadBytes);
                 DataValue value = DataValue.FromJSON(payload);
