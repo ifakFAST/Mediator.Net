@@ -74,6 +74,7 @@ public class MQTT : AdapterBase {
             ClientIDPrefix = c.GetOptionalString("ClientIDPrefix", ""),
             CertFileCA = c.GetOptionalString("CertFileCA", ""),
             CertFileClient = c.GetOptionalString("CertFileClient", ""),
+            KeyFileClient = c.GetOptionalString("KeyFileClient", ""),
             User = config.Login.HasValue ? config.Login.Value.UserName : "",
             Pass = config.Login.HasValue ? config.Login.Value.Password : "",
             IgnoreCertificateRevocationErrors = c.GetOptionalBool("IgnoreCertificateRevocationErrors", false),

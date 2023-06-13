@@ -41,10 +41,36 @@ public static class MQTT_Util {
             builder = builder.WithCredentials(config.User, config.Pass);
         }
 
-        if (config.CertFileCA != "") {
+        if (config.CertFileCA != "" || config.CertFileClient != "") {
 
-            var caCert = X509Certificate.CreateFromCertFile(Path.Combine(certDir, config.CertFileCA));
-            var clientCert = new X509Certificate2(Path.Combine(certDir, config.CertFileClient), "");
+            string certFileCA = Path.Combine(certDir, config.CertFileCA);
+            string certFile = Path.Combine(certDir, config.CertFileClient);
+            string keyFile = Path.Combine(certDir, config.KeyFileClient);
+            bool hasKeyFile = !string.IsNullOrEmpty(config.KeyFileClient);
+
+            if (!File.Exists(certFileCA)) {
+                throw new Exception($"CA certificate file not found: {certFileCA}");
+            }
+
+            if (!File.Exists(certFile)) {
+                throw new Exception($"Client certificate file not found: {certFile}");
+            }
+
+            if (hasKeyFile && !File.Exists(keyFile)) {
+                throw new Exception($"Client certificate key file not found: {keyFile}");
+            }
+
+            bool isPfx = certFile.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase);
+
+            if (isPfx && hasKeyFile) {
+                throw new Exception($"No key file required if client certificate is in .pfx file format");
+            }
+
+            X509Certificate caCert = X509Certificate.CreateFromCertFile(certFileCA);
+
+            X509Certificate2 clientCert = isPfx ?
+                new X509Certificate2(certFile, "") :
+                new X509Certificate2(X509Certificate2.CreateFromPemFile(certFile, keyFile).Export(X509ContentType.Pkcs12));
 
             builder = builder
             .WithTls(new MqttClientOptionsBuilderTlsParameters() {
@@ -144,6 +170,7 @@ public sealed class MqttConfig {
     public string ClientIDPrefix { get; set; } = "";
     public string CertFileCA { get; set; } = "";
     public string CertFileClient { get; set; } = "";
+    public string KeyFileClient { get; set; } = "";
     public string User { get; set; } = "";
     public string Pass { get; set; } = "";
     public bool IgnoreCertificateRevocationErrors { get; set; } = false;
