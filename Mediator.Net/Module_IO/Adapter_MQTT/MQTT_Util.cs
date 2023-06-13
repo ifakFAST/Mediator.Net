@@ -14,15 +14,28 @@ public static class MQTT_Util {
 
     private static readonly string TheGuid = Guid.NewGuid().ToString().Replace("-", "");
 
+    private static (string host, int? port) ParseEndpoint(string endpoint) {
+
+        string strUri = endpoint.Contains("://") ? endpoint : "mqtt://" + endpoint;
+
+        Uri uri = new(strUri);
+        string host = uri.Host;
+        int? port = uri.Port < 0 ? null : uri.Port;
+
+        return (host, port);
+    }
+
     public static MqttClientOptions MakeMqttOptions(string certDir, MqttConfig config) {
 
         string prefix = config.ClientIDPrefix;
         string clientID = string.IsNullOrEmpty(prefix) ? TheGuid : $"{prefix}_{TheGuid}";
 
+        var (host, port) = ParseEndpoint(config.Endpoint);
+
         var builder = new MqttClientOptionsBuilder()
             .WithClientId(clientID)
             .WithTimeout(TimeSpan.FromSeconds(5))
-            .WithTcpServer(config.Endpoint);
+            .WithTcpServer(host, port);
 
         if (!string.IsNullOrEmpty(config.User)) {
             builder = builder.WithCredentials(config.User, config.Pass);
