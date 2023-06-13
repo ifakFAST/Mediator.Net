@@ -190,17 +190,17 @@ public class MQTT : AdapterBase {
         }
 
         if (mapTopicsToReadableDataItemIDs.TryGetValue(msg.Topic, out List<string>? ids)) {
-            
-            byte[] payloadBytes = msg.Payload;
+
+            ArraySegment<byte> payloadBytes = msg.PayloadSegment;
             var vtq = VTQ.Make(DataValue.Empty, Now, Quality.Good);
 
-            if (payloadBytes != null && payloadBytes.Length > 0) {
+            if (payloadBytes.Array != null && payloadBytes.Count > 0) {
                 string payload;
                 try {
                     payload = Encoding.UTF8.GetString(payloadBytes);
                 }
                 catch (Exception) {
-                    string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Length} bytes.";
+                    string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Count} bytes.";
                     LogWarn("Value", err);
                     return;
                 }
