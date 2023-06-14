@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -96,6 +97,17 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             await base.OnConfigModelChanged(init: false); // required for UnnestConfig to work (viewTypes need to be loaded)
 
+            string faviconFile = config.GetOptionalString("favicon", "");
+            byte[] favicon = Array.Empty<byte>();
+            if (faviconFile != "") {
+                string faviconPath = Path.GetFullPath(faviconFile);
+                if (!File.Exists(faviconPath)) {
+                    Console.Error.WriteLine($"favicon not found: {faviconPath}");   
+                }
+                else {
+                    favicon = File.ReadAllBytes(faviconPath);
+                }
+            }
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions {
                 ContentRootPath = Directory.GetCurrentDirectory(),
@@ -103,7 +115,12 @@ namespace Ifak.Fast.Mediator.Dashboard
             });
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Services.AddCors();
-
+            builder.Services.Configure<HtmlModificationOptions>(opt => { 
+                opt.PageTitle  = config.GetOptionalString("page-title", "Dashboard");
+                opt.LoginTitle = config.GetOptionalString("login-title", "Dashboard Login");
+                opt.Header     = config.GetOptionalString("header", "Dashboard");
+                opt.FavIcon    = favicon;
+            });
             WebApplication app = builder.Build();
             app.Urls.Add($"http://{host}:{port}");
 
@@ -132,6 +149,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             options.DefaultFileNames.Add("App/index.html");
             app.UseDefaultFiles(options);
 
+            app.UseMiddleware<ModifyHtmlMiddleware>();
             app.UseStaticFiles();
 
             app.UseCors(builder => {
@@ -608,4 +626,64 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
         }
     }
+
+    public class HtmlModificationOptions {
+        public string PageTitle { get; set; } = "";
+        public string LoginTitle { get; set; } = "";
+        public string Header { get; set; } = "";
+        public byte[] FavIcon { get; set; } = Array.Empty<byte>();
+    }
+
+    public class ModifyHtmlMiddleware {
+
+        private readonly RequestDelegate _next;
+        private readonly HtmlModificationOptions _options;
+
+        public ModifyHtmlMiddleware(RequestDelegate next, IOptions<HtmlModificationOptions> options) {
+            _next = next;
+            _options = options.Value;
+        }
+
+        public async Task InvokeAsync(HttpContext context) {
+
+            if (context.Request.Method != "GET") {
+                await _next(context);
+                return;
+            }
+
+            var originalBodyStream = context.Response.Body;
+
+            using var responseBody = new MemoryStream();
+            context.Response.Body = responseBody;
+
+            await _next(context);
+
+            context.Response.Body = originalBodyStream;
+            responseBody.Seek(0, SeekOrigin.Begin);
+
+            string? path = context.Request.Path.Value;
+
+            if (path == "/App/index.html" && context.Response.StatusCode == 200) {
+                string content = await new StreamReader(responseBody).ReadToEndAsync();
+                content = ModifyHtmlContent(content);
+                context.Response.ContentLength = Encoding.UTF8.GetByteCount(content);
+                await context.Response.WriteAsync(content);
+            }
+            else if (_options.FavIcon.Length > 0 && path == "/App/favicon.ico" && context.Response.StatusCode == 200) {
+                context.Response.ContentLength = _options.FavIcon.Length;
+                await originalBodyStream.WriteAsync(_options.FavIcon);
+            }
+            else {
+                await responseBody.CopyToAsync(originalBodyStream);
+            }
+        }
+
+        private string ModifyHtmlContent(string originalHtml) {
+            return originalHtml
+                    .Replace("!PLACEHOLDER_TITLE!",  _options.PageTitle)
+                    .Replace("!PLACEHOLDER_HEADER!", _options.Header)
+                    .Replace("!PLACEHOLDER_LOGIN!",  _options.LoginTitle);
+        }
+    }
+
 }

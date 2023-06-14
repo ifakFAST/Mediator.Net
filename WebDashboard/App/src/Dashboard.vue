@@ -212,6 +212,9 @@
         }
       }
     },
+    mounted() {
+      this.title = TheDashboardHeader || 'Dashboard';
+    },
     methods: {
       logout() {
         this.$emit('logout');

@@ -36,6 +36,10 @@
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
+                <NamedValue name="page-title" value="Dashboard"/>
+                <NamedValue name="login-title" value="Dashboard Login"/>
+                <NamedValue name="header" value="Dashboard"/>
+                <NamedValue name="favicon" value=""/>
             </Config>
         </Module>
 

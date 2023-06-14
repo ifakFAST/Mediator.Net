@@ -8,7 +8,7 @@
 
               <v-card raised class="mt-4" elevation="5">
                 <v-card-title class="headline">
-                  Dashboard Login
+                 {{ title }}
                 </v-card-title>
                 <v-card-text>
                   <v-text-field label="User Name" v-model="loginUser" autofocus></v-text-field>
@@ -37,6 +37,7 @@ import globalState from "./Global.js";
 export default {
   data() {
     return {
+      title: "Dashboard Login",
       alertText: '',
       hasAlert: false,
       loginUser: '',
@@ -45,6 +46,7 @@ export default {
     };
   },
   mounted() {
+    this.title = TheDashboardLogin || "Dashboard Login";
     if (globalState.loggedOut === false && window.location.search.startsWith("?view=")) {
       this.loginUser = "ifak";
       this.loginPass = "fast";
