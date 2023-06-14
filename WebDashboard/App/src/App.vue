@@ -75,7 +75,9 @@ export default {
     openWebSocket(user, pass) {
       if (window.WebSocket) {
         const context = this;
-        const socket = new WebSocket("ws://" + window.location.host + "/websocket/");
+        const isHTTPS = window.location.protocol === "https:";
+        const websocketProtocol = isHTTPS ? "wss://" : "ws://";
+        const socket = new WebSocket(websocketProtocol + window.location.host + "/websocket/");
         context.eventSocket = socket;
 
         socket.onopen = function(openEvent) {
