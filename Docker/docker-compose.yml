@@ -1,0 +1,29 @@
+# This sample assumes that there is another container running Traefik as a reverse HTTP proxy.
+
+services:
+
+  my_fast:
+    container_name: my_fast
+    hostname: my-fast
+    build: ./fast
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      - ./fast/Config:/app/Config
+      - ./fast/Data:/app/Data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.my_fast.rule=Host(`my.domain.com`)"
+      - "traefik.http.routers.my_fast.entrypoints=websecure,web"
+      - "traefik.http.routers.my_fast.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "tls.options.default.minVersion=VersionTLS12"
+      
+networks:
+  proxy:
+    external: true
