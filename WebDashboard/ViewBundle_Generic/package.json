@@ -7,6 +7,7 @@
     "build": "vue-cli-service build"
   },
   "dependencies": {
+    "marked": "^5.1.0",
     "material-design-icons-iconfont": "6.7.0",
     "typeface-roboto": "1.1.13",
     "vue": "2.7.14",

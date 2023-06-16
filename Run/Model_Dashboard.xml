@@ -278,7 +278,8 @@
                         "WarnBelow": null,
                         "WarnAbove": 0.0,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "NH",
@@ -291,7 +292,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": 0.0,
-                        "AlarmAbove": 100.4
+                        "AlarmAbove": 100.4,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "TSS",
@@ -304,7 +306,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "SP",
@@ -317,9 +320,11 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": 1.0,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       }
-                    ]
+                    ],
+                    "ShowTrendColumn": true
                   }
                 }
               ]
@@ -333,7 +338,8 @@
                   "Width": "100%",
                   "Height": "",
                   "Config": {
-                    "Items": []
+                    "Items": [],
+                    "ShowTrendColumn": true
                   }
                 }
               ]
@@ -397,48 +403,13 @@
               "Width": "Fill",
               "Widgets": [
                 {
-                  "ID": "W_0697",
-                  "Type": "VarTable",
+                  "ID": "W_b5ae",
+                  "Type": "TextDisplay",
                   "Width": "100%",
                   "Height": "",
                   "Config": {
-                    "Items": []
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "Columns": [
-            {
-              "Width": "Fill",
-              "Widgets": [
-                {
-                  "ID": "W_07c7",
-                  "Type": "HistoryPlot",
-                  "Width": "100%",
-                  "Height": "300px",
-                  "Config": {
-                    "PlotConfig": {
-                      "MaxDataPoints": 12000,
-                      "FilterByQuality": "ExcludeBad",
-                      "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
-                      "RightAxisName": "",
-                      "RightAxisStartFromZero": true
-                    },
-                    "Items": [],
-                    "DataExport": {
-                      "CSV": {
-                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
-                        "ColumnSeparator": ","
-                      },
-                      "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
-                      }
-                    }
+                    "Text": "# Main Heading\n## Second level heading\n### Third level heading\n\nYou can **bold text** by using double asterisks or double underscores.\n\nYou can *italicize text* using single asterisks or single underscores.\n\nYou can use ~~strikethrough~~ by using two tildes.\n\nYou can create a horizontal line with three hyphens, asterisks, or underscores:\n\n---\n\nUnordered list:\n\n- Unordered list item\n- A second unordered list item\n- The last item \n\nNumbered list:\n\n1. Numbered list item 1\n2. Numbered list item 2\n3. Numbered list item 3\n\n## Further notes\n\nYou can create a [link](https://example.com) like this.\nYou can also create tables:\n\n| Column 1 | Column 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |\n| Cell 3   | Cell 4   |\n",
+                    "Mode": "Markdown"
                   }
                 }
               ]

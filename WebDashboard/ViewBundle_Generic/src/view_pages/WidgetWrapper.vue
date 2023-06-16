@@ -29,6 +29,11 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></page-actions-log-View>
 
+    <text-display v-if="type === 'TextDisplay'" 
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></text-display>
+
   </v-card>
 
 </template>
@@ -42,6 +47,7 @@ import ReadButton from './widgets/ReadButton.vue'
 import VarTable from './widgets/VarTable.vue'
 import ConfigEditNumeric from './widgets/config_edit/ConfigEditNumeric.vue'
 import PageActionsLogView from './widgets/PageActionsLogView.vue'
+import TextDisplay from './widgets/TextDisplay.vue'
 import { TimeRange } from '../utils'
 
 @Component({
@@ -51,6 +57,7 @@ import { TimeRange } from '../utils'
     VarTable,
     ConfigEditNumeric,
     PageActionsLogView,
+    TextDisplay,
   },
 })
 export default class WidgetWrapper extends Vue {
