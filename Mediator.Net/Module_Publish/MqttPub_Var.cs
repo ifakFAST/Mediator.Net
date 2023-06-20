@@ -160,9 +160,9 @@ namespace Ifak.Fast.Mediator.Publish
 
         public class RegCache
         {
-            private readonly HashSet<VariableRef> registeredVars = new HashSet<VariableRef>();
-            private MqttVarPub varPub;
-            private string topic;
+            private readonly HashSet<VariableRef> registeredVars = new();
+            private readonly MqttVarPub varPub;
+            private readonly string topic;
 
             public RegCache(MqttVarPub varPub, string topic) {
                 this.varPub = varPub;
@@ -203,7 +203,7 @@ namespace Ifak.Fast.Mediator.Publish
 
                         await clientMQTT.PublishAsync(applicationMessage);
 
-                        foreach (var vv in chunck) {
+                        foreach (ObjItem vv in chunck) {
                             registeredVars.Add(vv.Var);
                         }
 
@@ -231,7 +231,7 @@ namespace Ifak.Fast.Mediator.Publish
             }
         }
 
-        public struct ChunkOfValues {
+        public readonly struct ChunkOfValues {
 
             public readonly Timestamp Time;
             public readonly VariableValues Values;
@@ -251,7 +251,7 @@ namespace Ifak.Fast.Mediator.Publish
                 TransitionToOnline,
             }
 
-            private readonly AsyncQueue<ChunkOfValues> queue = new AsyncQueue<ChunkOfValues>();
+            private readonly AsyncQueue<ChunkOfValues> queue = new();
             private State state;
 
             private IMqttClient? clientMQTT = null;
@@ -354,7 +354,7 @@ namespace Ifak.Fast.Mediator.Publish
 
             private async Task Send(ChunkOfValues chunk) {
 
-                bool sendOK = await Send(clientMQTT, chunk.Values);
+                bool sendOK = await DoSend(chunk.Values);
 
                 // Print($"Send completed ok={sendOK}");
 
@@ -368,7 +368,7 @@ namespace Ifak.Fast.Mediator.Publish
 
             private readonly Dictionary<VariableRef, VTQ>  lastSentValues = new Dictionary<VariableRef, VTQ>();
 
-            private async Task<bool> Send(IMqttClient? clientMQTT, VariableValues values) {
+            private async Task<bool> DoSend(VariableValues values) {
 
                 clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
                 if (clientMQTT == null) { return false; }
@@ -498,7 +498,7 @@ namespace Ifak.Fast.Mediator.Publish
 
                     while (running) {
 
-                        bool sendOK = await Send(clientMQTT, chunck.Values);
+                        bool sendOK = await DoSend(chunck.Values);
                         if (sendOK) {
                             SetState_TransitionToOnline();
                             chunck.Delete();
@@ -609,7 +609,7 @@ namespace Ifak.Fast.Mediator.Publish
                 catch { return defaultValue; }
             }
 
-            public class DataChunk {
+            public sealed class DataChunk {
 
                 public readonly VariableValues Values;
                 private readonly string FileName;
