@@ -17,22 +17,23 @@ namespace Ifak.Fast.Mediator.Publish
         public static async Task MakeVarPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
             
             var varPub = config.VarPublish!;
-            var objRoot = ObjectRef.Make(varPub.ModuleID, varPub.RootObject);
+            List<ObjectRef> rootObjects = varPub.RootObjects;
+            if (rootObjects.Count == 0 && varPub.RootObject != "" && varPub.ModuleID != "") {
+                rootObjects.Add(ObjectRef.Make(varPub.ModuleID, varPub.RootObject));
+            }
 
             Timestamp t = Time.GetNextNormalizedTimestamp(varPub.PublishInterval, varPub.PublishOffset);
-            await Time.WaitUntil(t, abort: shutdown);            
+            await Time.WaitUntil(t, abort: shutdown);
 
             Connection clientFAST = await EnsureConnectOrThrow(info, null);
 
             var publisher = new BufferedPubMQTT(info.DataFolder, certDir, config);
 
-            var lastValues = new Dictionary<VariableRef, VTQ>();
-
             while (!shutdown()) {
 
                 clientFAST = await EnsureConnectOrThrow(info, clientFAST);
 
-                VariableValues values = RemoveEmptyT(Filter(await clientFAST.ReadAllVariablesOfObjectTree(objRoot), varPub));
+                VariableValues values = RemoveEmptyT(Filter(await ReadAllVariablesOfObjectTrees(clientFAST, rootObjects), varPub));
 
                 if (values.Count > 0) {
                     publisher.Post(new ChunkOfValues(t, values));
@@ -44,6 +45,15 @@ namespace Ifak.Fast.Mediator.Publish
 
             await clientFAST.Close();
             publisher.Close();
+        }
+
+        private static async Task<VariableValues> ReadAllVariablesOfObjectTrees(Connection clientFAST, List<ObjectRef> objects) {
+            var result = new VariableValues();
+            foreach (var obj in objects) {
+                var vals = await clientFAST.ReadAllVariablesOfObjectTree(obj);
+                result.AddRange(vals);
+            }
+            return result;
         }
 
         private static T[] GetChunckByLimit<T>(List<T> list, int limit) {
@@ -170,7 +180,7 @@ namespace Ifak.Fast.Mediator.Publish
 
                 while (transformedValues.Count > 0) {
 
-                    ObjItem[] chunck = GetChunckByLimit(transformedValues, config.MaxPayloadSize - 100);                    
+                    ObjItem[] chunck = GetChunckByLimit(transformedValues, config.MaxPayloadSize - 100);
 
                     string msg;
                     if (varPub.PubFormatReg == PubVarFormat.Object) {
@@ -306,7 +316,7 @@ namespace Ifak.Fast.Mediator.Publish
 
                 while (running) {
 
-                    ChunkOfValues chunk = await queue.ReceiveAsync();                   
+                    ChunkOfValues chunk = await queue.ReceiveAsync();
 
                     if (varPub.BufferIfOffline || queue.Count == 0) {
                         await Process(chunk);
@@ -331,14 +341,14 @@ namespace Ifak.Fast.Mediator.Publish
                             await Task.Delay(100);
                         }
                         await Process(chunk);
-                        break;                   
+                        break;
 
                     case State.TransitionToOnline:
                         while (state == State.TransitionToOnline) {
                             await Task.Delay(500);
                         }
                         await Process(chunk);
-                        break;                           
+                        break;
                 }
             }
 
@@ -358,7 +368,7 @@ namespace Ifak.Fast.Mediator.Publish
 
             private readonly Dictionary<VariableRef, VTQ>  lastSentValues = new Dictionary<VariableRef, VTQ>();
 
-            private async Task<bool> Send(IMqttClient? clientMQTT, VariableValues values) {                
+            private async Task<bool> Send(IMqttClient? clientMQTT, VariableValues values) {
 
                 clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
                 if (clientMQTT == null) { return false; }
@@ -419,9 +429,16 @@ namespace Ifak.Fast.Mediator.Publish
             private const string FilePrefix = "MQTT_";
             private const string FileSuffix = ".dat";
 
+            private string TheBufferDir {
+                get {
+                    string mqttID = config.ID;
+                    return Path.Combine(dataFolder, BuffDir, mqttID);
+                }
+            }
+
             private async Task Buffer(ChunkOfValues chunk) {
 
-                string folder = Path.Combine(dataFolder, BuffDir);
+                string folder = TheBufferDir;
 
                 try {
                     Directory.CreateDirectory(folder);
@@ -563,17 +580,17 @@ namespace Ifak.Fast.Mediator.Publish
 
                 try {
 
-                    string path = Path.Combine(dataFolder, BuffDir);
+                    string path = TheBufferDir;
 
                     if (!Directory.Exists(path)) {
-                        return new string[0];
+                        return Array.Empty<string>();
                     }
 
                     return Directory.EnumerateFiles(path, $"{FilePrefix}*{FileSuffix}");
                 }
                 catch (Exception ex) {
                     Console.Error.WriteLine($"EnumBufferedFiles: {ex.Message}");
-                    return new string[0];
+                    return Array.Empty<string>();
                 }
             }
 

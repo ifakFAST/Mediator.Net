@@ -185,8 +185,14 @@ namespace Ifak.Fast.Mediator.Publish
 
         public bool PrintPayload { get; set; } = true;
 
-        public string ModuleID { get; set; } = "IO";
-        public string RootObject { get; set; } = "Root";
+        public string ModuleID { get; set; } = "";   // Deprecated, use RootObjects instead
+        public string RootObject { get; set; } = ""; // Deprecated, use RootObjects instead
+
+        public bool ShouldSerializeModuleID() => ModuleID != "";
+        public bool ShouldSerializeRootObject() => RootObject != "";
+
+        [XmlArrayItem("RootObject")]
+        public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
 
         public PubVarFormat PubFormat { get; set; } = PubVarFormat.Array;
         public PubVarFormat PubFormatReg { get; set; } = PubVarFormat.Array;
