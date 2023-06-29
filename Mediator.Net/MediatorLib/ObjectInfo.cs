@@ -74,10 +74,10 @@ namespace Ifak.Fast.Mediator
         }
 
         public Variable(string name, DataType type, DataValue defaultValue, History history, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :
-            this(name, type, defaultValue, "", dimension, new string[0], remember, history, writable, syncReadable) {
+            this(name, type, defaultValue, "", "", dimension, new string[0], remember, history, writable, syncReadable) {
         }
 
-        public Variable(string name, DataType type, DataValue defaultValue, string typeConstraints, int dimension, string[] dimensionNames, bool remember, History history, bool writable = false, bool syncReadable = false) {
+        public Variable(string name, DataType type, DataValue defaultValue, string unit, string typeConstraints, int dimension, string[] dimensionNames, bool remember, History history, bool writable = false, bool syncReadable = false) {
             if (name == null) throw new ArgumentNullException(nameof(name), nameof(name) + " may not be null");
             if (dimension < 0) throw new ArgumentException(nameof(dimension) + " may not be negative", nameof(dimension));
 
@@ -89,6 +89,7 @@ namespace Ifak.Fast.Mediator
             Type = type;
             DefaultValue = defaultValue;
             TypeConstraints = typeConstraints ?? "";
+            Unit = unit;
             Dimension = dimension;
             DimensionNames = dimensionNames ?? new string[0];
             Remember = remember;
@@ -107,6 +108,8 @@ namespace Ifak.Fast.Mediator
         /// If True, then it is possible to use Connection.ReadVariablesSync to get a 'fresh' value for this variable.
         /// </summary>
         public bool SyncReadable { get; set; } = false;
+
+        public string Unit { get; set; } = "";
 
         public DataValue DefaultValue { get; set; }
 

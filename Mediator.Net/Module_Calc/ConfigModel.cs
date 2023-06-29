@@ -140,6 +140,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                     name: "Value",
                     type: Type,
                     defaultValue: GetDefaultValue(),
+                    unit: Unit,
                     typeConstraints: "",
                     dimension: Dimension,
                     dimensionNames: new string[0],
@@ -327,6 +328,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 Type = Type,
                 Dimension = Dimension,
                 DefaultValue = GetDefaultValue(),
+                Unit = Unit,
                 Remember = true,
                 History = history
             };
@@ -398,6 +400,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 Type = Type,
                 Dimension = Dimension,
                 DefaultValue = GetDefaultValue(),
+                Unit = Unit,
                 Remember = true,
                 History = history
             };
@@ -466,6 +469,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 Type = Type,
                 Dimension = Dimension,
                 DefaultValue = GetDefaultValue(),
+                Unit = Unit,
                 Remember = true,
                 History = history
             };

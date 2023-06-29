@@ -96,15 +96,15 @@ namespace Ifak.Fast.Mediator
             this.locationID = locationID;
         }
 
-        public string LocationID => locationID ?? "";
+        public readonly string LocationID => locationID ?? "";
 
-        public bool Equals(LocationRef other) => LocationID == other.LocationID;
+        public readonly bool Equals(LocationRef other) => LocationID == other.LocationID;
 
-        public override int GetHashCode() => LocationID.GetHashCode();
+        public override readonly int GetHashCode() => LocationID.GetHashCode();
 
-        public override bool Equals(object obj) {
-            if (obj is LocationRef) {
-                return Equals((LocationRef)obj);
+        public override readonly bool Equals(object obj) {
+            if (obj is LocationRef locRef) {
+                return Equals(locRef);
             }
             return false;
         }
@@ -113,14 +113,14 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(LocationRef a, LocationRef b) => !a.Equals(b);
 
-        public override string ToString() => LocationID;
+        public override readonly string ToString() => LocationID;
 
         public static LocationRef FromLocationID(string locationID) {
             if (locationID == null) throw new ArgumentNullException("LocationRef.FromLocationID: parameter may not be null");
             return new LocationRef(locationID);
         }
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteString(ToString());
         }
 
@@ -129,7 +129,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

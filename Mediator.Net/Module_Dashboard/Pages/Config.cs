@@ -41,6 +41,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                     name: "ActionLog",
                     type: DataType.Struct,
                     defaultValue: DataValue.FromDataType(DataType.Struct, dimension: 1),
+                    unit: "",
                     typeConstraints: "",
                     dimension: 1,
                     dimensionNames: new string[0],

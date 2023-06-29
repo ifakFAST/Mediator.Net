@@ -375,6 +375,7 @@ namespace Ifak.Fast.Mediator.IO.Config
                     name: "Value",
                     type: this.Type,
                     defaultValue: GetDefaultValue(),
+                    unit: Unit,
                     typeConstraints: this.TypeConstraints,
                     dimension: this.Dimension,
                     dimensionNames: this.DimensionNames,
