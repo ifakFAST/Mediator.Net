@@ -378,6 +378,19 @@ namespace Ifak.Fast.Mediator
         public abstract Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID);
 
         /// <summary>
+        /// Reads the current value of all variables of all objects in the tree of objects defined by the given object references.
+        /// </summary>
+        /// <param name="objects">The objects defining the roots of the object trees</param>
+        public async Task<VariableValues> ReadAllVariablesOfObjectTrees(IEnumerable<ObjectRef> objects) {
+            var result = new VariableValues();
+            foreach (var obj in objects) {
+                var vals = await ReadAllVariablesOfObjectTree(obj);
+                result.AddRange(vals);
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Writes a new value to a variable without waiting for the receiving module to complete the write request.
         /// An exception is thrown when the variable does not exist.
         /// </summary>
