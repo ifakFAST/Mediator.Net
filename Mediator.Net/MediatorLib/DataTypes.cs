@@ -148,6 +148,8 @@ namespace Ifak.Fast.Mediator
             this.millis = millis;
         }
 
+        public static readonly Duration Zero = new Duration(0);
+
         public static Duration FromMilliseconds(long ms) => new Duration(ms);
 
         public static Duration FromSeconds(long s) => new Duration(s * MS_PerSecond);
