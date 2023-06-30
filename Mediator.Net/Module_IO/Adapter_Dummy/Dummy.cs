@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Ifak.Fast.Mediator;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
 {

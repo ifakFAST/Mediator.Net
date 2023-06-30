@@ -194,14 +194,14 @@ namespace Ifak.Fast.Mediator.IO
             }
         }
 
-        private async Task RestartAdapter(AdapterState adapter, string reason, bool critical = true, int tryCounter = 0) {
+        private async Task RestartAdapter(AdapterState adapter, string reason, Exception? causingException = null, bool critical = true, int tryCounter = 0) {
 
             if (adapter.IsRestarting && tryCounter == 0) { return; }
             adapter.IsRestarting = true;
 
             if (critical) {
                 if (tryCounter == 0)
-                    Log_Warn("AdapterRestart", $"Restarting adapter {adapter.Name}. Reason: {reason}");
+                    Log_Warn_Details("AdapterRestart", $"Restarting adapter {adapter.Name}. Reason: {reason}", causingException?.StackTrace ?? "");
                 else
                     Log_Warn("AdapterRestart", $"Restarting adapter {adapter.Name} (retry {tryCounter}). Reason: {reason}");
             }
@@ -237,7 +237,7 @@ namespace Ifak.Fast.Mediator.IO
                     // Environment.Exit(1); // will result in restart of entire module by Mediator
                     int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
                     await Task.Delay(delayMS);
-                    _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                    _ = RestartAdapter(adapter, exp.Message, exp, critical, tryCounter + 1);
                 }
                 else {
                     adapter.IsRestarting = false;
@@ -493,7 +493,7 @@ namespace Ifak.Fast.Mediator.IO
             }
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException() ?? exception;
-                Task ignored = RestartAdapter(adapter, "Read exception: " + exp.Message);
+                Task ignored = RestartAdapter(adapter, "Read exception: " + exp.Message, exp);
                 var now = Timestamp.Now;
                 VTQ[] failures = requests.Select(it => new VTQ(now, Quality.Bad, it.LastValue.V)).ToArray();
                 return failures;
@@ -720,7 +720,7 @@ namespace Ifak.Fast.Mediator.IO
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException() ?? exception;
                 string err = adapter.Name + " adapter exception: " + exp.Message;
-                Task ignored = RestartAdapter(adapter, "Write exception: " + exp.Message);
+                Task ignored = RestartAdapter(adapter, "Write exception: " + exp.Message, exp);
                 FailedDataItemWrite[] failures = items.Select(it => new FailedDataItemWrite(it.ID, err)).ToArray();
                 return WriteDataItemsResult.Failure(failures);
             }
@@ -758,7 +758,7 @@ namespace Ifak.Fast.Mediator.IO
             var ignored1 = readTask.ContinueOnMainThread(t => {
                 if (t.IsFaulted) {
                     Exception exp = t.Exception!.GetBaseException() ?? t.Exception;
-                    Task ignored2 = RestartAdapter(adapter, "Read exception: " + exp.Message);
+                    Task ignored2 = RestartAdapter(adapter, "Read exception: " + exp.Message, exp);
                 }
             });
         }
@@ -812,7 +812,7 @@ namespace Ifak.Fast.Mediator.IO
                         if (adapter.State == State.Running && adapter.Instance != null) {
 
                             ReadRequest[] requests = itemsToRead
-                                .Where(it => !adapter.SetOfPendingReadItems.Contains(it))
+                                .Where(it => !adapter.SetOfPendingReadItems.Contains(it) && dataItemsState.ContainsKey(it))
                                 .Select(s => {
                                     VTQ value = dataItemsState[s].LastReadValue;
                                     return new ReadRequest(s, value);
@@ -839,7 +839,7 @@ namespace Ifak.Fast.Mediator.IO
 
                                             if (completedReadTask.IsFaulted) {
                                                 Exception exp = completedReadTask.Exception!.GetBaseException() ?? completedReadTask.Exception;
-                                                Task ignored = RestartAdapter(adapter, "Scheduled read exception: " + exp.Message);
+                                                Task ignored = RestartAdapter(adapter, "Scheduled read exception: " + exp.Message, exp);
 
                                                 Timestamp now = Timestamp.Now;
                                                 result = rt.IDs.Select(s => {
