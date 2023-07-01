@@ -471,7 +471,7 @@ namespace Ifak.Fast.Mediator
                                 foreach (ObjectRef id in objectIDs) {
                                     if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
                                 }
-                                ObjectValue[] res = await RestartOnExp(module, m => m.GetObjectValuesByID(objectIDs));
+                                ObjectValues res = (await RestartOnExp(module, m => m.GetObjectValuesByID(objectIDs))).ToList();
                                 return Result_OK(res);
                             }
 
