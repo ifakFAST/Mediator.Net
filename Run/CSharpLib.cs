@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.IO;
+using System.Diagnostics;
+using System.Threading;
 using Ifak.Fast.Mediator;
 using Ifak.Fast.Mediator.Calc.Adapter_CSharp; // for State
 
@@ -177,6 +180,51 @@ namespace Std {
             else {
                 double avg = sum / count;
                 return VTQ.Make(avg, t, q);
+            }
+        }
+
+        public static Process StartProcess(string fileName, string args) {
+            Process process = new Process();
+            process.StartInfo.FileName = fileName;
+            process.StartInfo.Arguments = args;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.Start();
+
+            StartStreamReadThread(process.StandardOutput, (line) => {
+                Console.Out.WriteLine(line);
+            });
+            StartStreamReadThread(process.StandardError, (line) => {
+                Console.Error.WriteLine(line);
+            });
+
+            return process;
+        }
+
+        private static void StartStreamReadThread(StreamReader reader, Action<string> onGotLine) {
+            var thread = new Thread(() => {
+                while (true) {
+                    string line = reader.ReadLine();
+                    if (line == null) {
+                        return;
+                    }
+                    if (line != "") {
+                        onGotLine(line);
+                    }
+                }
+            });
+            thread.IsBackground = true;
+            thread.Start();
+        }
+
+        public static void StopProcess(Process? p) {
+            if (p == null || p.HasExited) return;
+            try {
+                p.Kill();
+            }
+            catch (Exception exp) {
+                Console.Out.WriteLine("StopProcess: " + exp.Message);
             }
         }        
     }
