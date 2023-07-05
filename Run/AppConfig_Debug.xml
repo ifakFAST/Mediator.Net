@@ -82,6 +82,27 @@
             </HistoryDBs>
         </Module>
         
+        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
+            <VariablesFileName>Var_Pub.xml</VariablesFileName>
+            <ImplAssembly>Module_Publish.dll</ImplAssembly>
+            <ImplClass>Ifak.Fast.Mediator.Publish.Module</ImplClass>
+            <Config>
+                <NamedValue name="model-file" value="Model_Publish.xml"/>
+                <NamedValue name="cert-dir" value="."/>
+                <NamedValue name="config-var-file" value="config_vars.json"/>
+                <NamedValue name="adapter-assemblies" value=""/>
+            </Config>
+            <HistoryDBs>
+                <HistoryDB name="PUB" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=DB_PUB.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
+        
     </Modules>
     
     <UserManagement>

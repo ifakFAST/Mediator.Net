@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.IO;
+using Ifak.Fast.Mediator.Publish.MQTT;
 
 namespace Ifak.Fast.Mediator.Publish;
 
@@ -52,12 +53,19 @@ public class Module : ModelObjectModule<Model>
         string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
         var tasks = new List<Task>();
 
-        Task[] tasksVarPub = model.MQTT
+        Task[] tasksVarPubSql = model.SQL
+            .Where(sql => sql.VarPublish != null)
+            .Select(sql => SQL.VarPubTask.MakeVarPubTask(sql, info, shutdown))
+            .ToArray();
+
+        tasks.AddRange(tasksVarPubSql);
+
+        Task[] tasksVarPubMqtt = model.MQTT
             .Where(mqtt => mqtt.VarPublish != null)
             .Select(mqtt => MqttPublisher.MakeVarPubTask(mqtt, info, certDir, shutdown))
             .ToArray();
 
-        tasks.AddRange(tasksVarPub);
+        tasks.AddRange(tasksVarPubMqtt);
 
         Task[] tasksConfigPub = model.MQTT
             .Where(mqtt => mqtt.ConfigPublish != null)

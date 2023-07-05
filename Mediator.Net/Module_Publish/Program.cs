@@ -4,28 +4,27 @@
 
 using System;
 
-namespace Ifak.Fast.Mediator.Publish
+namespace Ifak.Fast.Mediator.Publish;
+
+class Program
 {
-    class Program
-    {
-        static void Main(string[] args) {
+    static void Main(string[] args) {
 
-            if (args.Length < 1) {
-                Console.Error.WriteLine("Missing argument: port");
-                return;
-            }
-
-            int port = int.Parse(args[0]);
-
-            // Required to suppress premature shutdown when
-            // pressing CTRL+C in parent Mediator console window:
-            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
-                e.Cancel = true;
-            };
-
-            var module = new Module();
-            ExternalModuleHost.ConnectAndRunModule(port, module);
-            Console.WriteLine("Terminated.");
+        if (args.Length < 1) {
+            Console.Error.WriteLine("Missing argument: port");
+            return;
         }
+
+        int port = int.Parse(args[0]);
+
+        // Required to suppress premature shutdown when
+        // pressing CTRL+C in parent Mediator console window:
+        Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+            e.Cancel = true;
+        };
+
+        var module = new Module();
+        ExternalModuleHost.ConnectAndRunModule(port, module);
+        Console.WriteLine("Terminated.");
     }
 }

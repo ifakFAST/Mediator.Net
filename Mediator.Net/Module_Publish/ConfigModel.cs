@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Xml.Serialization;
 using Ifak.Fast.Mediator.Util;
@@ -12,28 +13,35 @@ namespace Ifak.Fast.Mediator.Publish;
 
 [XmlRoot(Namespace = "Module_Publish", ElementName = "Publish_Model")]
 public class Model : ModelObject {
-    [XmlIgnore]
+
+    [XmlAttribute("id")]
     public string ID { get; set; } = "Root";
 
-    [XmlIgnore]
+    [XmlAttribute("name")]
     public string Name { get; set; } = "Publish_Model";
 
     public List<MqttConfig> MQTT { get; set; } = new List<MqttConfig>();
+    public List<SQLConfig>  SQL  { get; set; } = new List<SQLConfig>();
 
     public bool ShouldSerializeMQTT() { return MQTT.Count > 0; }
+    public bool ShouldSerializeSQL()  { return SQL.Count > 0; }
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var mm in MQTT) {
             mm.ApplyVarConfig(vars);
         }
+        foreach (var sql in SQL) {
+            sql.ApplyVarConfig(vars);
+        }
     }
 }
 
 public class MqttConfig : ModelObject {
-    [XmlAttribute]
+    
+    [XmlAttribute("id")]
     public string ID { get; set; } = Guid.NewGuid().ToString();
 
-    [XmlAttribute]
+    [XmlAttribute("name")]
     public string Name { get; set; } = "";
 
     public string Endpoint { get; set; } = "";
@@ -73,7 +81,8 @@ public class MqttConfig : ModelObject {
 
 
 public class MqttVarPub : ModelObject {
-    [XmlAttribute]
+    
+    [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
 
     protected override string GetID(IEnumerable<IModelObject> parents) {
@@ -101,6 +110,7 @@ public class MqttVarPub : ModelObject {
     public bool BufferIfOffline { get; set; } = false;
 
     public bool SimpleTagsOnly { get; set; } = true;
+    public bool NumericTagsOnly { get; set; } = false;
     public bool SendTagsWithNull { get; set; } = false;
 
     public bool TimeAsUnixMilliseconds { get; set; } = false;
@@ -123,7 +133,8 @@ public enum PubVarFormat {
 }
 
 public class MqttConfigPub : ModelObject {
-    [XmlAttribute]
+    
+    [XmlAttribute("name")]
     public string Name { get; set; } = "ConfigPub";
 
     protected override string GetID(IEnumerable<IModelObject> parents) {
@@ -147,7 +158,8 @@ public class MqttConfigPub : ModelObject {
 }
 
 public class MqttVarReceive : ModelObject {
-    [XmlAttribute]
+    
+    [XmlAttribute("name")]
     public string Name { get; set; } = "VarReceive";
 
     protected override string GetID(IEnumerable<IModelObject> parents) {
@@ -167,7 +179,8 @@ public class MqttVarReceive : ModelObject {
 }
 
 public class MqttConfigReceive : ModelObject {
-    [XmlAttribute]
+    
+    [XmlAttribute("name")]
     public string Name { get; set; } = "ConfigReceive";
 
     protected override string GetID(IEnumerable<IModelObject> parents) {
@@ -189,7 +202,8 @@ public class MqttConfigReceive : ModelObject {
 }
 
 public class MqttMethodPub : ModelObject {
-    [XmlAttribute]
+
+    [XmlAttribute("name")]
     public string Name { get; set; } = "MethodPub";
 
     protected override string GetID(IEnumerable<IModelObject> parents) {
@@ -209,6 +223,78 @@ public class MqttMethodPub : ModelObject {
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
             Topic = Topic.Replace(entry.Key, entry.Value);
+        }
+    }
+}
+
+public class SQLConfig : ModelObject {
+
+    [XmlAttribute("id")]
+    public string ID { get; set; } = Guid.NewGuid().ToString();
+
+    [XmlAttribute("name")]
+    public string Name { get; set; } = "";
+
+    public Database DatabaseType { get; set; } = Database.PostgreSQL;
+
+    public string ConnectionString { get; set; } = "";
+    //public string CertFileCA { get; set; } = "";
+    //public string CertFileClient { get; set; } = "";
+
+    public bool IgnoreCertificateRevocationErrors { get; set; } = false;
+    public bool IgnoreCertificateChainErrors { get; set; } = false;
+    public bool AllowUntrustedCertificates { get; set; } = false;
+
+    public SQLVarPub? VarPublish { get; set; } = null;
+
+    public void ApplyVarConfig(Dictionary<string, string> vars) {
+        foreach (var entry in vars) {
+            ConnectionString = ConnectionString.Replace(entry.Key, entry.Value);
+            //CertFileCA = CertFileCA.Replace(entry.Key, entry.Value);
+            //CertFileClient = CertFileClient.Replace(entry.Key, entry.Value);
+        }
+        VarPublish?.ApplyVarConfig(vars);
+    }
+}
+
+public enum Database {
+   // MSSQL,
+   // MySQL,
+    PostgreSQL,
+   // SQLite
+}
+
+public class SQLVarPub : ModelObject {
+
+    [XmlAttribute("name")]
+    public string Name { get; set; } = "VarPub";
+
+    protected override string GetID(IEnumerable<IModelObject> parents) {
+        var sqlConfig = (SQLConfig)parents.First();
+        return sqlConfig.ID + ".VarPub";
+    }
+
+    public string QueryTagID2Identifier { get; set; } = "";
+    public string QueryRegisterTag { get; set; } = "";
+    public string QueryPublish { get; set; } = "";
+
+    [XmlArrayItem("RootObject")]
+    public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
+
+    public bool BufferIfOffline { get; set; } = false;
+
+    public bool SimpleTagsOnly { get; set; } = true;
+    public bool NumericTagsOnly { get; set; } = false;
+    public bool SendTagsWithNull { get; set; } = false;
+
+    public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
+    public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+
+    public void ApplyVarConfig(Dictionary<string, string> vars) {
+        foreach (var entry in vars) {
+            QueryPublish = QueryPublish.Replace(entry.Key, entry.Value);
+            QueryTagID2Identifier = QueryTagID2Identifier.Replace(entry.Key, entry.Value);
+            QueryRegisterTag = QueryRegisterTag.Replace(entry.Key, entry.Value);
         }
     }
 }

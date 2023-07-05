@@ -9,9 +9,22 @@
         <DataItem id="Data_001" name="Measurement_SO" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
         <DataItem id="Data_002" name="Measurement_NH" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
         <DataItem id="Data_003" name="Measurement_TSS" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
-        <DataItem id="Data_004" name="Setpoint_Air_N1" unit="m³/d" write="true" address="" />
-        <DataItem id="Data_005" name="Setpoint_Air_N2" unit="m³/d" write="true" address="" />
-        <DataItem id="Data_006" name="Setpoint_Air_N3" unit="m³/d" write="true" address="" />
+        <DataItem id="Data_004" name="Setpoint_Air_N1" unit="m³/d" write="true" />
+        <DataItem id="Data_005" name="Setpoint_Air_N2" unit="m³/d" write="true" />
+        <DataItem id="Data_006" name="Setpoint_Air_N3" unit="m³/d" write="true" />
+      </DataItems>
+    </Adapter>
+    <Adapter id="Adapter_Element" name="SimulatingAdapter" type="Dummy" address="">
+      <MaxFractionalDigits>5</MaxFractionalDigits>
+      <DataItems>
+        <DataItem id="1_001" name="Measurement_SO PP" unit="Mist" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
+        <DataItem id="1_002" name="Measurement_NH PP" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
+        <DataItem id="1_003" name="Measurement_TSS PP" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
+        <DataItem id="2_001" name="Measurement_SO Sto" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
+        <DataItem id="2_002" name="Measurement_NH Sto" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
+        <DataItem id="2_003" name="Measurement_TSS Sto" unit="mg/L" read="true" address="SinNoise(period=12 min, amplitude=600, offset=1000, noise=55)" />
+        <DataItem id="3_001" name="Measurement_SO X" unit="mg/L" read="true" address="SinNoise(period=8 min, amplitude=1, offset=1.5, noise=0.1)" />
+        <DataItem id="3_002" name="Measurement_NH X" unit="mg/L" read="true" address="SinNoise(period=20 min, amplitude=2.5, offset=3, noise=0.15)" />
       </DataItems>
     </Adapter>
   </Adapters>
