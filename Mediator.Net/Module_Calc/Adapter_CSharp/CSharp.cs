@@ -20,7 +20,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private OutputBase[] outputs = new Output[0];
         private AbstractState[] states = new AbstractState[0];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
-        private Duration dt = Duration.FromSeconds(1);
+        private Action shutdownAction = () => { };
+        private Duration cycle = Duration.FromSeconds(1);
         private AdapterCallback? callback;
 
         private static readonly object handleInitLock = new object();
@@ -29,7 +30,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             this.callback = callback;
             string code = parameter.Calculation.Definition;
-            dt = parameter.Calculation.Cycle;
+            cycle = parameter.Calculation.Cycle;
 
             if (!string.IsNullOrWhiteSpace(code)) {
 
@@ -128,6 +129,33 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
 
+            MethodInfo[] methodsInit =
+               type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+               .Where(m => m.Name == "Initialize" && IsInitializeSignature(m))
+               .ToArray();
+
+            if (methodsInit.Length == 1) {
+                MethodInfo init = methodsInit[0];
+                if (init.GetParameters().Length == 0) {
+                    var initAction = (Action)init.CreateDelegate(typeof(Action), obj);
+                    initAction();
+                }
+                else {
+                    var initAction = (Action<InitParameter>)init.CreateDelegate(typeof(Action<InitParameter>), obj);
+                    initAction(parameter);
+                }
+            }
+
+            MethodInfo[] methodsShutdown =
+               type.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+               .Where(m => m.Name == "Shutdown" && IsInitializeShutdown(m))
+               .ToArray();
+
+            if (methodsShutdown.Length == 1) {
+                MethodInfo shutdown = methodsShutdown[0];
+                shutdownAction = (Action)shutdown.CreateDelegate(typeof(Action), obj);
+            }
+
             return new InitResult() {
                 Inputs = inputs.Select(MakeInputDef).ToArray(),
                 Outputs = outputs.Select(MakeOutputDef).ToArray(),
@@ -178,9 +206,30 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return true;
         }
 
+        private static bool IsInitializeSignature(MethodInfo m) {
+            ParameterInfo[] parameters = m.GetParameters();
+            if (parameters.Length > 1) return false;
+            if (parameters.Length == 1) {
+                ParameterInfo p1 = parameters[0];
+                if (p1.ParameterType != typeof(InitParameter)) return false;
+            }            
+            if (m.ReturnType != typeof(void)) return false;
+            return true;
+        }
+
+        private static bool IsInitializeShutdown(MethodInfo m) {
+            ParameterInfo[] parameters = m.GetParameters();
+            if (parameters.Length != 0) return false;
+            if (m.ReturnType != typeof(void)) return false;
+            return true;
+        }
+
         public override Task Shutdown() {
+            shutdownAction();
             return Task.FromResult(true);
         }
+
+        Timestamp? tLastStep = null;
 
         public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
 
@@ -196,7 +245,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 output.ValueHasBeenAssigned = false;
             }
 
+            Duration dt = tLastStep.HasValue ?  t - tLastStep.Value : cycle;            
             stepAction(t, dt);
+            tLastStep = t;
 
             StateValue[] resStates = states.Select(kv => new StateValue() {
                 StateID = kv.ID,
