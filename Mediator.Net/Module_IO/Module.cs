@@ -695,21 +695,41 @@ namespace Ifak.Fast.Mediator.IO
                         }
                     }
 
+                    int writeErrorItemsCountBefore = adapter.WriteErrorItems.Count;
+
+                    if (writeErrorItemsCountBefore > 0) {
+                        foreach (string id in writeTask.IDs) {
+                            adapter.WriteErrorItems.Remove(id);
+                        }
+                    }
+
                     WriteDataItemsResult res = t.Result;
                     if (res.Failed()) {
                         DataItemErr[] failed = ResolveDataItemErrors(res.FailedDataItems!);
-                        if (failed.Length > 0) {
+                        foreach (DataItemErr err in failed) {
+                            adapter.WriteErrorItems[err.ID] = err;
+                        }
+                    }
+
+                    int writeErrorItemsCountAfter = adapter.WriteErrorItems.Count;
+                    if (writeErrorItemsCountBefore != writeErrorItemsCountAfter || res.Failed()) {
+                       bool hasErr = writeErrorItemsCountAfter > 0;
+                        if (hasErr) {
+                            DataItemErr[] failed = adapter.WriteErrorItems.Values.OrderBy(it => it.Name).ToArray();
                             string names = string.Join(", ", failed.Select(it => it.Name + ": " + it.Error));
                             string msg = $"Write error for {failed.Length} data items: {failed[0].Name}, ...";
                             if (failed.Length == 1) {
                                 msg = $"Write error for data item {failed[0].Name}: {failed[0].Error}";
                             }
-                            ObjectRef[] objs = failed.Select(it => ObjectRef.Make(moduleID, it.ID)).ToArray();
-                            var ev = AlarmOrEventInfo.Warning("WriteErr", msg, objs);
+                            var ev = AlarmOrEventInfo.Warning("WriteErr", msg, ObjectRef.Make(moduleID, adapter.ID));
                             ev.Details = names;
                             notifier?.Notify_AlarmOrEvent(ev);
                         }
+                        else {
+                            Log_ReturnToNormal("WriteErr", $"{adapter.Name}: No more write errors", adapter.ID);
+                        }
                     }
+
                     return res;
 
                 })).ToArray();
@@ -733,7 +753,7 @@ namespace Ifak.Fast.Mediator.IO
             }).ToArray();
         }
 
-        private class DataItemErr
+        private sealed class DataItemErr
         {
             public string ID { get; set; }
             public string Name { get; set; }
@@ -1372,6 +1392,7 @@ namespace Ifak.Fast.Mediator.IO
 
             public readonly HashSet<string> SetOfPendingReadItems = new();
             public readonly HashSet<string> SetOfPendingWriteItems = new();
+            public readonly Dictionary<string, DataItemErr> WriteErrorItems = new();
 
             public readonly Dictionary<string, string> BadItems = new();
 
