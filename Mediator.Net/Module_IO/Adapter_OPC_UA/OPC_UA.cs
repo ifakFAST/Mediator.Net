@@ -44,7 +44,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
             excludeUnderscore = strExcludeUnderscore == "true";
 
-            string appName = "Mediator.IO.OPC_UA";
+            const string appName = "Mediator.IO.OPC_UA";
 
             appDescription = new ApplicationDescription {
                 ApplicationName = appName,
@@ -82,6 +82,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         "ifakFAST.IO.OPC_UA",
                         "pki");
+
+                    const string Config_PkiDir = "PkiDir";
+                    
+                    if (config.Config.Any(nv => nv.Name == Config_PkiDir)) {
+                        pkiPath = Path.GetFullPath(config.Config.First(nv => nv.Name == Config_PkiDir).Value.Trim());
+                    }
 
                     Console.WriteLine($"Location of OPC UA certificate store: {pkiPath}");
 
@@ -450,16 +456,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         dataItemsToWrite.Add(MakeWriteValue(di, request.Value.V, info.Type, info.Dimension));
                     }
                     catch (Exception exp) {
-                        if (listFailed == null) {
-                            listFailed = new List<FailedDataItemWrite>();
-                        }
+                        listFailed ??= new List<FailedDataItemWrite>();
                         listFailed.Add(new FailedDataItemWrite(id, exp.Message));
                     }
                 }
                 else {
-                    if (listFailed == null) {
-                        listFailed = new List<FailedDataItemWrite>();
-                    }
+                    listFailed ??= new List<FailedDataItemWrite>();
                     listFailed.Add(new FailedDataItemWrite(id, $"No writeable data item with id '{id}' found."));
                 }
             }
