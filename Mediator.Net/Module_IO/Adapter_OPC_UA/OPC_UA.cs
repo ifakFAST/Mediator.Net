@@ -445,6 +445,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             List<FailedDataItemWrite>? listFailed = null;
 
             var dataItemsToWrite = new List<WriteValue>(N);
+            var usedDataItemIDs = new List<string>(N);
+
             for (int i = 0; i < N; ++i) {
                 DataItemValue request = values[i];
                 string id = request.ID;
@@ -454,6 +456,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     try {
                         //if (!di.IsWriteable) throw new Exception($"OPC item '{di.Name}' is not writeable");
                         dataItemsToWrite.Add(MakeWriteValue(di, request.Value.V, info.Type, info.Dimension));
+                        usedDataItemIDs.Add(id);
                     }
                     catch (Exception exp) {
                         listFailed ??= new List<FailedDataItemWrite>();
@@ -471,13 +474,68 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     NodesToWrite = dataItemsToWrite.ToArray()
                 };
                 WriteResponse resp = await connection.WriteAsync(req);
-                // TODO: Check result!
+                if (resp.Results is not null && resp.Results.Length == dataItemsToWrite.Count) {
+                    StatusCode[] results = resp.Results;
+                    for (int i = 0; i < results.Length; ++i) {
+                        StatusCode sc = results[i];
+                        if (StatusCode.IsBad(sc)) {
+                            listFailed ??= new List<FailedDataItemWrite>();
+                            listFailed.Add(new FailedDataItemWrite(usedDataItemIDs[i], GetErrorDescriptionFromStatusCode(sc)));
+                        }
+                    }
+                }
             }
 
             if (listFailed == null)
                 return WriteDataItemsResult.OK;
             else
                 return WriteDataItemsResult.Failure(listFailed.ToArray());
+        }
+
+        private static readonly Dictionary<uint, string> statusCodeDictionary = new() {
+            {0x804D0000, "BrowseDirectionInvalid"},
+            {0x80600000, "BrowseNameInvalid"},
+            {0x80480000, "ContentFilterInvalid"},
+            {0x804A0000, "ContinuationPointInvalid"},
+            {0x80380000, "DataEncodingInvalid"},
+            {0x80390000, "DataEncodingUnsupported"},
+            {0x80470000, "EventFilterInvalid"},
+            {0x80450000, "FilterNotAllowed"},
+            {0x80490000, "FilterOperandInvalid"},
+            {0x80710000, "HistoryOperationInvalid"},
+            {0x80720000, "HistoryOperationUnsupported"},
+            {0x80360000, "IndexRangeInvalid"},
+            {0x80370000, "IndexRangeNoData"},
+            {0x80430000, "MonitoredItemFilterInvalid"},
+            {0x80440000, "MonitoredItemFilterUnsupported"},
+            {0x80420000, "MonitoredItemIdInvalid"},
+            {0x80410000, "MonitoringModeInvalid"},
+            {0x80310000, "NoCommunication"},
+            {0x804B0000, "NoContinuationPoints"},
+            {0x805F0000, "NodeClassInvalid"},
+            {0x80330000, "NodeIdInvalid"},
+            {0x80340000, "NodeIdUnknown"},
+            {0x80690000, "NoDeleteRights"},
+            {0x804E0000, "NodeNotInView"},
+            {0x803E0000, "NotFound"},
+            {0x80400000, "NotImplemented"},
+            {0x803A0000, "NotReadable"},
+            {0x803D0000, "NotSupported"},
+            {0x803B0000, "NotWritable"},
+            {0x803F0000, "ObjectDeleted"},
+            {0x803C0000, "OutOfRange"},
+            {0x804C0000, "ReferenceTypeIdInvalid"},
+            {0x80640000, "SourceNodeIdInvalid"},
+            {0x80460000, "StructureMissing"},
+            {0x80650000, "TargetNodeIdInvalid"},
+            {0x80630000, "TypeDefinitionInvalid"},
+            {0x80740000, "TypeMismatch"},
+            {0x80320000, "WaitingForInitialData"}
+        };
+
+        private static string GetErrorDescriptionFromStatusCode(StatusCode statusCode) {
+            statusCodeDictionary.TryGetValue((uint)statusCode, out string? description);
+            return description ?? statusCode.ToString();
         }
 
         private static WriteValue MakeWriteValue(NodeId item, DataValue value, DataType type, int dimension) {
