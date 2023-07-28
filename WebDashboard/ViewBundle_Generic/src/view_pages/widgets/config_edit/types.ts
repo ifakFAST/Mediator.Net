@@ -1,6 +1,7 @@
 
 export interface Config {
   Items: ConfigItem[]
+  ShowHeader: boolean
 }
 
 export interface ConfigItem {

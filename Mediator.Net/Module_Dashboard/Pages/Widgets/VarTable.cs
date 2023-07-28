@@ -51,6 +51,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return ReqResult.OK();
         }
 
+        public async Task<ReqResult> UiReq_ToggleShowHeader() {
+            configuration.ShowHeader = !configuration.ShowHeader;
+            await Context.SaveWidgetConfiguration(configuration);
+            return ReqResult.OK();
+        }
+
         public async Task<VarVal[]> LoadData(bool updateTrend) {
 
             List<VariableValue> values = await Connection.ReadVariablesIgnoreMissing(Variables.ToList());
@@ -329,6 +335,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class VarTableConfig
     {
         public VarItem[] Items { get; set; } = new VarItem[0];
+        public bool ShowHeader { get; set; } = true;
         public bool ShowTrendColumn { get; set; } = true;
     }
 

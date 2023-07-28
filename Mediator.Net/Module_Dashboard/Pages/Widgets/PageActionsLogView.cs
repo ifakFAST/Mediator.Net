@@ -16,11 +16,19 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
         public override string DefaultWidth => "100%";
 
+        PageActionsLogViewConfig configuration => Config;
+
         private VariableRef GetPageActionLog() => Context.GetPageActionLogVariable();
 
         public override async Task OnActivate() {
             VariableRef vr = GetPageActionLog();
             await Connection.EnableVariableHistoryChangedEvents(vr);
+        }
+
+        public async Task<ReqResult> UiReq_ToggleShowHeader() {
+            configuration.ShowHeader = !configuration.ShowHeader;
+            await Context.SaveWidgetConfiguration(configuration);
+            return ReqResult.OK();
         }
 
         public async Task<ReqResult> UiReq_ReadValues() {
@@ -61,5 +69,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
         }
     }
 
-    public class PageActionsLogViewConfig { }
+    public class PageActionsLogViewConfig {
+        public bool ShowHeader { get; set; } = true;
+    }
 }

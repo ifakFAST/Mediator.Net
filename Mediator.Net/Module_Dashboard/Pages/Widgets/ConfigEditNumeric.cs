@@ -51,6 +51,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
             public string Name { get; set; } = "";
             public string[] Members { get; set; } = new string[0];
         }
+        
+        public async Task<ReqResult> UiReq_ToggleShowHeader() {
+            configuration.ShowHeader = !configuration.ShowHeader;
+            await Context.SaveWidgetConfiguration(configuration);
+            return ReqResult.OK();
+        }
 
         public async Task<ReqResult> UiReq_GetItemsData() {
 
@@ -193,6 +199,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
     public class ConfigEditConfig {
         public ConfigItem[] Items { get; set; } = new ConfigItem[0];
+        public bool ShowHeader { get; set; } = true;
     }
 
     public sealed class ConfigItem {

@@ -5,7 +5,7 @@
 
             <v-simple-table :height="theHeight" dense>
               <template v-slot:default>
-                <thead>
+                <thead v-if="config.ShowHeader">
                   <tr>
                     <th class="text-left" style="font-size:14px;">Setting</th>
                     <th class="text-right" style="font-size:14px; height:36px; padding-right:0px;">Value</th>
@@ -36,6 +36,9 @@
 
         <v-menu v-model="contextMenu.show" :position-x="contextMenu.clientX" :position-y="contextMenu.clientY" absolute offset-y>
           <v-list>
+            <v-list-item @click="onToggleShowHeader" >
+              <v-list-item-title> {{ config.ShowHeader ? 'Hide Header' : 'Show Header' }}</v-list-item-title>
+            </v-list-item>
             <v-list-item @click="onConfigureItems" >
               <v-list-item-title>Configure Items...</v-list-item-title>
             </v-list-item>
@@ -99,8 +102,13 @@
     }
 
     async readValues(): Promise<void> {
-      const result = await this.backendAsync('ReadValues', { })
-      this.result = result
+      try {
+        const result = await this.backendAsync('ReadValues', { })
+        this.result = result
+      }
+      catch (exp) {
+        alert(exp)
+      }
     }
 
     get theHeight(): string {
@@ -288,6 +296,15 @@
       }
     }
   
+    async onToggleShowHeader(): Promise<void> {
+      try {
+        await this.backendAsync('ToggleShowHeader', {})
+      } 
+      catch (err) {
+        alert(err.message)
+      }
+    }
+
     @Watch('eventPayload')
     watch_event(newVal: any, old: any): void {
       if (this.eventName === 'OnValuesChanged') {

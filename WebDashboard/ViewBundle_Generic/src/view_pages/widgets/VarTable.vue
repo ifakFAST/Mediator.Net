@@ -4,7 +4,7 @@
     <div @contextmenu="onContextMenu">
       <v-simple-table :height="theHeight" dense>
         <template v-slot:default>
-          <thead>
+          <thead v-if="config.ShowHeader">
             <tr>
               <th class="text-left"  style="font-size:14px;">Variable</th>
               <th class="text-right" style="font-size:14px; height:36px; padding-right:0px;">Value</th>
@@ -62,6 +62,9 @@
       <v-list>
         <v-list-item @click="onConfigureItems" >
           <v-list-item-title>Configure Items...</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="onToggleShowHeader" >
+          <v-list-item-title> {{ config.ShowHeader ? 'Hide Header' : 'Show Header' }}</v-list-item-title>
         </v-list-item>
         <v-list-item @click="onToggleShowTrendColumn" >
           <v-list-item-title> {{ config.ShowTrendColumn ? 'Hide Trend Column' : 'Show Trend Column' }}</v-list-item-title>
@@ -160,6 +163,7 @@ import { StyleValue } from 'vue/types/jsx'
 
 interface Config {
   ShowTrendColumn: boolean
+  ShowHeader: boolean
   Items: ItemConfig[]
 }
 
@@ -296,6 +300,15 @@ export default class VarTable extends Vue {
   async onToggleShowTrendColumn(): Promise<void> {
     try {
       await this.backendAsync('ToggleShowTrendColumn', {})
+    } 
+    catch (err) {
+      alert(err.message)
+    }
+  }
+
+  async onToggleShowHeader(): Promise<void> {
+    try {
+      await this.backendAsync('ToggleShowHeader', {})
     } 
     catch (err) {
       alert(err.message)

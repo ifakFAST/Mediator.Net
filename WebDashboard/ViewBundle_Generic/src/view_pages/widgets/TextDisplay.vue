@@ -11,7 +11,7 @@
       </v-list>
     </v-menu>
 
-    <v-dialog v-model="showConfigDialog" max-width="780px" persistent @keydown="(e) => { if (e.keyCode === 27) { showConfigDialog = false; }}" >
+    <v-dialog v-model="showConfigDialog" max-width="880px" persistent @keydown="(e) => { if (e.keyCode === 27) { showConfigDialog = false; }}" >
       <v-card>
         <v-card-title class="headline">Configure text</v-card-title>
         <v-card-text>          
@@ -25,7 +25,7 @@
               </v-col>
             </v-row>
           </v-container>
-          <v-textarea ref="MyTextArea" class="MyTextArea" filled v-model="text" :rows="8" @keydown.tab="handleTab"></v-textarea>
+          <v-textarea  ref="MyTextArea" class="MyTextArea" filled v-model="text" :rows="8" @keydown.tab="handleTab"></v-textarea>
           <div v-if="previewText" class="MarkDownHTML" v-html="theHtmlStringEdit"></div>
         </v-card-text>
         <v-card-actions>
@@ -164,6 +164,11 @@ export default class TextDisplay extends Vue {
 .MyTextArea {
   font-family: monospace;
   font-weight: 500;
+}
+
+.v-text-field__slot textarea {
+  overflow-x: auto;
+  white-space: pre;
 }
 
 .MarkDownHTML h1 {
