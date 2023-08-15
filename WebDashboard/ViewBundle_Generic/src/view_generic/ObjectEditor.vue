@@ -6,9 +6,10 @@
       <v-spacer></v-spacer>
       <v-btn text @click="save" :disabled="!isDirty">Save</v-btn>
       <v-btn text @click="deleteObject">Delete</v-btn>
-      <v-btn v-for="type in childTypes" :key="type.TypeName" text @click="showAddChildDialog(type)">Add {{getShortTypeName(type.TypeName)}}</v-btn>
+      <v-btn v-for="t in childTypes" :key="t.TypeName" text @click="showAddChildDialog(t)">{{ 'Add ' + getShortTypeName(t.TypeName) }}</v-btn>
       <v-btn style="min-width: 18px;" text @click="moveUp" :disabled="selection === null || selection.First"><v-icon>arrow_upward</v-icon></v-btn>
       <v-btn style="min-width: 18px;" text @click="moveDown" :disabled="selection === null || selection.Last"><v-icon>arrow_downward</v-icon></v-btn>
+      <v-btn text style="min-width: 18px;" @click="doExport" v-if="isExportable"><v-icon>download</v-icon></v-btn>
     </v-toolbar>
 
     <v-toolbar flat dense color="white" style="margin-top: 8px;">
@@ -231,6 +232,7 @@ export default class ObjectEditor extends Vue {
   @Prop(Array) members: ObjectMember[]
   @Prop(Array) childTypes: ChildType[]
   @Prop(Array) locations: LocationInfo[]
+  @Prop(Object) typeInfo: TypeMap
 
   currentTab = ''
   addDialog = {
@@ -282,6 +284,10 @@ export default class ObjectEditor extends Vue {
         Members: members.filter((m) => m.Category === c),
       }
     })
+  }
+
+  get isExportable(): boolean {
+    return this.selection !== null && this.selection.Type !== undefined && this.selection.Type !== null && this.typeInfo[this.selection.Type].IsExportable
   }
 
   get isDirty() {
@@ -533,6 +539,10 @@ export default class ObjectEditor extends Vue {
 
   moveDown() {
     this.$emit('move', this.selection.ID, false)
+  }
+
+  doExport() {
+    this.$emit('export', this.selection.ID)
   }
 }
 

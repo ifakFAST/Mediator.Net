@@ -57,4 +57,10 @@ namespace Ifak.Fast.Mediator
         }
     }
 
+    [AttributeUsage(AttributeTargets.Class)]
+    public class Exportable : AttributeBase { }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public class Importable : AttributeBase { }
+
 }

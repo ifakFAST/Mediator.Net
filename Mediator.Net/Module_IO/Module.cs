@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using static Ifak.Fast.Mediator.IO.ConfigImportExport;
 
 namespace Ifak.Fast.Mediator.IO
 {
@@ -1218,9 +1219,51 @@ namespace Ifak.Fast.Mediator.IO
                             return Result<DataValue>.Failure($"Exception while browsing: {e.Message}");
                         }
                     }
+
+                case "ExportObjectAsFile": {
+
+                        try {
+                            NamedValue nv = parameters[0];
+                            string obj = nv.Value;
+                            var objRef = ObjectRef.FromEncodedString(obj);
+
+                            Config.Adapter? adapter = GetModelObjectFromIdOrNull<Config.Adapter>(objRef);
+                            if (adapter is not null) {
+                                var flatDataItems = Adapter2FlatDataItems(adapter);
+                                return Result<DataValue>.OK(ToExportResult(flatDataItems));
+                            }
+
+                            Config.IO_Model? model = GetModelObjectFromIdOrNull<Config.IO_Model>(objRef);
+                            if (model is not null) {
+                                var flatDataItems = Model2FlatDataItems(model);
+                                return Result<DataValue>.OK(ToExportResult(flatDataItems));
+                            }
+
+                            return Result<DataValue>.Failure($"Unknown export type");
+                        }
+                        catch (Exception exp) {
+                            Exception e = exp.GetBaseException() ?? exp;
+                            return Result<DataValue>.Failure($"Exception while exporting: {e.Message}");
+                        }
+                    }
             }
 
             return await base.OnMethodCall(origin, methodName, parameters);
+        }
+
+        class ExportResult {
+            public string ContentType { get; set; } = "";
+            public byte[] Data { get; set; } = Array.Empty<byte>();
+        }
+
+        private static DataValue ToExportResult(FlatDataItem[] items) {
+
+            var expRes = new ExportResult() {
+                ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                Data = CreateExcelFromFlatDataItems(items)
+            };  
+
+            return DataValue.FromObject(expRes);
         }
 
         private async Task<AdapterBrowseInfo> BrowseAdapter(Config.Adapter config, AdapterBase adapter) {

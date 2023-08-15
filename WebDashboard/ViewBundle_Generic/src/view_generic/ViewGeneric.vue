@@ -19,10 +19,11 @@
         </v-col>
         <v-col cols="fill" style="max-width: 850px;">
 
-          <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse"
+          <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse" @export="onExport"
               :selection="selectedObject"
               :members="currObjectValues"
               :child-types="childTypes"
+              :type-info="typeInfo"
               :locations="locations"></object-editor>
 
         </v-col>
@@ -200,6 +201,26 @@ export default class ViewGeneric extends Vue {
       context.updateObjects(res)
       context.onObjectSelected(context.findObjectWithID(context.objectTree, id))
     })
+  }
+
+  async onExport(id: string): Promise<void> {
+    const context = this
+    const info = {
+      ObjID: id,
+    }
+    const blobResponse: Blob = await window.parent['dashboardApp'].sendViewRequestAsync('Export', info, 'blob')
+    this.downloadBlob(blobResponse, 'Export.xlsx')
+  }
+
+  downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename || 'download'
+    a.click()
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 500)
   }
 
   mounted() {

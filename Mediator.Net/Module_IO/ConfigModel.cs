@@ -12,6 +12,7 @@ using System.Xml.Schema;
 
 namespace Ifak.Fast.Mediator.IO.Config
 {
+    [Exportable]
     [XmlRoot(Namespace = "Module_IO", ElementName = "IO_Model")]
     public class IO_Model : ModelObject {
 
@@ -86,6 +87,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         }
     }
 
+    [Exportable]
     [IdPrefix("Adapter")]
     public class Adapter : ModelObject
     {
@@ -321,16 +323,16 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         [Ignore]
         [XmlAttribute("location")]
-        public string LocationStringFoxXml { get; set; } = "";
+        public string LocationStringForXml { get; set; } = "";
 
         [XmlIgnore]
         public LocationRef? Location {
             get {
-                string loc = LocationStringFoxXml;
+                string loc = LocationStringForXml;
                 return string.IsNullOrEmpty(loc) ? (LocationRef?)null : LocationRef.FromLocationID(loc);
             }
             set {
-                LocationStringFoxXml = value.HasValue ? value.Value.LocationID : "";
+                LocationStringForXml = value.HasValue ? value.Value.LocationID : "";
             }
         }
 
@@ -404,7 +406,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeDimension() => Dimension != 1;
         public bool ShouldSerializeType() => Type != DataType.Float64;
         public bool ShouldSerializeComment() => !string.IsNullOrEmpty(Comment);
-        public bool ShouldSerializeLocationStringFoxXml() => !string.IsNullOrEmpty(LocationStringFoxXml);
+        public bool ShouldSerializeLocationStringFoxXml() => !string.IsNullOrEmpty(LocationStringForXml);
         public bool ShouldSerializeLocation() => Location.HasValue;
         public bool ShouldSerializeConversionRead() => !string.IsNullOrEmpty(ConversionRead);
         public bool ShouldSerializeConversionWrite() => !string.IsNullOrEmpty(ConversionWrite);

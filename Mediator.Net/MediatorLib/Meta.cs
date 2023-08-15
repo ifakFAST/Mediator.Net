@@ -42,6 +42,9 @@ namespace Ifak.Fast.Mediator
         public List<SimpleMember> SimpleMember { get; set; } = new List<SimpleMember>();
         public List<ObjectMember> ObjectMember { get; set; } = new List<ObjectMember>();
 
+        public bool IsExportable { get; set; } = false;
+        public bool IsImportable { get; set; } = false;
+
         public override string ToString() => Name;
     }
 

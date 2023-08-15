@@ -230,6 +230,8 @@ namespace Ifak.Fast.Mediator.Util
             Type tIModelObjectEnum = typeof(IEnumerable<IModelObject>);
             PropertyInfo[] properties = typeClass.GetProperties(BindingFlags.Instance | BindingFlags.Public);
             DefaultCategory defaultCategory = typeClass.GetCustomAttribute<DefaultCategory>();
+            res.IsExportable = typeClass.GetCustomAttribute<Exportable>() != null;
+            res.IsImportable = typeClass.GetCustomAttribute<Importable>() != null;
 
             IdPrefix idPrefix = typeClass.GetCustomAttribute<IdPrefix>();
             if (idPrefix != null) {

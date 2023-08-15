@@ -26,6 +26,8 @@ export interface TypeMap {
 }
 
 export interface TypeInfo {
+  IsExportable: boolean
+  IsImportable: boolean
   ObjectMembers: ObjMemInfo[]
 }
 

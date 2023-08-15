@@ -4,10 +4,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
 using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
+using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -82,7 +84,9 @@ namespace Ifak.Fast.Mediator.Dashboard
                                 }).ToArray();
 
                             var entry = new {
-                                ObjectMembers = members
+                                ObjectMembers = members,
+                                ci.IsExportable,
+                                ci.IsImportable
                             };
 
                             typMap[ci.FullName] = new JRaw(StdJson.ObjectToString(entry));
@@ -254,6 +258,23 @@ namespace Ifak.Fast.Mediator.Dashboard
                         return ReqResult.OK(res.Values.Select(d => d.GetString()));
 
                     }
+
+                case "Export": {
+                        var exp = parameters.Object<Exp_Params>() ?? throw new Exception("Exp_Params is null");
+                        DataValue exported = await Connection.CallMethod(moduleID, "ExportObjectAsFile", new NamedValue("objID", exp.ObjID));
+                        ExportResult obj = exported.Object<ExportResult>() ?? throw new Exception("ExportResult is null");
+                        var res = MemoryManager.GetMemoryStream("DownloadFile");
+                        try {
+                            res.Write(obj.Data, 0, obj.Data.Length);
+                            res.Seek(0, SeekOrigin.Begin);
+                            return new ReqResult(200, res, obj.ContentType);
+                        }
+                        catch (Exception) {
+                            res.Dispose();
+                            throw;
+                        }
+                    }
+
                 case "GetNewID": {
                         string type = parameters.GetString() ?? throw new Exception("Type parameter is null");
                         string id = GetObjectID(type);
@@ -481,6 +502,15 @@ namespace Ifak.Fast.Mediator.Dashboard
         {
             public string ObjID { get; set; } = "";
             public bool Up { get; set; }
+        }
+
+        public class Exp_Params {
+            public string ObjID { get; set; } = "";
+        }
+
+        public class ExportResult {
+            public string ContentType { get; set; } = "";
+            public byte[] Data { get; set; } = Array.Empty<byte>();
         }
 
         public class Browse_Params
