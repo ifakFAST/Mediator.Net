@@ -7,9 +7,25 @@
       <v-btn text @click="save" :disabled="!isDirty">Save</v-btn>
       <v-btn text @click="deleteObject">Delete</v-btn>
       <v-btn v-for="t in childTypes" :key="t.TypeName" text @click="showAddChildDialog(t)">{{ 'Add ' + getShortTypeName(t.TypeName) }}</v-btn>
-      <v-btn style="min-width: 18px;" text @click="moveUp" :disabled="selection === null || selection.First"><v-icon>arrow_upward</v-icon></v-btn>
-      <v-btn style="min-width: 18px;" text @click="moveDown" :disabled="selection === null || selection.Last"><v-icon>arrow_downward</v-icon></v-btn>
-      <v-btn text style="min-width: 18px;" @click="doExport" v-if="isExportable"><v-icon>download</v-icon></v-btn>
+      <v-menu bottom left offset-y>
+        <template v-slot:activator="{ on }">
+          <v-btn v-on="on" icon><v-icon>more_vert</v-icon></v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="moveUp" :disabled="selection === null || selection.First">
+            <v-list-item-title>Move Up</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="moveDown" :disabled="selection === null || selection.Last">
+            <v-list-item-title>Move Down</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="doExport" v-if="isExportable">
+            <v-list-item-title>Export</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="doImport" v-if="isImportable">
+            <v-list-item-title>Import</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
     </v-toolbar>
 
     <v-toolbar flat dense color="white" style="margin-top: 8px;">
@@ -290,6 +306,10 @@ export default class ObjectEditor extends Vue {
     return this.selection !== null && this.selection.Type !== undefined && this.selection.Type !== null && this.typeInfo[this.selection.Type].IsExportable
   }
 
+  get isImportable(): boolean {
+    return this.selection !== null && this.selection.Type !== undefined && this.selection.Type !== null && this.typeInfo[this.selection.Type].IsImportable
+  }
+
   get isDirty() {
     return -1 !== this.members.findIndex((m) => JSON.stringify(m.ValueOriginal) !== JSON.stringify(m.Value))
   }
@@ -543,6 +563,10 @@ export default class ObjectEditor extends Vue {
 
   doExport() {
     this.$emit('export', this.selection.ID)
+  }
+
+  doImport() {
+    this.$emit('import', this.selection.ID)
   }
 }
 

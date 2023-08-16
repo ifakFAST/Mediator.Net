@@ -19,7 +19,8 @@
         </v-col>
         <v-col cols="fill" style="max-width: 850px;">
 
-          <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" @move="moveUpOrDown" @browse="onBrowse" @export="onExport"
+          <object-editor @save="onSave" @delete="onDelete" @add="onAddObject" 
+              @move="moveUpOrDown" @browse="onBrowse" @export="onExport" @import="onImport"
               :selection="selectedObject"
               :members="currObjectValues"
               :child-types="childTypes"
@@ -204,7 +205,6 @@ export default class ViewGeneric extends Vue {
   }
 
   async onExport(id: string): Promise<void> {
-    const context = this
     const info = {
       ObjID: id,
     }
@@ -221,6 +221,33 @@ export default class ViewGeneric extends Vue {
     setTimeout(() => {
       URL.revokeObjectURL(url)
     }, 500)
+  }
+
+  async onImport(id: string): Promise<void> {
+    const inputElement = document.createElement('input')
+    inputElement.type = 'file'
+    inputElement.accept = '.xlsx'
+    inputElement.onchange = () => {
+      const curFiles = inputElement.files
+      if (curFiles.length === 0) {
+        return;
+      }
+      const file = curFiles[0]
+      const reader = new FileReader()
+      reader.onload = () => {
+        const arrayBuffer = reader.result as ArrayBuffer
+        const byteArray = new Uint8Array(arrayBuffer)
+        const info = {
+          ObjID: id,
+          Data: Array.from(byteArray),
+        }
+        window.parent['dashboardApp'].sendViewRequest('Import', info, (strResponse) => {
+          this.refreshAll()
+        })
+      }
+      reader.readAsArrayBuffer(file)
+    }
+    inputElement.click()
   }
 
   mounted() {

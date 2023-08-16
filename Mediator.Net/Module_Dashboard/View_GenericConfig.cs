@@ -275,6 +275,14 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
                     }
 
+                case "Import": {
+                        var importFile = parameters.Object<Imp_Params>() ?? throw new Exception("Imp_Params is null");
+                        var nv1 = new NamedValue("objID", importFile.ObjID);
+                        var nv2 = new NamedValue("data", StdJson.ObjectToString(importFile.Data));
+                        await Connection.CallMethod(moduleID, "ImportObjectAsFile", nv1, nv2);                        
+                        return ReqResult.OK();
+                    }
+
                 case "GetNewID": {
                         string type = parameters.GetString() ?? throw new Exception("Type parameter is null");
                         string id = GetObjectID(type);
@@ -510,6 +518,11 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public class ExportResult {
             public string ContentType { get; set; } = "";
+            public byte[] Data { get; set; } = Array.Empty<byte>();
+        }
+
+        public class Imp_Params {
+            public string ObjID { get; set; } = "";
             public byte[] Data { get; set; } = Array.Empty<byte>();
         }
 

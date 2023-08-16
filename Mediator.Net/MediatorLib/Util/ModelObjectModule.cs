@@ -398,7 +398,8 @@ namespace Ifak.Fast.Mediator.Util
                             changedObjects.Add(parent.Value.Object);
                         }
                         else {
-                            ov.Value.PopulateObject(obj);
+                            object newObj = ov.Value.Object(obj.GetType()) ?? new Exception("Failed to create object instance");
+                            MemberwiseCopyObjects(source: newObj, target: obj);
                             changedObjects.Add(ov.Object);
                         }
                     }
@@ -435,6 +436,16 @@ namespace Ifak.Fast.Mediator.Util
                 ModifyModelAfterInit();
                 await OnConfigModelChanged(init: false);
                 return Result.Failure("UpdateConfig failed: " + exp.Message);
+            }
+        }
+
+        private static void MemberwiseCopyObjects<X>(X source, X target) where X: class {
+            var type = source.GetType();
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var property in properties) {
+                if (property.CanWrite) {
+                    property.SetValue(target, property.GetValue(source));
+                }
             }
         }
 

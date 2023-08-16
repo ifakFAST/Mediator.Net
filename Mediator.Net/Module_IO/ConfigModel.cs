@@ -12,6 +12,7 @@ using System.Xml.Schema;
 
 namespace Ifak.Fast.Mediator.IO.Config
 {
+    [Importable]
     [Exportable]
     [XmlRoot(Namespace = "Module_IO", ElementName = "IO_Model")]
     public class IO_Model : ModelObject {
@@ -37,6 +38,13 @@ namespace Ifak.Fast.Mediator.IO.Config
             foreach (Folder f in Folders)
                 res.AddRange(f.GetAllAdapters());
             res.AddRange(Adapters);
+            return res;
+        }
+
+        public List<DataItem> GetAllDataItems() {
+            var res = new List<DataItem>();
+            foreach (Adapter a in GetAllAdapters())
+                res.AddRange(a.GetAllDataItems());
             return res;
         }
 
@@ -182,6 +190,9 @@ namespace Ifak.Fast.Mediator.IO.Config
             if (History.HasValue) {
                 History = History.Value.Normalize();
             }
+            if (string.IsNullOrWhiteSpace(Name)) {
+                Name = ID;
+            }
             foreach (Node node in Nodes) {
                 node.Normalize();
             }
@@ -253,6 +264,9 @@ namespace Ifak.Fast.Mediator.IO.Config
             }
             if (History.HasValue) {
                 History = History.Value.Normalize();
+            }
+            if (string.IsNullOrWhiteSpace(Name)) {
+                Name = ID;
             }
             foreach (Node node in Nodes) {
                 node.Normalize();
@@ -406,7 +420,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeDimension() => Dimension != 1;
         public bool ShouldSerializeType() => Type != DataType.Float64;
         public bool ShouldSerializeComment() => !string.IsNullOrEmpty(Comment);
-        public bool ShouldSerializeLocationStringFoxXml() => !string.IsNullOrEmpty(LocationStringForXml);
+        public bool ShouldSerializeLocationStringForXml() => !string.IsNullOrEmpty(LocationStringForXml);
         public bool ShouldSerializeLocation() => Location.HasValue;
         public bool ShouldSerializeConversionRead() => !string.IsNullOrEmpty(ConversionRead);
         public bool ShouldSerializeConversionWrite() => !string.IsNullOrEmpty(ConversionWrite);
@@ -442,6 +456,9 @@ namespace Ifak.Fast.Mediator.IO.Config
             }
             if (History.HasValue) {
                 History = History.Value.Normalize();
+            }
+            if (string.IsNullOrWhiteSpace(Name)) {
+                Name = ID;
             }
         }
 

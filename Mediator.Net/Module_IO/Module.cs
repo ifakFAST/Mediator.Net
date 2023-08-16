@@ -2,7 +2,6 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
@@ -1244,6 +1243,37 @@ namespace Ifak.Fast.Mediator.IO
                         catch (Exception exp) {
                             Exception e = exp.GetBaseException() ?? exp;
                             return Result<DataValue>.Failure($"Exception while exporting: {e.Message}");
+                        }
+                    }
+
+                case "ImportObjectAsFile": {
+
+                        try {
+                            NamedValue nv1 = parameters[0];
+                            NamedValue nv2 = parameters[1];
+                            string obj = nv1.Value;
+                            var objRef = ObjectRef.FromEncodedString(obj);
+
+                            byte[] excelData = StdJson.ObjectFromString<byte[]>(nv2.Value) ?? throw new Exception("No data");
+
+                            FlatDataItem[] items = CreateFlatDataItemsFromExcel(excelData);
+
+                            Config.IO_Model modelCopy = DeserializeModelFromString(modelAsString);
+
+                            UpdateModelWithFlatDataItems(modelCopy, items);
+
+                            var ov = ObjectValue.Make(moduleID, modelCopy.ID, DataValue.FromObject(modelCopy));
+                            Result res = await UpdateConfig(origin, new ObjectValue[] { ov }, null, null);
+
+                            if (res.IsOK) {
+                                return Result<DataValue>.OK(DataValue.Empty);
+                            }
+
+                            return Result<DataValue>.Failure(res.Error ?? "Unknown error while updating config");
+                        }
+                        catch (Exception exp) {
+                            Exception e = exp.GetBaseException() ?? exp;
+                            return Result<DataValue>.Failure($"Exception while importing: {e.Message}");
                         }
                     }
             }
