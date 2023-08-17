@@ -140,8 +140,15 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public int Value { get; private set; } = 0;
         public EventSink? EventSinkRef { get; set; }
 
+        private bool prefixMessageWithName = true;
+
         public Alarm(string name) {
             Name = name;
+        }
+
+        public Alarm(string name, bool prefixMessageWithName) {
+            Name = name;
+            this.prefixMessageWithName = prefixMessageWithName;
         }
 
         public Level? GetLevel {
@@ -189,7 +196,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         internal override DataType GetDataType() => DataType.Byte;
 
         private string MakeMsg(string? message) {
-            return string.IsNullOrEmpty(message) ? Name : $"{Name}: {message}";
+            if (string.IsNullOrEmpty(message)) return Name;
+            if (prefixMessageWithName) {
+                return $"{Name}: {message}";
+            }
+            else {
+                return message;
+            }
         }
 
         private bool CheckCallbackFailed() {
