@@ -52,7 +52,7 @@
 
 <script lang="ts">
 
-import { Component, Vue, Watch } from 'vue-property-decorator'
+import { Component, Vue } from 'vue-property-decorator'
 import DlgTextInput from './DlgTextInput.vue'
 import Confirm from '../components/Confirm.vue'
 import Page from './Page.vue'

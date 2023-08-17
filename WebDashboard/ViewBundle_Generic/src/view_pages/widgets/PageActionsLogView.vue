@@ -4,20 +4,20 @@
       <template v-slot:default>
         <thead v-if="config.ShowHeader">
           <tr>
-            <th class="text-left" style="font-size:14px; height:36px;">Who</th>
-            <th class="text-left" style="font-size:14px; height:36px;">Time</th>
-            <th class="text-left" style="font-size:14px; height:36px;">Change</th>
+            <th class="text-left" style="font-size:14px; height:36px; min-width: 80px;">Who</th>
+            <th class="text-left" style="font-size:14px; height:36px; min-width: 142px;">Time</th>
+            <th class="text-left" style="font-size:14px; height:36px; min-width: 150px;">Change</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in items" :key="item.Timestamp">
-            <td class="text-left" style="font-size:14px; height:36px;">
+            <td class="text-left" style="font-size:14px; height:36px; min-width: 80px;">
             {{ item.User }}
             </td>
-            <td class="text-left" style="font-size:14px; height:36px;">
+            <td class="text-left" style="font-size:14px; height:36px; min-width: 142px;">
               {{ item.Time }}
             </td>
-            <td class="text-left" style="font-size:14px; height:36px;">
+            <td class="text-left" style="font-size:14px; height:36px; min-width: 150px;">
               {{ item.Action }}
             </td>        
           </tr>
@@ -69,7 +69,14 @@ export default class PageActionsLogView extends Vue {
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
 
-  items: LogEntry[] = []
+  items: LogEntry[] = [ 
+    {
+      Timestamp: 0,
+      Time: '',
+      User: '',
+      Action: '',
+    }
+  ]
 
   contextMenu = {
     show: false,

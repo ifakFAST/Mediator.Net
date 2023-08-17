@@ -7,9 +7,9 @@
           <thead v-if="config.ShowHeader">
             <tr>
               <th class="text-left"  style="font-size:14px;">Variable</th>
-              <th class="text-right" style="font-size:14px; height:36px; padding-right:0px;">Value</th>
+              <th class="text-right" style="font-size:14px; height:36px; min-width: 67px; padding-right:0px;">Value</th>
               <th class="text-right" style="font-size:14px; height:36px;"></th>
-              <th class="text-right" style="font-size:14px; height:36px;">Time</th>
+              <th class="text-right" style="font-size:14px; height:36px; min-width: 86px;">Time</th>
               <th v-if="config.ShowTrendColumn" class="text-center" style="font-size:14px; height:36px;">Trend</th>
             </tr>
           </thead>
@@ -23,7 +23,7 @@
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-right" style="font-size:14px; height:36px; padding-right:0px;">
+              <td class="text-right" style="font-size:14px; height:36px; padding-right:0px; min-width: 67px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
                     <span v-bind="attrs" v-on="on"><span v-bind:style="{ color: item.ValueColor }">{{ item.Value }}</span></span>
@@ -39,7 +39,7 @@
                   <span>{{ varItemInfo(item) }}</span>
                 </v-tooltip>
               </td>
-              <td class="text-right" style="font-size:14px; height:36px;">
+              <td class="text-right" style="font-size:14px; height:36px; min-width: 86px;">
                 <v-tooltip right open-delay="250">
                   <template v-slot:activator="{ on, attrs }">
                     <span v-bind="attrs" v-on="on">{{ item.Time }}</span>
@@ -269,6 +269,17 @@ export default class VarTable extends Vue {
   }
 
   mounted(): void {
+    this.items = this.config.Items.map((it) => {
+      const ret: VarItem = {
+        Name: it.Name,
+        Value: '',
+        ValueColor: '',
+        Unit: it.Unit,
+        Time: '',
+        Trend: '?',
+      }
+      return ret
+    })
     this.onLoadData()
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
   }

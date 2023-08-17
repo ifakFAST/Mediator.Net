@@ -8,7 +8,7 @@
                 <thead v-if="config.ShowHeader">
                   <tr>
                     <th class="text-left" style="font-size:14px;">Setting</th>
-                    <th class="text-right" style="font-size:14px; height:36px; padding-right:0px;">Value</th>
+                    <th class="text-right" style="font-size:14px; height:36px; padding-right:0px; min-width: 55px;">Value</th>
                     <th v-if="hasUnitColumn" class="text-left" style="font-size:14px; height:36px;"></th>
                     <th>&nbsp;</th>
                   </tr>
@@ -18,7 +18,7 @@
                     <td class="text-left" style="font-size:14px; height:36px;">
                       {{ it.Name }}
                     </td>
-                    <td class="text-right" style="font-size:14px; height:36px; padding-right:0px;">
+                    <td class="text-right" style="font-size:14px; height:36px; padding-right:0px; min-width: 55px;">
                       <span v-bind:style="{ color: colorForItem(it) }"> {{ valueForItem(it, '') }} </span>
                     </td>
                     <td v-if="hasUnitColumn" class="text-left" style="font-size:14px; height:36px; padding-left:8px; padding-right:0px;">
