@@ -132,10 +132,10 @@ namespace Ifak.Fast.Mediator.IO
 
         protected override async Task OnConfigModelChanged(bool init) {
 
-            await base.OnConfigModelChanged(init);
-
             model.ValidateOrThrow();
             model.Normalize();
+
+            await base.OnConfigModelChanged(init);
 
             Config.Adapter[] enabledAdapters = model.GetAllAdapters().Where(a => a.Enabled && !string.IsNullOrEmpty(a.Type)).ToArray();
 
