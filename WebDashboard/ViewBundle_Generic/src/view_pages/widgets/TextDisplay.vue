@@ -1,7 +1,7 @@
 <template>
   <div>
 
-    <div class="MarkDownHTML" style="min-height: 30px;" @contextmenu="onContextMenu" v-html="theHtmlString"></div>
+    <div v-bind:style="{ height: theHeight }" class="MarkDownHTML" style="min-height: 30px;" @contextmenu="onContextMenu" v-html="theHtmlString"></div>
 
     <v-menu v-model="contextMenu.show" :position-x="contextMenu.clientX" :position-y="contextMenu.clientY" absolute offset-y>
       <v-list>
@@ -80,6 +80,11 @@ export default class TextDisplay extends Vue {
 
   mounted(): void {
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
+  }
+
+  get theHeight(): string {
+    if (this.height.trim() === '') { return 'auto' }
+    return this.height
   }
 
   get theHtmlString(): string {
