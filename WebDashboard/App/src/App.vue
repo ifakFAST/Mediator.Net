@@ -5,7 +5,7 @@
         </template>
 
         <template v-else>
-            <dashboard :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
+            <dashboard :user="user" :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
                        :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector" :canUpdateViews="canUpdateViews"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
                         @duplicateView="duplicateView" @renameView="renameView"
@@ -43,6 +43,7 @@ export default {
     loginSuccess(event) {
       console.info('Login success')
       this.sessionID = event.session;
+      this.user = event.user;
       this.model = event.model;
       this.canUpdateViews = event.canUpdateViews;
       this.openWebSocket(event.user, event.pass)
@@ -61,6 +62,7 @@ export default {
       }
       axios.post("/logout", this.sessionID).catch(function (error) { } );
       this.sessionID = "";
+      this.user = "";
       this.model = {};
       this.currentViewID = "";
       this.loggedOut = true;

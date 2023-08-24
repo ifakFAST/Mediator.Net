@@ -1,5 +1,6 @@
 export default {
   sessionID: "",
+  user: "",
   canUpdateViews: false,
   model: {},
   currentViewID: "",

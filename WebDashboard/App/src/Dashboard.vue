@@ -142,7 +142,16 @@
          </v-card>
       </v-dialog>
 
-      <v-btn text @click.stop="logout">Logout</v-btn>
+      <v-tooltip bottom>
+        <template v-slot:activator="{ on, attrs }">
+          <v-chip class="ma-1" outlined @click.stop="logout" v-bind="attrs" v-on="on">        
+            <v-icon left>mdi-account-outline</v-icon>
+            {{ user }}
+          </v-chip>
+        </template>
+        <span>Logout...</span>
+      </v-tooltip>
+
     </v-app-bar>
 
     <v-main>
@@ -162,6 +171,7 @@
     props: {
       currViewID: String,
       currViewSrc: String,
+      user: String,
       views: Array,
       canUpdateViews: Boolean,
       busy: Boolean,
