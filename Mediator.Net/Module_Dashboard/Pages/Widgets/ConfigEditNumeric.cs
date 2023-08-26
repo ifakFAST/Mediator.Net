@@ -181,7 +181,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
             await Context.SaveWidgetConfiguration(configuration);
             
-            await Connection.DisableChangeEvents();
+            await Connection.DisableChangeEvents(
+                disableVarValueChanges: false,
+                disableVarHistoryChanges: false,
+                disableConfigChanges: true);
 
             ObjectRef[] objs = UsedObjects();
             if (objs.Length > 0) {
