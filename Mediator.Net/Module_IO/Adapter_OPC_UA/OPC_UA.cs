@@ -129,7 +129,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                             certificateStore: certificateStore,
                             userIdentity: identity,
                             remoteEndpoint: endpoint);
-
+                
                 await channel.OpenAsync();
 
                 this.connection = channel;
@@ -253,7 +253,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         TimestampsToReturn = TimestampsToReturn.Source,
                     };
 
+                    // var now = Timestamp.Now.TruncateMilliseconds();
+                    // var sw = System.Diagnostics.Stopwatch.StartNew();
                     ReadResponse readResponse = await connection.ReadAsync(readRequest);
+                    // sw.Stop();
+                    // double duration = sw.Elapsed.TotalMilliseconds;
+                    // var vtq = VTQ.Make(duration, now, Quality.Good);
+                    // var div = new DataItemValue("LastReadDurationMS", vtq);
+                    // callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
                     readHelper.SetAllResults(readResponse.Results, (vv, request) => MakeVTQ(vv, request.LastValue, request.ID));
                     result = readHelper.values;
                 }
