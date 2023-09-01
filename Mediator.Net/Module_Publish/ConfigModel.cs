@@ -80,7 +80,17 @@ public class MqttConfig : ModelObject {
 }
 
 
-public class MqttVarPub : ModelObject {
+public interface VarPubCommon {
+    List<ObjectRef> RootObjects { get; set; }
+    bool BufferIfOffline { get; set; }
+    bool SimpleTagsOnly { get; set; }
+    bool NumericTagsOnly { get; set; }
+    bool SendTagsWithNull { get; set; }
+    Duration PublishInterval { get; set; }
+    Duration PublishOffset { get; set; }
+}
+
+public class MqttVarPub : ModelObject, VarPubCommon {
     
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
@@ -264,7 +274,7 @@ public enum Database {
    // SQLite
 }
 
-public class SQLVarPub : ModelObject {
+public class SQLVarPub : ModelObject, VarPubCommon {
 
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
