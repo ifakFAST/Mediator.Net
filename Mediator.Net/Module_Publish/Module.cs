@@ -60,6 +60,13 @@ public class Module : ModelObjectModule<Model>
 
         tasks.AddRange(tasksVarPubSql);
 
+        Task[] tasksVarPubUA = model.OPC_UA
+            .Where(ua => ua.VarPublish != null)
+            .Select(ua => OPC_UA.VarPubTask.MakeVarPubTask(ua, info, shutdown))
+            .ToArray();
+
+        tasks.AddRange(tasksVarPubUA);
+
         Task[] tasksVarPubMqtt = model.MQTT
             .Where(mqtt => mqtt.VarPublish != null)
             .Select(mqtt => MqttPublisher.MakeVarPubTask(mqtt, info, certDir, shutdown))

@@ -51,7 +51,7 @@ public abstract class SQLPubVar : BufferedVarPub {
 
         var connection = dbConnection;
 
-        VariableValues changedValues = values
+        VariableValues changedValues = Util.RemoveEmptyTimestamp(values)
               .Where(v => !lastSentValues.ContainsKey(v.Variable) || lastSentValues[v.Variable] != v.Value)
               .ToList();
 
@@ -68,6 +68,12 @@ public abstract class SQLPubVar : BufferedVarPub {
 
         sw.Stop();
 
+        if (result) {
+            foreach (var vv in changedValues) {
+                lastSentValues[vv.Variable] = vv.Value;
+            }
+        }
+
         Console.WriteLine($"SQLPubVar: Sent {changedValues.Count} values in {sw.ElapsedMilliseconds} ms");
 
         return result;
@@ -83,7 +89,7 @@ public abstract class SQLPubVar : BufferedVarPub {
 
                 try {
 
-                    VarInfo v = GetVariableInfo(vv.Variable);
+                    VarInfo v = GetVariableInfoOrThrow(vv.Variable);
 
                     DbBatchCommand cmd = batch.CreateBatchCommand();
                     cmd.CommandText = MakeQuery(query, parametersStatic, v, vv);
@@ -122,14 +128,6 @@ public abstract class SQLPubVar : BufferedVarPub {
             result = result.Replace($"@@{name}", value.ToString());
         }
         return result;
-    }
-
-    private VarInfo GetVariableInfo(VariableRef vref) {
-        variables2Info.TryGetValue(vref, out VarInfo? v);
-        if (v != null) {
-            return v;
-        }
-        throw new Exception($"No meta info found for Variable '{vref}'");
     }
 
     private record ParamInfo(

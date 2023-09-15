@@ -22,9 +22,11 @@ public class Model : ModelObject {
 
     public List<MqttConfig> MQTT { get; set; } = new List<MqttConfig>();
     public List<SQLConfig>  SQL  { get; set; } = new List<SQLConfig>();
+    public List<OpcUaConfig> OPC_UA { get; set; } = new List<OpcUaConfig>();
 
     public bool ShouldSerializeMQTT() { return MQTT.Count > 0; }
     public bool ShouldSerializeSQL()  { return SQL.Count > 0; }
+    public bool ShouldSerializeOPC_UA() { return OPC_UA.Count > 0; }
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var mm in MQTT) {
@@ -305,6 +307,64 @@ public class SQLVarPub : ModelObject, VarPubCommon {
             QueryPublish = QueryPublish.Replace(entry.Key, entry.Value);
             QueryTagID2Identifier = QueryTagID2Identifier.Replace(entry.Key, entry.Value);
             QueryRegisterTag = QueryRegisterTag.Replace(entry.Key, entry.Value);
+        }
+    }
+}
+
+
+public class OpcUaConfig : ModelObject {
+
+    [XmlAttribute("id")]
+    public string ID { get; set; } = Guid.NewGuid().ToString();
+
+    [XmlAttribute("name")]
+    public string Name { get; set; } = "";
+
+    public string Host { get; set; } = "";
+    public ushort Port { get; set; } = 4840;
+    public string LogLevel { get; set; } = "Info";
+    public bool AllowAnonym { get; set; } = false;
+    public string LoginUser { get; set; } = "";
+    public string LoginPass { get; set; } = "";
+
+    public string ServerCertificateFile { get; set; } = "";
+
+    public OpcUaVarPub? VarPublish { get; set; } = null;
+
+    public void ApplyVarConfig(Dictionary<string, string> vars) {
+        foreach (var entry in vars) {
+            LoginUser = LoginUser.Replace(entry.Key, entry.Value);
+            LoginPass = LoginPass.Replace(entry.Key, entry.Value);
+            ServerCertificateFile = ServerCertificateFile.Replace(entry.Key, entry.Value);
+        }
+        VarPublish?.ApplyVarConfig(vars);
+    }
+}
+
+public class OpcUaVarPub : ModelObject, VarPubCommon {
+
+    [XmlAttribute("name")]
+    public string Name { get; set; } = "VarPub";
+
+    protected override string GetID(IEnumerable<IModelObject> parents) {
+        var uaConfig = (OpcUaConfig)parents.First();
+        return uaConfig.ID + ".VarPub";
+    }
+
+    [XmlArrayItem("RootObject")]
+    public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
+
+    public bool BufferIfOffline { get; set; } = false;
+
+    public bool SimpleTagsOnly { get; set; } = true;
+    public bool NumericTagsOnly { get; set; } = false;
+    public bool SendTagsWithNull { get; set; } = false;
+
+    public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
+    public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+
+    public void ApplyVarConfig(Dictionary<string, string> vars) {
+        foreach (var entry in vars) {
         }
     }
 }

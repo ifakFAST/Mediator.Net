@@ -37,7 +37,9 @@ public abstract class BufferedVarPub {
 
     private readonly string dataFolder;
     private readonly bool bufferIfOffline;
-    private bool running = true;
+    protected bool running = true;
+
+    protected Connection? fastConnection = null;
 
     public BufferedVarPub(string dataFolder, bool bufferIfOffline) {
         this.dataFolder = dataFolder;
@@ -46,8 +48,21 @@ public abstract class BufferedVarPub {
 
     protected Dictionary<VariableRef, VarInfo> variables2Info = new Dictionary<VariableRef, VarInfo>();
 
-    public void UpdateVarInfos(Dictionary<VariableRef, VarInfo> variables2Info) {
+    public void UpdateVarInfos(Connection client, Dictionary<VariableRef, VarInfo> variables2Info) {
         this.variables2Info = variables2Info;
+        this.fastConnection = client;
+    }
+
+    public virtual Task OnConfigChanged() {
+        return Task.FromResult(true);
+    }
+
+    public VarInfo GetVariableInfoOrThrow(VariableRef vref) {
+        variables2Info.TryGetValue(vref, out VarInfo? v);
+        if (v != null) {
+            return v;
+        }
+        throw new Exception($"No meta info found for Variable '{vref}'");
     }
 
     public void Start() {

@@ -38,7 +38,7 @@ internal class MqttPub_Var_Buffer : BufferedVarPub {
         clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
         if (clientMQTT == null) { return false; }
 
-        VariableValues changedValues = values
+        VariableValues changedValues = Util.RemoveEmptyTimestamp(values)
           .Where(v => !lastSentValues.ContainsKey(v.Variable) || lastSentValues[v.Variable] != v.Value)
           .ToList();
 

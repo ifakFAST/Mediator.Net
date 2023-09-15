@@ -17,5 +17,11 @@
   <ItemGroup>
     <ProjectReference Include="..\MediatorLib\MediatorLib.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="OpcUaServerNative.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   
 </Project>

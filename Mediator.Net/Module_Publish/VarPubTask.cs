@@ -37,12 +37,14 @@ internal class VarPubTask {
 
         async Task OnConfigurationChanged(Connection client, ObjectRefs changedObjects) {
             await varMetaMan.OnConfigChanged(client);
+            publisher.UpdateVarInfos(client, varMetaMan.variables2Info);
+            await publisher.OnConfigChanged();
         }
 
         async Task PublishRelevantVariableValues(Connection client, VariableValues allValues) {
             VariableValues values = Filter(allValues, varPub);
             await varMetaMan.Check(values, client);
-            publisher.UpdateVarInfos(varMetaMan.variables2Info);
+            publisher.UpdateVarInfos(client, varMetaMan.variables2Info);
             publisher.Post(values);
         }
 
@@ -79,7 +81,7 @@ internal class VarPubTask {
             SimpleTagsOnly: config.SimpleTagsOnly,
             NumericTagsOnly: config.NumericTagsOnly,
             SendTagsWithNull: config.SendTagsWithNull,
-            RemoveEmptyTimestamp: true);
+            RemoveEmptyTimestamp: false);
         return Util.Filter(values, criteria);
     }
 }

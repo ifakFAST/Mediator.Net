@@ -110,6 +110,10 @@ namespace Ifak.Fast.Mediator
 
         public static DataValue FromLocationRefArray(LocationRef[]? v) => FromJSON(StdJson.ValueToString(v));
 
+        public static DataValue FromGuid(Guid v) => FromJSON(StdJson.ValueToString(v));
+        
+        public static DataValue FromGuidArray(Guid[]? v) => FromJSON(StdJson.ValueToString(v));
+
         public static DataValue FromTimestamp(Timestamp v) => FromJSON(StdJson.ValueToString(v));
 
         public static DataValue FromTimestampArray(Timestamp[]? v) => FromJSON(StdJson.ValueToString(v));
@@ -181,7 +185,7 @@ namespace Ifak.Fast.Mediator
                     return new DataValue("\"0.0\"");
 
                 case DataType.Guid:
-                    return new DataValue("\"00000000-0000-0000-0000-00000000000\"");
+                    return new DataValue("\"00000000-0000-0000-0000-000000000000\"");
 
                 case DataType.NamedValue:
                     return new DataValue("{ \"Name\": \"\", \"Value\": \"\"}");
@@ -348,6 +352,22 @@ namespace Ifak.Fast.Mediator
             return null;
         }
 
+        public float? AsFloat() {
+            try {
+                return StdJson.ToFloat(jsonOrNull!);
+            }
+            catch (Exception) {
+                if (jsonOrNull == "true") return 1;
+                if (jsonOrNull == "false") return 0;
+                if (jsonOrNull == null) return null;
+                try {
+                    return StdJson.ToFloatArrayAcceptingBools(jsonOrNull)![0];
+                }
+                catch (Exception) { }
+            }
+            return null;
+        }
+
         public double GetDouble() => IsEmpty ? throw new SerializationException("DataValue.GetDouble(): value is empty (null)") : StdJson.ToDouble(jsonOrNull!);
 
         public double[]? GetDoubleArray() => StdJson.ToDoubleArray(jsonOrNull);
@@ -416,6 +436,13 @@ namespace Ifak.Fast.Mediator
             string? str = GetString();
             if (str == null) return null;
             return Timestamp.FromISO8601(str);
+        }
+
+        public Guid GetGuid() {
+            if (IsEmpty) throw new SerializationException("DataValue.GetGuid(): value is empty (null)");
+            string? str = GetString();
+            if (str == null) throw new SerializationException("DataValue.GetGuid(): value is not a string");
+            return Guid.Parse(str);
         }
 
         private static char FirstNonWhitespace(string str) {

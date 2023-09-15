@@ -117,3 +117,4 @@ UpgradeLog*.htm
 .ntvs_analysis.dat
 
 /Mediator.Net/Module_Dashboard/Properties/launchSettings.json
+/Mediator.Net/Module_Publish/OpcUaServerNative.dll
