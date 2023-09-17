@@ -45,18 +45,26 @@ internal class Program {
             return;
         }
 
-        Write("Build Portable or Win64 or Linux64 or All (p/w/l/a): ");
+        WriteLine("Target options:");
+        WriteLine("  1 - Portable");
+        WriteLine("  2 - Win64");
+        WriteLine("  3 - Win32");
+        WriteLine("  4 - Linux");
+        WriteLine("  5 - All");
+
         char mode = ReadChar();
 
         switch (mode) {
-            case 'a': 
-                MakeBuild(root, 'p', version);
-                MakeBuild(root, 'w', version);
-                MakeBuild(root, 'l', version);
+            case '5': 
+                MakeBuild(root, '1', version);
+                MakeBuild(root, '2', version);
+                MakeBuild(root, '3', version);
+                MakeBuild(root, '4', version);
                 break;
-            case 'p':
-            case 'w':
-            case 'l':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
                 MakeBuild(root, mode, version);
                 break;
             default:
@@ -70,14 +78,16 @@ internal class Program {
         string baseDir = Directory.GetParent(root)!.FullName;
         string outDir = Path.Combine(baseDir, "Mediator.Export");
 
-        bool windowsOrPortable = mode == 'w' || mode == 'p';
-        bool linux = mode == 'l';
-        bool selfContained = mode == 'w' || mode == 'l';
+        bool windowsOrPortable = mode == '1' || mode == '2' || mode == '3';
+        bool linux = mode == '4';
+        bool selfContained = mode == '2' || mode == '3' || mode == '4';
+        bool arch32bit = mode == '3';
 
         string dir = mode switch {
-            'p' => "Portable",
-            'w' => "Windows",
-            'l' => "Linux",
+            '1' => "Portable",
+            '2' => "Windows",
+            '3' => "Windows32",
+            '4' => "Linux",
             _ => throw new Exception()
         };
 
@@ -100,9 +110,10 @@ internal class Program {
         string coreOutDir = EnsureDirectory(outDirMode, "Bin", "Mediator");
 
         string cmdArgs = mode switch {
-            'p' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\"",
-            'w' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\" -r win-x64   --self-contained",
-            'l' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\" -r linux-x64 --self-contained",
+            '1' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\"",
+            '2' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\" -r win-x64   --self-contained",
+            '3' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\" -r win-x86   --self-contained",
+            '4' => $"publish Mediator.Net/MediatorCore/MediatorCore.csproj -c Release -o \"{coreOutDir}\" -r linux-x64 --self-contained",
             _ => throw new Exception()
         };
 
@@ -130,6 +141,11 @@ internal class Program {
             CopyFileToDir(Path.Combine(opcSrcDir, "msvcr120.dll"),           opcOutDir);
             CopyFileToDir(Path.Combine(opcSrcDir, "msvcp120.dll"),           opcOutDir);
             CopyFileToDir(Path.Combine(opcSrcDir, "MediatorLib.dll"),        opcOutDir);
+
+            string opcUaSrvSrcDir = arch32bit ? Path.Combine(baseDir, "OpcUaServer/Native/x86/Release"): 
+                                                Path.Combine(baseDir, "OpcUaServer/Native/x64/Release");
+            string opcUaSrvOutDir = EnsureDirectory(outDirMode, "Bin", "Mediator");
+            CopyFileToDir(Path.Combine(opcUaSrvSrcDir, "OpcUaServerNative.dll"), opcUaSrvOutDir, overwrite: true);
         }
 
         string webOutDir = EnsureDirectory(outDirMode, "Bin", "WebRoot_Dashboard");
@@ -153,9 +169,10 @@ internal class Program {
         CreateEmptyFile(Path.Combine(dataOutDir, "DB_EventLog.db"));
 
         string runCmd = mode switch {
-            'p' => "dotnet ./Bin/Mediator/MediatorCore.dll --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
-            'w' => ".\\Bin\\Mediator\\MediatorCore.exe --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
-            'l' => "./Bin/Mediator/MediatorCore --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
+            '1' => "dotnet ./Bin/Mediator/MediatorCore.dll --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
+            '2' => ".\\Bin\\Mediator\\MediatorCore.exe --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
+            '3' => ".\\Bin\\Mediator\\MediatorCore.exe --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
+            '4' => "./Bin/Mediator/MediatorCore --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
             _ => throw new Exception()
         };
 
@@ -184,9 +201,10 @@ internal class Program {
         WriteToFile(Path.Combine(outDirMode, "Version.txt"), strVersion);
 
         string archiveFile = mode switch {
-            'p' => $"Mediator_v{version}.zip",
-            'w' => $"Mediator_v{version}_Win64.zip",
-            'l' => $"Mediator_v{version}_Linux64.tar.gz",
+            '1' => $"Mediator_v{version}.zip",
+            '2' => $"Mediator_v{version}_Win64.zip",
+            '3' => $"Mediator_v{version}_Win32.zip",
+            '4' => $"Mediator_v{version}_Linux64.tar.gz",
             _ => throw new Exception()
         };
 

@@ -75,9 +75,9 @@ public static class Helper {
         return p;
     }
 
-    public static void CopyFileToDir(string file, string dir) {
+    public static void CopyFileToDir(string file, string dir, bool overwrite = false) {
         string dest = Path.Combine(dir, Path.GetFileName(file));
-        File.Copy(file, dest);
+        File.Copy(file, dest, overwrite);
     }
 
     public static void CopyFileToDir(string file, string dir, string newName) {
