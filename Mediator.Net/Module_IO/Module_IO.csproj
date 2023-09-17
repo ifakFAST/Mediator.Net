@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.102.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.1" />
     <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0-beta.130" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.0" />
@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Workstation.UaClient" Version="3.2.0" />
+    <PackageReference Include="Workstation.UaClient" Version="3.2.1" />
   </ItemGroup>
 
 </Project>
