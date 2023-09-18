@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MediatorSim {
+namespace OpcUaServerNet {
 
     public class OPC_UA_Server {
 
@@ -463,161 +463,161 @@ namespace MediatorSim {
             Fatal
         }
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern IntPtr UA_Server_Create(byte[] name, byte[] host, ushort port, LogLevel logLevel, bool allowAnonymous, byte[] user, byte[] pass, byte[] certificate, uint lenCertificate, byte[] key, uint lenKey);
 
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Boolean(IntPtr server, byte[] id, byte[] name, bool writable, bool initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_SByte(IntPtr server, byte[] id, byte[] name, bool writable, sbyte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Byte(IntPtr server, byte[] id, byte[] name, bool writable, byte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Int16(IntPtr server, byte[] id, byte[] name, bool writable, short initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_UInt16(IntPtr server, byte[] id, byte[] name, bool writable, ushort initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Int32(IntPtr server, byte[] id, byte[] name, bool writable, int initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_UInt32(IntPtr server, byte[] id, byte[] name, bool writable, uint initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Int64(IntPtr server, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_UInt64(IntPtr server, byte[] id, byte[] name, bool writable, ulong initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Float(IntPtr server, byte[] id, byte[] name, bool writable, float initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Double(IntPtr server, byte[] id, byte[] name, bool writable, double initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_String(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_DateTime(IntPtr server, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_Guid(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_AddVariable_ByteString(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
 
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Boolean(IntPtr server, IntPtr pNodeId, bool value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_SByte(IntPtr server, IntPtr pNodeId, sbyte value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Byte(IntPtr server, IntPtr pNodeId, byte value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Int16(IntPtr server, IntPtr pNodeId, short value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_UInt16(IntPtr server, IntPtr pNodeId, ushort value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Int32(IntPtr server, IntPtr pNodeId, int value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_UInt32(IntPtr server, IntPtr pNodeId, uint value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Int64(IntPtr server, IntPtr pNodeId, long value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_UInt64(IntPtr server, IntPtr pNodeId, ulong value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Float(IntPtr server, IntPtr pNodeId, float value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Double(IntPtr server, IntPtr pNodeId, double value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_String(IntPtr server, IntPtr pNodeId, byte[] value, uint size, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_DateTime(IntPtr server, IntPtr pNodeId, long value, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_Guid(IntPtr server, IntPtr pNodeId, byte[] value, uint size, int quality, long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_WriteVariable_ByteString(IntPtr server, IntPtr pNodeId, byte[] value, uint size, int quality, long time);
 
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Boolean(IntPtr server, IntPtr pNodeId, ref bool value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_SByte(IntPtr server, IntPtr pNodeId, ref sbyte value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Byte(IntPtr server, IntPtr pNodeId, ref byte value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Int16(IntPtr server, IntPtr pNodeId, ref short value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_UInt16(IntPtr server, IntPtr pNodeId, ref ushort value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Int32(IntPtr server, IntPtr pNodeId, ref int value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_UInt32(IntPtr server, IntPtr pNodeId, ref uint value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Int64(IntPtr server, IntPtr pNodeId, ref long value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_UInt64(IntPtr server, IntPtr pNodeId, ref ulong value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Float(IntPtr server, IntPtr pNodeId, ref float value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Double(IntPtr server, IntPtr pNodeId, ref double value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_String(IntPtr server, IntPtr pNodeId, byte[] value, uint capacity, ref uint strLen, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_DateTime(IntPtr server, IntPtr pNodeId, ref long value, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_Guid(IntPtr server, IntPtr pNodeId, byte[] value, uint capacity, ref uint strLen, ref int quality, ref long time);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_ReadVariable_ByteString(IntPtr server, IntPtr pNodeId, byte[] value, uint capacity, ref uint strLen, ref int quality, ref long time);
 
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_RunStartup(IntPtr server);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern ushort UA_Server_RunIterate(IntPtr server, bool waitInternal);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern uint UA_Server_RunShutdown(IntPtr server);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern void UA_Server_FreeNodeId(IntPtr nodeId);
 
-        [DllImport("OPC_UA.dll")]
+        [DllImport("OpcUaServerNative.dll")]
         private static extern void UA_Server_Delete(IntPtr server);
     }
 
