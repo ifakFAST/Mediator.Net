@@ -1,11 +1,14 @@
-﻿using OpcUaServerNet;
+﻿// Licensed to ifak e.V. under one or more agreements.
+// ifak e.V. licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
+
+using OpcUaServerNet;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator.Publish.OPC_UA;

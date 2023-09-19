@@ -37,14 +37,14 @@ internal class VarPubTask {
 
         async Task OnConfigurationChanged(Connection client, ObjectRefs changedObjects) {
             await varMetaMan.OnConfigChanged(client);
-            publisher.UpdateVarInfos(client, varMetaMan.variables2Info);
+            publisher.UpdateVarInfos(client, varMetaMan.Variables2Info);
             await publisher.OnConfigChanged();
         }
 
         async Task PublishRelevantVariableValues(Connection client, VariableValues allValues) {
             VariableValues values = Filter(allValues, varPub);
             await varMetaMan.Check(values, client);
-            publisher.UpdateVarInfos(client, varMetaMan.variables2Info);
+            publisher.UpdateVarInfos(client, varMetaMan.Variables2Info);
             publisher.Post(values);
         }
 
@@ -67,13 +67,14 @@ internal class VarPubTask {
 
         while (!shutdown()) {
             Connection clientFAST = await wrapper.EnsureConnectionOrThrow();
-            VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);
+            VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);            
             await PublishRelevantVariableValues(clientFAST, allValues);
             await WaitForNextCycle();
         }
 
         await wrapper.Close();
         publisher.Close();
+        await varMetaMan.Close();
     }
 
     private static VariableValues Filter(VariableValues values, VarPubCommon config) {
