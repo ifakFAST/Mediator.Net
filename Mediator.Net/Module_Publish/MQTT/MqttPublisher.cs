@@ -10,7 +10,6 @@ using System.Security.Cryptography.X509Certificates;
 using MQTTnet.Client;
 using MQTTnet;
 using System.Threading;
-using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using MQTTnet.Protocol;
 
 namespace Ifak.Fast.Mediator.Publish.MQTT;

@@ -70,7 +70,7 @@ internal class UA_PubVar : BufferedVarPub {
             Connection? con = fastConnection;
             if (list.Count > 0 && con != null) {
                 try {
-                    Console.WriteLine($"UA_PubVar: Writing {list.Count} variables: {list[0]}");
+                    // Console.WriteLine($"UA_PubVar: Writing {list.Count} variables: {list[0]}");
                     await con.WriteVariablesIgnoreMissing(list);
                 }
                 catch (Exception exp) {
@@ -92,7 +92,7 @@ internal class UA_PubVar : BufferedVarPub {
     private record VarInfoWithVTQ(VarInfo VarInfo, VTQ VTQ);
 
     public override async Task OnConfigChanged() {
-        Console.WriteLine("Restaring OPC UA server because of changed configuration...");        
+        Console.WriteLine("Restaring OPC UA server because of changed configuration...");
         configHasChanged = true;
         VariableValues lastValues = lastSentValues.Select(kv => VariableValue.Make(kv.Key, kv.Value)).ToList();
         registeredVariables.Clear();
@@ -100,10 +100,14 @@ internal class UA_PubVar : BufferedVarPub {
         while (running && configHasChanged) {
             await Task.Delay(10);
         }
-        await DoSend(lastValues);
+        await DoSend(lastValues, reportMissingVars: false);
     }
 
     protected override Task<bool> DoSend(VariableValues values) {
+        return DoSend(values, reportMissingVars: true);
+    }
+
+    private Task<bool> DoSend(VariableValues values, bool reportMissingVars) {
 
         try {
 
@@ -128,7 +132,9 @@ internal class UA_PubVar : BufferedVarPub {
                     varInfosForRegister.Add(new VarInfoWithVTQ(v, vv.Value));
                 }
                 catch (Exception exp) {
-                    Console.Error.WriteLine($"Error getting info for variable '{vv.Variable}': {exp.Message}");
+                    if (reportMissingVars) { 
+                        Console.Error.WriteLine($"Error getting info for variable '{vv.Variable}': {exp.Message}");
+                    }
                     continue;
                 }
             }

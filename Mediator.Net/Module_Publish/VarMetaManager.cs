@@ -14,9 +14,9 @@ namespace Ifak.Fast.Mediator.Publish;
 internal sealed class VarMetaManagerIntern {
 
     private readonly HashSet<VariableRef> variables = new HashSet<VariableRef>();
-    public Dictionary<VariableRef, VarInfo> variables2Info = new Dictionary<VariableRef, VarInfo>();
+    internal Dictionary<VariableRef, VarInfo> variables2Info = new Dictionary<VariableRef, VarInfo>();
 
-    public async Task Check(VariableValues values, Connection clientFAST) {
+    internal async Task Check(VariableValues values, Connection clientFAST) {
 
         bool newVars = values.Any(vv => !variables.Contains(vv.Variable));
         if (!newVars) return;
@@ -28,21 +28,21 @@ internal sealed class VarMetaManagerIntern {
         await UpdateVarInfo(clientFAST);
     }
 
-    public Task OnConfigChanged(Connection clientFAST) {
+    internal Task OnConfigChanged(Connection clientFAST) {
         return UpdateVarInfo(clientFAST);
     }
 
     private async Task UpdateVarInfo(Connection clientFAST) {
-        VarInfo[]? infos = await GetVarInfoFromVars(clientFAST, variables.ToArray());
-        if (infos != null) {
-            variables2Info = infos.ToDictionary(i => i.VarRef);
-        }
-        else {
-            this.variables.Clear();
+        VarInfoResult infoResult = await GetVarInfoFromVars(clientFAST, variables.ToArray());
+        variables2Info = infoResult.Infos.ToDictionary(i => i.VarRef);
+        foreach (VariableRef v in infoResult.InvalidVarRefs) {
+            variables.Remove(v);
         }
     }
 
-    private static async Task<VarInfo[]?> GetVarInfoFromVars(Connection client, IEnumerable<VariableRef> vars) {
+    private record VarInfoResult(IList<VarInfo> Infos, IList<VariableRef> InvalidVarRefs);
+
+    private static async Task<VarInfoResult> GetVarInfoFromVars(Connection client, VariableRef[] vars) {
 
         var objects = new HashSet<ObjectRef>();
         foreach (var v in vars) {
@@ -51,30 +51,35 @@ internal sealed class VarMetaManagerIntern {
 
         ObjectRef[] objectsArr = objects.ToArray();
 
-        List<ObjectInfo> infos;
-        try {
-            infos = await client.GetObjectsByID(objectsArr);
-        }
-        catch (Exception) {
-            return null; // old object refs not found
-        }
+        List<ObjectInfo>  objInfos  = await client.GetObjectsByID(objectsArr, ignoreMissing: true);
+        List<ObjectValue> objValues = await client.GetObjectValuesByID(objectsArr, ignoreMissing: true);
 
-        List<ObjectValue> objValues = await client.GetObjectValuesByID(objectsArr);
-
-        Dictionary<ObjectRef, ObjectInfo> mapObj2Info = infos.ToDictionary(i => i.ID);
+        Dictionary<ObjectRef, ObjectInfo>  mapObj2Info  = objInfos.ToDictionary(i => i.ID);
         Dictionary<ObjectRef, ObjectValue> mapObj2Value = objValues.ToDictionary(i => i.Object);
 
         var result = new List<VarInfo>();
-        foreach (var v in vars) {
-            ObjectInfo objInfo = mapObj2Info[v.Object];
-            ObjectValue objValue = mapObj2Value[v.Object];
-            foreach (var variable in objInfo.Variables) {
+        var invalidVars = new List<VariableRef>();
+
+        foreach (VariableRef v in vars) {
+
+            if (!mapObj2Info.TryGetValue(v.Object, out ObjectInfo? objInfo)) {
+                invalidVars.Add(v);
+                continue;
+            }
+
+            if (!mapObj2Value.TryGetValue(v.Object, out ObjectValue objValue)) {
+                invalidVars.Add(v);
+                continue;
+            }
+
+            foreach (Variable variable in objInfo.Variables) {
                 if (variable.Name == v.Name) {
                     result.Add(new VarInfo(v, variable, objInfo, objValue));
                 }
             }
         }
-        return result.ToArray();
+
+        return new VarInfoResult(result, invalidVars);
     }
 }
 
@@ -124,8 +129,6 @@ internal sealed class VarMetaManager {
 
             Work w = await queue.ReceiveAsync();
 
-            Console.WriteLine($"Loop: {w.What}  TID: {Environment.CurrentManagedThreadId}");
-
             switch (w.What) {
 
                 case TaskType.Check:
@@ -147,21 +150,23 @@ internal sealed class VarMetaManager {
 
     private readonly VarMetaManagerIntern intern = new();
 
-    private Task DoCheck(VariableValues values, Connection clientFAST) {
+    private async Task DoCheck(VariableValues values, Connection clientFAST) {
         try {
-            return intern.Check(values, clientFAST);
+            await intern.Check(values, clientFAST);
         }
-        catch (Exception) {
-            return Task.FromResult(true);
+        catch (Exception exp) {
+            Exception e = exp.GetBaseException() ?? exp;
+            Console.Error.WriteLine($"VarMetaManager Check: {e.Message}");
         }
     }
 
-    private Task DoOnConfigChanged(Connection clientFAST) {
+    private async Task DoOnConfigChanged(Connection clientFAST) {
         try {
-            return intern.OnConfigChanged(clientFAST);
+            await intern.OnConfigChanged(clientFAST);
         }
-        catch (Exception) {
-            return Task.FromResult(true);
+        catch (Exception exp) {
+            Exception e = exp.GetBaseException() ?? exp;
+            Console.Error.WriteLine($"VarMetaManager OnConfigChanged: {e.Message}");
         }
     }
 }
