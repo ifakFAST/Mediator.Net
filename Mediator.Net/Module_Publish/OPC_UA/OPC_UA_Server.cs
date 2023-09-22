@@ -41,6 +41,7 @@ namespace OpcUaServerNet {
             byte[] key = new byte[0];
 
             if (!string.IsNullOrEmpty(fileCertificate)) {
+                fileCertificate = Path.GetFullPath(fileCertificate);
                 if (!File.Exists(fileCertificate)) {
                     throw new FileNotFoundException($"Certificate file not found: {fileCertificate}");
                 }
