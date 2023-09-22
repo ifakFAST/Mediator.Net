@@ -558,6 +558,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("objectIDs")]
         public ObjectRef[] ObjectIDs { get; set; } = Array.Empty<ObjectRef>();
+
+        [JsonProperty("ignoreMissing")]
+        public bool IgnoreMissing { get; set; } = false;
     }
 
     public class GetChildrenOfObjectsReq : RequestBase
@@ -594,6 +597,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("objectIDs")]
         public ObjectRef[] ObjectIDs { get; set; } = Array.Empty<ObjectRef>();
+
+        [JsonProperty("ignoreMissing")]
+        public bool IgnoreMissing { get; set; } = false;
     }
 
     public class GetMemberValuesReq : RequestBase

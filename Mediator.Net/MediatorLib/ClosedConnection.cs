@@ -98,11 +98,11 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("GetModules on closed connection");
         }
 
-        public override Task<List<ObjectInfo>> GetObjectsByID(params ObjectRef[] objectIDs) {
+        public override Task<List<ObjectInfo>> GetObjectsByID(ObjectRef[] objectIDs, bool ignoreMissing) {
             throw new InvalidOperationException("GetObjectsByID on closed connection");
         }
 
-        public override Task<List<ObjectValue>> GetObjectValuesByID(params ObjectRef[] objectIDs) {
+        public override Task<List<ObjectValue>> GetObjectValuesByID(ObjectRef[] objectIDs, bool ignoreMissing) {
             throw new InvalidOperationException("GetObjectValuesByID on closed connection");
         }
 

@@ -423,16 +423,23 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectsByIDReq.ID: {
                             var req = (GetObjectsByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
-                            ObjectInfos result = objectIDs.Select(id => {
-                                ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
-                                foreach (ObjectInfo inf in module.AllObjects) {
-                                    if (inf.ID == id) {
-                                        return inf;
-                                    }
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? Array.Empty<ObjectRef>();
+                            bool ignoreMissing = req.IgnoreMissing;
+                            ObjectInfos result = new(objectIDs.Length);
+                            foreach (var id in objectIDs) {
+                                ModuleState? module = ModuleFromId(id.ModuleID);
+                                if (module == null) {
+                                    if (ignoreMissing) { continue; }
+                                    else { throw new Exception("No module found with id " + id.ModuleID);}
                                 }
-                                throw new Exception("No object found with id " + id.ToString());
-                            }).ToList();
+                                ObjectInfo? inf = module.GetObjectInfo(id);
+                                if (inf != null) {
+                                    result.Add(inf);
+                                }
+                                else {
+                                    if (!ignoreMissing) { throw new Exception("No object found with id " + id.ToString());  }
+                                }
+                            }
                             return Result_OK(result);
                         }
 
@@ -464,20 +471,42 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectValuesByIDReq.ID: {
                             var req = (GetObjectValuesByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? Array.Empty<ObjectRef>();
+                            bool ignoreMissing = req.IgnoreMissing;
+
+                            var modulesMap = GetModulesMap();
+
+                            if (ignoreMissing) {
+                                var validObjects = new List<ObjectRef>(objectIDs.Length);
+                                foreach (ObjectRef id in objectIDs) {
+                                    if (modulesMap.TryGetValue(id.ModuleID, out ModuleState? module) && module.GetObjectInfo(id) is not null) {
+                                        validObjects.Add(id);
+                                    }
+                                }
+                                objectIDs = validObjects.ToArray();
+                                if (objectIDs.Length == 0) {
+                                    return Result_OK(new ObjectValues());
+                                }
+                            }
+                            else {
+                                foreach (ObjectRef id in objectIDs) {
+                                    if(!modulesMap.TryGetValue(id.ModuleID, out ModuleState? module)) {
+                                        throw new Exception("No module found with id " + id.ModuleID);
+                                    }
+                                    if (module.GetObjectInfo(id) is null) {
+                                        throw new Exception("No object found with id " + id.ToString());
+                                    }
+                                }
+                            }
 
                             if (objectIDs.Length <= 1 || objectIDs.All(o => o.ModuleID == objectIDs[0].ModuleID)) {
-                                ModuleState module = ModuleFromIdOrThrow(objectIDs[0].ModuleID);
-                                foreach (ObjectRef id in objectIDs) {
-                                    if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
-                                }
+                                ModuleState module = modulesMap[objectIDs[0].ModuleID];
                                 ObjectValues res = (await RestartOnExp(module, m => m.GetObjectValuesByID(objectIDs))).ToList();
                                 return Result_OK(res);
                             }
 
                             Task<ObjectValue[]>[] tasks = objectIDs.Select(id => {
-                                ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
-                                if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
+                                ModuleState module = modulesMap[id.ModuleID];
                                 return RestartOnExp(module, m => m.GetObjectValuesByID(new ObjectRef[] { id }));
                             }).ToArray();
 
@@ -1420,6 +1449,17 @@ namespace Ifak.Fast.Mediator
             var res = moduls.FirstOrDefault(m => m.ID == moduleID);
             if (res == null) throw new Exception("Unknown module id: " + moduleID);
             return res;
+        }
+
+        private ModuleState? ModuleFromId(string moduleID) {
+            var moduls = core.modules;
+            var res = moduls.FirstOrDefault(m => m.ID == moduleID);
+            return res;
+        }
+
+        private Dictionary<string, ModuleState> GetModulesMap() {
+            var moduls = core.modules;
+            return moduls.ToDictionary(m => m.ID);
         }
 
         public Task<object?> AddRequest(RequestBase req) {

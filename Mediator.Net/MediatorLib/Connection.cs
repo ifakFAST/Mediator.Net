@@ -91,7 +91,16 @@ namespace Ifak.Fast.Mediator
         /// Returns objects by id.
         /// </summary>
         /// <param name="objectIDs">The object ids</param>
-        public abstract Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs);
+        public virtual Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs) {
+            return GetObjectsByID(objectIDs, ignoreMissing: false);
+        }
+
+        /// <summary>
+        /// Returns objects by id.
+        /// </summary>
+        /// <param name="objectIDs">The object ids</param>
+        /// <param name="ignoreMissing">If true, missing objects will be ignored, otherwise an exception will be thrown</param>
+        public abstract Task<ObjectInfos> GetObjectsByID(ObjectRef[] objectIDs, bool ignoreMissing);
 
         /// <summary>
         /// Returns all objects that are direct children of a specific object
@@ -127,7 +136,16 @@ namespace Ifak.Fast.Mediator
         /// Returns entire objects by id.
         /// </summary>
         /// <param name="objectIDs">The ids of the objects to return</param>
-        public abstract Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs);
+        public virtual Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs) {
+            return GetObjectValuesByID(objectIDs, ignoreMissing: false);
+        }
+
+        /// <summary>
+        /// Returns entire objects by id.
+        /// </summary>
+        /// <param name="objectIDs">The ids of the objects to return</param>
+        /// <param name="ignoreMissing">If true, missing objects will be ignored, otherwise an exception will be thrown</param>
+        public abstract Task<ObjectValues> GetObjectValuesByID(ObjectRef[] objectIDs, bool ignoreMissing);
 
         /// <summary>
         /// Returns the value of an object member.

@@ -316,17 +316,19 @@ namespace Ifak.Fast.Mediator
             return await Post<MetaInfos>(request);
         }
 
-        public override async Task<ObjectInfos> GetObjectsByID(params ObjectRef[] objectIDs) {
+        public override async Task<ObjectInfos> GetObjectsByID(ObjectRef[] objectIDs, bool ignoreMissing) {
             if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
             var request = MakeSessionRequest<GetObjectsByIDReq>();
             request.ObjectIDs = objectIDs;
+            request.IgnoreMissing = ignoreMissing;
             return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<ObjectValues> GetObjectValuesByID(params ObjectRef[] objectIDs) {
+        public override async Task<ObjectValues> GetObjectValuesByID(ObjectRef[] objectIDs, bool ignoreMissing) {
             if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
             var request = MakeSessionRequest<GetObjectValuesByIDReq>();
             request.ObjectIDs = objectIDs;
+            request.IgnoreMissing = ignoreMissing;
             return await Post<ObjectValues>(request);
         }
 
