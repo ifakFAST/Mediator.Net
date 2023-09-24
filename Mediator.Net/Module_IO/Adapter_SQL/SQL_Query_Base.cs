@@ -24,10 +24,18 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
         private Adapter config = new Adapter();
         private AdapterCallback? callback;
 
+        private readonly Dictionary<string, DataItem> mapId2DataItem = new();
+
         public override Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
+
+            List<DataItem> dataItems = config.GetAllDataItems();
+            mapId2DataItem.Clear();
+            foreach (DataItem item in dataItems) {
+                mapId2DataItem[item.ID] = item;
+            }
 
             return Task.FromResult(new Group[0]);
         }
@@ -46,10 +54,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                 return res;
             }
 
-            Dictionary<string, string> mapId2Address = config.GetAllDataItems().ToDictionary(
-                item => /* key */ item.ID,
-                item => /* val */ item.Address);
-
             bool anyError = false;
 
             for (int i = 0; i < N; ++i) {
@@ -57,10 +61,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                 ReadRequest req = items[i];
                 string itemID = req.ID;
                 VTQ lastVal = req.LastValue;
-                string query = mapId2Address[itemID];
+                DataItem item = mapId2DataItem[itemID];
+                string query = item.Address;
 
                 try {
-                    res[i] = await ReadDataItemFromDB(itemID, query, lastVal);
+                    res[i] = await ReadDataItemFromDB(query, lastVal, item.Type, item.Dimension);
                     ReturnToNormal("ReadDataItems", $"Successful read of DataItem {itemID}", itemID);
                 }
                 catch (Exception exp) {
@@ -77,51 +82,77 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             return res;
         }
 
-        private async Task<VTQ> ReadDataItemFromDB(string itemID, string query, VTQ lastValue) {
+        private async Task<VTQ> ReadDataItemFromDB(string query, VTQ lastValue, DataType type, int dimension) {
 
-            var rows = new List<JObject>();
-
-            using (DbCommand cmd = CreateCommand(dbConnection!, query)) {
-
-                using (var reader = await cmd.ExecuteReaderAsync()) {
-
-                    while (reader.Read()) {
-
-                        int n = reader.FieldCount;
-                        JObject objRow = new JObject();
-
-                        for (int i = 0; i < n; ++i) {
-                            string name = reader.GetName(i);
-                            object value = reader.GetValue(i);
-                            objRow[name] = JToken.FromObject(value);
-                        }
-
-                        rows.Add(objRow);
-                    }
-                }
-            }
-
-            DataValue dataValue = DataValue.FromObject(rows, indented: true);
+            DataValue dataValue = await ReadDataValue(query, type, dimension);
             if (lastValue.V == dataValue) {
                 return lastValue;
             }
 
             VTQ vtq = VTQ.Make(dataValue, Timestamp.Now.TruncateMilliseconds(), Quality.Good);
 
-            int N = rows.Count;
-            string firstRow = N == 0 ? "" : StdJson.ObjectToString(rows[0], indented: false);
+            //int N = rows.Count;
+            //string firstRow = N == 0 ? "" : StdJson.ObjectToString(rows[0], indented: false);
 
-            if (N == 0) {
-                PrintLine($"Read 0 rows for {itemID}");
-            }
-            else if (N == 1) {
-                PrintLine($"Read 1 row for {itemID}: {firstRow}");
-            }
-            else {
-                PrintLine($"Read {N} rows for {itemID}. First row: {firstRow}");
-            }
+            //if (N == 0) {
+            //    PrintLine($"Read 0 rows for {itemID}");
+            //}
+            //else if (N == 1) {
+            //    PrintLine($"Read 1 row for {itemID}: {firstRow}");
+            //}
+            //else {
+            //    PrintLine($"Read {N} rows for {itemID}. First row: {firstRow}");
+            //}
 
             return vtq;
+        }
+
+        private async Task<DataValue> ReadDataValue(string query, DataType type, int dimension) {
+
+            using DbCommand cmd = CreateCommand(dbConnection!, query);
+            using DbDataReader reader = await cmd.ExecuteReaderAsync();
+
+            if (type == DataType.Struct) {
+
+                var rows = new List<JObject>();
+
+                while (reader.Read()) {
+
+                    int n = reader.FieldCount;
+                    JObject objRow = new();
+
+                    for (int i = 0; i < n; ++i) {
+                        string name = reader.GetName(i);
+                        object value = reader.GetValue(i);
+                        objRow[name] = JToken.FromObject(value);
+                    }
+
+                    if (dimension == 1) {
+                        return DataValue.FromObject(objRow, indented: true);
+                    }
+
+                    rows.Add(objRow);
+                }
+
+                return DataValue.FromObject(rows, indented: true);
+            }
+            else {
+
+                var rows = new List<object>();
+
+                while (reader.Read()) {
+
+                    object value = reader.GetValue(0);
+
+                    if (dimension == 1) {
+                        return DataValue.FromObject(value);
+                    }
+
+                    rows.Add(value);
+                }
+
+                return DataValue.FromObject(rows, indented: true);
+            }
         }
 
         public override Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
@@ -144,7 +175,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             string[] examples = new string[] {
                 "SELECT * FROM table_name;",
                 "SELECT * FROM table_name WHERE site_id = 1;",
-                "SELECT * FROM table_name ORDER BY time DESC LIMIT 1;"
+                "SELECT * FROM table_name ORDER BY time DESC LIMIT 1;",
+                "SELECT value FROM table_name WHERE tag = 'my_tag' ORDER BY time DESC LIMIT 1;"
             };
             return Task.FromResult(examples);
         }
