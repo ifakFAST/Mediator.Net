@@ -19,11 +19,11 @@ namespace Ifak.Fast.Mediator
             jsonOrNull = s;
         }
 
-        public bool Equals(DataValue other) => jsonOrNull == other.jsonOrNull;
+        public readonly bool Equals(DataValue other) => jsonOrNull == other.jsonOrNull;
 
-        public override bool Equals(object obj) {
-            if (obj is DataValue) {
-                return Equals((DataValue)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is DataValue value) {
+                return Equals(value);
             }
             return false;
         }
@@ -32,17 +32,17 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(DataValue lhs, DataValue rhs) => !(lhs.Equals(rhs));
 
-        public bool IsEmpty => jsonOrNull == null;
+        public readonly bool IsEmpty => jsonOrNull == null;
 
-        public bool NonEmpty => jsonOrNull != null;
+        public readonly bool NonEmpty => jsonOrNull != null;
 
-        public string JSON => jsonOrNull ?? "null";
+        public readonly string JSON => jsonOrNull ?? "null";
 
-        public string? JsonOrNull => jsonOrNull;
+        public readonly string? JsonOrNull => jsonOrNull;
 
-        public override string ToString() => JSON;
+        public readonly override string ToString() => JSON;
 
-        public override int GetHashCode() => IsEmpty ? 0 : jsonOrNull!.GetHashCode();
+        public readonly override int GetHashCode() => IsEmpty ? 0 : jsonOrNull!.GetHashCode();
 
         public static readonly DataValue Empty = new DataValue(null);
 
