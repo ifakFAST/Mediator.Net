@@ -52,6 +52,16 @@ namespace Ifak.Fast.Mediator
             return settings_Indent_UseShouldSerializeMembers;
         }
 
+        public static bool IsValidJson(string str) {
+            try {
+                JTokenFromString(str);
+                return true;
+            }
+            catch (Exception) {
+                return false;
+            }
+        }
+
         public static string ObjectToString(object? value, bool indented = false, bool ignoreShouldSerializeMembers = false) {
             return JsonConvert.SerializeObject(value, GetSettings(indented, ignoreShouldSerializeMembers));
         }

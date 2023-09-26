@@ -4,8 +4,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
-using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
 
@@ -84,12 +84,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
         private async Task<VTQ> ReadDataItemFromDB(string query, VTQ lastValue, DataType type, int dimension) {
 
-            DataValue dataValue = await ReadDataValue(query, type, dimension);
-            if (lastValue.V == dataValue) {
+            ValueWithTime vt = await ReadDataValue(query, type, dimension);
+            if (lastValue.V == vt.Value && vt.Time == null) {
                 return lastValue;
             }
 
-            VTQ vtq = VTQ.Make(dataValue, Timestamp.Now.TruncateMilliseconds(), Quality.Good);
+            Timestamp t = vt.Time.HasValue ? Timestamp.FromDateTime(vt.Time.Value) : Timestamp.Now.TruncateMilliseconds();
+            VTQ vtq = VTQ.Make(vt.Value, t, Quality.Good);
 
             //int N = rows.Count;
             //string firstRow = N == 0 ? "" : StdJson.ObjectToString(rows[0], indented: false);
@@ -107,10 +108,24 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             return vtq;
         }
 
-        private async Task<DataValue> ReadDataValue(string query, DataType type, int dimension) {
+        private record struct ValueWithTime(
+            DataValue Value, 
+            DateTime? Time = null
+        );
+
+        private async Task<ValueWithTime> ReadDataValue(string query, DataType type, int dimension) {
 
             using DbCommand cmd = CreateCommand(dbConnection!, query);
             using DbDataReader reader = await cmd.ExecuteReaderAsync();
+
+            DateTime? GetOptionalTime() {
+                try {
+                    return reader.GetDateTime("timestamp");
+                }
+                catch (Exception) {
+                    return null;
+                }
+            }
 
             if (type == DataType.Struct) {
 
@@ -123,35 +138,59 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
                     for (int i = 0; i < n; ++i) {
                         string name = reader.GetName(i);
-                        object value = reader.GetValue(i);
-                        objRow[name] = JToken.FromObject(value);
+                        object? value = reader.GetValue(i);
+                        if (value is DBNull) {
+                            value = null;
+                        }
+                        objRow[name] = value == null ? JValue.CreateNull() : JToken.FromObject(value);
                     }
 
                     if (dimension == 1) {
-                        return DataValue.FromObject(objRow, indented: true);
+                        return new ValueWithTime(
+                            Value: DataValue.FromObject(objRow, indented: true),
+                            Time: GetOptionalTime());
                     }
 
                     rows.Add(objRow);
                 }
 
-                return DataValue.FromObject(rows, indented: true);
+                return new ValueWithTime(
+                            Value: DataValue.FromObject(rows, indented: true),
+                            Time: null);
             }
             else {
 
-                var rows = new List<object>();
+                var rows = new List<object?>();
 
                 while (reader.Read()) {
 
-                    object value = reader.GetValue(0);
+                    object? value = reader.GetValue(0);
+
+                    if (value is DBNull) {
+                        value = null;
+                    }
 
                     if (dimension == 1) {
-                        return DataValue.FromObject(value);
+
+                        DataValue dv = DataValue.Empty;
+                        if (value is string str && type != DataType.String && StdJson.IsValidJson(str)) {
+                            dv = DataValue.FromJSON(str);
+                        }
+                        else {
+                            dv = DataValue.FromObject(value);
+                        }
+
+                        return new ValueWithTime(
+                            Value: dv, 
+                            Time:  GetOptionalTime());
                     }
 
                     rows.Add(value);
                 }
 
-                return DataValue.FromObject(rows, indented: true);
+                return new ValueWithTime(
+                            Value: DataValue.FromObject(rows, indented: true),
+                            Time:  null);
             }
         }
 
