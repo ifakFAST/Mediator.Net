@@ -3,6 +3,9 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
@@ -17,6 +20,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public string Name { get; set; }
         public string Unit { get; protected set; }
         public VTQ VTQ { get; internal set; }
+        public VariableRef? AttachedVariable { get; internal set; }
 
         public DataType Type { get; private set; }
         public int Dimension { get; private set; }
@@ -47,6 +51,62 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public static implicit operator VTQ(InputBase d) => d.VTQ;
 
         public DataValue GetDefaultValue() => dvDefaultValue;
+
+        internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
+
+        public List<VTQ> HistorianReadRaw(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+
+            VariableRef variable = AttachedVariable ?? throw new Exception($"No variable connected to input {ID}");
+            
+            VTTQs vttqs = new();
+            string? errMsg = null;
+
+            SingleThreadedAsync.Run(async () => {
+                try {
+                    Connection con = await connectionGetter();
+                    vttqs = await con.HistorianReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
+                }
+                catch (Exception exp) {
+                    Exception e = exp.GetBaseException() ?? exp;
+                    errMsg = e.Message;
+                }
+            });
+
+            if (errMsg != null) {
+                throw new Exception($"HistorianReadRaw failed for input {ID}: {errMsg}");
+            }
+
+            var res = new List<VTQ>(vttqs.Count);
+            foreach (var vttq in vttqs) {
+                res.Add(vttq.ToVTQ());
+            }
+            return res;
+        }
+
+        public long HistorianCount(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter = QualityFilter.ExcludeNone) {
+
+            VariableRef variable = AttachedVariable ?? throw new Exception($"No variable connected to input {ID}");
+
+            long result = 0;
+            string? errMsg = null;
+
+            SingleThreadedAsync.Run(async () => {
+                try {
+                    Connection con = await connectionGetter();
+                    result = await con.HistorianCount(variable, startInclusive, endInclusive, filter);
+                }
+                catch (Exception exp) {
+                    Exception e = exp.GetBaseException() ?? exp;
+                    errMsg = e.Message;
+                }
+            });
+
+            if (errMsg != null) {
+                throw new Exception($"HistorianCount failed for input {ID}: {errMsg}");
+            }
+
+            return result;
+        }
     }
 
     public abstract class OutputBase : Identifiable {

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Calc
 {
@@ -11,6 +12,10 @@ namespace Ifak.Fast.Mediator.Calc
         public abstract Task<StepResult> Step(Timestamp t, InputValue[] inputValues);
 
         public abstract Task Shutdown();
+    }
+
+    public interface ConnectionConsumer {
+        void SetConnectionRetriever(Func<Task<Connection>> retriever);
     }
 
     public class InitParameter

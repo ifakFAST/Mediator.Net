@@ -71,7 +71,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
 
             foreach (CalcInstance adapter in adapters) {
-                adapter.CreateInstance(mapAdapterTypes);
+                adapter.CreateInstance(mapAdapterTypes, initInfo);
             }
 
             Dictionary<VariableRef, VTQ> varMap = restoreVariableValues.ToDictionary(v => v.Variable, v => v.Value);
@@ -159,7 +159,7 @@ namespace Ifak.Fast.Mediator.Calc
                 if (newAdapters.Length > 0) {
 
                     foreach (CalcInstance adapter in newAdapters) {
-                        adapter.CreateInstance(mapAdapterTypes);
+                        adapter.CreateInstance(mapAdapterTypes, initInfo);
                     }
 
                     foreach (CalcInstance adapter in newAdapters) {
@@ -306,7 +306,7 @@ namespace Ifak.Fast.Mediator.Calc
                     Log_Warn("CalcShutdownTimeout", $"Shutdown request for calculation {adapter.Name} failed to complete within {TimeoutSeconds} seconds.");
                     // go ahead and hope for the best...
                 }
-                adapter.CreateInstance(mapAdapterTypes);
+                adapter.CreateInstance(mapAdapterTypes, initInfo);
                 await InitAdapter(adapter);
                 if (adapter.State == State.InitComplete) {
                     StartRunLoopTask(adapter);

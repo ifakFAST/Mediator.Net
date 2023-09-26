@@ -21,16 +21,40 @@ namespace Ifak.Fast.Mediator.Calc
             this.moduleID = moduleID;
         }
 
-        public void CreateInstance(Dictionary<string, Type> mapAdapterTypes) {
+        public void CreateInstance(Dictionary<string, Type> mapAdapterTypes, ModuleInitInfo info) {
             if (!mapAdapterTypes.ContainsKey(CalcConfig.Type)) {
                 throw new Exception($"No adapter type '{CalcConfig.Type}' found.");
             }
             Type type = mapAdapterTypes[CalcConfig.Type];
             CalculationBase? rawAdapter = (CalculationBase?)Activator.CreateInstance(type);
             if (rawAdapter == null) throw new Exception($"Failed to create instance of calculation adapter {type}");
+
+            if (rawAdapter is ConnectionConsumer cons) {
+                this.info = info;
+                cons.SetConnectionRetriever(ConnectionRetrieverAsync);
+            }
+
             instance = new SingleThreadCalculation(rawAdapter);
             State = State.Created;
             LastError = "";
+        }
+
+        private ModuleInitInfo info = new();
+        private Connection? connection = null;
+
+        private async Task<Connection> ConnectionRetrieverAsync() {
+
+            if (connection != null && !connection.IsClosed) {
+                try {
+                    await connection.Ping();
+                    return connection;
+                }
+                catch (Exception) {
+                    connection = null;
+                }
+            }
+
+            return await HttpConnection.ConnectWithModuleLogin(info);
         }
 
         public SingleThreadCalculation? Instance => instance;

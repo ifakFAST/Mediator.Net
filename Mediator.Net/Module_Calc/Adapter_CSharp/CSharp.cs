@@ -14,8 +14,7 @@ using System.Threading.Tasks;
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
     [Identify(id: "CSharp", showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true)]
-    public class CSharp : CalculationBase, EventSink
-    {
+    public class CSharp : CalculationBase, EventSink, ConnectionConsumer {
         private InputBase[] inputs = new Input[0];
         private OutputBase[] outputs = new Output[0];
         private AbstractState[] states = new AbstractState[0];
@@ -54,6 +53,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     ExternalStatePersistence = true
                 };
             }
+        }
+
+        private Func<Task<Connection>> retriever = () => Task.FromResult((Connection)new ClosedConnection());
+
+        public void SetConnectionRetriever(Func<Task<Connection>> retriever) {
+            this.retriever = retriever;
         }
 
         private async Task<InitResult> DoInit(InitParameter parameter, string code) {
@@ -156,6 +161,10 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 shutdownAction = (Action)shutdown.CreateDelegate(typeof(Action), obj);
             }
 
+            foreach (InputBase input in inputs) {
+                input.connectionGetter = retriever;
+            }
+
             return new InitResult() {
                 Inputs = inputs.Select(MakeInputDef).ToArray(),
                 Outputs = outputs.Select(MakeOutputDef).ToArray(),
@@ -237,6 +246,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 InputBase? input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
                 if (input != null) {
                     input.VTQ = v.Value;
+                    input.AttachedVariable = v.AttachedVariable;
                 }
             }
 
