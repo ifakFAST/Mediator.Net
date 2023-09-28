@@ -240,35 +240,35 @@ namespace Ifak.Fast.Mediator
 
         public static bool[]? ToBoolArray(string? s) => ToPrimitiveArray(s, ToBool);
 
-        public static byte ToByte(string s) => byte.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static byte ToByte(string s) => byte.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static byte[]? ToByteArray(string? s) => ToPrimitiveArray(s, ToByte);
 
-        public static sbyte ToSByte(string s) => sbyte.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static sbyte ToSByte(string s) => sbyte.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static sbyte[]? ToSByteArray(string? s) => ToPrimitiveArray(s, ToSByte);
 
-        public static short ToShort(string s) => short.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static short ToShort(string s) => short.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static short[]? ToShortArray(string? s) => ToPrimitiveArray(s, ToShort);
 
-        public static ushort ToUShort(string s) => ushort.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static ushort ToUShort(string s) => ushort.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static ushort[]? ToUShortArray(string? s) => ToPrimitiveArray(s, ToUShort);
 
-        public static int ToInt(string s) => int.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static int ToInt(string s) => int.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static int[]? ToIntArray(string? s) => ToPrimitiveArray(s, ToInt);
 
-        public static uint ToUInt(string s) => uint.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static uint ToUInt(string s) => uint.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static uint[]? ToUIntArray(string? s) => ToPrimitiveArray(s, ToUInt);
 
-        public static long ToLong(string s) => long.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static long ToLong(string s) => long.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static long[]? ToLongArray(string? s) => ToPrimitiveArray(s, ToLong);
 
-        public static ulong ToULong(string s) => ulong.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        public static ulong ToULong(string s) => ulong.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
 
         public static ulong[]? ToULongArray(string? s) => ToPrimitiveArray(s, ToULong);
 
