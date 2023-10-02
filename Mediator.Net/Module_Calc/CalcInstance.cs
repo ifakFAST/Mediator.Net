@@ -54,7 +54,8 @@ namespace Ifak.Fast.Mediator.Calc
                 }
             }
 
-            return await HttpConnection.ConnectWithModuleLogin(info);
+            connection = await HttpConnection.ConnectWithModuleLogin(info);
+            return connection;
         }
 
         public SingleThreadCalculation? Instance => instance;
