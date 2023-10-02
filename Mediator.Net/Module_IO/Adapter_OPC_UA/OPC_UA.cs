@@ -228,6 +228,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private bool readExceptionWarning = false;
+        private bool writeExceptionWarning = false;
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
@@ -476,20 +477,38 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 }
             }
 
-            if (dataItemsToWrite.Count > 0) {
-                WriteRequest req = new WriteRequest() {
-                    NodesToWrite = dataItemsToWrite.ToArray()
-                };
-                WriteResponse resp = await connection.WriteAsync(req);
-                if (resp.Results is not null && resp.Results.Length == dataItemsToWrite.Count) {
-                    StatusCode[] results = resp.Results;
-                    for (int i = 0; i < results.Length; ++i) {
-                        StatusCode sc = results[i];
-                        if (StatusCode.IsBad(sc)) {
-                            listFailed ??= new List<FailedDataItemWrite>();
-                            listFailed.Add(new FailedDataItemWrite(usedDataItemIDs[i], GetErrorDescriptionFromStatusCode(sc)));
+            try {
+
+                if (dataItemsToWrite.Count > 0) {
+                    WriteRequest req = new WriteRequest() {
+                        NodesToWrite = dataItemsToWrite.ToArray()
+                    };
+                    WriteResponse resp = await connection.WriteAsync(req);
+                    if (resp.Results is not null && resp.Results.Length == dataItemsToWrite.Count) {
+                        StatusCode[] results = resp.Results;
+                        for (int i = 0; i < results.Length; ++i) {
+                            StatusCode sc = results[i];
+                            if (StatusCode.IsBad(sc)) {
+                                listFailed ??= new List<FailedDataItemWrite>();
+                                listFailed.Add(new FailedDataItemWrite(usedDataItemIDs[i], GetErrorDescriptionFromStatusCode(sc)));
+                            }
                         }
                     }
+
+                    if (writeExceptionWarning) {
+                        writeExceptionWarning = false;
+                        ReturnToNormal("UAWriteExcept", "WriteDataItems successful again");
+                    }
+                }
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                writeExceptionWarning = true;
+                LogWarn("UAWriteExcept", $"Write exception: {e.Message}", details: e.ToString());
+                _ = CloseChannel();
+                foreach (string id in usedDataItemIDs) {
+                    listFailed ??= new List<FailedDataItemWrite>();
+                    listFailed.Add(new FailedDataItemWrite(id, e.Message));
                 }
             }
 
