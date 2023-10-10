@@ -19,6 +19,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     {
         private VariableRef[] Variables = new VariableRef[0];
+        private readonly Dictionary<VariableRef, DataType> VariablesType = new();
+
         private TimeRange LastTimeRange = new TimeRange();
         private bool IsLoaded = false;
 
@@ -44,27 +46,27 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return Common.GetNumericVarItemsData(Connection, usedObjects);
         }
 
+        private async Task<DataType> GetDataTypeOrThrow(VariableRef variable) {
+            if (!VariablesType.TryGetValue(variable, out DataType variableType)) {
+                ObjectInfo objInfo = await Connection.GetObjectByID(variable.Object); // throws if object does not exist
+                Variable variableInfo = objInfo.Variables.First(v => v.Name == variable.Name); // throws if variable does not exist
+                variableType = variableInfo.Type;
+                VariablesType[variable] = variableType;
+            }
+            return variableType;
+        }
+
         public async Task<ReqResult> UiReq_LoadData(TimeRange timeRange) {
+
+            IsLoaded = false;
 
             LastTimeRange = timeRange;
 
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
-            int maxDataPoints = configuration.PlotConfig.MaxDataPoints;
-            var listHistories = new List<VTTQs>();
 
-            QualityFilter filter = configuration.PlotConfig.FilterByQuality;
-
-            foreach (var variable in Variables) {
-                try {
-                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, maxDataPoints, BoundingMethod.CompressToN, filter);
-                    listHistories.Add(data);
-                }
-                catch (Exception) {
-                    listHistories.Add(new VTTQs());
-                }
-            }
-
+            List<VTTQs> listHistories = await GetVariablesData(Variables, tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
+           
             IsLoaded = true;
 
             var (windowLeft, windowRight) = GetTimeWindow(timeRange, listHistories);
@@ -88,6 +90,75 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 throw;
             }
             return new ReqResult(200, res);
+        }
+
+        private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRef> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null) {
+
+            Timestamp tStartEffective = tStartSub ?? tStartRange;
+
+            var listHistories = new List<VTTQs>();
+
+            QualityFilter filter = configuration.PlotConfig.FilterByQuality;
+
+            foreach (var variable in variables) {
+
+                try {
+
+                    DataType variableType = await GetDataTypeOrThrow(variable);
+
+                    if (variableType == DataType.Timeseries) {
+
+                        VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, 1, BoundingMethod.TakeLastN, filter);
+
+                        TimeseriesEntry[] entries = Array.Empty<TimeseriesEntry>();
+
+                        if (data.Count > 0) {
+                            entries = data[0].V.Object<TimeseriesEntry[]>() ?? Array.Empty<TimeseriesEntry>();
+                        }
+
+                        VTTQs timeseries = new VTTQs(entries.Length);
+                        foreach (var entry in entries) {
+                            Timestamp t = entry.Time;
+                            if (t >= tStartEffective && t <= tEndRange && entry.Value.AsDouble().HasValue) {
+                                timeseries.Add(VTTQ.Make(entry.Value, t, t, Quality.Good));
+                            }
+                        }
+                        listHistories.Add(timeseries);
+                    }
+                    else {
+
+                        if (maxDataPoints.HasValue) {
+                            VTTQs data = await Connection.HistorianReadRaw(variable, tStartEffective, tEndRange, maxDataPoints.Value, BoundingMethod.CompressToN, filter);
+                            listHistories.Add(data);
+                        }
+                        else { // Get all data in range (no compression)
+
+                            const int ChunckSize = 5000;
+                            VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
+
+                            if (data.Count < ChunckSize) {
+                                listHistories.Add(data);
+                            }
+                            else {
+                                var buffer = new VTTQs(data);
+                                do {
+                                    Timestamp t = data[data.Count - 1].T.AddMillis(1);
+                                    data = await Connection.HistorianReadRaw(variable, t, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
+                                    buffer.AddRange(data);
+                                }
+                                while (data.Count == ChunckSize);
+
+                                listHistories.Add(buffer);
+                            }
+                        }
+                    }
+                }
+                catch (Exception) {
+                    listHistories.Add(new VTTQs());
+                }
+            }
+
+            return listHistories;
         }
 
         public async Task<ReqResult> UiReq_SaveItems(ItemConfig[] items) {
@@ -139,41 +210,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             string[] variableNames,
             FileType fileType) {
 
-            QualityFilter filter = configuration.PlotConfig.FilterByQuality;
-
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            var listHistories = new List<VTTQs>();
+            var listHistories = await GetVariablesData(variables, tStart, tEnd);
 
-            foreach (var variable in variables) {
-                try {
-
-                    const int ChunckSize = 5000;
-                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
-
-                    if (data.Count < ChunckSize) {
-                        listHistories.Add(data);
-                    }
-                    else {
-                        var buffer = new List<VTTQ>(data);
-                        do {
-                            Timestamp t = data[data.Count - 1].T.AddMillis(1);
-                            data = await Connection.HistorianReadRaw(variable, t, tEnd, ChunckSize, BoundingMethod.TakeFirstN, filter);
-                            buffer.AddRange(data);
-                        }
-                        while (data.Count == ChunckSize);
-
-                        listHistories.Add(buffer);
-                    }
-                }
-                catch (Exception) {
-                    listHistories.Add(new VTTQs());
-                }
-            }
-
-            var columns = new List<string>();
-            columns.Add("Time");
+            var columns = new List<string> {
+                "Time"
+            };
             columns.AddRange(variableNames);
 
             var res = MemoryManager.GetMemoryStream("DownloadFile");
@@ -234,19 +278,15 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     }
                 }
 
-                Timestamp tStart = tMinChanged;
-                Timestamp tEnd = LastTimeRange.GetEnd();
+                Timestamp tStartRange = LastTimeRange.GetStart();
+                Timestamp tEndRange = LastTimeRange.GetEnd();
+                Timestamp tStartEffective = Timestamp.MaxOf(tMinChanged, tStartRange);
 
-                if (tEnd < tStart) {
+                if (tEndRange < tStartEffective) {
                     return;
                 }
 
-                var listHistories = new List<VTTQs>();
-
-                foreach (var variable in Variables) {
-                    VTTQs data = await Connection.HistorianReadRaw(variable, tStart, tEnd, 10000, BoundingMethod.TakeFirstN);
-                    listHistories.Add(data);
-                }
+                List<VTTQs> listHistories = await GetVariablesData(Variables, tStartRange, tEndRange, 5000, tStartEffective);
 
                 var (windowLeft, windowRight) = GetTimeWindow(LastTimeRange, listHistories);
 
@@ -266,7 +306,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private (Timestamp left, Timestamp right) GetTimeWindow(TimeRange range, List<VTTQs> data) {
+        private static (Timestamp left, Timestamp right) GetTimeWindow(TimeRange range, List<VTTQs> data) {
 
             switch (range.Type) {
                 case TimeType.Last:
@@ -274,7 +314,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     Timestamp? latest = data.Any(x => x.Count > 0) ? data.Where(x => x.Count > 0).Max(vtqs => vtqs.Last().T) : (Timestamp?)null;
                     var now = Timestamp.Now.TruncateMilliseconds().AddSeconds(1);
                     var right = latest.HasValue ? Timestamp.MaxOf(now, latest.Value) : now;
-                    var left = now - TimeRange.DurationFromTimeRange(range);
+                    var left = range.GetStart();
                     return (left, right);
 
                 case TimeType.Range:
@@ -286,7 +326,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables) {
+        private static void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables) {
 
             HistReader[] vars = variables.Select(v => new HistReader(v)).ToArray();
 

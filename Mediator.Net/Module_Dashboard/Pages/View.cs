@@ -364,7 +364,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             }
         }
 
-        private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String;
+        private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String || v.Type == DataType.Timeseries;
 
         private void CheckActivePage(string pageID) {
             if (activePage == null) {

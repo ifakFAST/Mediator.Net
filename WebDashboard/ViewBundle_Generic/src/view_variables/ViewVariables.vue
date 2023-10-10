@@ -45,7 +45,7 @@
 
               <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length">
-                  <struct-view v-if="item.Type==='Struct'" style="float: right;" :value="item.V" :vertical="item.Dimension !== 1"></struct-view>
+                  <struct-view v-if="item.Type==='Struct' || item.Type==='Timeseries'" style="float: right;" :value="item.V" :vertical="item.Dimension !== 1 || item.Type==='Timeseries'"></struct-view>
                   <div v-else style="word-break: break-all;">
                     {{ item.V }}
                   </div>

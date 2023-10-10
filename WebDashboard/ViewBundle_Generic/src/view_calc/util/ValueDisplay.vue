@@ -5,7 +5,7 @@
       <span v-if="!showStruct && isStruct" @click="showStruct = !showStruct" style="cursor: pointer;"><v-icon>keyboard_arrow_right</v-icon></span>
       <span v-if=" showStruct && isStruct" @click="showStruct = !showStruct" style="cursor: pointer;"><v-icon>keyboard_arrow_down</v-icon></span>
     </div>
-    <struct-view style="font-size: 11px;" v-if="showStruct && isStruct" :value="vtq.V" :vertical="dimension !== 1"></struct-view>
+    <struct-view style="font-size: 11px;" v-if="showStruct && isStruct" :value="vtq.V" :vertical="isVertical"></struct-view>
   </div>
 </template>
 
@@ -40,7 +40,11 @@ export default class ValueDisplay extends Vue {
   }
 
   get isStruct(): boolean {
-    return this.type === 'Struct'
+    return this.type === 'Struct' || this.type === 'Timeseries'
+  }
+
+  get isVertical(): boolean {
+    return this.dimension !== 1 || this.type === 'Timeseries'
   }
 
   get qualityColor() {

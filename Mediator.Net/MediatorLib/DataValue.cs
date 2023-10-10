@@ -207,6 +207,9 @@ namespace Ifak.Fast.Mediator
 
                 case DataType.Struct:
                     return new DataValue("{}");
+
+                case DataType.Timeseries:
+                    return new DataValue("[]");
             }
             return new DataValue(null);
         }
@@ -242,6 +245,7 @@ namespace Ifak.Fast.Mediator
                     case DataType.Timestamp: return Timestamp.FromISO8601(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a Timestamp"));
                     case DataType.Duration: return Duration.Parse(this.GetString() ?? throw new SerializationException("DataValue.GetValue(): value is not a Duration"));
                     case DataType.Struct: return jsonOrNull;
+                    case DataType.Timeseries: return Object<TimeseriesEntry[]>();
                 }
             }
             else {

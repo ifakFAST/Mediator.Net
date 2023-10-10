@@ -42,6 +42,7 @@ namespace Ifak.Fast.Mediator
         Duration,
         Enum,
         Struct,
+        Timeseries // array of TimeseriesEntry objects
     }
 
     public static class DataTypeExtension
@@ -1038,4 +1039,39 @@ namespace Ifak.Fast.Mediator
         public override int GetHashCode() => ToString().GetHashCode();
     }
 
+    [JsonConverter(typeof(TimeseriesEntryConverter))]
+    public struct TimeseriesEntry : IEquatable<TimeseriesEntry> {
+
+        public Timestamp Time { get; set; }
+        public DataValue Value { get; set; }
+
+        public TimeseriesEntry(Timestamp time, double value) {
+            this.Time = time;
+            this.Value = DataValue.FromDouble(value);
+        }
+
+        public TimeseriesEntry(Timestamp time, DataValue value) {
+            this.Time = time;
+            this.Value = value;
+        }
+
+        public readonly bool Equals(TimeseriesEntry other) {
+            return Time == other.Time && Value == other.Value;
+        }
+
+        public static bool operator ==(TimeseriesEntry lhs, TimeseriesEntry rhs) => lhs.Equals(rhs);
+
+        public static bool operator !=(TimeseriesEntry lhs, TimeseriesEntry rhs) => !(lhs.Equals(rhs));
+
+        public override readonly int GetHashCode() => Time.GetHashCode() ^ Value.GetHashCode();
+
+        public override readonly string ToString() => Time + "=" + Value;
+
+        public override readonly bool Equals(object obj) {
+            if (obj is TimeseriesEntry te) {
+                return Equals(te);
+            }
+            return false;
+        }
+    }
 }

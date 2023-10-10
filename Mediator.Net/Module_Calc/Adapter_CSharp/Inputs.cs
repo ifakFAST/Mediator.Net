@@ -165,6 +165,41 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class InputTimeseries : InputBase {
+
+        public TimeseriesEntry[]? DefaultValue { get; private set; }
+        public TimeseriesEntry[]? Value {
+            get {
+                try {
+                    return VTQ.V.Object<TimeseriesEntry[]>();
+                }
+                catch (Exception) {
+                    throw new Exception($"Input {ID}: Value is not a TimeseriesEntry array: {VTQ.V.JSON}");
+                }
+            }
+        }
+        public bool HasValidValue {
+            get {
+                try {
+                    return Value != null;
+                }
+                catch (Exception) {
+                    return false;
+                }
+            }
+        }
+        public static implicit operator TimeseriesEntry[]?(InputTimeseries d) => d.Value;
+
+        public InputTimeseries(string name) :
+            this(name: name, defaultValue: Array.Empty<TimeseriesEntry>()) {
+        }
+
+        public InputTimeseries(string name, TimeseriesEntry[]? defaultValue) :
+            base(name: name, unit: "", type: DataType.Timeseries, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
+            DefaultValue = defaultValue;
+        }
+    }
+
     public class InputClass<T> : InputBase where T : class {
 
         public T? DefaultValue { get; private set; }

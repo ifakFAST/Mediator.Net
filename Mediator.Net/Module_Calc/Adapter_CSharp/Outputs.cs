@@ -154,6 +154,19 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class OutputTimeseries : OutputBase {
+
+        public OutputTimeseries(string name) :
+            base(name: name, unit: "", type: DataType.Timeseries, dimension: 1) {
+        }
+
+        public TimeseriesEntry[]? Value {
+            set {
+                VTQ = VTQ.WithValue(DataValue.FromObject(value));
+            }
+        }
+    }
+
     public class OutputClassArray<T> : OutputBase where T : class {
 
         public OutputClassArray(string name, int dimension = 0) :

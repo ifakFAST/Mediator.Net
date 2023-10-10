@@ -71,7 +71,8 @@ export type DataType =
   'Timestamp' |
   'Duration' |
   'Enum' |
-  'Struct'
+  'Struct' |
+  'Timeseries'
 
 export const DataTypeValues: DataType[] = [
   'Bool',

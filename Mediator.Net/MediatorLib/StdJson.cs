@@ -607,4 +607,62 @@ namespace Ifak.Fast.Mediator
             writer.WriteValue(ts.JSON);
         }
     }
+
+    public class TimeseriesEntryConverter : JsonConverter {
+
+        public override bool CanConvert(Type objectType) {
+            return objectType == typeof(TimeseriesEntry);
+        }
+
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
+            TimeseriesEntry timeValue = (TimeseriesEntry)value!;
+            writer.WriteStartObject();
+            writer.WritePropertyName("Time");
+            writer.WriteValue(timeValue.Time.ToString());
+            writer.WritePropertyName("Value");
+            writer.WriteRawValue(timeValue.Value.JSON); // This will directly insert the JSON value
+            writer.WriteEndObject();
+        }
+
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+
+            if (reader.TokenType == JsonToken.Null) { return null; }
+
+            JObject jObject = JObject.Load(reader);
+
+            if (!jObject.TryGetValue("Time", out JToken? timeToken)) {
+                throw new JsonSerializationException("Missing Time property");
+            }
+
+            if (!jObject.TryGetValue("Value", out JToken? valueToken)) {
+                throw new JsonSerializationException("Missing Value property");
+            }
+
+            object? objTime = (timeToken as JValue)!.Value;
+
+            Timestamp time;
+            if (objTime is string strTime) {
+                time = Timestamp.FromISO8601(strTime);
+            }
+            else if (objTime is long longTime) {
+                time = Timestamp.FromJavaTicks(longTime);
+            }
+            else if (objTime is int intTime) {
+                time = Timestamp.FromJavaTicks(intTime);
+            }
+            else {
+                throw new JsonSerializationException("Invalid Time property");
+            }
+
+            DataValue value;
+            if (valueToken is JValue jval) {
+                value = DataValue.FromObject(jval.Value);
+            }
+            else {
+                value = DataValue.FromJSON(valueToken.ToString(Formatting.None));
+            }
+
+            return new TimeseriesEntry(time, value);
+        }
+    }
 }

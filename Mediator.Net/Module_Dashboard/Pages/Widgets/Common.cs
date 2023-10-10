@@ -25,7 +25,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         }
 
         public static Task<ReqResult> GetNumericVarItemsData(Connection connection, ObjectRef[] usedObjects) {
-            return GetVarItemsData(connection, usedObjects, IsNumericOrBool);
+            return GetVarItemsData(connection, usedObjects, IsNumericOrBoolOrTimeseries);
         }
 
         public static Task<ReqResult> GetNumericAndStringVarItemsData(Connection connection, ObjectRef[] usedObjects) {
@@ -74,7 +74,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             });
         }
 
-        public static bool IsNumericOrBool(Variable v) => v.IsNumeric || v.Type == DataType.Bool;
+        public static bool IsNumericOrBoolOrTimeseries(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Timeseries;
 
         private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String;
 

@@ -158,6 +158,25 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                             Value: DataValue.FromObject(rows, indented: true),
                             Time: null);
             }
+            else if (type == DataType.Timeseries) {
+
+                var rows = new List<TimeseriesEntry>();
+
+                while (reader.Read()) {
+                    DateTime time = reader.GetDateTime("Time");
+                    object? value = reader.GetValue("Value");
+                    if (value is DBNull) {
+                        value = null;
+                    }
+                    Timestamp t = Timestamp.FromDateTime(time);
+                    DataValue dv = DataValue.FromObject(value);
+                    rows.Add(new TimeseriesEntry(t, dv));
+                }
+
+                return new ValueWithTime(
+                            Value: DataValue.FromObject(rows, indented: true),
+                            Time: null);
+            }
             else {
 
                 var rows = new List<object?>();
