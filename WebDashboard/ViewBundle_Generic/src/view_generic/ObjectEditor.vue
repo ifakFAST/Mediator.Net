@@ -41,8 +41,9 @@
                 <template v-for="row in cat.Members">
 
                   <tr v-if="row.IsScalar" :key="row.Key">
-                      <td style="width:100%">
-                        <v-text-field v-model="row.Value" v-if="row.Type === 'String'"   :label="row.Name" :readonly="row.Name ==='ID'"></v-text-field>
+                      <td style="width:100%">                        
+                        <v-textarea auto-grow rows="1" v-model="row.Value" v-if="row.Type === 'String' && row.Name === 'Address'" :label="row.Name"></v-textarea>
+                        <v-text-field v-model="row.Value" v-if="row.Type === 'String' && row.Name !== 'Address'" :label="row.Name" :readonly="row.Name ==='ID'"></v-text-field>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'JSON'"     :label="row.Name"></v-text-field>
                         <v-checkbox   v-model="row.Value" v-if="row.Type === 'Bool'"     :label="row.Name"></v-checkbox>
                         <v-text-field v-model="row.Value" v-if="row.Type === 'Int32'"    :label="row.Name"></v-text-field>
