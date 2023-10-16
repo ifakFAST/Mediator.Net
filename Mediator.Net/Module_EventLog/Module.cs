@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using MimeKit;
 using MailKit.Security;
 using System.Text;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator.EventLog
 {
@@ -86,30 +87,54 @@ namespace Ifak.Fast.Mediator.EventLog
         private async Task UpdateVariables() {
 
             int? lastValue = null;
+            string lastValueStr = "";
 
             while (running) {
 
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                await Task.Delay(TimeSpan.FromSeconds(10));
 
                 if (running) {
 
                     try {
 
-                        int v = CountActiveWarningAndAlarms();
+                        AggregatedEvent[] alarms = aggregatedWarningsAndAlarms
+                                                       .Where(it => !it.ReturnedToNormal && it.State != EventState.Ack)
+                                                       .ToArray();
 
-                        if (v != lastValue) {
+                        static string Str(AggregatedEvent e) {
+                            string src = e.System ? "Sys" : e.ModuleID;
+                            return $"{src}.{e.Type}";
+                        }
+
+                        int v = alarms.Length;
+                        string vStr = string.Join(", ", alarms.Select(Str));
+
+                        if (v != lastValue || vStr != lastValueStr) {
+
                             lastValue = v;
+                            lastValueStr = vStr;
                             
                             Timestamp t = Timestamp.Now.TruncateMilliseconds();
-                            VTQ vtq = VTQ.Make(v, t, Quality.Good);
+                            VTQ vtqCount = VTQ.Make(v, t, Quality.Good);
+                            VTQ vtqStr = VTQ.Make(vStr, t, Quality.Good);
 
                             //var listVarValues = new List<VariableValue>(1);
                             //listVarValues.Add(VariableValue.Make(moduleID, "Root", "CountActiveWarningsAndAlarms", vtq));
                             //notifier?.Notify_VariableValuesChanged(listVarValues);
+                            VariableValues values = new();
 
                             if (model.CountActiveWarningsAndAlarms.HasValue) {
-                                await connection.WriteVariable(model.CountActiveWarningsAndAlarms.Value, vtq);
+                                values.Add(VariableValue.Make(model.CountActiveWarningsAndAlarms.Value, vtqCount));
                             }
+
+                            if (model.ActiveWarningsAndAlarms.HasValue) {
+                                values.Add(VariableValue.Make(model.ActiveWarningsAndAlarms.Value, vtqStr));
+                            }
+
+                            if (values.Count > 0) {
+                                await connection.WriteVariables(values);
+                            }
+
                         }
                     }
                     catch (Exception exp) {
@@ -118,10 +143,6 @@ namespace Ifak.Fast.Mediator.EventLog
                     }
                 }
             }
-        }
-
-        private int CountActiveWarningAndAlarms() {
-            return aggregatedWarningsAndAlarms.Count(it => !it.ReturnedToNormal);
         }
 
         private async Task LoadData() {
@@ -403,7 +424,7 @@ namespace Ifak.Fast.Mediator.EventLog
         }
     }
 
-    public class AggregatedEvent {
+    public sealed class AggregatedEvent {
         public Timestamp TimeFirst { get; set; }
         public Timestamp TimeLast { get; set; }
         public int Count { get; set; } = 1;
