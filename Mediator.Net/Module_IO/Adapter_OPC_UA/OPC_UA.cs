@@ -32,10 +32,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private string lastConnectErrMsg = "";
         private bool excludeUnderscore = true;
 
+        private Duration connectionRetryTimeout = Duration.FromMinutes(0);
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
+            this.connectionRetryTimeout = config.ConnectionRetryTimeout;
 
             const string Config_Underscore = "ExcludeUnderscoreNodes";
             string strExcludeUnderscore = "true";
@@ -58,20 +61,43 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             PrintLine(config.Address);
 
-            await TryConnect();
+            await TryConnectIntern(reportFailureImmediatelly: true);
 
             return new Group[0];
         }
 
-        private async Task<bool> TryConnect() {
+        private bool isConnecting = false;
+        private Timestamp? timeFirstConnectError = null;
+        private bool connectionIsBad = false;
+
+        record struct ConnectResult(bool Success, bool Transient = true) {
+            public readonly bool Failed => !Success;
+        }
+
+        private async Task<ConnectResult> TryConnect() {
+
+            while (isConnecting) {
+                await Task.Delay(50);
+            }
+
+            try {
+                isConnecting = true;
+                return await TryConnectIntern(reportFailureImmediatelly: false);
+            }
+            finally {
+                isConnecting = false;
+            }
+        }
+
+        private async Task<ConnectResult> TryConnectIntern(bool reportFailureImmediatelly) {
 
             if (connection != null) {
-                return true;
+                return new ConnectResult(Success: true);
             }
 
             if (config == null || string.IsNullOrEmpty(config.Address)) {
                 lastConnectErrMsg = "No address configured";
-                return false;
+                return new ConnectResult(Success: false, Transient: false);
             }
 
             try {
@@ -134,6 +160,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                 this.connection = channel;
                 lastConnectErrMsg = "";
+                connectionIsBad = false;
 
                 PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'.");
                 PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'.");
@@ -177,15 +204,34 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         }
                     }
                 }
-                ReturnToNormal("OpenChannel", $"Connected to OPC UA server at {config.Address}");
-                return true;
+                ReturnToNormal("OpenChannel", $"Connected to OPC UA server at {config.Address}", connectionUp: true);
+                timeFirstConnectError = null;
+                return new ConnectResult(Success: true);
             }
             catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
                 lastConnectErrMsg = baseExp.Message;
-                LogWarn("OpenChannel", "Open channel error: " + baseExp.Message, dataItem: null, details: baseExp.StackTrace);
+                bool firstError = timeFirstConnectError == null;
+                if (timeFirstConnectError == null) {
+                    timeFirstConnectError = Timestamp.Now;
+                }
+                Duration timeSinceFirstError = Timestamp.Now - timeFirstConnectError.Value;
+                bool warnNow = timeSinceFirstError >= connectionRetryTimeout;
+                bool transient = true;
+                if (warnNow || reportFailureImmediatelly) {
+                    if (!connectionIsBad) {
+                        connectionIsBad = true;
+                        LogWarn("OpenChannel", "Connection error: " + baseExp.Message, dataItem: null, connectionDown: true, details: baseExp.StackTrace);
+                    }
+                    transient = false;
+                }
+                else {
+                    if (firstError) {
+                        Console.Error.WriteLine($"OPC UA connection error for Address '{config.Address}': {baseExp.Message}");
+                    }
+                }
                 await CloseChannel();
-                return false;
+                return new ConnectResult(Success: false, Transient: transient);
             }
         }
 
@@ -227,14 +273,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             catch (Exception) { }
         }
 
-        private bool readExceptionWarning = false;
-        private bool writeExceptionWarning = false;
+        //private bool readExceptionWarning = false;
+        //private bool writeExceptionWarning = false;
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-            bool connected = await TryConnect();
-            if (!connected || connection == null) {
-                return GetBadVTQs(items);
+            ConnectResult connected = await TryConnect();
+            if (connected.Failed || connection == null) {
+
+                if (connected.Transient) {
+                    return items.Select(it => it.LastValue).ToArray();
+                }
+                else {
+                    return GetBadVTQs(items);
+                }
             }
 
             var readHelper = new ReadManager<ReadValueId, Workstation.ServiceModel.Ua.DataValue>(items, request => {
@@ -269,19 +321,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     result = readHelper.values;
                 }
 
-                if (readExceptionWarning) {
-                    readExceptionWarning = false;
-                    ReturnToNormal("UAReadExcept", "ReadDataItems successful again");
-                }
+                //if (readExceptionWarning) {
+                //    readExceptionWarning = false;
+                //    ReturnToNormal("UAReadExcept", "ReadDataItems successful again");
+                //}
 
                 return result;
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
-                readExceptionWarning = true;
-                LogWarn("UAReadExcept", $"Read exception: {e.Message}", details: e.ToString());
+                //readExceptionWarning = true;
+                //LogWarn("UAReadExcept", $"Read exception: {e.Message}", details: e.ToString());
+                PrintErrorLine($"Read exception (closing connection, returning last values): {e.Message}");
                 Task ignored = CloseChannel();
-                return GetBadVTQs(items);
+                return items.Select(it => it.LastValue).ToArray(); // Exception is most likely due to connection failure, just return last values
             }
         }
 
@@ -440,12 +493,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             int N = values.Count;
 
-            bool connected = await TryConnect();
-            if (!connected || connection == null) {
+            ConnectResult connect = await TryConnect();
+            if (connect.Failed || connection == null) {
                 var failed = new FailedDataItemWrite[N];
                 for (int i = 0; i < N; ++i) {
                     DataItemValue request = values[i];
-                    failed[i] = new FailedDataItemWrite(request.ID, "No connection to OPC UA server");
+                    failed[i] = new FailedDataItemWrite(request.ID, "No connection to OPC UA server", noConnection: true);
                 }
                 return WriteDataItemsResult.Failure(failed);
             }
@@ -495,20 +548,21 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         }
                     }
 
-                    if (writeExceptionWarning) {
-                        writeExceptionWarning = false;
-                        ReturnToNormal("UAWriteExcept", "WriteDataItems successful again");
-                    }
+                    //if (writeExceptionWarning) {
+                    //    writeExceptionWarning = false;
+                    //    ReturnToNormal("UAWriteExcept", "WriteDataItems successful again");
+                    //}
                 }
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
-                writeExceptionWarning = true;
-                LogWarn("UAWriteExcept", $"Write exception: {e.Message}", details: e.ToString());
+                //writeExceptionWarning = true;
+                //LogWarn("UAWriteExcept", $"Write exception: {e.Message}", details: e.ToString());
+                PrintErrorLine($"Write exception (closing connection): {e.Message}");
                 _ = CloseChannel();
                 foreach (string id in usedDataItemIDs) {
                     listFailed ??= new List<FailedDataItemWrite>();
-                    listFailed.Add(new FailedDataItemWrite(id, e.Message));
+                    listFailed.Add(new FailedDataItemWrite(id, e.Message, noConnection: true));
                 }
             }
 
@@ -763,11 +817,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             Console.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarn(string type, string msg, string? dataItem = null, string? details = null) {
+        private void PrintErrorLine(string msg) {
+            string name = config?.Name ?? "";
+            Console.Error.WriteLine(name + ": " + msg);
+        }
+
+        private void LogWarn(string type, string msg, string? dataItem = null, string? details = null, bool connectionDown = false) {
 
             var ae = new AdapterAlarmOrEvent() {
                 Time = Timestamp.Now,
                 Severity = Severity.Warning,
+                Connection = connectionDown,
                 Type = type,
                 Message = msg,
                 Details = details ?? "",
@@ -777,8 +837,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             callback?.Notify_AlarmOrEvent(ae);
         }
 
-        private void ReturnToNormal(string type, string msg, params string[] affectedDataItems) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems));
+        private void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
+            AdapterAlarmOrEvent _event = AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems);
+            _event.Connection = connectionUp;
+            callback?.Notify_AlarmOrEvent(_event);
         }
     }
 

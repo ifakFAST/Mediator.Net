@@ -147,6 +147,11 @@ namespace Ifak.Fast.Mediator.IO
         public string Type { get; set; } = "";
 
         /// <summary>
+        /// If true, indicates that the alarm is related to the connection of the adapter to the data source
+        /// </summary>
+        public bool Connection { get; set; } = false;
+
+        /// <summary>
         /// If true, indicates that a previous alarm of this type returned to normal (is not active anymore)
         /// </summary>
         public bool ReturnToNormal { get; set; } = false;
@@ -268,12 +273,14 @@ namespace Ifak.Fast.Mediator.IO
 
     public struct FailedDataItemWrite
     {
-        public FailedDataItemWrite(string id, string error) {
+        public FailedDataItemWrite(string id, string error, bool noConnection = false) {
             ID = id;
             Error = error;
+            NoConnection = noConnection;
         }
         public string ID { get; private set; }
         public string Error { get; private set; }
+        public bool NoConnection { get; private set; }
     }
 
 }

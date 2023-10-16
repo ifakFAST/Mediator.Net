@@ -67,7 +67,7 @@
             <ImplClass>Ifak.Fast.Mediator.Calc.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file" value="Model_Calc.xml"/>
-                <NamedValue name="simba-location" value="D:\Simba\Simba3\Workspace\wSisi\bin\Release\simba.exe"/>
+                <NamedValue name="simba-location" value="D:\Simba\SIMBA5_Clean\Workspace\wSisi\bin\Release\simba.exe"/>
                 <NamedValue name="csharp-libraries" value="CSharpLib.cs"/>
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
@@ -82,7 +82,7 @@
             </HistoryDBs>
         </Module>
         
-        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
+        <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
             <VariablesFileName>Var_Pub.xml</VariablesFileName>
             <ImplAssembly>Module_Publish.dll</ImplAssembly>
             <ImplClass>Ifak.Fast.Mediator.Publish.Module</ImplClass>

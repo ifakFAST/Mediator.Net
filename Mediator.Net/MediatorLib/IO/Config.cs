@@ -19,6 +19,8 @@ namespace Ifak.Fast.Mediator.IO
 
         public Login? Login { get; set; }
 
+        public Duration ConnectionRetryTimeout { get; set; } = Duration.FromMinutes(1);
+
         public List<NamedValue> Config { get; set; } = new List<NamedValue>();
 
         public List<Node> Nodes { get; set; } = new List<Node>();

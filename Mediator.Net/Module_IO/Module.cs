@@ -293,7 +293,7 @@ namespace Ifak.Fast.Mediator.IO
                     }).
                     ToArray();
 
-                var wrapper = new Wrapper(this, info);
+                var wrapper = new Wrapper(this, info, adapter);
                 adapter.State = State.InitStarted;
                 var groups = await adapter.Instance!.Initialize(info, wrapper, items);
                 if (adapter.State == State.InitStarted) {
@@ -599,19 +599,29 @@ namespace Ifak.Fast.Mediator.IO
                     }
 
                     string details = string.Join(", ", names.Take(30));
-                    adapter.TimeOfLastSkippedWarning = Timestamp.Now;
-                    Log_Warn_Details("WritesPending", $"{adapter.Name}: {warn}", details, origin, adapter.ID);
+                    Timestamp Now = Timestamp.Now;
+                    bool first = adapter.TimeOfLastSkippedWarning == null;
+                    adapter.TimeOfLastSkippedWarning = Now;
+                    if (first) {
+                        adapter.TimeOfFirstSkippedWarning = Now;
+                        Console.WriteLine($"{adapter.Name}: {warn}");
+                    }
+                    Duration diff = Now - adapter.TimeOfFirstSkippedWarning!.Value;
+                    if (diff > Duration.FromMinutes(5)) {
+                        Log_Warn_Details("WritesPending", $"{adapter.Name}: {warn}", details, origin, adapter.ID);
+                    }
                 }
             }
             else {
 
-                var t = Timestamp.Now - Duration.FromMinutes(5);
+                var t = Timestamp.Now - Duration.FromMinutes(10);
 
                 foreach (var adapter in adapter2Items.Keys) {
                     if (!adapter.TimeOfLastSkippedWarning.HasValue) continue;
                     if (adapter.TimeOfLastSkippedWarning.Value > t) continue;
                     Timestamp tt = adapter.TimeOfLastSkippedWarning.Value;
                     adapter.TimeOfLastSkippedWarning = null;
+                    adapter.TimeOfFirstSkippedWarning = null;
                     Log_ReturnToNormal("WritesPending", $"{adapter.Name}: No skipped writes since {tt}", adapter.ID);
                 }
             }
@@ -721,9 +731,12 @@ namespace Ifak.Fast.Mediator.IO
                             if (failed.Length == 1) {
                                 msg = $"Write error for data item {failed[0].Name}: {failed[0].Error}";
                             }
-                            var ev = AlarmOrEventInfo.Warning("WriteErr", msg, ObjectRef.Make(moduleID, adapter.ID));
-                            ev.Details = names;
-                            notifier?.Notify_AlarmOrEvent(ev);
+                            bool anyNonConnectionRelated = failed.Any(tt => !tt.NoConnection);
+                            if (anyNonConnectionRelated) {
+                                var ev = AlarmOrEventInfo.Warning("WriteErr", msg, ObjectRef.Make(moduleID, adapter.ID));
+                                ev.Details = names;
+                                notifier?.Notify_AlarmOrEvent(ev);
+                            }
                         }
                         else {
                             Log_ReturnToNormal("WriteErr", $"{adapter.Name}: No more write errors", adapter.ID);
@@ -749,7 +762,7 @@ namespace Ifak.Fast.Mediator.IO
         private DataItemErr[] ResolveDataItemErrors(FailedDataItemWrite[] errors) {
             return errors.SelectIgnoreException(error => {
                 ItemState info = dataItemsState[error.ID];
-                return new DataItemErr(id: error.ID, name: info.Name, error: error.Error);
+                return new DataItemErr(id: error.ID, name: info.Name, error: error.Error, noConnection: error.NoConnection);
             }).ToArray();
         }
 
@@ -758,17 +771,20 @@ namespace Ifak.Fast.Mediator.IO
             public string ID { get; set; }
             public string Name { get; set; }
             public string Error { get; set; }
+            public bool NoConnection { get; set; }
 
-            public DataItemErr(string id, string name, string error) {
+            public DataItemErr(string id, string name, string error, bool noConnection) {
                 ID = id;
                 Name = name;
                 Error = error;
+                NoConnection = noConnection;
             }
 
             public DataItemErr() {
                 ID = "";
                 Name = "";
                 Error = "";
+                NoConnection = false;
             }
         }
 
@@ -1122,17 +1138,20 @@ namespace Ifak.Fast.Mediator.IO
 
             if (allBadCount > 0) {
 
-                string[] names = allBad.Select(it => it.Value).OrderBy(it => it).ToArray();
-                string warn;
-                if (allBadCount == 1) {
-                    warn = $"Bad quality for reading data item {names[0]}";
-                }
-                else {
-                    warn = $"Bad quality for reading {allBadCount} data items: {names[0]}, ...";
-                }
+                if (!adapter.ConnectionIsDown) {
 
-                string details = string.Join(", ", names.Take(30));
-                Log_Warn_Details("Quality", $"{adapter.Name}: {warn}", details, initiator: null, adapter.ID);
+                    string[] names = allBad.Select(it => it.Value).OrderBy(it => it).ToArray();
+                    string warn;
+                    if (allBadCount == 1) {
+                        warn = $"Bad quality for reading data item {names[0]}";
+                    }
+                    else {
+                        warn = $"Bad quality for reading {allBadCount} data items: {names[0]}, ...";
+                    }
+
+                    string details = string.Join(", ", names.Take(30));
+                    Log_Warn_Details("Quality", $"{adapter.Name}: {warn}", details, initiator: null, adapter.ID);
+                }
             }
             else {
 
@@ -1359,11 +1378,15 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
-        public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter) {
-            moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
+        void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter, AdapterState state) {
+            moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter, state);
         }
 
-        private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter) {
+        private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter, AdapterState state) {
+
+            if (eventInfo.Connection) {
+                state.ConnectionIsDown = eventInfo.Severity == Severity.Alarm || eventInfo.Severity == Severity.Warning;
+            }
 
             var ae = new AlarmOrEventInfo() {
                 Time = eventInfo.Time,
@@ -1437,6 +1460,21 @@ namespace Ifak.Fast.Mediator.IO
 
             public State State { get; set; } = State.Created;
 
+            public bool ConnectionIsDown {
+                get => connectionIsDown;
+                set {
+                    if (connectionIsDown != value) {
+                        if (value) {
+                            Console.WriteLine($"Connection is down for adapter {ID}");
+                        }
+                        else {
+                            Console.WriteLine($"Connection is up for adapter {ID}");
+                        }
+                    }
+                    connectionIsDown = value;
+                }
+            }
+
             private string originalConfig = "";
             private SingleThreadIOAdapter? instance;
 
@@ -1469,10 +1507,11 @@ namespace Ifak.Fast.Mediator.IO
 
             public readonly Dictionary<string, string> BadItems = new();
 
+            public Timestamp? TimeOfFirstSkippedWarning;
             public Timestamp? TimeOfLastSkippedWarning;
             public Timestamp? TimeOfLastWriteDelayWarning;
             public Timestamp? TimeOfLastReadDelayWarning;
-
+            private bool connectionIsDown = false;
             private readonly Dictionary<string, string> MapItem2GroupID = new();
             private Group[] ItemGroups { get; set; } = new Group[0];
 
@@ -1609,18 +1648,20 @@ namespace Ifak.Fast.Mediator.IO
             ShutdownCompleted
         }
 
-        class Wrapper : AdapterCallback
+        sealed class Wrapper : AdapterCallback
         {
             private readonly Module m;
             private readonly Adapter a;
+            private readonly AdapterState s;
 
-            public Wrapper(Module m, Adapter a) {
+            public Wrapper(Module m, Adapter a, AdapterState s) {
                 this.m = m;
                 this.a = a;
+                this.s = s;
             }
 
             public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {
-                m.Notify_AlarmOrEvent(eventInfo, a);
+                m.Notify_AlarmOrEvent(eventInfo, a, s);
             }
 
             public void Notify_DataItemsChanged(DataItemValue[] values) {

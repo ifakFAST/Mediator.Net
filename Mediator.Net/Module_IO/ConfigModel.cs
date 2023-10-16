@@ -118,6 +118,8 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public int? MaxFractionalDigits { get; set; } = 3;
 
+        public Duration ConnectionRetryTimeout { get; set; } = Duration.FromMinutes(1);
+
         public Duration MaxInitDelayForGoodQuality { get; set; } = Duration.FromSeconds(0);
 
         public Duration RepeatWriteInterval { get; set; } = Duration.FromSeconds(0);
@@ -208,6 +210,7 @@ namespace Ifak.Fast.Mediator.IO.Config
                 Type = Type,
                 Address = Address,
                 Login = Login,
+                ConnectionRetryTimeout = ConnectionRetryTimeout,
                 Config = Config,
                 Nodes = Nodes.Select(n => n.ToNode()).ToList(),
                 DataItems = DataItems.Select(di => di.ToDataItem()).ToList()
