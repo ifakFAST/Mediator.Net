@@ -34,6 +34,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         private Duration connectionRetryTimeout = Duration.FromMinutes(0);
 
+        private bool measureReadDuration = false;
+        private bool measureWriteDuration = false;
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
@@ -55,9 +58,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 ApplicationType = ApplicationType.Client
             };
 
-            this.mapId2Info = config.GetAllDataItems().Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
+            List<DataItem> allDataItems = config.GetAllDataItems();
+
+            this.mapId2Info = allDataItems.Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                item => /* key */ item.ID,
                item => /* val */ new ItemInfo(item.ID, item.Name, item.Type, item.Dimension, item.Address));
+
+            measureReadDuration  = allDataItems.Any(di => di.ID == "LastReadDurationMS"  && string.IsNullOrEmpty(di.Address));
+            measureWriteDuration = allDataItems.Any(di => di.ID == "LastWriteDurationMS" && string.IsNullOrEmpty(di.Address));
 
             PrintLine(config.Address);
 
@@ -276,6 +284,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         //private bool readExceptionWarning = false;
         //private bool writeExceptionWarning = false;
 
+        private Timestamp lastReadDurationTimestamp = Timestamp.Now;
+
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
             ConnectResult connected = await TryConnect();
@@ -306,14 +316,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         TimestampsToReturn = TimestampsToReturn.Source,
                     };
 
-                    // var now = Timestamp.Now.TruncateMilliseconds();
-                    // var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var now = Timestamp.Now.TruncateMilliseconds();
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    
                     ReadResponse readResponse = await connection.ReadAsync(readRequest);
-                    // sw.Stop();
-                    // double duration = sw.Elapsed.TotalMilliseconds;
-                    // var vtq = VTQ.Make(duration, now, Quality.Good);
-                    // var div = new DataItemValue("LastReadDurationMS", vtq);
-                    // callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
+
+                    sw.Stop();
+                    if (measureReadDuration && now > lastReadDurationTimestamp) {
+                        lastReadDurationTimestamp = now;
+                        double duration = sw.Elapsed.TotalMilliseconds;
+                        var vtq = VTQ.Make(duration, now, Quality.Good);
+                        var div = new DataItemValue("LastReadDurationMS", vtq);
+                        callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
+                    }
+
                     readHelper.SetAllResults(readResponse.Results, (vv, request) => MakeVTQ(vv, request.LastValue, request.ID));
                     result = readHelper.values;
                 }
@@ -489,6 +505,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             return Quality.Uncertain;
         }
 
+        private Timestamp lastWriteDurationTimestamp = Timestamp.Now;
+
         public override async Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
 
             int N = values.Count;
@@ -536,7 +554,21 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     WriteRequest req = new WriteRequest() {
                         NodesToWrite = dataItemsToWrite.ToArray()
                     };
+
+                    var now = Timestamp.Now.TruncateMilliseconds();
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+
                     WriteResponse resp = await connection.WriteAsync(req);
+
+                    sw.Stop();
+                    if (measureWriteDuration && now > lastWriteDurationTimestamp) {
+                        lastWriteDurationTimestamp = now;
+                        double duration = sw.Elapsed.TotalMilliseconds;
+                        var vtq = VTQ.Make(duration, now, Quality.Good);
+                        var div = new DataItemValue("LastWriteDurationMS", vtq);
+                        callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
+                    }
+
                     if (resp.Results is not null && resp.Results.Length == dataItemsToWrite.Count) {
                         StatusCode[] results = resp.Results;
                         for (int i = 0; i < results.Length; ++i) {
