@@ -136,6 +136,12 @@ public class MqttVarPub : ModelObject, VarPubCommon {
             Topic = Topic.Replace(entry.Key, entry.Value);
             TopicRegistration = TopicRegistration.Replace(entry.Key, entry.Value);
         }
+
+        if (RootObjects.Count == 0 && ModuleID != "" && RootObject != "") {
+            RootObjects.Add(ObjectRef.Make(ModuleID, RootObject));
+            ModuleID = "";
+            RootObject = "";
+        }
     }
 }
 
