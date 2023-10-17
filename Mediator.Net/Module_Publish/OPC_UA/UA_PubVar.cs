@@ -84,7 +84,7 @@ internal class UA_PubVar : BufferedVarPub {
     }
 
     protected override string BuffDirName => "UA_Publish";
-    protected override string PublisherID => config.ID;
+    internal override string PublisherID => config.ID;
 
     private bool configHasChanged = false;
     private readonly Dictionary<VariableRef, UA_Var> registeredVariables = new();

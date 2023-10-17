@@ -32,7 +32,7 @@ public abstract class SQLPubVar : BufferedVarPub {
     }
 
     protected override string BuffDirName => "SQL_Publish";
-    protected override string PublisherID => config.ID;
+    internal override string PublisherID => config.ID;
 
     protected abstract Task<bool> TestConnection(DbConnection dbConnection);
     protected abstract DbConnection CreateConnection(string connectionString);

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using ObjectRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectRef>;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator.Publish;
 
@@ -19,6 +20,9 @@ internal class VarPubTask {
         Duration cycle = varPub.PublishInterval;
         Duration offset = varPub.PublishOffset;
         bool enableChangeBasedVariableUpdates = cycle == Duration.Zero;
+
+        string strObjects = string.Join(", ", rootObjects.Select(r => r.ToString()));
+        Console.WriteLine($"Starting variable publish task {publisher.PublisherID}: Cycle={cycle}; RootObjects={strObjects}; ChangeBasedVarUpdates={enableChangeBasedVariableUpdates}");
 
         async Task WaitForNextCycle() {
             Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);

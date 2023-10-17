@@ -31,7 +31,7 @@ internal class MqttPub_Var_Buffer : BufferedVarPub {
     }
 
     protected override string BuffDirName => "MQTT_Publish";
-    protected override string PublisherID => config.ID;
+    internal override string PublisherID => config.ID;
 
     protected override async Task<bool> DoSend(VariableValues values) {
 

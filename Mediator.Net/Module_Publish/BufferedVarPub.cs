@@ -177,7 +177,7 @@ public abstract class BufferedVarPub {
 
     protected abstract Task<bool> DoSend(VariableValues values);
     protected abstract string BuffDirName { get; }
-    protected abstract string PublisherID { get; }
+    internal abstract string PublisherID { get; }
 
     private const string FilePrefix = "Chunck_";
     private const string FileSuffix = ".dat";
