@@ -112,22 +112,22 @@ public partial class MqttPublisher
 
         if (config.CertFileCA != "") {
 
-            var caCert = X509Certificate.CreateFromCertFile(Path.Combine(certDir, config.CertFileCA));
+            var caCert     = new X509Certificate2(Path.Combine(certDir, config.CertFileCA));
             var clientCert = new X509Certificate2(Path.Combine(certDir, config.CertFileClient), "");
 
             builder = builder
-            .WithTls(new MqttClientOptionsBuilderTlsParameters() {
-                UseTls = true,
-                SslProtocol = System.Security.Authentication.SslProtocols.Tls12,
-                Certificates = new List<X509Certificate>()
-                {
-                    clientCert,
-                    caCert
-                },
-                IgnoreCertificateRevocationErrors = config.IgnoreCertificateRevocationErrors,
-                IgnoreCertificateChainErrors = config.IgnoreCertificateChainErrors,
-                AllowUntrustedCertificates = config.AllowUntrustedCertificates,
-            });
+             .WithTlsOptions(o => {
+                 o
+                 .UseTls(true)
+                 .WithSslProtocols(System.Security.Authentication.SslProtocols.Tls12)
+                 .WithClientCertificates(new X509Certificate2[] { 
+                     clientCert, 
+                     caCert 
+                 })
+                 .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
+                 .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
+                 .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+             });
         }
 
         return builder
