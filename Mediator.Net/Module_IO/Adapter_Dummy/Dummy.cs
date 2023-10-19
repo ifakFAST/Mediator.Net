@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
 {
     [Identify("Dummy")]
-    public class Dummy : AdapterBase
+    public partial class Dummy : AdapterBase
     {
         private readonly Dictionary<string, ValueSource> values = new Dictionary<string, ValueSource>();
 
@@ -37,7 +37,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
         }
 
         public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
-            return Task.FromResult(new string[] { "Sin(period=5 min, amplitude=5, offset=11)" });
+            return Task.FromResult(new string[] { 
+                "Sin(period=5 min, amplitude=5, offset=11)",
+                "SinNoise(period=5 min, amplitude=5, offset=11, noise=1)",
+                "3.1415"
+            });
         }
 
         public override Task<string[]> BrowseAdapterAddress() {
@@ -110,22 +114,27 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
             }
         }
 
-        class Function : ValueSource
+        partial class Function : ValueSource
         {
-            string func;
+            readonly string func;
+            readonly bool isJSON;
 
             public Function(DataItem di) {
                 func = di.Address;
+                isJSON = StdJson.IsValidJson(func);
             }
 
-            private static Regex rgxSinus = new Regex(@"\s*Sin\s*\(\s*period\s*=\s*(\d+\s*(s|min|m|h|d))\s*\,\s*amplitude\s*=\s*(\d+\.?\d*)\s*\,\s*offset\s*=\s*(-?\d+\.?\d*)\)\s*", RegexOptions.IgnoreCase);
-            private static Regex rgxSinusNoise = new Regex(@"\s*SinNoise\s*\(\s*period\s*=\s*(\d+\s*(s|min|m|h|d))\s*\,\s*amplitude\s*=\s*(\d+\.?\d*)\s*\,\s*offset\s*=\s*(-?\d+\.?\d*)\,\s*noise\s*=\s*(-?\d+\.?\d*)\)\s*", RegexOptions.IgnoreCase);
-            private static long BaseDate = Timestamp.FromDateTime(new DateTime(2015, 1, 1, 0, 0, 0, DateTimeKind.Utc)).JavaTicks;
-            private Random random = new Random();
+            private static readonly long BaseDate = Timestamp.FromDateTime(new DateTime(2015, 1, 1, 0, 0, 0, DateTimeKind.Utc)).JavaTicks;
+            private readonly Random random = new();
 
             public override VTQ Get() {
-                Match matchSinus = rgxSinus.Match(func);
-                Match matchSinusNoise = rgxSinusNoise.Match(func);
+
+                if (isJSON) {
+                    return new VTQ(Timestamp.Now.TruncateMilliseconds(), Quality.Good, DataValue.FromJSON(func));
+                }
+
+                Match matchSinus = rgxSinus().Match(func);
+                Match matchSinusNoise = rgxSinusNoise().Match(func);
                 if (matchSinus.Success) {
                     Duration period = Duration.Parse(matchSinus.Groups[1].Value);
                     double amplitude = double.Parse(matchSinus.Groups[3].Value, CultureInfo.InvariantCulture);
@@ -172,6 +181,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
             public override void Put(VTQ v) {
                 // ignore
             }
+
+            [GeneratedRegex("\\s*Sin\\s*\\(\\s*period\\s*=\\s*(\\d+\\s*(s|min|m|h|d))\\s*\\,\\s*amplitude\\s*=\\s*(\\d+\\.?\\d*)\\s*\\,\\s*offset\\s*=\\s*(-?\\d+\\.?\\d*)\\)\\s*", RegexOptions.IgnoreCase)]
+            private static partial Regex rgxSinus();
+
+            [GeneratedRegex("\\s*SinNoise\\s*\\(\\s*period\\s*=\\s*(\\d+\\s*(s|min|m|h|d))\\s*\\,\\s*amplitude\\s*=\\s*(\\d+\\.?\\d*)\\s*\\,\\s*offset\\s*=\\s*(-?\\d+\\.?\\d*)\\,\\s*noise\\s*=\\s*(-?\\d+\\.?\\d*)\\)\\s*", RegexOptions.IgnoreCase)]
+            private static partial Regex rgxSinusNoise();
         }
     }
 }
