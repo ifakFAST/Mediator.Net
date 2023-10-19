@@ -34,16 +34,19 @@ public class Module : ModelObjectModule<Model>
         string configVarFile = info.GetConfigReader().GetOptionalString("config-var-file", "").Trim();
         if (configVarFile != "") {
             if (!File.Exists(configVarFile)) {
-                Console.WriteLine($"config-var-file '{configVarFile}' not found!");
+                Console.Error.WriteLine($"config-var-file '{configVarFile}' not found!");
             }
             else {
                 string vars = File.ReadAllText(configVarFile, System.Text.Encoding.UTF8);
                 var variables = StdJson.JObjectFromString(vars);
-                Console.WriteLine($"Using variables as specified in config-var-file '{configVarFile}':");
-                foreach (var prop in variables.Properties()) {
-                    string key = "${" + prop.Name + "}";
-                    mapConfigVar[key] = prop.Value.ToString();
-                    Console.WriteLine($"{prop.Name} -> {prop.Value}");
+                var properties = variables.Properties().ToList();
+                if (properties.Count > 0) {
+                    Console.WriteLine($"Using variables as specified in config-var-file '{configVarFile}':");
+                    foreach (var prop in properties) {
+                        string key = "${" + prop.Name + "}";
+                        mapConfigVar[key] = prop.Value.ToString();
+                        Console.WriteLine($"{prop.Name} -> {prop.Value}");
+                    }
                 }
             }
         }

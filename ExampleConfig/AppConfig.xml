@@ -94,13 +94,14 @@
             </HistoryDBs>
         </Module>
         
-        <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
+        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
             <VariablesFileName>./Data/Var_Pub.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
             <ExternalArgs>./Bin/Mediator/Module_Publish.dll  {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_Publish.xml"/>
                 <NamedValue name="cert-dir" value="./Config"/>
+                <NamedValue name="config-var-file" value="./Config/config_vars.json"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="PUB" type="SQLite" prioritizeReadRequests="true">

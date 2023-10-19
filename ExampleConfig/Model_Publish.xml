@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Publish_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Publish">  
   <MQTT>
+  <!--
     <MqttConfig id="mqtt_io" name="MQTT_IO">
         <Endpoint>url.of.mqtt.broker</Endpoint>
         <ClientIDPrefix>client_id</ClientIDPrefix>
@@ -28,5 +29,6 @@
             <PublishOffset>0 s</PublishOffset>
         </VarPublish>
     </MqttConfig>
+    -->
   </MQTT>
 </Publish_Model>
