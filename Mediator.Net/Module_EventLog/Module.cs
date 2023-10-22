@@ -116,7 +116,7 @@ namespace Ifak.Fast.Mediator.EventLog
                             
                             Timestamp t = Timestamp.Now.TruncateMilliseconds();
                             VTQ vtqCount = VTQ.Make(v, t, Quality.Good);
-                            VTQ vtqStr = VTQ.Make(vStr, t, Quality.Good);
+                            VTQ vtqStr = VTQ.Make(vStr == "" ? model.TextForNoActiveWarningsAndAlarms : vStr, t, Quality.Good);
 
                             //var listVarValues = new List<VariableValue>(1);
                             //listVarValues.Add(VariableValue.Make(moduleID, "Root", "CountActiveWarningsAndAlarms", vtq));

@@ -17,6 +17,8 @@ namespace Ifak.Fast.Mediator.EventLog
         [XmlIgnore]
         public string Name { get; set; } = "EventLog_Model";
 
+        public string TextForNoActiveWarningsAndAlarms { get; set; } = "";
+
         public VariableRef? CountActiveWarningsAndAlarms { get; set; }
         public VariableRef? ActiveWarningsAndAlarms { get; set; }
         public bool ShouldSerializeCountActiveWarningsAndAlarms() => CountActiveWarningsAndAlarms.HasValue;
