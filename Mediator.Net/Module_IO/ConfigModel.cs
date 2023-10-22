@@ -118,7 +118,8 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public int? MaxFractionalDigits { get; set; } = 3;
 
-        public Duration ConnectionRetryTimeout { get; set; } = Duration.FromMinutes(1);
+        public Duration ConnectionRetryTimeout { get; set; } = Duration.FromMinutes(0);
+        public bool ShouldSerializeConnectionRetryTimeout() => ConnectionRetryTimeout != Duration.FromMinutes(0);
 
         public Duration MaxInitDelayForGoodQuality { get; set; } = Duration.FromSeconds(0);
 
