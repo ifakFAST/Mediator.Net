@@ -288,6 +288,16 @@ namespace Ifak.Fast.Mediator
             throw new ArgumentException("Duration.Parse: Invalid format of '" + s + "'");
         }
 
+        public static bool TryParse(string s, out Duration result) {
+            try {
+                result = Parse(s);
+                return true;
+            } catch {
+                result = Duration.Zero;
+                return false;
+            }
+        }
+
         public int CompareTo(Duration other) {
             long a = millis;
             long b = other.millis;

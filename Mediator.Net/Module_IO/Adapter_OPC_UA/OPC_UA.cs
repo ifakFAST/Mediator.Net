@@ -37,6 +37,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private bool measureReadDuration = false;
         private bool measureWriteDuration = false;
 
+        private Duration timeout = Duration.FromSeconds(15);
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
@@ -49,6 +51,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 strExcludeUnderscore = config.Config.First(nv => nv.Name == Config_Underscore).Value.ToLowerInvariant().Trim();
             }
             excludeUnderscore = strExcludeUnderscore == "true";
+
+            const string Config_Timeout = "Timeout";
+            if (config.Config.Any(nv => nv.Name == Config_Timeout)) {
+                string strTimeout = config.Config.First(nv => nv.Name == Config_Timeout).Value.Trim();
+                if (Duration.TryParse(strTimeout, out Duration t)) {
+                    timeout = t;
+                }
+                else {
+                    PrintErrorLine($"Invalid value for config parameter '{Config_Timeout}': '{strTimeout}'");
+                }
+            }
 
             const string appName = "Mediator.IO.OPC_UA";
 
@@ -158,22 +171,28 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                 IUserIdentity identity = GetIdentity();
 
+                ClientSessionChannelOptions opts = new() {
+                    TimeoutHint = (uint)timeout.TotalMilliseconds,
+                };
+
                 var channel = new ClientSessionChannel(
                             localDescription: appDescription,
                             certificateStore: certificateStore,
                             userIdentity: identity,
-                            remoteEndpoint: endpoint);
-                
+                            remoteEndpoint: endpoint,
+                            options: opts);
+
                 await channel.OpenAsync();
 
                 this.connection = channel;
                 lastConnectErrMsg = "";
                 connectionIsBad = false;
 
-                PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'.");
-                PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'.");
-                PrintLine($"SecurityMode: '{channel.RemoteEndpoint.SecurityMode}'.");
-                PrintLine($"UserIdentityToken: '{channel.UserIdentity}'.");
+                PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'");
+                PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'");
+                PrintLine($"SecurityMode: '{channel.RemoteEndpoint.SecurityMode}'");
+                PrintLine($"UserIdentityToken: '{channel.UserIdentity}'");
+                PrintLine($"Timeout: {timeout}");
 
                 ItemInfo[] nodesNeedingResolve = mapId2Info.Values.Where(n => n.Node == null).ToArray();
                 if (nodesNeedingResolve.Length > 0) {
