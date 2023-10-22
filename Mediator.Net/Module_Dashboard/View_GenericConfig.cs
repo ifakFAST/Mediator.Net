@@ -279,7 +279,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         var importFile = parameters.Object<Imp_Params>() ?? throw new Exception("Imp_Params is null");
                         var nv1 = new NamedValue("objID", importFile.ObjID);
                         var nv2 = new NamedValue("data", StdJson.ObjectToString(importFile.Data));
-                        await Connection.CallMethod(moduleID, "ImportObjectAsFile", nv1, nv2);                        
+                        await Connection.CallMethod(moduleID, "ImportObjectAsFile", nv1, nv2);
                         return ReqResult.OK();
                     }
 

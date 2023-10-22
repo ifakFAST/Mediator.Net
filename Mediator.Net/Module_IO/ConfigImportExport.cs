@@ -105,7 +105,7 @@ public static class ConfigImportExport {
                 ID: id,
                 Name: str("Name"),
                 Unit: str("Unit"),
-                Read: isRead("Access", defaultValue: true),
+                Read: isRead("Access", defaultValue: false),
                 Write: isWrite("Access", defaultValue: false),
                 Type: str("Type"),
                 Dimension: integer("Dimension", defaultValue: 1),
