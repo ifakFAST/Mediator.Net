@@ -598,31 +598,19 @@ namespace Ifak.Fast.Mediator.IO
                         warn = $"Write of {namesCount} data items skipped because of pending write: {names[0]}, ...";
                     }
 
-                    string details = string.Join(", ", names.Take(30));
-                    Timestamp Now = Timestamp.Now;
-                    bool first = adapter.TimeOfLastSkippedWarning == null;
-                    adapter.TimeOfLastSkippedWarning = Now;
-                    if (first) {
-                        adapter.TimeOfFirstSkippedWarning = Now;
-                        Console.WriteLine($"{adapter.Name}: {warn}");
-                    }
-                    Duration diff = Now - adapter.TimeOfFirstSkippedWarning!.Value;
-                    if (diff > Duration.FromMinutes(5)) {
-                        Log_Warn_Details("WritesPending", $"{adapter.Name}: {warn}", details, origin, adapter.ID);
+                    string msg = $"{adapter.Name}: {warn}";
+                    if (adapter.alarmSkippedWrite.OnWarning(msg)) {
+                        string details = string.Join(", ", names.Take(30));
+                        Log_Warn_Details("WritesPending", msg, details, origin, adapter.ID);
                     }
                 }
             }
             else {
 
-                var t = Timestamp.Now - Duration.FromMinutes(10);
-
                 foreach (var adapter in adapter2Items.Keys) {
-                    if (!adapter.TimeOfLastSkippedWarning.HasValue) continue;
-                    if (adapter.TimeOfLastSkippedWarning.Value > t) continue;
-                    Timestamp tt = adapter.TimeOfLastSkippedWarning.Value;
-                    adapter.TimeOfLastSkippedWarning = null;
-                    adapter.TimeOfFirstSkippedWarning = null;
-                    Log_ReturnToNormal("WritesPending", $"{adapter.Name}: No skipped writes since {tt}", adapter.ID);
+                    if (adapter.alarmSkippedWrite.ReturnToNormal(out Timestamp timeOfLastWarn)) {
+                        Log_ReturnToNormal("WritesPending", $"{adapter.Name}: No skipped writes since {timeOfLastWarn}", adapter.ID);
+                    }
                 }
             }
 
@@ -688,19 +676,15 @@ namespace Ifak.Fast.Mediator.IO
                         long limitTicks = limit.TotalMilliseconds * TimeSpan.TicksPerMillisecond;
                         if (elapsed.Ticks > limitTicks) {
                             string msg = $"{adapter.Name}: Write took {elapsed.ElapsedString()} for {items.Count} data items!";
-                            string details = string.Join(", ", items.Take(30).Select(it => it.ID));
-                            Log_Warn_Details("WriteDuration", msg, details, origin, adapter.ID);
-                            adapter.TimeOfLastWriteDelayWarning = Timestamp.Now;
+                            if (adapter.alarmWriteDelay.OnWarning(msg)) {
+                                string details = string.Join(", ", items.Take(30).Select(it => it.ID));
+                                Log_Warn_Details("WriteDuration", msg, details, origin, adapter.ID);
+                            }
                         }
                         else {
                             
-                            if (adapter.TimeOfLastWriteDelayWarning.HasValue) {
-                                Timestamp mt = Timestamp.Now - Duration.FromMinutes(5);
-                                Timestamp tLastWriteDelay = adapter.TimeOfLastWriteDelayWarning.Value;
-                                if (tLastWriteDelay < mt) {
-                                    adapter.TimeOfLastWriteDelayWarning = null;
-                                    Log_ReturnToNormal("WriteDuration", $"{adapter.Name}: Write duration below limit of {limit} since {tLastWriteDelay}", adapter.ID);
-                                }
+                            if (adapter.alarmWriteDelay.ReturnToNormal(out Timestamp timeOfLastWarn)) {
+                                Log_ReturnToNormal("WriteDuration", $"{adapter.Name}: Write duration below limit of {limit} since {timeOfLastWarn}", adapter.ID);
                             }
                         }
                     }
@@ -895,19 +879,15 @@ namespace Ifak.Fast.Mediator.IO
                                                 long limitTicks = limit.TotalMilliseconds * TimeSpan.TicksPerMillisecond;
                                                 if (elapsed.Ticks > limitTicks) {
                                                     string msg = $"{adapter.Name}: Read took {elapsed.ElapsedString()} for {requests.Length} data items!";
-                                                    string details = string.Join(", ", requests.Take(30).Select(it => it.ID));
-                                                    Log_Warn_Details("ReadDuration", msg, details, initiator: null, adapter.ID);
-                                                    adapter.TimeOfLastReadDelayWarning = Timestamp.Now;
+                                                    if (adapter.alarmReadDelay.OnWarning(msg)) {
+                                                        string details = string.Join(", ", requests.Take(30).Select(it => it.ID));
+                                                        Log_Warn_Details("ReadDuration", msg, details, initiator: null, adapter.ID);
+                                                    }
                                                 }
                                                 else {
 
-                                                    if (adapter.TimeOfLastReadDelayWarning.HasValue) {
-                                                        Timestamp mt = Timestamp.Now - Duration.FromMinutes(5);
-                                                        Timestamp tLastReadDelay = adapter.TimeOfLastReadDelayWarning.Value;
-                                                        if (tLastReadDelay < mt) {
-                                                            adapter.TimeOfLastReadDelayWarning = null;
-                                                            Log_ReturnToNormal("ReadDuration", $"{adapter.Name}: Read duration below limit of {limit} since {tLastReadDelay}", adapter.ID);
-                                                        }
+                                                    if (adapter.alarmReadDelay.ReturnToNormal(out Timestamp timeOfLastWarn)) {
+                                                        Log_ReturnToNormal("ReadDuration", $"{adapter.Name}: Read duration below limit of {limit} since {timeOfLastWarn}", adapter.ID);
                                                     }
                                                 }
                                             }
@@ -1507,10 +1487,18 @@ namespace Ifak.Fast.Mediator.IO
 
             public readonly Dictionary<string, string> BadItems = new();
 
-            public Timestamp? TimeOfFirstSkippedWarning;
-            public Timestamp? TimeOfLastSkippedWarning;
-            public Timestamp? TimeOfLastWriteDelayWarning;
-            public Timestamp? TimeOfLastReadDelayWarning;
+            internal AlarmManager alarmSkippedWrite = new(
+                activationDuration:   Duration.FromMinutes(5), 
+                deactivationDuration: Duration.FromMinutes(10));
+
+            internal AlarmManager alarmReadDelay = new(
+                activationDuration:   Duration.FromMinutes(5),
+                deactivationDuration: Duration.FromMinutes(10));
+
+            internal AlarmManager alarmWriteDelay = new(
+               activationDuration:   Duration.FromMinutes(5),
+               deactivationDuration: Duration.FromMinutes(10));
+
             private bool connectionIsDown = false;
             private readonly Dictionary<string, string> MapItem2GroupID = new();
             private Group[] ItemGroups { get; set; } = new Group[0];
