@@ -17,11 +17,19 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             return new MySqlCommand(cmdText, (MySqlConnection)dbConnection);
         }
 
-        protected override DbConnection CreateConnection(string connectionString) {
+        protected override DbConnection CreateConnection(string connectionString, int timeoutSeconds) {
+            bool hasTimeout = connectionString.ToLowerInvariant().Contains("timeout");
+            if (!hasTimeout) {
+                MySqlConnectionStringBuilder builder = new(connectionString);
+                builder.ConnectionTimeout = (uint)timeoutSeconds;
+                connectionString = builder.ConnectionString;
+            }
             return new MySqlConnection(connectionString);
         }
 
-        protected override async Task<bool> TestConnection(DbConnection dbConnection) {
+        protected override async Task<bool> TestConnection(DbConnection? dbConnection) {
+
+            if (dbConnection == null) return false;
 
             try {
 

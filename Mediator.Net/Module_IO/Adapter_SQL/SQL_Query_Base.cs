@@ -14,8 +14,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 {
     public abstract class SQL_Query_Base : AdapterBase
     {
-        protected abstract Task<bool> TestConnection(DbConnection dbConnection);
-        protected abstract DbConnection CreateConnection(string connectionString);
+        protected abstract Task<bool> TestConnection(DbConnection? dbConnection);
+        protected abstract DbConnection CreateConnection(string connectionString, int timeoutSeconds);
         protected abstract DbCommand CreateCommand(DbConnection dbConnection, string cmdText);
 
         private DbConnection? dbConnection;
@@ -29,7 +29,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
         private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
-        public override Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
+        public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
@@ -42,7 +42,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
             alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
 
-            return Task.FromResult(new Group[0]);
+            PrintLine($"Address: {config.Address}");
+
+            await TryOpenDatabase(reportFailureImmediatelly: true);
+
+            return new Group[0];
         }
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
@@ -65,8 +69,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                 }
             }
 
-            bool anyError = false;
-
             for (int i = 0; i < N; ++i) {
 
                 ReadRequest req = items[i];
@@ -77,17 +79,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
                 try {
                     res[i] = await ReadDataItemFromDB(query, lastVal, item.Type, item.Dimension);
-                    ReturnToNormal("ReadDataItems", $"Successful read of DataItem {itemID}", itemID);
+                    ReturnToNormal("ReadDataItems", $"Successful read of DataItem {itemID}", affectedDataItems: itemID);
                 }
                 catch (Exception exp) {
                     Exception e = exp.GetBaseException() ?? exp;
-                    LogWarning("ReadDataItems", $"ReadDataItemFromDB failed for {itemID}: {e.Message}", itemID);
-                    anyError = true;
+                    bool connectionOK = await TestConnection(dbConnection);
+                    if (connectionOK) {
+                        LogWarning("ReadDataItems", $"SQL query failed for {itemID}: {e.Message}", itemID);
+                    }
+                    else {
+                        PrintErrorLine($"Read exception with broken connection (closing connection, returning last values): {e.Message}");
+                        CloseDB();
+                        break;
+                    }
                 }
-            }
-
-            if (anyError) {
-                CloseDB();
             }
 
             return res;
@@ -258,7 +263,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             return Task.FromResult(true);
         }
 
-        private async Task<bool> TryOpenDatabase() {
+        private async Task<bool> TryOpenDatabase(bool reportFailureImmediatelly = false) {
 
             if (string.IsNullOrEmpty(config.Address)) {
                 return false;
@@ -276,19 +281,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             }
 
             try {
-                dbConnection = CreateConnection(config.Address);
+                dbConnection = CreateConnection(config.Address, timeoutSeconds: 5);
+                
                 await dbConnection.OpenAsync();
 
                 alarmConnectivity.ReturnToNormal();
-                ReturnToNormal("OpenDB", "Connected to Database.");
+                ReturnToNormal("OpenDB", "Connected to Database.", connectionUp: true);
                 
                 return true;
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
                 string msg = $"Open database error: {e.Message}";
-                if (alarmConnectivity.OnWarning(msg)) {
-                    LogWarning("OpenDB", msg);
+                if (reportFailureImmediatelly || alarmConnectivity.OnWarning(msg)) {
+                    LogWarning("OpenDB", msg, connectionDown: true);
                 }
                 CloseDB();
                 return false;
@@ -308,16 +314,29 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             Console.WriteLine(config.Name + ": " + msg);
         }
 
-        private void LogError(string type, string msg, params string[] affectedDataItems) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeAlarm(type, msg, affectedDataItems));
+        private void PrintErrorLine(string msg) {
+            string name = config.Name ?? "";
+            Console.Error.WriteLine(name + ": " + msg);
         }
 
-        private void LogWarning(string type, string msg, params string[] affectedDataItems) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeWarning(type, msg, affectedDataItems));
+        private void LogWarning(string type, string msg, string? dataItem = null, bool connectionDown = false) {
+
+            var ae = new AdapterAlarmOrEvent() {
+                Time = Timestamp.Now,
+                Severity = Severity.Warning,
+                Connection = connectionDown,
+                Type = type,
+                Message = msg,
+                AffectedDataItems = string.IsNullOrEmpty(dataItem) ? new string[0] : new string[] { dataItem }
+            };
+
+            callback?.Notify_AlarmOrEvent(ae);
         }
 
-        private void ReturnToNormal(string type, string msg, params string[] affectedDataItems) {
-            callback?.Notify_AlarmOrEvent(AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems));
+        private void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
+            AdapterAlarmOrEvent _event = AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems);
+            _event.Connection = connectionUp;
+            callback?.Notify_AlarmOrEvent(_event);
         }
     }
 }
