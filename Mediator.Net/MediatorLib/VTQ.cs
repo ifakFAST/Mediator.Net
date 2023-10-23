@@ -19,6 +19,11 @@ namespace Ifak.Fast.Mediator
         public Timestamp T { get; set; }
         public Quality   Q { get; set; }
 
+        public readonly bool IsGood => Q == Quality.Good;
+        public readonly bool NotGood => Q != Quality.Good;
+        public readonly bool IsBad => Q == Quality.Bad;
+        public readonly bool NotBad => Q != Quality.Bad;
+
         public VTQ(Timestamp time, Quality quality, DataValue value) {
             T = time;
             Q = quality;
@@ -84,6 +89,11 @@ namespace Ifak.Fast.Mediator
         public Timestamp T { get; set; }
         public Timestamp T_DB { get; set; }
         public Quality Q { get; set; }
+
+        public readonly bool IsGood => Q == Quality.Good;
+        public readonly bool NotGood => Q != Quality.Good;
+        public readonly bool IsBad => Q == Quality.Bad;
+        public readonly bool NotBad => Q != Quality.Bad;
 
         public VTTQ(Timestamp time, Timestamp timeDB, Quality quality, DataValue value) {
             T = time;

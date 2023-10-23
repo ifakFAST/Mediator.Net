@@ -88,6 +88,28 @@ namespace Ifak.Fast.Mediator.IO
         /// Called by the IO module to shutdown this Adapter instance.
         /// </summary>
         public abstract Task Shutdown();
+
+        /// <summary>
+        /// Creates a VTQ array with the same length as readRequests.
+        /// Each VTQ uses the LastValue for V, Bad for Q 
+        /// and the current time for T (if the quality of last value was not bad).
+        /// </summary>
+        /// <param name="readRequests"></param>
+        /// <returns></returns>
+        protected static VTQ[] BadVTQsFromLastValue(IList<ReadRequest> readRequests) {
+            int N = readRequests.Count;
+            var t = Timestamp.Now;
+            VTQ[] res = new VTQ[N];
+            for (int i = 0; i < N; ++i) {
+                VTQ vtq = readRequests[i].LastValue;
+                if (vtq.NotBad) {
+                    vtq.Q = Quality.Bad;
+                    vtq.T = t;
+                }
+                res[i] = vtq;
+            }
+            return res;
+        }
     }
 
     public struct BrowseDataItemsResult

@@ -314,7 +314,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     return items.Select(it => it.LastValue).ToArray();
                 }
                 else {
-                    return GetBadVTQs(items);
+                    return BadVTQsFromLastValue(items);
                 }
             }
 
@@ -371,19 +371,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 Task ignored = CloseChannel();
                 return items.Select(it => it.LastValue).ToArray(); // Exception is most likely due to connection failure, just return last values
             }
-        }
-
-        private static VTQ[] GetBadVTQs(IList<ReadRequest> items) {
-            int N = items.Count;
-            var t = Timestamp.Now;
-            VTQ[] res = new VTQ[N];
-            for (int i = 0; i < N; ++i) {
-                VTQ vtq = items[i].LastValue;
-                vtq.Q = Quality.Bad;
-                vtq.T = t;
-                res[i] = vtq;
-            }
-            return res;
         }
 
         private VTQ MakeVTQ(Workstation.ServiceModel.Ua.DataValue readRes, VTQ lastValue, string dataItemID) {

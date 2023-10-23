@@ -56,7 +56,13 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             bool connected = await TryOpenDatabase();
 
             if (!connected) {
-                return res;
+                bool transient = !alarmConnectivity.IsActivated;
+                if (transient) {
+                    return res;
+                }
+                else {
+                    return BadVTQsFromLastValue(items);
+                }
             }
 
             bool anyError = false;
