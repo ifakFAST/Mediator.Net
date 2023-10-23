@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Workstation.ServiceModel.Ua;
 using Workstation.ServiceModel.Ua.Channels;
+using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 {
@@ -23,7 +24,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private string certificateLocation = "";
         private ClientSessionChannel? connection;
 
-        private Adapter? config;
+        private Adapter config = new();
         private AdapterCallback? callback;
         private Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
 
@@ -32,7 +33,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private string lastConnectErrMsg = "";
         private bool excludeUnderscore = true;
 
-        private Duration connectionRetryTimeout = Duration.FromMinutes(0);
+        private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
         private bool measureReadDuration = false;
         private bool measureWriteDuration = false;
@@ -43,7 +44,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             this.config = config;
             this.callback = callback;
-            this.connectionRetryTimeout = config.ConnectionRetryTimeout;
+            this.alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
 
             const string Config_Underscore = "ExcludeUnderscoreNodes";
             string strExcludeUnderscore = "true";
@@ -80,45 +81,22 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             measureReadDuration  = allDataItems.Any(di => di.ID == "LastReadDurationMS"  && string.IsNullOrEmpty(di.Address));
             measureWriteDuration = allDataItems.Any(di => di.ID == "LastWriteDurationMS" && string.IsNullOrEmpty(di.Address));
 
-            PrintLine(config.Address);
+            PrintLine($"Address: {config.Address}");
 
-            await TryConnectIntern(reportFailureImmediatelly: true);
+            await TryConnect(reportFailureImmediatelly: true);
 
             return new Group[0];
         }
 
-        private bool isConnecting = false;
-        private Timestamp? timeFirstConnectError = null;
-        private bool connectionIsBad = false;
-
-        record struct ConnectResult(bool Success, bool Transient = true) {
-            public readonly bool Failed => !Success;
-        }
-
-        private async Task<ConnectResult> TryConnect() {
-
-            while (isConnecting) {
-                await Task.Delay(50);
-            }
-
-            try {
-                isConnecting = true;
-                return await TryConnectIntern(reportFailureImmediatelly: false);
-            }
-            finally {
-                isConnecting = false;
-            }
-        }
-
-        private async Task<ConnectResult> TryConnectIntern(bool reportFailureImmediatelly) {
+        private async Task<bool> TryConnect(bool reportFailureImmediatelly = false) {
 
             if (connection != null) {
-                return new ConnectResult(Success: true);
+                return true;
             }
 
-            if (config == null || string.IsNullOrEmpty(config.Address)) {
+            if (string.IsNullOrEmpty(config.Address)) {
                 lastConnectErrMsg = "No address configured";
-                return new ConnectResult(Success: false, Transient: false);
+                return false;
             }
 
             try {
@@ -186,7 +164,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                 this.connection = channel;
                 lastConnectErrMsg = "";
-                connectionIsBad = false;
 
                 PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'");
                 PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'");
@@ -231,39 +208,23 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         }
                     }
                 }
-                ReturnToNormal("OpenChannel", $"Connected to OPC UA server at {config.Address}", connectionUp: true);
-                timeFirstConnectError = null;
-                return new ConnectResult(Success: true);
+                alarmConnectivity.ReturnToNormal();
+                ReturnToNormal("OpenChannel", $"Connected to OPC UA server '{config.Address}'", connectionUp: true);
+                return true;
             }
             catch (Exception exp) {
                 Exception baseExp = exp.GetBaseException() ?? exp;
                 lastConnectErrMsg = baseExp.Message;
-                bool firstError = timeFirstConnectError == null;
-                if (timeFirstConnectError == null) {
-                    timeFirstConnectError = Timestamp.Now;
-                }
-                Duration timeSinceFirstError = Timestamp.Now - timeFirstConnectError.Value;
-                bool warnNow = timeSinceFirstError >= connectionRetryTimeout;
-                bool transient = true;
-                if (warnNow || reportFailureImmediatelly) {
-                    if (!connectionIsBad) {
-                        connectionIsBad = true;
-                        LogWarn("OpenChannel", "Connection error: " + baseExp.Message, dataItem: null, connectionDown: true, details: baseExp.StackTrace);
-                    }
-                    transient = false;
-                }
-                else {
-                    if (firstError) {
-                        Console.Error.WriteLine($"OPC UA connection error for Address '{config.Address}': {baseExp.Message}");
-                    }
+                string msg = $"No connection to OPC UA server '{config.Address}': {baseExp.Message}";
+                if (reportFailureImmediatelly || alarmConnectivity.OnWarning(msg)) {
+                    LogWarn("OpenChannel", msg, dataItem: null, connectionDown: true);
                 }
                 await CloseChannel();
-                return new ConnectResult(Success: false, Transient: transient);
+                return false;
             }
         }
 
         private IUserIdentity GetIdentity() {
-            if (config == null) return new AnonymousIdentity();
             if (config.Login.HasValue) {
                 return new UserNameIdentity(config.Login.Value.UserName, config.Login.Value.Password);
             }
@@ -307,10 +268,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-            ConnectResult connected = await TryConnect();
-            if (connected.Failed || connection == null) {
+            bool connected = await TryConnect();
+            if (!connected || connection == null) {
 
-                if (connected.Transient) {
+                if (!alarmConnectivity.IsActivated) {
                     return items.Select(it => it.LastValue).ToArray();
                 }
                 else {
@@ -517,8 +478,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
             int N = values.Count;
 
-            ConnectResult connect = await TryConnect();
-            if (connect.Failed || connection == null) {
+            bool connected = await TryConnect();
+            if (!connected || connection == null) {
                 var failed = new FailedDataItemWrite[N];
                 for (int i = 0; i < N; ++i) {
                     DataItemValue request = values[i];
@@ -727,7 +688,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             string clientCertificate = GetCertificate(certificateLocation);
 
             if (connection == null) {
-                string endpoint = config?.Address ?? "";
+                string endpoint = config.Address ?? "";
                 string msg = $"No connection to OPC UA server '{endpoint}': " + lastConnectErrMsg;
                 return new BrowseDataItemsResult(
                     supportsBrowsing: true,
@@ -851,12 +812,12 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private void PrintLine(string msg) {
-            string name = config?.Name ?? "";
+            string name = config.Name ?? "";
             Console.WriteLine(name + ": " + msg);
         }
 
         private void PrintErrorLine(string msg) {
-            string name = config?.Name ?? "";
+            string name = config.Name ?? "";
             Console.Error.WriteLine(name + ": " + msg);
         }
 
