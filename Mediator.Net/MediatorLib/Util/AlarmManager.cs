@@ -6,6 +6,7 @@ namespace Ifak.Fast.Mediator.Util {
 
         private Timestamp? timeOfFirstWarning;
         private Timestamp? timeOfLastWarning;
+        private bool activated = false;
 
         private readonly Duration activationDuration;
         private readonly Duration deactivationDuration;
@@ -29,14 +30,24 @@ namespace Ifak.Fast.Mediator.Util {
                 Console.WriteLine(msg);
             }
             Duration diff = Now - timeOfFirstWarning!.Value;
-            return diff >= activationDuration;
+            bool active = diff >= activationDuration;
+
+            if (active && !activated) {
+                activated = true;
+                return true;
+            }
+
+            return false;
         }
+
+        public bool IsActivated => activated;
 
         public bool ReturnToNormal() {
             return ReturnToNormal(out _);
         }
 
         public bool ReturnToNormal(out Timestamp timeOfLastWarn) {
+            activated = false;
             timeOfLastWarn = timeOfLastWarning ?? Timestamp.Empty;
             if (!timeOfLastWarning.HasValue) return false;
             var t = Timestamp.Now - deactivationDuration;
