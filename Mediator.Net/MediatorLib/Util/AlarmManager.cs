@@ -15,6 +15,11 @@ namespace Ifak.Fast.Mediator.Util {
             this.deactivationDuration = deactivationDuration;
         }
 
+        public AlarmManager(Duration activationDuration) {
+            this.activationDuration = activationDuration;
+            this.deactivationDuration = Duration.FromMinutes(0);
+        }
+
         public bool OnWarning(string msg) {
             Timestamp Now = Timestamp.Now;
             bool first = timeOfFirstWarning == null;
@@ -24,7 +29,7 @@ namespace Ifak.Fast.Mediator.Util {
                 Console.WriteLine(msg);
             }
             Duration diff = Now - timeOfFirstWarning!.Value;
-            return diff > activationDuration;
+            return diff >= activationDuration;
         }
 
         public bool ReturnToNormal() {
@@ -35,7 +40,7 @@ namespace Ifak.Fast.Mediator.Util {
             timeOfLastWarn = timeOfLastWarning ?? Timestamp.Empty;
             if (!timeOfLastWarning.HasValue) return false;
             var t = Timestamp.Now - deactivationDuration;
-            if (timeOfLastWarning > t) return false;
+            if (timeOfLastWarning.Value > t) return false;
             timeOfFirstWarning = null;
             timeOfLastWarning = null;
             return true;

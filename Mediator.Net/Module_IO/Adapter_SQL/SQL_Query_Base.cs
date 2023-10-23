@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
+using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 {
@@ -26,6 +27,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
         private readonly Dictionary<string, DataItem> mapId2DataItem = new();
 
+        private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
+
         public override Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
@@ -36,6 +39,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             foreach (DataItem item in dataItems) {
                 mapId2DataItem[item.ID] = item;
             }
+
+            alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
 
             return Task.FromResult(new Group[0]);
         }
@@ -249,6 +254,10 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
 
         private async Task<bool> TryOpenDatabase() {
 
+            if (string.IsNullOrEmpty(config.Address)) {
+                return false;
+            }
+
             if (dbConnection != null) {
                 bool ok = await TestConnection(dbConnection);
                 if (ok) {
@@ -263,12 +272,18 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             try {
                 dbConnection = CreateConnection(config.Address);
                 await dbConnection.OpenAsync();
+
+                alarmConnectivity.ReturnToNormal();
                 ReturnToNormal("OpenDB", "Connected to Database.");
+                
                 return true;
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
-                LogWarning("OpenDB", "Open database error: " + e.Message);
+                string msg = $"Open database error: {e.Message}";
+                if (alarmConnectivity.OnWarning(msg)) {
+                    LogWarning("OpenDB", msg);
+                }
                 CloseDB();
                 return false;
             }
