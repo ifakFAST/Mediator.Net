@@ -10,6 +10,7 @@
             <ExternalArgs>{PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_EventLog.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="EventLog" type="SQLite" prioritizeReadRequests="true">
@@ -28,6 +29,7 @@
             <ExternalArgs>{PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file"  value="./Config/Model_Dashboard.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./Bin/WebRoot_Dashboard"/>
                 <NamedValue name="view-assemblies">
                     ./Bin/Mediator/Module_EventLog.dll
@@ -57,6 +59,7 @@
             <ExternalArgs>{PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_IO.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
             <HistoryDBs>
@@ -77,6 +80,7 @@
             <ExternalArgs>{PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_Calc.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="adapter-assemblies" value=""/>
                 <NamedValue name="simba-location" value=""/>
                 <NamedValue name="csharp-libraries" value="./Config/CSharpLib.cs"/>
@@ -100,6 +104,7 @@
             <ExternalArgs>{PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_Publish.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="cert-dir" value="./Config"/>
                 <NamedValue name="config-var-file" value="./Config/config_vars.json"/>
             </Config>

@@ -185,6 +185,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             isRunning = true;
 
+            _ = StartCheckForModelFileModificationTask(fShutdown);
+
             while (!fShutdown()) {
 
                 bool needPurge = sessions.Values.Any(session => session.IsAbandoned);

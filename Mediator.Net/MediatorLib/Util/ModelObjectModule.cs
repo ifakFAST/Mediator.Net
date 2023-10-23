@@ -16,6 +16,7 @@ namespace Ifak.Fast.Mediator.Util
     {
         protected T model = new T();
 
+        protected bool modelFileAutoReload = false;
         protected string modelFileName = "model.xml";
         protected string modelAsString = "";
         protected ModelFormat modelFormat = ModelFormat.XML;
@@ -35,11 +36,39 @@ namespace Ifak.Fast.Mediator.Util
             this.moduleName = info.ModuleName;
             this.notifier = notifier;
             var config = info.GetConfigReader();
+            modelFileAutoReload = config.GetOptionalBool("model-file-auto-reload", defaultValue: false);
             modelFileName = Path.GetFullPath(config.GetString("model-file"));
             modelAsString = ReadConfigFileToString(modelFileName);
             model = DeserializeModelFromString(modelAsString);
             ModifyModelAfterInit();
             await OnConfigModelChanged(init: true);
+        }
+
+        protected async Task StartCheckForModelFileModificationTask(Func<bool> shutdown) {
+            if (!modelFileAutoReload) return;
+            DateTime lastWriteTime = File.GetLastWriteTimeUtc(modelFileName);
+            while (!shutdown()) {
+                await Task.Delay(2000);
+                DateTime time = File.GetLastWriteTimeUtc(modelFileName);
+                if (time != lastWriteTime) {
+                    lastWriteTime = time;
+                    try {
+                        string newModelAsString = ReadConfigFileToString(modelFileName);
+                        if (newModelAsString != modelAsString) {
+                            Result res = await UpdateConfigByStr(newModelAsString, updateFileWithStr: false);
+                            if (res.IsOK) {
+                                Console.Out.WriteLine($"Configuration updated from file '{modelFileName}'");
+                            }
+                            else {
+                                Console.Error.WriteLine($"{res.Error}");
+                            }
+                        }
+                    }
+                    catch (Exception exp) {
+                        Console.Error.WriteLine($"Error reading config file '{modelFileName}': {exp.Message}");
+                    }
+                }
+            }
         }
 
         protected Origin GetModuleOrigin() {
@@ -426,9 +455,7 @@ namespace Ifak.Fast.Mediator.Util
                 await OnConfigModelChanged(init: false);
                 modelAsString = SerializeModelToString(model);
                 WriteConfigFile(modelFileName, modelAsString);
-                if (notifier != null) {
-                    notifier.Notify_ConfigChanged(changedObjects.ToList());
-                }
+                notifier?.Notify_ConfigChanged(changedObjects.ToList());
                 return Result.OK;
             }
             catch (Exception exp) {
@@ -449,7 +476,7 @@ namespace Ifak.Fast.Mediator.Util
             }
         }
 
-        protected async Task<Result> UpdateConfigByStr(string str) {
+        protected async Task<Result> UpdateConfigByStr(string str, bool updateFileWithStr = true) {
 
             try {
                 var changedObjects = new List<ObjectRef>();
@@ -462,10 +489,10 @@ namespace Ifak.Fast.Mediator.Util
                 changedObjects.Add(rootObj.ID);
 
                 modelAsString = str;
-                WriteConfigFile(modelFileName, str);
-                if (notifier != null) {
-                    notifier.Notify_ConfigChanged(changedObjects);
+                if (updateFileWithStr) {
+                    WriteConfigFile(modelFileName, str);
                 }
+                notifier?.Notify_ConfigChanged(changedObjects);
                 return Result.OK;
             }
             catch (Exception exp) {

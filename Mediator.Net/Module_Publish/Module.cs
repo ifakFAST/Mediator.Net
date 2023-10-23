@@ -27,16 +27,20 @@ public class Module : ModelObjectModule<Model>
         await base.Init(info, restoreVariableValues, notifier, moduleThread);
     }
 
-    public override async Task Run(Func<bool> shutdown) {
-
-        var mapConfigVar = new Dictionary<string, string>();
+    protected override void ModifyModelAfterInit() {
 
         string configVarFile = info.GetConfigReader().GetOptionalString("config-var-file", "").Trim();
+
         if (configVarFile != "") {
+
             if (!File.Exists(configVarFile)) {
+
                 Console.Error.WriteLine($"config-var-file '{configVarFile}' not found!");
             }
             else {
+
+                var mapConfigVar = new Dictionary<string, string>();
+
                 string vars = File.ReadAllText(configVarFile, System.Text.Encoding.UTF8);
                 var variables = StdJson.JObjectFromString(vars);
                 var properties = variables.Properties().ToList();
@@ -48,10 +52,13 @@ public class Module : ModelObjectModule<Model>
                         Console.WriteLine($"{prop.Name} -> {prop.Value}");
                     }
                 }
+
+                model.ApplyVarConfig(mapConfigVar);
             }
         }
+    }
 
-        model.ApplyVarConfig(mapConfigVar);
+    public override async Task Run(Func<bool> shutdown) {
 
         string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
         var tasks = new List<Task>();
@@ -104,6 +111,8 @@ public class Module : ModelObjectModule<Model>
           .ToArray();
 
         tasks.AddRange(tasksMethodPub);
+
+        _ = StartCheckForModelFileModificationTask(shutdown);
 
         if (tasks.Count == 0) {
 

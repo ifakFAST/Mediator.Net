@@ -370,6 +370,8 @@ namespace Ifak.Fast.Mediator.IO
                 StartScheduledReadTask(a);
             }
 
+            _ = StartCheckForModelFileModificationTask(shutdown);
+
             while (!shutdown()) {
                 await Task.Delay(500);
                 CheckWriteRepeat();

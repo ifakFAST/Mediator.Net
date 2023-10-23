@@ -12,6 +12,7 @@
             <ExternalArgs>../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net7.0/Module_EventLog.dll {PORT}</ExternalArgs>            
             <Config>
                 <NamedValue name="model-file" value="Model_EventLog.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="EventLog" type="SQLite" prioritizeReadRequests="true">
@@ -29,6 +30,7 @@
             <ExternalArgs>../Mediator.Net/Module_Dashboard/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Dashboard.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file"  value="Model_Dashboard.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
                     ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net7.0/Module_EventLog.dll
@@ -49,6 +51,7 @@
             <ExternalArgs>../Mediator.Net/Module_IO/bin/{RELEASE_OR_DEBUG}/net7.0/Module_IO.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_IO.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
             <HistoryDBs>
@@ -68,6 +71,7 @@
             <ExternalArgs>../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Calc.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_Calc.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="simba-location" value="D:\Simba\Simba3\Workspace\wSisi\bin\Release\simba.exe"/>
                 <NamedValue name="csharp-libraries" value="CSharpLib.cs"/>
                 <NamedValue name="csharp-cache-scripts" value="true"/>
@@ -90,6 +94,7 @@
             <ExternalArgs>../Mediator.Net/Module_Publish/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Publish.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_Publish.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="cert-dir" value="."/>
                 <NamedValue name="config-var-file" value="config_vars.json"/>
                 <NamedValue name="adapter-assemblies" value=""/>

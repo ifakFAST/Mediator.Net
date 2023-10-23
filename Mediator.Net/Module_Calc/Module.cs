@@ -381,6 +381,7 @@ namespace Ifak.Fast.Mediator.Calc
             running = true;
 
             _ = KeepSessionAlive();
+            _ = StartCheckForModelFileModificationTask(shutdown);
 
             foreach (CalcInstance a in adapters) {
                 StartRunLoopTask(a);

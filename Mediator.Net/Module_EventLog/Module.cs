@@ -54,6 +54,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
             _ = KeepSessionAlive();
             _ = UpdateVariables();
+            _ = StartCheckForModelFileModificationTask(shutdown);
 
             foreach (var entry in initBuffer) {
                 await OnAlarmOrEvent(entry);
