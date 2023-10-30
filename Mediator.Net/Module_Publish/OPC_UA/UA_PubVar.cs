@@ -171,7 +171,7 @@ internal class UA_PubVar : BufferedVarPub {
             if (isValue)
                 nodeID = $"ns=1;s={variable.Object.LocalObjectID}";
             else
-                nodeID = $"ns=1;s={variable.Object.LocalObjectID}.{variable.Name}"; ;
+                nodeID = $"ns=1;s={variable.Object.LocalObjectID}.{variable.Name}";
 
             bool writable = varInfo.Variable.Writable;
 

@@ -666,6 +666,8 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             try {
+
+                var now = Timestamp.Now;
                 var sw = Stopwatch.StartNew();
                 IList<WriteTask> writeTasks = adapter.WriteItems(items, timeout);
                 Task<WriteDataItemsResult>[] tasks = writeTasks.Select(writeTask => writeTask.Task.ContinueOnMainThread(t => {
@@ -684,11 +686,20 @@ namespace Ifak.Fast.Mediator.IO
                             }
                         }
                         else {
-                            
+
                             if (adapter.alarmWriteDelay.ReturnToNormal(out Timestamp timeOfLastWarn)) {
                                 Log_ReturnToNormal("WriteDuration", $"{adapter.Name}: Write duration below limit of {limit} since {timeOfLastWarn}", adapter.ID);
                             }
                         }
+                    }
+
+                    if (now >= adapter.tLastWriteDuration + Duration.FromSeconds(1)) {
+                        adapter.tLastWriteDuration = now;
+                        VTQ vtqWriteDuration = VTQ.Make(elapsed.TotalMilliseconds, now, Quality.Good);
+                        List<VariableValue> values = new() {
+                            VariableValue.Make(moduleID, adapter.ID, Config.Adapter.LastWriteDuration, vtqWriteDuration)
+                        };
+                        notifier?.Notify_VariableValuesChanged(values);
                     }
 
                     int writeErrorItemsCountBefore = adapter.WriteErrorItems.Count;
@@ -894,8 +905,14 @@ namespace Ifak.Fast.Mediator.IO
                                                 }
                                             }
 
+                                            var values = new List<VariableValue>(result.Length + 1);
 
-                                            var values = new List<VariableValue>(result.Length);
+                                            if (timestamp > adapter.tLastReadDuration) {
+                                                adapter.tLastReadDuration = timestamp;
+                                                VTQ vtqReadDuration = VTQ.Make(elapsed.TotalMilliseconds, timestamp, Quality.Good);
+                                                values.Add(VariableValue.Make(moduleID, adapter.ID, Config.Adapter.LastScheduledReadDuration, vtqReadDuration));
+                                            }
+
                                             var badItems = new List<ItemState>();
                                             var goodItems = new List<ItemState>();
                                             foreach (DataItemValue val in result) {
@@ -1441,6 +1458,9 @@ namespace Ifak.Fast.Mediator.IO
             public string Name => Config == null ? "?" : Config.Name;
 
             public State State { get; set; } = State.Created;
+
+            public Timestamp tLastWriteDuration = Timestamp.Empty;
+            public Timestamp tLastReadDuration = Timestamp.Empty;
 
             public bool ConnectionIsDown {
                 get => connectionIsDown;

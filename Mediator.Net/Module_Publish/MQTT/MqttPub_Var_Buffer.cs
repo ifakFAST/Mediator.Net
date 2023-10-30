@@ -156,8 +156,18 @@ internal class MqttPub_Var_Buffer : BufferedVarPub {
 
     private static JObject FromVariableValue(VariableValue vv, MqttVarPub config) {
 
+        string id;
+
+        VariableRef vref = vv.Variable;
+        if (vref.Name == "Value") {
+            id = vref.Object.LocalObjectID;
+        }
+        else {
+            id = vref.Object.LocalObjectID + "." + vref.Name;
+        }
+
         var obj = new JObject();
-        obj["ID"] = vv.Variable.Object.LocalObjectID;
+        obj["ID"] = id;
 
         VTQ vtq = vv.Value;
 

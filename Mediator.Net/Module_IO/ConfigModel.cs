@@ -149,6 +149,39 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeConfig() => Config.Count > 0;
         public bool ShouldSerializeDataItems() => DataItems.Count > 0;
 
+        public const string LastScheduledReadDuration = "LastScheduledReadDuration";
+        public const string LastWriteDuration = "LastWriteDuration";
+
+        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+
+            History history;
+
+            if (History.HasValue) {
+                history = History.Value;
+            }
+            else {
+                history = new History(HistoryMode.None);
+                foreach (IModelObject obj in parents) {
+                    if (obj is IO_Model model) {
+                        history = model.History;
+                        break;
+                    }
+                }
+            }
+
+            var variableLastReadDuration = new Variable(LastScheduledReadDuration, DataType.Float64) {
+                Unit = "ms",
+                History = history.Mode == HistoryMode.None ? history : Mediator.History.IntervalDefault(Duration.FromSeconds(1))
+            };
+
+            var variableLastWriteDuration = new Variable(LastWriteDuration, DataType.Float64) {
+                Unit = "ms",
+                History = history.Mode == HistoryMode.None ? history : Mediator.History.IntervalDefault(Duration.FromSeconds(1))
+            };
+
+            return new Variable[] { variableLastReadDuration, variableLastWriteDuration };
+        }
+
         public List<DataItem> GetAllDataItems() {
             var res = new List<DataItem>();
             foreach (Node n in Nodes)
