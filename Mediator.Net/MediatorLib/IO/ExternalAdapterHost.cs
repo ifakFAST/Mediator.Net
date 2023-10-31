@@ -204,10 +204,29 @@ namespace Ifak.Fast.Mediator.IO
 				Environment.Exit(1);
             }
 
+            public void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value) {
+                var obj = new AdapterVarUpdate(variable, value);
+                connector.SendEvent(AdapterMsg.ID_Event_AdapterVarChanged, s => StdJson.ObjectToStream(obj, s));
+            }
+
             private void SendEvent<T>(IList<T> values, byte eventID) {
                 if (values == null || values.Count == 0) return;
                 connector.SendEvent(eventID, s => StdJson.ObjectToStream(values, s));
             }
+        }
+
+        public sealed class AdapterVarUpdate {
+
+            public AdapterVarUpdate() {
+            }
+
+            public AdapterVarUpdate(AdapterVar variable, VTQ value) {
+                Variable = variable;
+                Value = value;
+            }
+
+            public AdapterVar Variable { get; set; }
+            public VTQ Value { get; set; }
         }
     }
 }

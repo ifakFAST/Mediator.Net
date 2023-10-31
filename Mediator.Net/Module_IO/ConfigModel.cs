@@ -151,6 +151,8 @@ namespace Ifak.Fast.Mediator.IO.Config
 
         public const string LastScheduledReadDuration = "LastScheduledReadDuration";
         public const string LastWriteDuration = "LastWriteDuration";
+        public const string LastInnerReadDuration = "LastInnerReadDuration";
+        public const string LastInnerWriteDuration = "LastInnerWriteDuration";
 
         protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
 
@@ -169,17 +171,34 @@ namespace Ifak.Fast.Mediator.IO.Config
                 }
             }
 
+            History effectiveHistory = history.Mode == HistoryMode.None ? history : Mediator.History.IntervalDefault(Duration.FromSeconds(1));
+
             var variableLastReadDuration = new Variable(LastScheduledReadDuration, DataType.Float64) {
                 Unit = "ms",
-                History = history.Mode == HistoryMode.None ? history : Mediator.History.IntervalDefault(Duration.FromSeconds(1))
+                History = effectiveHistory
             };
 
             var variableLastWriteDuration = new Variable(LastWriteDuration, DataType.Float64) {
                 Unit = "ms",
-                History = history.Mode == HistoryMode.None ? history : Mediator.History.IntervalDefault(Duration.FromSeconds(1))
+                History = effectiveHistory
             };
 
-            return new Variable[] { variableLastReadDuration, variableLastWriteDuration };
+            var variableLastInnerReadDuration = new Variable(LastInnerReadDuration, DataType.Float64) {
+                Unit = "ms",
+                History = effectiveHistory
+            };
+
+            var variableLastInnerWriteDuration = new Variable(LastInnerWriteDuration, DataType.Float64) {
+                Unit = "ms",
+                History = effectiveHistory
+            };
+
+            return new Variable[] { 
+                variableLastReadDuration,
+                variableLastWriteDuration,
+                variableLastInnerReadDuration,
+                variableLastInnerWriteDuration
+            };
         }
 
         public List<DataItem> GetAllDataItems() {

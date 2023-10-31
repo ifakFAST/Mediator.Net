@@ -156,6 +156,12 @@ namespace Ifak.Fast.Mediator.IO
         void Notify_NeedRestart(string reason);
         void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo);
         void Notify_DataItemsChanged(DataItemValue[] values); // Only used for events
+        void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value);
+    }
+
+    public enum AdapterVar {
+        LastInnerReadDuration,
+        LastInnerWriteDuration
     }
 
     public class AdapterAlarmOrEvent

@@ -35,9 +35,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
-        private bool measureReadDuration = false;
-        private bool measureWriteDuration = false;
-
         private Duration timeout = Duration.FromSeconds(15);
 
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
@@ -77,9 +74,6 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             this.mapId2Info = allDataItems.Where(di => !string.IsNullOrEmpty(di.Address)).ToDictionary(
                item => /* key */ item.ID,
                item => /* val */ new ItemInfo(item.ID, item.Name, item.Type, item.Dimension, item.Address));
-
-            measureReadDuration  = allDataItems.Any(di => di.ID == "LastReadDurationMS"  && string.IsNullOrEmpty(di.Address));
-            measureWriteDuration = allDataItems.Any(di => di.ID == "LastWriteDurationMS" && string.IsNullOrEmpty(di.Address));
 
             PrintLine($"Address: {config.Address}");
 
@@ -296,18 +290,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         TimestampsToReturn = TimestampsToReturn.Source,
                     };
 
-                    var now = Timestamp.Now.TruncateMilliseconds();
+                    var now = Timestamp.Now;
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     
                     ReadResponse readResponse = await connection.ReadAsync(readRequest);
 
                     sw.Stop();
-                    if (measureReadDuration && now > lastReadDurationTimestamp) {
+                    if (now >= lastReadDurationTimestamp + Duration.FromSeconds(1)) {
                         lastReadDurationTimestamp = now;
                         double duration = sw.Elapsed.TotalMilliseconds;
                         var vtq = VTQ.Make(duration, now, Quality.Good);
-                        var div = new DataItemValue("LastReadDurationMS", vtq);
-                        callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
+                        callback?.Notify_AdapterVarUpdate(AdapterVar.LastInnerReadDuration, vtq);
                     }
 
                     readHelper.SetAllResults(readResponse.Results, (vv, request) => MakeVTQ(vv, request.LastValue, request.ID));
@@ -522,18 +515,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         NodesToWrite = dataItemsToWrite.ToArray()
                     };
 
-                    var now = Timestamp.Now.TruncateMilliseconds();
+                    var now = Timestamp.Now;
                     var sw = System.Diagnostics.Stopwatch.StartNew();
 
                     WriteResponse resp = await connection.WriteAsync(req);
 
                     sw.Stop();
-                    if (measureWriteDuration && now > lastWriteDurationTimestamp) {
+                    if (now >= lastWriteDurationTimestamp + Duration.FromSeconds(1)) {
                         lastWriteDurationTimestamp = now;
                         double duration = sw.Elapsed.TotalMilliseconds;
                         var vtq = VTQ.Make(duration, now, Quality.Good);
-                        var div = new DataItemValue("LastWriteDurationMS", vtq);
-                        callback?.Notify_DataItemsChanged(new DataItemValue[] { div });
+                        callback?.Notify_AdapterVarUpdate(AdapterVar.LastInnerWriteDuration, vtq);
                     }
 
                     if (resp.Results is not null && resp.Results.Length == dataItemsToWrite.Count) {

@@ -1377,6 +1377,19 @@ namespace Ifak.Fast.Mediator.IO
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
+        void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value, Adapter adapter) {
+            moduleThread?.Post(Do_Notify_AdapterVarUpdate, variable, value, adapter);
+        }
+
+        void Do_Notify_AdapterVarUpdate(AdapterVar variable, VTQ value, Adapter adapter) {
+            var varRef = VariableRef.Make(moduleID, adapter.ID, variable.ToString());
+            var values = new List<VariableValue>(1) {
+                VariableValue.Make(varRef, value)
+            };
+            notifier?.Notify_VariableValuesChanged(values);
+        }
+
+        // This will be called from a different Thread, therefore post it to the main thread!
         void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Adapter adapter, AdapterState state) {
             moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter, state);
         }
@@ -1680,6 +1693,10 @@ namespace Ifak.Fast.Mediator.IO
 
             public void Notify_NeedRestart(string reason) {
                 m.Notify_NeedRestart(reason, a);
+            }
+
+            public void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value) {
+                m.Notify_AdapterVarUpdate(variable, value, a);
             }
         }
     }

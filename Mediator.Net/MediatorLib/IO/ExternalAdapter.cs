@@ -193,6 +193,13 @@ namespace Ifak.Fast.Mediator.IO
                     }
                     break;
 
+                case AdapterMsg.ID_Event_AdapterVarChanged:
+                    var adapterVarUpdate = StdJson.ObjectFromUtf8Stream<ExternalAdapterHost.AdapterVarUpdate>(evt.Payload);
+                    if (adapterVarUpdate != null) {
+                        callback?.Notify_AdapterVarUpdate(adapterVarUpdate.Variable, adapterVarUpdate.Value);
+                    }
+                    break;
+
                 default:
                     Console.Error.WriteLine("Unknown event code: " + evt.Code);
                     break;
@@ -273,6 +280,7 @@ namespace Ifak.Fast.Mediator.IO
     {
         public const byte ID_Event_AlarmOrEvent = 1;
         public const byte ID_Event_DataItemsChanged = 2;
+        public const byte ID_Event_AdapterVarChanged = 3;
 
         public const byte ID_ParentInfo = 99;
         public const byte ID_Initialize = 1;
