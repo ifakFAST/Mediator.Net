@@ -36,6 +36,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
         private Duration timeout = Duration.FromSeconds(15);
+        private Duration maxAge = Duration.FromSeconds(0); // 0 means always read from down stream device (no caching)
 
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
@@ -58,6 +59,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 }
                 else {
                     PrintErrorLine($"Invalid value for config parameter '{Config_Timeout}': '{strTimeout}'");
+                }
+            }
+
+            const string Config_MaxAge = "MaxAge";
+            if (config.Config.Any(nv => nv.Name == Config_MaxAge)) {
+                string strMaxAge = config.Config.First(nv => nv.Name == Config_MaxAge).Value.Trim();
+                if (Duration.TryParse(strMaxAge, out Duration t)) {
+                    maxAge = t;
+                }
+                else {
+                    PrintErrorLine($"Invalid value for config parameter '{Config_MaxAge}': '{strMaxAge}'");
                 }
             }
 
@@ -164,6 +176,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 PrintLine($"SecurityMode: '{channel.RemoteEndpoint.SecurityMode}'");
                 PrintLine($"UserIdentityToken: '{channel.UserIdentity}'");
                 PrintLine($"Timeout: {timeout}");
+                PrintLine($"MaxAge: {maxAge}");
 
                 ItemInfo[] nodesNeedingResolve = mapId2Info.Values.Where(n => n.Node == null).ToArray();
                 if (nodesNeedingResolve.Length > 0) {
@@ -286,6 +299,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 if (dataItemsToRead.Length > 0) {
 
                     var readRequest = new Workstation.ServiceModel.Ua.ReadRequest {
+                        MaxAge = maxAge.TotalMilliseconds,
                         NodesToRead = dataItemsToRead,
                         TimestampsToReturn = TimestampsToReturn.Source,
                     };
