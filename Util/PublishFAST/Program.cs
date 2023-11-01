@@ -162,6 +162,7 @@ internal class Program {
         CopyFileToDir(Path.Combine(configSrcDir, "Model_IO.xml"),        configOutDir);
         CopyFileToDir(Path.Combine(configSrcDir, "Model_Publish.xml"),   configOutDir);
         CopyFileToDir(Path.Combine(configSrcDir, "CSharpLib.cs"),        configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "config_vars.json"),    configOutDir);
 
         string dataOutDir = EnsureDirectory(outDirMode, "Data");
         WriteToFile(Path.Combine(dataOutDir, "Var_IO.xml"), "<Module name=\"IO\" id=\"IO\" />");
