@@ -37,20 +37,28 @@ public static class MQTT_Util {
             .WithTimeout(TimeSpan.FromSeconds(5))
             .WithTcpServer(host, port);
 
-        if (!string.IsNullOrEmpty(config.User)) {
+        bool hasUser = !string.IsNullOrEmpty(config.User);
+
+        if (hasUser) {
             builder = builder.WithCredentials(config.User, config.Pass);
         }
 
-        if (config.CertFileCA != "" || config.CertFileClient != "") {
+        List<X509Certificate> certificates = new();
 
+        if (config.CertFileCA != "") {
             string certFileCA = Path.Combine(certDir, config.CertFileCA);
-            string certFile = Path.Combine(certDir, config.CertFileClient);
-            string keyFile = Path.Combine(certDir, config.KeyFileClient);
-            bool hasKeyFile = !string.IsNullOrEmpty(config.KeyFileClient);
-
             if (!File.Exists(certFileCA)) {
                 throw new Exception($"CA certificate file not found: {certFileCA}");
             }
+            X509Certificate caCert = X509Certificate.CreateFromCertFile(certFileCA);
+            certificates.Add(caCert);
+        }
+
+        if (config.CertFileClient != "") {
+
+            string certFile = Path.Combine(certDir, config.CertFileClient);
+            string keyFile = Path.Combine(certDir, config.KeyFileClient);
+            bool hasKeyFile = !string.IsNullOrEmpty(config.KeyFileClient);
 
             if (!File.Exists(certFile)) {
                 throw new Exception($"Client certificate file not found: {certFile}");
@@ -66,24 +74,25 @@ public static class MQTT_Util {
                 throw new Exception($"No key file required if client certificate is in .pfx file format");
             }
 
-            X509Certificate caCert = X509Certificate.CreateFromCertFile(certFileCA);
-
             X509Certificate2 clientCert = isPfx ?
                 new X509Certificate2(certFile, "") :
                 new X509Certificate2(X509Certificate2.CreateFromPemFile(certFile, keyFile).Export(X509ContentType.Pkcs12));
 
+            certificates.Insert(0, clientCert);
+        }
+
+        bool useTLS = certificates.Count > 0 || port != 1883;
+
+        if (useTLS) {
             builder = builder
-            .WithTls(new MqttClientOptionsBuilderTlsParameters() {
-                UseTls = true,
-                SslProtocol = System.Security.Authentication.SslProtocols.None, // None = Use system default
-                Certificates = new List<X509Certificate>() {
-                    clientCert,
-                    caCert
-                },
-                IgnoreCertificateRevocationErrors = config.IgnoreCertificateRevocationErrors,
-                IgnoreCertificateChainErrors = config.IgnoreCertificateChainErrors,
-                AllowUntrustedCertificates = config.AllowUntrustedCertificates,
-            });
+                .WithTls(new MqttClientOptionsBuilderTlsParameters() {
+                    UseTls = true,
+                    SslProtocol = System.Security.Authentication.SslProtocols.None, // None = Use system default
+                    Certificates = certificates,
+                    IgnoreCertificateRevocationErrors = config.IgnoreCertificateRevocationErrors,
+                    IgnoreCertificateChainErrors = config.IgnoreCertificateChainErrors,
+                    AllowUntrustedCertificates = config.AllowUntrustedCertificates,
+                });
         }
 
         return builder
