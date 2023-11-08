@@ -27,30 +27,28 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
             return new NpgsqlConnection(connectionString);
         }
 
-        protected override Task<bool> TestConnection(DbConnection? dbConnection) {
+        protected override async Task<bool> TestConnection(DbConnection? dbConnection) {
 
-            if (dbConnection == null) return Task.FromResult(false);
+            if (dbConnection == null) return false;
 
             try {
 
                 var con = (NpgsqlConnection)dbConnection;
 
-                ConnectionState state;
-                try {
-                    state = con.FullState;
-                }
-                catch (Exception) {
-                    state = ConnectionState.Broken;
-                }
-
+                ConnectionState state = con.FullState;
                 if (state.HasFlag(ConnectionState.Broken) || state == ConnectionState.Closed) {
-                    return Task.FromResult(false);
+                    return false;
                 }
 
-                return Task.FromResult(true);
+                using var cmd = CreateCommand(con, "SELECT 1;");
+                object? test = await cmd.ExecuteScalarAsync();
+                if (test is int i && i == 1) { return true; }
+                if (test is long l && l == 1) { return true; }
+
+                return false;
             }
             catch (Exception) {
-                return Task.FromResult(false);
+                return false;
             }
         }
     }
