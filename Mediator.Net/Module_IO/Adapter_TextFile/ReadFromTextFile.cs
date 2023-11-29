@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ifak.Fast.Mediator.IO.Adapter_Dummy;
+namespace Ifak.Fast.Mediator.IO.Adapter_TextFile;
 
 [Identify("ReadFromTextFile")]
 public class ReadFromTextFile : AdapterBase

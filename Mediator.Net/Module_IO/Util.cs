@@ -16,8 +16,7 @@ namespace Ifak.Fast.Mediator.IO
         }
     }
 
-    public static class EnumerableExtension
-    {
+    public static class EnumerableExtension {
         public static IEnumerable<U> SelectIgnoreException<T, U>(this IEnumerable<T> list, Func<T, U> f) {
             U u;
             foreach (var item in list) {
@@ -38,6 +37,23 @@ namespace Ifak.Fast.Mediator.IO
                 i++;
             }
             throw new Exception("Element not found");
+        }
+
+        public static bool IsSorted<T>(this IEnumerable<T> enumerable) where T : IComparable<T> {
+            var enumerator = enumerable.GetEnumerator();
+            if (!enumerator.MoveNext()) {
+                return true; // Empty collections are considered sorted
+            }
+
+            T previous = enumerator.Current;
+            while (enumerator.MoveNext()) {
+                T current = enumerator.Current;
+                if (previous.CompareTo(current) > 0) {
+                    return false; // Current item is less than previous, not sorted
+                }
+                previous = current;
+            }
+            return true; // Reached the end without finding unsorted elements
         }
     }
 
