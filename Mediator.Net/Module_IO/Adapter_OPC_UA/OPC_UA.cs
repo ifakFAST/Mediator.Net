@@ -42,6 +42,29 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private LoggerFactory loggerFactory = new LoggerFactory("UA:", LogLevel.Debug);
         private Logger logger = new Logger("UA:", LogLevel.Debug);
 
+        private static readonly Dictionary<string, string> mapSecurityPolicies = new() {
+            { "",                                         "" },
+            { "Any".ToLowerInvariant(),                   "" },
+            { "None".ToLowerInvariant(),                  SecurityPolicyUris.None },
+            { "Basic128Rsa15".ToLowerInvariant(),         SecurityPolicyUris.Basic128Rsa15 },
+            { "Basic256".ToLowerInvariant(),              SecurityPolicyUris.Basic256 },
+            { "Https".ToLowerInvariant(),                 SecurityPolicyUris.Https },
+            { "Basic256Sha256".ToLowerInvariant(),        SecurityPolicyUris.Basic256Sha256 },
+            { "Aes128_Sha256_RsaOaep".ToLowerInvariant(), SecurityPolicyUris.Aes128_Sha256_RsaOaep },
+            { "Aes256_Sha256_RsaPss".ToLowerInvariant(),  SecurityPolicyUris.Aes256_Sha256_RsaPss },
+        };
+
+        private static readonly string[] securityPolicies = new string[] {
+            "Any",
+            "None",
+            "Basic128Rsa15",
+            "Basic256",
+            "Https",
+            "Basic256Sha256",
+            "Aes128_Sha256_RsaOaep",
+            "Aes256_Sha256_RsaPss",
+        };
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
@@ -66,37 +89,20 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             loggerFactory = new LoggerFactory($"{config.Name}:", logLevel);
             logger = loggerFactory.CreateLogger();
 
-            const string Config_Underscore = "ExcludeUnderscoreNodes";
-            string strExcludeUnderscore = "true";
-            if (config.Config.Any(nv => nv.Name == Config_Underscore)) {
-                strExcludeUnderscore = config.Config.First(nv => nv.Name == Config_Underscore).Value.ToLowerInvariant().Trim();
-            }
+            string strExcludeUnderscore = config.GetConfigByName("ExcludeUnderscoreNodes", defaultValue: "true").ToLowerInvariant();
             excludeUnderscore = strExcludeUnderscore == "true";
 
-            const string Config_Timeout = "Timeout";
-            if (config.Config.Any(nv => nv.Name == Config_Timeout)) {
-                string strTimeout = config.Config.First(nv => nv.Name == Config_Timeout).Value.Trim();
-                if (Duration.TryParse(strTimeout, out Duration t)) {
-                    timeout = t;
-                }
-                else {
-                    PrintErrorLine($"Invalid value for config parameter '{Config_Timeout}': '{strTimeout}'");
-                }
+            string strTimeout = config.GetConfigByName("Timeout", defaultValue: "15 s");
+            if (!Duration.TryParse(strTimeout, out timeout)) {
+                PrintErrorLine($"Invalid value for config parameter 'Timeout': '{strTimeout}'");
             }
 
-            const string Config_MaxAge = "MaxAge";
-            if (config.Config.Any(nv => nv.Name == Config_MaxAge)) {
-                string strMaxAge = config.Config.First(nv => nv.Name == Config_MaxAge).Value.Trim();
-                if (Duration.TryParse(strMaxAge, out Duration t)) {
-                    maxAge = t;
-                }
-                else {
-                    PrintErrorLine($"Invalid value for config parameter '{Config_MaxAge}': '{strMaxAge}'");
-                }
+            string strMaxAge = config.GetConfigByName("MaxAge", defaultValue: "0 s");
+            if (!Duration.TryParse(strMaxAge, out maxAge)) {
+                PrintErrorLine($"Invalid value for config parameter 'MaxAge': '{strMaxAge}'");
             }
 
             const string appName = "Mediator.IO.OPC_UA";
-
             appDescription = new ApplicationDescription {
                 ApplicationName = appName,
                 ApplicationUri = $"urn:{Dns.GetHostName()}:{appName}",
@@ -148,26 +154,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                     certificateLocation = Path.Combine(pkiPath, "own", "certs");
                 }
 
-                const string Config_Security = "Security";
-                string sec = "None";
-                if (config.Config.Any(nv => nv.Name == Config_Security)) {
-                    sec = config.Config.First(nv => nv.Name == Config_Security).Value;
-                }
-
-                var mapSecurityPolicies = new Dictionary<string, string>() {
-                    { "None",                  SecurityPolicyUris.None },
-                    { "Basic128Rsa15",         SecurityPolicyUris.Basic128Rsa15 },
-                    { "Basic256",              SecurityPolicyUris.Basic256 },
-                    { "Https",                 SecurityPolicyUris.Https },
-                    { "Basic256Sha256",        SecurityPolicyUris.Basic256Sha256 },
-                    { "Aes128_Sha256_RsaOaep", SecurityPolicyUris.Aes128_Sha256_RsaOaep },
-                    { "Aes256_Sha256_RsaPss",  SecurityPolicyUris.Aes256_Sha256_RsaPss },
-                };
+                string sec = config.GetConfigByName("Security", defaultValue: "None").ToLowerInvariant();
 
                 if (!mapSecurityPolicies.ContainsKey(sec)) {
-                    string[] keys = mapSecurityPolicies.Keys.ToArray();
-                    string strKeys = string.Join(", ", keys);
-                    throw new Exception($"Invalid value for config setting '{Config_Security}': {sec}. Expected any of: {strKeys}");
+                    string strKeys = string.Join(", ", securityPolicies);
+                    throw new Exception($"Invalid value for config setting 'Security': {sec}. Expected any of: {strKeys}");
                 }
 
                 var endpoint = new EndpointDescription {

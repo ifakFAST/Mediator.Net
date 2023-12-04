@@ -34,6 +34,15 @@ namespace Ifak.Fast.Mediator.IO
             res.AddRange(DataItems);
             return res;
         }
+
+        public string GetConfigByName(string name, string defaultValue) {
+            foreach (NamedValue nv in Config) {
+                if (nv.Name == name) {
+                    return nv.Value.Trim();
+                }
+            }
+            return defaultValue;
+        }
     }
 
     public class Node
