@@ -13,11 +13,12 @@ using System.Threading.Tasks;
 using Workstation.ServiceModel.Ua;
 using Workstation.ServiceModel.Ua.Channels;
 using Ifak.Fast.Mediator.Util;
+using Microsoft.Extensions.Logging;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 {
     [Identify("OPC UA")]
-    public class OPC_UA : AdapterBase
+    public class OPC_UA : AdapterBase 
     {
         private ApplicationDescription appDescription = new ApplicationDescription();
         private ICertificateStore? certificateStore;
@@ -38,11 +39,32 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         private Duration timeout = Duration.FromSeconds(15);
         private Duration maxAge = Duration.FromSeconds(0); // 0 means always read from down stream device (no caching)
 
+        private LoggerFactory loggerFactory = new LoggerFactory("UA:", LogLevel.Debug);
+        private Logger logger = new Logger("UA:", LogLevel.Debug);
+
         public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
             this.config = config;
             this.callback = callback;
             this.alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
+
+            string strLogLevel = config.GetConfigByName("LogLevel", defaultValue: "info").ToLowerInvariant();
+            LogLevel logLevel = strLogLevel switch {
+                "all" => LogLevel.Trace,
+                "trace" => LogLevel.Trace,
+                "debug" => LogLevel.Debug,
+                "information" => LogLevel.Information,
+                "info" => LogLevel.Information,
+                "warning" => LogLevel.Warning,
+                "warn" => LogLevel.Warning,
+                "error" => LogLevel.Error,
+                "err" => LogLevel.Error,
+                "critical" => LogLevel.Critical,
+                _ => LogLevel.Information,
+            };
+
+            loggerFactory = new LoggerFactory($"{config.Name}:", logLevel);
+            logger = loggerFactory.CreateLogger();
 
             const string Config_Underscore = "ExcludeUnderscoreNodes";
             string strExcludeUnderscore = "true";
@@ -115,7 +137,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                         "pki");
 
                     const string Config_PkiDir = "PkiDir";
-                    
+
                     if (config.Config.Any(nv => nv.Name == Config_PkiDir)) {
                         pkiPath = Path.GetFullPath(config.Config.First(nv => nv.Name == Config_PkiDir).Value.Trim());
                     }
@@ -164,6 +186,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                             certificateStore: certificateStore,
                             userIdentity: identity,
                             remoteEndpoint: endpoint,
+                            loggerFactory: loggerFactory,
                             options: opts);
 
                 await channel.OpenAsync();
@@ -171,12 +194,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 this.connection = channel;
                 lastConnectErrMsg = "";
 
-                PrintLine($"Opened session with endpoint '{channel.RemoteEndpoint.EndpointUrl}'");
-                PrintLine($"SecurityPolicy: '{channel.RemoteEndpoint.SecurityPolicyUri}'");
-                PrintLine($"SecurityMode: '{channel.RemoteEndpoint.SecurityMode}'");
-                PrintLine($"UserIdentityToken: '{channel.UserIdentity}'");
-                PrintLine($"Timeout: {timeout}");
-                PrintLine($"MaxAge: {maxAge}");
+                PrintLine($"Connected to OPC UA server at {channel.RemoteEndpoint.EndpointUrl}. Timeout: {timeout}, MaxAge: {maxAge}");
 
                 ItemInfo[] nodesNeedingResolve = mapId2Info.Values.Where(n => n.Node == null).ToArray();
                 if (nodesNeedingResolve.Length > 0) {
@@ -240,7 +258,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
             }
         }
 
-        private static IEnumerable<T> CleanNulls<T>(IEnumerable<T?>? items) where T: class {
+        private static IEnumerable<T> CleanNulls<T>(IEnumerable<T?>? items) where T : class {
             if (items == null) {
                 yield break;
             }
@@ -306,7 +324,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                     var now = Timestamp.Now;
                     var sw = System.Diagnostics.Stopwatch.StartNew();
-                    
+
                     ReadResponse readResponse = await connection.ReadAsync(readRequest);
 
                     sw.Stop();
@@ -818,13 +836,11 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
         }
 
         private void PrintLine(string msg) {
-            string name = config.Name ?? "";
-            Console.WriteLine(name + ": " + msg);
+            logger.LogInformation(msg);
         }
 
         private void PrintErrorLine(string msg) {
-            string name = config.Name ?? "";
-            Console.Error.WriteLine(name + ": " + msg);
+            logger.LogError(msg);
         }
 
         private void LogWarn(string type, string msg, string? dataItem = null, string? details = null, bool connectionDown = false) {
