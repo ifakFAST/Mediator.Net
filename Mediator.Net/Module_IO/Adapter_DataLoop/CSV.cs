@@ -45,9 +45,9 @@ public enum TimeUnit {
 
 public static class CSV {
 
-    public static CsvContent ReadFromFile(string fileName, DateTime? anchor, TimeUnit? unit) {
+    public static CsvContent ReadFromFile(string fileName, DateTime anchor, TimeUnit unit) {
 
-        TimeSpan unitSpan = !unit.HasValue ? TimeSpan.Zero : unit.Value switch {
+        TimeSpan unitSpan = unit switch {
             TimeUnit.Second => TimeSpan.FromSeconds(1),
             TimeUnit.Minute => TimeSpan.FromMinutes(1),
             TimeUnit.Hour => TimeSpan.FromHours(1),
@@ -82,14 +82,8 @@ public static class CSV {
             }
             else if (TryParseDouble(time, out double count)) {
                 TimeSpan off = count * unitSpan;
-                if (!anchor.HasValue) throw new Exception("Missing anchor");
-                if (!unit.HasValue) throw new Exception("Missing unit");
-                t = anchor.Value + off;
+                t = anchor + off;
             }
-            //else if (time == "" && rows.Count == 0) {
-            //    if (!anchor.HasValue) throw new Exception("Missing anchor");
-            //    t = anchor.Value;
-            //}
             else {
                 throw new Exception($"Invalid time value '{time}'");
             }

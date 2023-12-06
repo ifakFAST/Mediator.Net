@@ -17,16 +17,22 @@ public class DataLoop : AdapterBase {
     private readonly Dictionary<string, Item> mapId2Item = new();
 
     private CsvContent content = new(Array.Empty<string>(), Array.Empty<Row>());
-    private TimeSpan dataSpan = TimeSpan.Zero;
+    private TimeSpan cycleLen = TimeSpan.Zero;
     private DateTime[] rowTimestamps = Array.Empty<DateTime>();
+
+    private DateTime dtAnchor = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Local);
+    private TimeUnit timeUnit = TimeUnit.Day;
 
     private string fileName = "";
     private bool running = false;
+
+    private Adapter config = new Adapter();
 
     public override bool SupportsScheduledReading => true;
 
     public override Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
+        this.config = config;
         fileName = config.Address.Trim();
 
         if (fileName != "") {
@@ -79,7 +85,7 @@ public class DataLoop : AdapterBase {
 
     private void UpdateValuesFromFileContent() {
 
-        content = CSV.ReadFromFile(fileName, anchor: null, unit: null);
+        content = CSV.ReadFromFile(fileName, anchor: dtAnchor, unit: timeUnit);
         content.FillGaps();
 
         rowTimestamps = content.Rows.Select(row => row.Time).ToArray();
@@ -89,7 +95,7 @@ public class DataLoop : AdapterBase {
         }
 
         if (content.Rows.Count < 2) {
-            dataSpan = TimeSpan.Zero;
+            cycleLen = TimeSpan.Zero;
         }
         else {
 
@@ -97,7 +103,16 @@ public class DataLoop : AdapterBase {
             Row r1 = content.Rows.Last();
             TimeSpan diff = r1.Time - r0.Time;
 
-            dataSpan = LargestDivisorOrMultipleOf24Hours(diff);
+            cycleLen = LargestDivisorOrMultipleOf24Hours(diff);
+        }
+
+        PrintLine($"Read {content.Rows.Count} rows from file '{fileName}'");
+        PrintLine($"Cycle length: {Duration.FromTimeSpan(cycleLen)}");
+        if (content.Rows.Count > 0) {
+            DateTime t = MapNow2EffectiveTimeinCsv(content.Rows[0], cycleLen, out DateTime now);
+            int idxRow = GetRowIdxFromTime(t);
+            Row row = content.Rows[idxRow];
+            PrintLine($"Effective time: Now={now} maps to t={t} in CSV. Greatest time in CSV <= t: {row.Time}");
         }
     }
 
@@ -194,22 +209,13 @@ public class DataLoop : AdapterBase {
             return Task.FromResult(res);
         }
 
-        DateTime tStart = rows[0].Time;
-        DateTime Now = tStart.Kind == DateTimeKind.Utc ? DateTime.UtcNow : DateTime.Now;
-
-        long cycleLen = (long)dataSpan.TotalSeconds;
-        long offSeconds = cycleLen == 0 ? 0 : ((long)(Now - tStart).TotalSeconds) % cycleLen;
-        offSeconds = offSeconds < 0 ? offSeconds + cycleLen : offSeconds;
-
-        DateTime t = tStart + TimeSpan.FromSeconds(offSeconds);
-
-        int idxRow = Array.BinarySearch(rowTimestamps, t);
-        if (idxRow < 0) { // not found
-            idxRow = ~idxRow; // get index of first element larger than t
-            idxRow--;
-        }
+        DateTime t = MapNow2EffectiveTimeinCsv(rows[0], cycleLen, out DateTime _);
+        int idxRow = GetRowIdxFromTime(t);
 
         Row row = rows[idxRow];
+        DateTime rowTime = row.Time;
+        // Map rowTime to current time:
+        
         Timestamp timestamp = Timestamp.FromDateTime(row.Time);
 
         for (int i = 0; i < N; ++i) {
@@ -228,10 +234,38 @@ public class DataLoop : AdapterBase {
         return Task.FromResult(res);
     }
 
+    private static DateTime MapNow2EffectiveTimeinCsv(Row firstRow, TimeSpan cycleLength, out DateTime now) {
+        
+        DateTime tStart = firstRow.Time;
+        now = tStart.Kind == DateTimeKind.Utc ? DateTime.UtcNow : DateTime.Now;
+        // truncate now to seconds:
+        now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, now.Kind);
+
+        long cycleLen = (long)cycleLength.TotalSeconds;
+        long offSeconds = cycleLen == 0 ? 0 : ((long)(now - tStart).TotalSeconds) % cycleLen;
+        offSeconds = offSeconds < 0 ? offSeconds + cycleLen : offSeconds;
+
+        return tStart + TimeSpan.FromSeconds(offSeconds);
+    }
+
+    private int GetRowIdxFromTime(DateTime t) {
+        int idxRow = Array.BinarySearch(rowTimestamps, t);
+        if (idxRow < 0) { // not found
+            idxRow = ~idxRow; // get index of first element larger than t
+            idxRow--;
+        }
+        return idxRow;
+    }
+
     public override Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> writeValues, Duration? timeout) {
         FailedDataItemWrite[] err = writeValues
             .Select(v => new FailedDataItemWrite(v.ID, "Write to CSV file unsupported"))
             .ToArray();
         return Task.FromResult(WriteDataItemsResult.Failure(err));
+    }
+
+    private void PrintLine(string msg) {
+        string name = config.Name ?? "";
+        Console.WriteLine(name + ": " + msg);
     }
 }
