@@ -22,6 +22,7 @@ public class DataLoop : AdapterBase {
 
     private DateTime dtAnchor = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Local);
     private TimeUnit timeUnit = TimeUnit.Day;
+    private TimeSpan cycleLenConfig = TimeSpan.Zero;
 
     private string fileName = "";
     private bool running = false;
@@ -53,11 +54,53 @@ public class DataLoop : AdapterBase {
             mapId2Item[di.ID] = new Item(address);
         }
 
+        string strAnchor = config.GetConfigByName("Anchor", defaultValue: "2000-01-01 00:00:00");
+        if (!CSV.TryParseDateTime(strAnchor, out dtAnchor)) {
+            throw new Exception($"Invalid value for config parameter 'Anchor': '{strAnchor}'");
+        }
+
+        string strTimeUnit = config.GetConfigByName("TimeUnit", defaultValue: "d");
+        if (!TryParseTimeUnit(strTimeUnit, out timeUnit)) {
+            throw new Exception($"Invalid value for config parameter 'TimeUnit': '{strTimeUnit}'");
+        }
+
+        string strCycle = config.GetConfigByName("Cycle", defaultValue: "");
+        Duration cycle = Duration.Zero;
+        if (strCycle != "" && !Duration.TryParse(strCycle, out cycle)) {
+            throw new Exception($"Invalid value for config parameter 'Cycle': '{strCycle}'");
+        }
+        if (cycle > Duration.Zero) {
+            cycleLenConfig = cycle;
+        }
+
         if (fileName != "") {
             UpdateValuesFromFileContent();
         }
 
         return Task.FromResult(Array.Empty<Group>());
+    }
+
+    private static bool TryParseTimeUnit(string s, out TimeUnit res) {
+        try {
+            res = s.ToLowerInvariant() switch {
+                "s" => TimeUnit.Second,
+                "sec" => TimeUnit.Second,
+                "second" => TimeUnit.Second,
+                "m" => TimeUnit.Minute,
+                "min" => TimeUnit.Minute,
+                "minute" => TimeUnit.Minute,
+                "h" => TimeUnit.Hour,
+                "hour" => TimeUnit.Hour,
+                "d" => TimeUnit.Day,
+                "day" => TimeUnit.Day,
+                _ => throw new Exception()
+            };
+            return true;
+        }
+        catch (Exception) {
+            res = TimeUnit.Day;
+            return false;
+        }
     }
 
     public override void StartRunning() {
@@ -103,7 +146,14 @@ public class DataLoop : AdapterBase {
             Row r1 = content.Rows.Last();
             TimeSpan diff = r1.Time - r0.Time;
 
-            cycleLen = LargestDivisorOrMultipleOf24Hours(diff);
+            TimeSpan cycleLen1 = LargestDivisorOrMultipleOf24Hours(diff);
+            TimeSpan medianDistance = CalcMedianDistance(rowTimestamps);
+            TimeSpan cycleLen2 = LargestDivisorOrMultipleOf24Hours(diff + medianDistance);
+            cycleLen = GetMostRoundTimeSpan(cycleLen1, cycleLen2);
+        }
+
+        if (cycleLenConfig > TimeSpan.Zero) {
+            cycleLen = cycleLenConfig;
         }
 
         PrintLine($"Read {content.Rows.Count} rows from file '{fileName}'");
@@ -112,7 +162,55 @@ public class DataLoop : AdapterBase {
             DateTime t = MapNow2EffectiveTimeinCsv(content.Rows[0], cycleLen, out DateTime now);
             int idxRow = GetRowIdxFromTime(t);
             Row row = content.Rows[idxRow];
-            PrintLine($"Effective time: Now={now} maps to t={t} in CSV. Greatest time in CSV <= t: {row.Time}");
+            PrintLine($"Effective time: Now={now} maps to T={t} in CSV.");
+            DateTime tNow = MapCsvTimeToNowTime(row.Time, now, cycleLen);
+            PrintLine($"Greatest time in CSV <= t: {row.Time}; Mapped to now frame: {tNow}");
+        }
+    }
+
+    private static bool IsEvenMinute(TimeSpan t) {
+        return t.Ticks % TimeSpan.TicksPerMinute == 0;
+    }
+
+    private static bool IsEvenHour(TimeSpan t) {
+        return t.Ticks % TimeSpan.TicksPerHour == 0;
+    }
+
+    private static bool IsEvenDay(TimeSpan t) {
+        return t.Ticks % TimeSpan.TicksPerDay == 0;
+    }
+
+    private static TimeSpan GetMostRoundTimeSpan(TimeSpan t1, TimeSpan t2) {
+        if (IsEvenMinute(t1) ^ IsEvenMinute(t2)) {
+            return IsEvenMinute(t1) ? t1 : t2;
+        }
+        if (IsEvenHour(t1) ^ IsEvenHour(t2)) {
+            return IsEvenHour(t1) ? t1 : t2;
+        }
+        if (IsEvenDay(t1) ^ IsEvenDay(t2)) {
+            return IsEvenDay(t1) ? t1 : t2;
+        }
+        return t1;
+    }
+
+    private static TimeSpan CalcMedianDistance(DateTime[] timestamps) {
+
+        if (timestamps.Length < 2) {
+            return TimeSpan.Zero;
+        }
+
+        int N = timestamps.Length - 1;
+        var distances = new TimeSpan[N];
+        for (int i = 0; i < N; ++i) {
+            distances[i] = timestamps[i + 1] - timestamps[i];
+        }
+        Array.Sort(distances);
+        int idx = N / 2;
+        if (N % 2 == 0) {
+            return TimeSpan.FromTicks((distances[idx - 1] + distances[idx]).Ticks / 2);
+        }
+        else {
+            return distances[idx];
         }
     }
 
@@ -209,14 +307,12 @@ public class DataLoop : AdapterBase {
             return Task.FromResult(res);
         }
 
-        DateTime t = MapNow2EffectiveTimeinCsv(rows[0], cycleLen, out DateTime _);
+        DateTime t = MapNow2EffectiveTimeinCsv(rows[0], cycleLen, out DateTime mapNow);
         int idxRow = GetRowIdxFromTime(t);
 
         Row row = rows[idxRow];
         DateTime rowTime = row.Time;
-        // Map rowTime to current time:
-        
-        Timestamp timestamp = Timestamp.FromDateTime(row.Time);
+        Timestamp timestamp = Timestamp.FromDateTime(MapCsvTimeToNowTime(row.Time, mapNow, cycleLen));
 
         for (int i = 0; i < N; ++i) {
             ReadRequest request = items[i];
@@ -246,6 +342,19 @@ public class DataLoop : AdapterBase {
         offSeconds = offSeconds < 0 ? offSeconds + cycleLen : offSeconds;
 
         return tStart + TimeSpan.FromSeconds(offSeconds);
+    }
+
+    private static DateTime MapCsvTimeToNowTime(DateTime tCsv, DateTime now, TimeSpan cycleLength) {
+        long cycleLen = (long)cycleLength.TotalSeconds;
+        if (cycleLen == 0) {
+            return now;
+        }
+        long n = ((long)(now - tCsv).TotalSeconds) / cycleLen;
+        DateTime res = tCsv + TimeSpan.FromSeconds(n * cycleLen);
+        if (res > now) {
+            res -= TimeSpan.FromSeconds(cycleLen);
+        }
+        return res;
     }
 
     private int GetRowIdxFromTime(DateTime t) {

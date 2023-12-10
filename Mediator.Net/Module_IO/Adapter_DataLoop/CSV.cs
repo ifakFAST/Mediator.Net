@@ -107,7 +107,7 @@ public static class CSV {
         return double.TryParse(s, CultureInfo.InvariantCulture, out d);
     }
 
-    private static bool TryParseDateTime(string s, out DateTime t) {
+    public static bool TryParseDateTime(string s, out DateTime t) {
         bool ok = DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out t);
         if (!ok) return false;
         if (t.Kind == DateTimeKind.Unspecified) {
