@@ -20,12 +20,14 @@ namespace Ifak.Fast.Mediator
         private static readonly JsonSerializerSettings settings_NoIndent_UseShouldSerializeMembers = new JsonSerializerSettings {
             DateParseHandling = DateParseHandling.None,
             NullValueHandling = NullValueHandling.Include,
+            FloatFormatHandling = FloatFormatHandling.Symbol,
             Converters = new JsonConverter[] { new StringEnumConverter() },
         };
 
         private static readonly JsonSerializerSettings settings_Indent_UseShouldSerializeMembers = new JsonSerializerSettings {
             DateParseHandling = DateParseHandling.None,
             NullValueHandling = NullValueHandling.Include,
+            FloatFormatHandling = FloatFormatHandling.Symbol,
             Converters = new JsonConverter[] { new StringEnumConverter() },
             Formatting = Formatting.Indented,
         };
@@ -33,6 +35,7 @@ namespace Ifak.Fast.Mediator
         private static readonly JsonSerializerSettings settings_NoIndent_IgnoreShouldSerializeMembers = new JsonSerializerSettings {
             DateParseHandling = DateParseHandling.None,
             NullValueHandling = NullValueHandling.Include,
+            FloatFormatHandling = FloatFormatHandling.Symbol,
             Converters = new JsonConverter[] { new StringEnumConverter() },
             ContractResolver = new DefaultContractResolver() { IgnoreShouldSerializeMembers = true },
         };
@@ -40,6 +43,7 @@ namespace Ifak.Fast.Mediator
         private static readonly JsonSerializerSettings settings_Indent_IgnoreShouldSerializeMembers = new JsonSerializerSettings {
             DateParseHandling = DateParseHandling.None,
             NullValueHandling = NullValueHandling.Include,
+            FloatFormatHandling = FloatFormatHandling.Symbol,
             Converters = new JsonConverter[] { new StringEnumConverter() },
             Formatting = Formatting.Indented,
             ContractResolver = new DefaultContractResolver() { IgnoreShouldSerializeMembers = true },
