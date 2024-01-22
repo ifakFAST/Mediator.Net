@@ -97,7 +97,8 @@ internal class Util {
         bool SimpleTagsOnly, 
         bool NumericTagsOnly,
         bool SendTagsWithNull, 
-        bool RemoveEmptyTimestamp
+        bool RemoveEmptyTimestamp,
+        NaNHandling NaN_Handling
      );
 
     public static VariableValues Filter(VariableValues values, FilterCriteria criteria) {
@@ -107,14 +108,32 @@ internal class Util {
         bool sendNull = criteria.SendTagsWithNull;
         bool removeEmptyTimestamp = criteria.RemoveEmptyTimestamp;
 
-        if (!simpleOnly && sendNull) {
+        if (!simpleOnly && sendNull && criteria.NaN_Handling == NaNHandling.Keep) {
             return removeEmptyTimestamp ? RemoveEmptyTimestamp(values) : values;
         }
 
-        var res = new VariableValues(values.Count);
-        foreach (var vv in values) {
+        bool needNaNHandling = criteria.NaN_Handling != NaNHandling.Keep;
 
+        var res = new VariableValues(values.Count);
+        foreach (var it in values) {
+
+            VariableValue vv = it;
             DataValue v = vv.Value.V;
+
+            if (needNaNHandling && v.IsInfinityOrNaN) {
+
+                if (criteria.NaN_Handling == NaNHandling.Remove) {
+                    continue;
+                }
+
+                v = criteria.NaN_Handling switch {
+                    NaNHandling.ConvertToNull => DataValue.Empty,
+                    NaNHandling.ConvertToString => DataValue.FromString(v.JsonOrNull),
+                    _ => throw new Exception("Invalid NaNHandling: " + criteria.NaN_Handling),
+                };
+
+                vv.Value = vv.Value.WithValue(v);
+            }
 
             if (simpleOnly && !sendNull) {
                 if (!v.IsArray && !v.IsObject && v.NonEmpty) {

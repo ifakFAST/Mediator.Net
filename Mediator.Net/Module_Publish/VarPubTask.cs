@@ -86,6 +86,7 @@ internal class VarPubTask {
             SimpleTagsOnly: config.SimpleTagsOnly,
             NumericTagsOnly: config.NumericTagsOnly,
             SendTagsWithNull: config.SendTagsWithNull,
+            NaN_Handling: config.NaN_Handling,
             RemoveEmptyTimestamp: false);
         return Util.Filter(values, criteria);
     }

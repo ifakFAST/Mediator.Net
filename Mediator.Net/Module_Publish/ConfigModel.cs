@@ -81,6 +81,12 @@ public class MqttConfig : ModelObject {
     }
 }
 
+public enum NaNHandling {
+    Keep,
+    ConvertToNull,
+    ConvertToString,
+    Remove
+}
 
 public interface VarPubCommon {
     List<ObjectRef> RootObjects { get; set; }
@@ -88,6 +94,7 @@ public interface VarPubCommon {
     bool SimpleTagsOnly { get; set; }
     bool NumericTagsOnly { get; set; }
     bool SendTagsWithNull { get; set; }
+    NaNHandling NaN_Handling { get; set; }
     Duration PublishInterval { get; set; }
     Duration PublishOffset { get; set; }
 }
@@ -124,6 +131,7 @@ public class MqttVarPub : ModelObject, VarPubCommon {
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;
     public bool SendTagsWithNull { get; set; } = false;
+    public NaNHandling NaN_Handling { get; set; } = NaNHandling.Keep;
 
     public bool TimeAsUnixMilliseconds { get; set; } = false;
     public bool QualityNumeric { get; set; } = false;
@@ -304,6 +312,7 @@ public class SQLVarPub : ModelObject, VarPubCommon {
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;
     public bool SendTagsWithNull { get; set; } = false;
+    public NaNHandling NaN_Handling { get; set; } = NaNHandling.Keep;
 
     public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
     public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
@@ -365,6 +374,7 @@ public class OpcUaVarPub : ModelObject, VarPubCommon {
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;
     public bool SendTagsWithNull { get; set; } = false;
+    public NaNHandling NaN_Handling { get; set; } = NaNHandling.Keep;
 
     public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
     public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);

@@ -36,6 +36,8 @@ namespace Ifak.Fast.Mediator
 
         public readonly bool NonEmpty => jsonOrNull != null;
 
+        public readonly bool IsInfinityOrNaN => jsonOrNull == "NaN" || jsonOrNull == "Infinity" || jsonOrNull == "-Infinity";
+
         public readonly string JSON => jsonOrNull ?? "null";
 
         public readonly string? JsonOrNull => jsonOrNull;
