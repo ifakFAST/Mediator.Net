@@ -91,7 +91,7 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     case AdapterMsg.ID_Step: {
                             var msg = Deserialize<StepMsg>(request.Payload);
-                            WrapCall(() => adapter.Step(msg.Time, msg.InputValues), SerializeObject, reqID);
+                            WrapCall(() => adapter.Step(msg.Time, msg.DeltaT, msg.InputValues), SerializeObject, reqID);
                             break;
                         }
                     case AdapterMsg.ID_Shutdown: {

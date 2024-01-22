@@ -33,6 +33,7 @@ export interface Calculation {
   Name: string
   Type: string // e.g. C#, SIMBA, ...
   Subtype: string
+  RunMode: string // e.g. Continuous, Triggered
   Enabled: boolean
   EnableOutputVarWrite: boolean
   History: fast.History | null

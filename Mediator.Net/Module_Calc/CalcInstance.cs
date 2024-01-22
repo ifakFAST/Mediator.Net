@@ -42,6 +42,9 @@ namespace Ifak.Fast.Mediator.Calc
         private ModuleInitInfo info = new();
         private Connection? connection = null;
 
+        public Timestamp? Triggered_t  { get; set; } = null;
+        public Duration?  Triggered_dt { get; set; } = null;
+
         private async Task<Connection> ConnectionRetrieverAsync() {
 
             if (connection != null && !connection.IsClosed) {
@@ -167,6 +170,17 @@ namespace Ifak.Fast.Mediator.Calc
                 long sleepMS = sleepFull.TotalMilliseconds.InRange(1, 500);
                 await Task.Delay((int)sleepMS);
             }
+        }
+
+        public async Task<(Timestamp?, Duration?)> WaitUntilTriggered() {
+            while (State == State.Running && !Triggered_t.HasValue) {
+                await Task.Delay(500);
+            }
+            Timestamp? t = Triggered_t;
+            Duration? dt = Triggered_dt;
+            Triggered_t = null;
+            Triggered_dt = null;
+            return (t, dt);
         }
 
         public void SetInitialOutputValues(Dictionary<VariableRef, VTQ> mapVarValues) {

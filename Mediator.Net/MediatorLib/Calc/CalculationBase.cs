@@ -9,7 +9,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         // public abstract Task ReinitializeAfterConfigChange(Calculation def); ?
 
-        public abstract Task<StepResult> Step(Timestamp t, InputValue[] inputValues);
+        public abstract Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues);
 
         public abstract Task Shutdown();
     }
@@ -93,10 +93,23 @@ namespace Ifak.Fast.Mediator.Calc
         public override string ToString() => StateID + " = " + Value.ToString();
     }
 
+    public class TriggerCalculation {
+        public string CalcID { get; set; } = "";
+        public Timestamp TriggerStep_t { get; set; }
+        public Duration? TriggerStep_dt { get; set; }
+        
+        public override string ToString() {
+            var t  = $"t: {TriggerStep_t}";
+            var dt = TriggerStep_dt.HasValue ? $", dt: {TriggerStep_dt.Value}" : "";
+            return $"{CalcID} {t}{dt}";
+        }
+    }
+
     public class StepResult
     {
         public OutputValue[] Output { get; set; } = new OutputValue[0];
         public StateValue[] State { get; set; } = new StateValue[0];
+        public TriggerCalculation[] TriggeredCalculations { get; set; } = new TriggerCalculation[0];
     }
 
     public interface AdapterCallback

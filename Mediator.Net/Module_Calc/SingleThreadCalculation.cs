@@ -45,10 +45,10 @@ namespace Ifak.Fast.Mediator.Calc
             return promise.Task;
         }
 
-        public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
+        public override Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
             if (!isStarted) throw new Exception("Step requires prior Initialize!");
             var promise = new TaskCompletionSource<StepResult>();
-            queue.Post(new WorkItem(MethodID.Step, promise, t, inputValues));
+            queue.Post(new WorkItem(MethodID.Step, promise, t, dt, inputValues));
             return promise.Task;
         }
 
@@ -88,7 +88,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                             var promise = (TaskCompletionSource<StepResult>)it.Promise;
                             try {
-                                var result = await adapter.Step((Timestamp)it.Param1!, (InputValue[])it.Param2!);
+                                var result = await adapter.Step((Timestamp)it.Param1!, (Duration)it.Param2!, (InputValue[])it.Param3!);
                                 promise.SetResult(result);
                             }
                             catch (Exception exp) {

@@ -23,7 +23,7 @@ namespace Ifak.Fast.Mediator.Calc
             return Task.FromResult(true);
         }
 
-        public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
+        public override Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
 
             VTQ a = inputValues[0].Value;
             VTQ b = inputValues[1].Value;

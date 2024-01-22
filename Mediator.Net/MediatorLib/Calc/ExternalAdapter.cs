@@ -110,9 +110,10 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
-        public override async Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
+        public override async Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
             var msg = new StepMsg() {
                 Time = t,
+                DeltaT = dt,
                 InputValues = inputValues,
             };
             return await SendRequest<StepResult>(msg);
@@ -271,6 +272,8 @@ namespace Ifak.Fast.Mediator.Calc
     internal class StepMsg : AdapterMsg
     {
         public Timestamp Time { get; set; }
+
+        public Duration DeltaT { get; set; } = Duration.Zero;
 
         public InputValue[] InputValues { get; set; } = new InputValue[0];
 

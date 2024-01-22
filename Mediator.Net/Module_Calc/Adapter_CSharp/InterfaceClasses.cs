@@ -14,6 +14,32 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public string Name { get; set; }
     }
 
+    public class Calculation : Identifiable {
+
+        public string CalcID { get; private set; }
+        public string ID { get; set; } = "";
+        public string Name { get; set; } = "";
+        
+        public Timestamp? TriggerStep_t  = null;
+        public Duration?  TriggerStep_dt = null;
+
+        public Calculation(string id) {
+            CalcID = id;
+            ID = id;
+            Name = id;
+        }
+
+        public void TriggerStep(Timestamp t) {
+            TriggerStep_t = t;
+            TriggerStep_dt = null;
+        }
+
+        public void TriggerStep(Timestamp t, Duration dt) {
+            TriggerStep_t = t;
+            TriggerStep_dt = dt;
+        }
+    }
+
     public abstract class InputBase : Identifiable {
 
         public string ID { get; set; } = "";

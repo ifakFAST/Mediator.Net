@@ -18,9 +18,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private InputBase[] inputs = new Input[0];
         private OutputBase[] outputs = new Output[0];
         private AbstractState[] states = new AbstractState[0];
+        private Calculation[] calculations = new Calculation[0];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
         private Action shutdownAction = () => { };
-        private Duration cycle = Duration.FromSeconds(1);
         private AdapterCallback? callback;
 
         private static readonly object handleInitLock = new object();
@@ -29,7 +29,6 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             this.callback = callback;
             string code = parameter.Calculation.Definition;
-            cycle = parameter.Calculation.Cycle;
 
             if (!string.IsNullOrWhiteSpace(code)) {
 
@@ -109,6 +108,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: true).ToArray();
             outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: true).ToArray();
             states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
+            calculations = GetIdentifiableMembers<Calculation>(obj, "", recursive: true).ToArray();
 
             var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
             foreach (EventProvider provider in eventProviders) {
@@ -238,9 +238,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return Task.FromResult(true);
         }
 
-        Timestamp? tLastStep = null;
-
-        public override Task<StepResult> Step(Timestamp t, InputValue[] inputValues) {
+        public override Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
 
             foreach (InputValue v in inputValues) {
                 InputBase? input = inputs.FirstOrDefault(inn => inn.ID == v.InputID);
@@ -255,9 +253,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 output.ValueHasBeenAssigned = false;
             }
 
-            Duration dt = tLastStep.HasValue ?  t - tLastStep.Value : cycle;            
+            foreach (var calc in calculations) {
+                calc.TriggerStep_t = null;
+                calc.TriggerStep_dt = null;
+            }
+
             stepAction(t, dt);
-            tLastStep = t;
 
             StateValue[] resStates = states.Select(kv => new StateValue() {
                 StateID = kv.ID,
@@ -274,9 +275,19 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 }
             }
 
+            var calcSteps = calculations
+                .Where(c => c.TriggerStep_t.HasValue)
+                .Select(c => new TriggerCalculation() {
+                    CalcID = c.CalcID,
+                    TriggerStep_t = c.TriggerStep_t!.Value,
+                    TriggerStep_dt = c.TriggerStep_dt
+                })
+                .ToArray();
+
             var stepRes = new StepResult() {
                 Output = outputValues.ToArray(),
                 State = resStates,
+                TriggeredCalculations = calcSteps
             };
 
             return Task.FromResult(stepRes);

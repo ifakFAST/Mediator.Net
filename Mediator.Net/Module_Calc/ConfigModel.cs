@@ -157,6 +157,11 @@ namespace Ifak.Fast.Mediator.Calc.Config
         }
     }
 
+    public enum RunMode {
+        Continuous,
+        Triggered,
+    }
+
     public class Calculation : ModelObject
     {
         [XmlAttribute("id")]
@@ -173,6 +178,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         [XmlAttribute("enabled")]
         public bool Enabled { get; set; } = false;
+
+        public RunMode RunMode { get; set; } = RunMode.Continuous;
 
         public bool EnableOutputVarWrite { get; set; } = true;
 
@@ -198,6 +205,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public bool ShouldSerializeOffset() => Offset.TotalMilliseconds != 0;
         public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
+        public bool ShouldSerializeRunMode() => RunMode != RunMode.Continuous;
 
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {

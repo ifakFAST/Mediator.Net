@@ -15,11 +15,12 @@
         <member-row name="Name"            v-model="value.Name"          type="String"   :optional="false"></member-row>
         <member-row name="Type"            v-model="value.Type"          type="Enum"     :optional="false" :enumValues="adapterTypes"></member-row>
         <member-row name="Subtype"         v-model="value.Subtype"       type="Enum"     :optional="false" :enumValues="adapterSubtypes" v-if="showSubtypes"></member-row>
+        <member-row name="RunMode"         v-model="value.RunMode"       type="Enum"     :optional="false" :enumValues="runModes"></member-row>
         <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
-        <member-row name="Cycle Offset"    v-model="value.Offset"        type="Duration" :optional="false"></member-row>
-        <member-row name="Ignore Offset For Timestamps" v-model="value.IgnoreOffsetForTimestamps" type="Boolean" :optional="false" v-if="value.Offset !== '0 s'"></member-row>
-        <member-row name="Enabled"         v-model="value.Enabled"       type="Boolean"  :optional="false"></member-row>
+        <member-row name="Cycle Offset" v-if="isContinuous" v-model="value.Offset" type="Duration" :optional="false"></member-row>
+        <member-row name="Ignore Offset For Timestamps" v-if="isContinuous" v-model="value.IgnoreOffsetForTimestamps" type="Boolean" :optional="false" v-if="value.Offset !== '0 s'"></member-row>
+        <member-row name="Enabled"         v-model="value.Enabled" type="Boolean"  :optional="false"></member-row>
         <member-row name="Enable Output Var Write" v-model="value.EnableOutputVarWrite" type="Boolean" :optional="false"></member-row>
         <member-row name="WindowVisible"   v-model="value.WindowVisible" type="Boolean"  :optional="false" v-if="showWindowVisible"></member-row>
         <member-row :name="definitionName" v-model="value.Definition"    :type="definitionType" :optional="false" v-if="showDefinition && definitionType !== 'Code'"></member-row>
@@ -233,6 +234,10 @@ export default class CalculationEditor extends Vue {
     return this.adapterTypesInfo.map((info) => info.Type)
   }
 
+  get runModes(): string[] {
+    return ['Continuous', 'Triggered']
+  }
+
   get adapterSubtypes(): string[] {
     const type = this.value.Type
     const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
@@ -284,6 +289,12 @@ export default class CalculationEditor extends Vue {
     const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
     if (info === undefined) { return false }
     return info.Show_Definition
+  }
+
+  get isContinuous(): boolean {
+    const mode = this.value.RunMode
+    if (mode === undefined) { return true }
+    return mode === 'Continuous'
   }
 
   get definitionType(): MemberTypeEnum {

@@ -436,18 +436,106 @@ namespace Ifak.Fast.Mediator.Calc
             });
         }
 
+        interface ICalcRunCondition {
+            Task<(Timestamp, Duration)> WaitForFirstRun();
+            Task<(Timestamp, Duration)> WaitForNextRun();
+        }
+
+        sealed class ContinousRunCondition : ICalcRunCondition {
+
+            private readonly Module module;
+            private readonly CalcInstance adapter;
+            private readonly bool ignoreOffsetForTimestamps;
+            private readonly Duration scaledCycle;
+            private readonly Duration cycle;
+            private readonly Duration offset;
+            private Timestamp t;
+            private Timestamp t0;
+
+            public ContinousRunCondition(CalcInstance adapter, Module module) {
+                this.module = module;
+                this.adapter = adapter;
+                this.scaledCycle = adapter.ScaledCycle();
+                this.cycle = adapter.CalcConfig.Cycle;
+                this.offset = adapter.ScaledOffset();
+                this.t = Time.GetNextNormalizedTimestamp(scaledCycle, offset);
+                this.ignoreOffsetForTimestamps = adapter.CalcConfig.IgnoreOffsetForTimestamps;
+                this.t0 = ignoreOffsetForTimestamps ? t - offset : t;
+            }
+
+            public async Task<(Timestamp, Duration)> WaitForFirstRun() {
+                await adapter.WaitUntil(t);
+                var dt = cycle; // we must not use the scaledCycle!
+                return (t0, dt);
+            }
+
+            public async Task<(Timestamp, Duration)> WaitForNextRun() {
+                var prevT0 = t0;
+                t = module.GetNextNormalizedTimestamp(t, scaledCycle, offset, adapter);
+                t0 = ignoreOffsetForTimestamps ? t - offset : t;
+                await adapter.WaitUntil(t);
+                var dt = t0 - prevT0;
+                return (t0, dt);
+            }
+        }
+
+        sealed class TriggeredRunCondition : ICalcRunCondition {
+
+            private readonly Module module;
+            private readonly CalcInstance adapter;
+            private Timestamp t0 = Timestamp.Empty;
+
+            public TriggeredRunCondition(CalcInstance adapter, Module module) {
+                this.module = module;
+                this.adapter = adapter;
+            }
+
+            public async Task<(Timestamp, Duration)> WaitForFirstRun() {
+                var (t, dt) = await adapter.WaitUntilTriggered();
+                t0 = t ?? Timestamp.Empty;
+                var dt0 = dt ?? adapter.CalcConfig.Cycle;
+                return (t0, dt0);
+            }
+
+            public async Task<(Timestamp, Duration)> WaitForNextRun() {
+
+                while (true) {
+
+                    var (tOpt, dtOpt) = await adapter.WaitUntilTriggered();
+
+                    if (tOpt == null) {
+                        return (Timestamp.Empty, Duration.Zero);
+                    }
+
+                    Timestamp t = tOpt.Value;
+
+                    if (t <= t0) {
+                        ObjectRef[] calcID = new ObjectRef[] { adapter.ID };
+                        string msg = $"Calculation {adapter.Name} was triggered with timestamp {t} but last timestamp was {t0}.";
+                        module.Log_Warn("TriggerTime", msg, affectedObjects: calcID);
+                        continue;
+                    }
+
+                    var dt0 = dtOpt ?? t - t0;
+                    t0 = t;
+                    
+                    return (t0, dt0);
+                }
+            }
+        }
+
         private async Task AdapterRunLoopTask(CalcInstance adapter) {
 
             adapter.State = State.Running;
-            bool ignoreOffsetForTimestamps = adapter.CalcConfig.IgnoreOffsetForTimestamps;
-
-            Duration cycle = adapter.ScaledCycle();
-            Duration offset = adapter.ScaledOffset();
-            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
-            Timestamp t0 = ignoreOffsetForTimestamps ? t - offset : t;
             string moduleID = base.moduleID;
 
-            await adapter.WaitUntil(t);
+            ICalcRunCondition runCondition = adapter.CalcConfig.RunMode switch {
+                Config.RunMode.Continuous => new ContinousRunCondition(adapter, this),
+                Config.RunMode.Triggered  => new TriggeredRunCondition(adapter, this),
+                _ => throw new Exception("Invalid run mode: " + adapter.CalcConfig.RunMode)
+            };
+
+            var (t, dt) = await runCondition.WaitForFirstRun();
 
             var inputs = new List<Config.Input>();
             var inputVars = new List<VariableRef>();
@@ -473,7 +561,7 @@ namespace Ifak.Fast.Mediator.Calc
                 // Config.Input[] inputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToArray();
                 // VariableRef[] inputVars = inputs.Select(inp => inp.Variable.Value).ToArray();
 
-                VTQs values = await ReadInputVars(adapter, inputs, inputVars, t0);
+                VTQs values = await ReadInputVars(adapter, inputs, inputVars, t);
 
                 // sw.Stop();
                 // double dd = sw.ElapsedTicks;
@@ -483,16 +571,16 @@ namespace Ifak.Fast.Mediator.Calc
 
                 adapter.UpdateInputValues(inputVars, values);
 
-                InputValue[] inputValues = adapter.CurrentInputValues(t0);
+                InputValue[] inputValues = adapter.CurrentInputValues(t);
 
-                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t0))).ToList();
+                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 var instance = adapter.Instance;
                 if (instance == null || adapter.State != State.Running) {
                     break;
                 }
-                StepResult result = await instance.Step(t0, inputValues);
+                StepResult result = await instance.Step(t, dt, inputValues);
 
                 OutputValue[] outValues = result.Output ?? Array.Empty<OutputValue>();
                 StateValue[] stateValues = result.State ?? Array.Empty<StateValue>();
@@ -504,7 +592,7 @@ namespace Ifak.Fast.Mediator.Calc
                     listVarValues.Add(vv);
                 }
                 foreach (StateValue v in stateValues) {
-                    var vv = VariableValue.Make(adapter.GetStateVarRef(v.StateID), VTQ.Make(v.Value, t0, Quality.Good));
+                    var vv = VariableValue.Make(adapter.GetStateVarRef(v.StateID), VTQ.Make(v.Value, t, Quality.Good));
                     listVarValues.Add(vv);
                 }
 
@@ -526,16 +614,22 @@ namespace Ifak.Fast.Mediator.Calc
                 adapter.SetLastOutputValues(outValues);
                 adapter.SetLastStateValues(stateValues);
 
+                TriggerCalculation[] triggerCalcs = result.TriggeredCalculations ?? Array.Empty<TriggerCalculation>();
+                foreach (TriggerCalculation tc in triggerCalcs) {
+                    CalcInstance? calclInst = adapters.FirstOrDefault(a => a.CalcConfig.ID == tc.CalcID);
+                    if (calclInst != null) {
+                        calclInst.Triggered_t = tc.TriggerStep_t;
+                        calclInst.Triggered_dt = tc.TriggerStep_dt;
+                    }
+                }
+
                 //sw.Stop();
                 //var vvv1 = VariableValue.Make(adapter.GetLastRunDurationVarRef(), VTQ.Make(sw.ElapsedMilliseconds, t, Quality.Good));
                 //listVarValueTimer.Clear();
                 //listVarValueTimer.Add(vvv1);
                 //notifier.Notify_VariableValuesChanged(listVarValueTimer);
 
-                t = GetNextNormalizedTimestamp(t, cycle, offset, adapter);
-                t0 = ignoreOffsetForTimestamps ? t - offset : t;
-
-                await adapter.WaitUntil(t);
+                (t, dt) = await runCondition.WaitForNextRun();
             }
         }
 
@@ -681,7 +775,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
 
             return tNext;
-        }      
+        }
 
         private void Log_Info(string type, string msg) {
             Log_Event(Severity.Info, type, msg);
