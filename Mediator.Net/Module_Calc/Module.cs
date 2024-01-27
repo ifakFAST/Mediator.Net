@@ -231,10 +231,13 @@ namespace Ifak.Fast.Mediator.Calc
                     }
 
                     if (changedMembers.Count > 0) {
-                        await UpdateConfig(GetModuleOrigin(),
+                        Result result = await UpdateConfig(GetModuleOrigin(),
                             updateOrDeleteObjects: Array.Empty<ObjectValue>(),
                             updateOrDeleteMembers: changedMembers.ToArray(),
                             addArrayElements: Array.Empty<AddArrayElement>());
+                        if (result.Failed()) {
+                            throw new Exception(result.Error!);
+                        }
                     }
 
                     adapter.State = State.InitComplete;
