@@ -220,35 +220,46 @@ namespace Ifak.Fast.Mediator.Calc.Config
             };
         }
 
-        //protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
 
-        //    History history = new History(HistoryMode.None);
+            History history = new History(HistoryMode.None);
 
-        //    if (History.HasValue) {
-        //        history = History.Value;
-        //    }
-        //    else {
-        //        foreach (IModelObject obj in parents) {
-        //            if (obj is Folder && (obj as Folder).History.HasValue) {
-        //                history = (obj as Folder).History.Value;
-        //                break;
-        //            }
-        //        }
-        //    }
+            if (History.HasValue) {
+                history = History.Value;
+            }
+            else {
+                foreach (IModelObject obj in parents) {
+                    if (obj is Folder f && f.History.HasValue) {
+                        history = f.History.Value;
+                        break;
+                    }
+                }
+            }
 
-        //    var varLastRunDuration = new Variable() {
-        //        Name = "Duration",
-        //        Type = DataType.Float64,
-        //        Dimension = 1,
-        //        DefaultValue = DataValue.FromDouble(0),
-        //        Remember = true,
-        //        History = history
-        //    };
+            var varLastRunDuration = new Variable() {
+                Name = "LastRunDuration",
+                Type = DataType.Float64,
+                Unit = "ms",
+                Dimension = 1,
+                DefaultValue = DataValue.FromDouble(0),
+                Remember = true,
+                History = history
+            };
 
-        //    return new Variable[] {
-        //        varLastRunDuration,
-        //    };
-        //}
+            var varLastRunTime = new Variable() {
+                Name = "LastRunTimestamp",
+                Type = DataType.Timestamp,
+                Dimension = 1,
+                DefaultValue = DataValue.Empty,
+                Remember = true,
+                History = history
+            };
+
+            return new Variable[] {
+                varLastRunDuration,
+                varLastRunTime
+            };
+        }
 
         public bool ShouldSerializeStates() => States.Count > 0;
 

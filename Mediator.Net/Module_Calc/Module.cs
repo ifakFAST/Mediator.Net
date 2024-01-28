@@ -547,10 +547,10 @@ namespace Ifak.Fast.Mediator.Calc
 
             //var listVarValueTimer = new List<VariableValue>(1);
 
-            //var sw = System.Diagnostics.Stopwatch.StartNew();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             while (adapter.State == State.Running) {
 
-                //sw.Restart();
+                sw.Restart();
 
                 inputs.Clear();
                 inputVars.Clear();
@@ -576,20 +576,21 @@ namespace Ifak.Fast.Mediator.Calc
 
                 InputValue[] inputValues = adapter.CurrentInputValues(t);
 
-                List<VariableValue> inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
+                VariableValues inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
                 notifier.Notify_VariableValuesChanged(inValues);
 
                 var instance = adapter.Instance;
                 if (instance == null || adapter.State != State.Running) {
                     break;
                 }
+
                 StepResult result = await instance.Step(t, dt, inputValues);
 
                 OutputValue[] outValues = result.Output ?? Array.Empty<OutputValue>();
                 StateValue[] stateValues = result.State ?? Array.Empty<StateValue>();
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
-                var listVarValues = new List<VariableValue>(outValues.Length + stateValues.Length);
+                var listVarValues = new VariableValues(outValues.Length + stateValues.Length + 2);
                 foreach (OutputValue v in outValues) {
                     var vv = VariableValue.Make(adapter.GetOutputVarRef(v.OutputID), v.Value);
                     listVarValues.Add(vv);
@@ -608,6 +609,14 @@ namespace Ifak.Fast.Mediator.Calc
                         }
                     }
                 }
+
+                sw.Stop();
+                var varLastRunDuration = VariableValue.Make(adapter.GetLastRunDurationVarRef(), VTQ.Make(sw.ElapsedMilliseconds, t, Quality.Good));
+                listVarValues.Add(varLastRunDuration);
+
+                var varLastRunTimestamp = VariableValue.Make(adapter.GetLastRunTimestampVarRef(), VTQ.Make(t, t, Quality.Good));
+                listVarValues.Add(varLastRunTimestamp);
+
                 notifier.Notify_VariableValuesChanged(listVarValues);
 
                 if (adapter.CalcConfig.EnableOutputVarWrite) {

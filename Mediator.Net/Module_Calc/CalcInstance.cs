@@ -174,7 +174,7 @@ namespace Ifak.Fast.Mediator.Calc
 
         public async Task<(Timestamp?, Duration?)> WaitUntilTriggered() {
             while (State == State.Running && !Triggered_t.HasValue) {
-                await Task.Delay(500);
+                await Task.Delay(100);
             }
             Timestamp? t = Triggered_t;
             Duration? dt = Triggered_dt;
@@ -252,7 +252,12 @@ namespace Ifak.Fast.Mediator.Calc
 
         public VariableRef GetLastRunDurationVarRef() {
             string calcID = this.CalcConfig.ID;
-            return VariableRef.Make(moduleID, calcID, "Duration");
+            return VariableRef.Make(moduleID, calcID, "LastRunDuration");
+        }
+
+        public VariableRef GetLastRunTimestampVarRef() {
+            string calcID = this.CalcConfig.ID;
+            return VariableRef.Make(moduleID, calcID, "LastRunTimestamp");
         }
     }
 
