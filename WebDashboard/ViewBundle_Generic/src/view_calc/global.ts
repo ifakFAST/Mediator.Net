@@ -21,5 +21,6 @@ export interface AdapterInfo {
   Show_Definition: boolean
   DefinitionLabel: string
   DefinitionIsCode: boolean
+  CodeLang: string
   Subtypes: string[]
 }

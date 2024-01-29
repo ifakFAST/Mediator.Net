@@ -9,6 +9,8 @@ namespace Ifak.Fast.Mediator.Calc
 {
     public class ExternalAdapterHost
     {
+        private static bool shutdownWasCalled = false;
+
         public static void ConnectAndRunAdapter(string host, int port, CalculationBase adapter) {
 
             var connector = new TcpConnectorSlave();
@@ -20,35 +22,43 @@ namespace Ifak.Fast.Mediator.Calc
             catch (Exception exp) {
                 Console.Error.WriteLine("EXCEPTION: " + exp.Message);
             }
+
+            if (!shutdownWasCalled) {
+                try {
+                    SingleThreadedAsync.Run(() => adapter.Shutdown());
+                }
+                catch (Exception exp) {
+                    Console.Error.WriteLine("EXCEPTION: " + exp.Message);
+                }
+            }
         }
 
-        private static async Task Loop(TcpConnectorSlave connector, CalculationBase module) {
+        private static async Task Loop(TcpConnectorSlave connector, CalculationBase adapter) {
 
             Process? parentProcess = null;
             using (Request request = await connector.ReceiveRequest(5000)) {
                 if (request.Code != AdapterMsg.ID_ParentInfo) {
                     throw new Exception("Missing ParentInfo request");
                 }
-                ParentInfoMsg? info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload);
-                if (info == null) {
-                    throw new Exception("ParentInfoMsg is null");
-                }
+                ParentInfoMsg? info = StdJson.ObjectFromUtf8Stream<ParentInfoMsg>(request.Payload) ?? throw new Exception("ParentInfoMsg is null");
                 parentProcess = Process.GetProcessById(info.PID);
                 connector.SendResponseSuccess(request.RequestID, s => { });
             }
 
-            Thread t = new Thread(() => { ParentAliveChecker(parentProcess); });
+            Thread t = new(() => { ParentAliveChecker(parentProcess); });
             t.IsBackground = true;
             t.Start();
 
-            var helper = new AdapterHelper(module, connector);
+            var helper = new AdapterHelper(adapter, connector);
             bool run = true;
 
             while (run) {
-                using (Request request = await connector.ReceiveRequest()) {
-                    helper.ExecuteAdapterRequestAsync(request);
-                    bool shutdown = request.Code == AdapterMsg.ID_Shutdown;
-                    run = !shutdown;
+                using Request request = await connector.ReceiveRequest();
+                helper.ExecuteAdapterRequestAsync(request);
+                bool shutdown = request.Code == AdapterMsg.ID_Shutdown;
+                run = !shutdown;
+                if (shutdown) {
+                    shutdownWasCalled = true;
                 }
             }
 
@@ -59,12 +69,29 @@ namespace Ifak.Fast.Mediator.Calc
         }
 
         private static void ParentAliveChecker(Process parentProcess) {
+
             while (true) {
+                
                 Thread.Sleep(5000);
-                if (parentProcess.HasExited) {
-                    Environment.Exit(0);
+
+                if (HasExited(parentProcess)) {
+
+                    Thread.Sleep(1000);
+
+                    // if we come here, the main loop did not exit, so we kill our process
+                    Process.GetCurrentProcess().Kill();
+
                     return;
                 }
+            }
+        }
+
+        private static bool HasExited(Process process) {
+            try {
+                return process.HasExited;
+            }
+            catch (Exception) {
+                return true;
             }
         }
 

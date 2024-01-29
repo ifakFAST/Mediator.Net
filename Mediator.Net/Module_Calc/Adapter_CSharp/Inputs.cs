@@ -310,7 +310,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public Timestamp? ValueOrNull {
             get {
                 try {
-                    return VTQ.V.Object<Timestamp?>();
+                    return VTQ.V.GetTimestampOrNull();
                 }
                 catch (Exception) {
                     return null;

@@ -105,6 +105,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Show_Definition = att.Show_Definition,
                 DefinitionLabel = att.DefinitionLabel,
                 DefinitionIsCode = att.DefinitionIsCode,
+                CodeLang = att.CodeLang,
                 Subtypes = att.Subtypes,
             };
         }
@@ -884,6 +885,7 @@ namespace Ifak.Fast.Mediator.Calc
         public bool Show_Definition { get; set; }
         public string DefinitionLabel { get; set; } = "";
         public bool DefinitionIsCode { get; set; }
+        public string CodeLang { get; set; } = "";
         public string[] Subtypes { get; set; } = Array.Empty<string>();
     }
 }

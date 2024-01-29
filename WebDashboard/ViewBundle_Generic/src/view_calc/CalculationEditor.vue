@@ -30,8 +30,8 @@
 
     <div v-if="selectedTab === 'Code'">
 
-      <editor style="font-size: 18px!important;margin-top:8px;" v-if="hasCode" v-model="value.Definition"
-        @init="editorInit" lang="csharp" theme="TextMate" :options="codeEditorOptions" width="100%" height="680"></editor>
+      <code-editor v-if="hasCode" v-model="value.Definition" :lang="codeLang"
+                   width="100%" height="calc(100vh - 185px)"></code-editor>
 
     </div>
 
@@ -162,6 +162,7 @@ import * as fast from '../fast_types'
 import DlgObjectSelect from '../components/DlgObjectSelect.vue'
 import { CalculationVariables, IoVar } from './conversion'
 import { MemberTypeEnum } from './util/member_types'
+import CodeEditor from '../components/CodeEditor.vue'
 
 type AssignState = 'Unassigned' | 'Constant' | 'Variable'
 
@@ -186,7 +187,7 @@ interface Obj {
     MemberRow,
     DlgObjectSelect,
     ValueDisplay,
-    editor: require('vue2-ace-editor'),
+    CodeEditor,
   },
 })
 export default class CalculationEditor extends Vue {
@@ -206,10 +207,6 @@ export default class CalculationEditor extends Vue {
     selectedObjectID: '',
     type: 'Float64',
     variable: { Object: '', Name: '' },
-  }
-
-  codeEditorOptions = {
-    enableBasicAutocompletion: true,
   }
 
   get sortIOs(): boolean {
@@ -307,11 +304,11 @@ export default class CalculationEditor extends Vue {
     return 'String'
   }
 
-  editorInit(): void {
-    require('brace/ext/language_tools')
-    require('brace/mode/csharp')
-    require('brace/theme/textmate')
-    require('brace/snippets/csharp')
+  get codeLang(): string {
+    const type = this.value.Type
+    const info: global.AdapterInfo | undefined = this.adapterTypesInfo.find((inf) => inf.Type === type)
+    if (info === undefined) { return 'csharp' }
+    return info.CodeLang
   }
 
   shallowCopyArray(arr: any[]): any[] {

@@ -43,7 +43,7 @@ import { MemberTypeEnum, defaultValueFromMemberType } from './member_types'
 export default class MemberRow extends Vue {
 
   @Prop(String) name: string
-  @Prop(Object) value: object
+  @Prop() value: any
   @Prop(String) type: MemberTypeEnum
   @Prop(Boolean) optional: boolean
   @Prop(Array) enumValues: string[]

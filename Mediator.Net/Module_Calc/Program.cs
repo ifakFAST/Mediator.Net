@@ -24,6 +24,21 @@ namespace Ifak.Fast.Mediator.Calc
                 e.Cancel = true;
             };
 
+            if (args.Length == 2 && args[1] == "AdapterPython") {
+                StartAdapterPython(port);
+            }
+            else {
+                StartModuleCalc(port);
+            }
+        }
+
+        private static void StartAdapterPython(int port) {
+            var adapter = new Adapter_Python.PythonExternal();
+            ExternalAdapterHost.ConnectAndRunAdapter("localhost", port, adapter);
+        }
+
+        private static void StartModuleCalc(int port) {
+
             var module = new Module();
             module.fLoadCalcTypesFromAssembly = LoadTypesFromAssemblyFile;
 
