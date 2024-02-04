@@ -451,7 +451,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             public override void WriteValueJsonDouble(string dbl) => writer.Write(dbl);
 
-            public override void WriteValueDouble(double dbl) => writer.Write(dbl.ToString("R", CultureInfo.InvariantCulture));
+            public override void WriteValueDouble(double dbl) {
+                if (double.IsNaN(dbl) || double.IsInfinity(dbl)) {
+                    writer.Write("null");
+                }
+                else {
+                    writer.Write(dbl.ToString("R", CultureInfo.InvariantCulture));
+                }
+            }
         }
 
         class CsvDataRecordArrayWriter : DataRecordArrayWriter
