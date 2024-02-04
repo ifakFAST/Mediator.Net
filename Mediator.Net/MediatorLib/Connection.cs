@@ -548,6 +548,14 @@ namespace Ifak.Fast.Mediator
         #endregion
 
         /// <summary>
+        /// Deletes/truncates the history of all variables of all objects contained in the set
+        /// of objects as specified by the given object tree root and sets the value of all these variables
+        /// to their default value with Timestamp.Empty and Quality.Bad.
+        /// </summary>
+        /// <param name="objectID">The object that defines the root of the object tree</param>
+        public abstract Task ResetAllVariablesOfObjectTree(ObjectRef objectID);
+
+        /// <summary>
         /// Invokes a module specific method/function. This will result in a call to
         /// <see cref="ModuleBase.OnMethodCall"/> in the receiving module.
         /// If <see cref="ModuleBase.OnMethodCall"/> returns a failure Result,

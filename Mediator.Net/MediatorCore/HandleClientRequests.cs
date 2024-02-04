@@ -793,6 +793,36 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
+                    case ResetAllVariablesOfObjectTreeReq.ID: {
+
+                            var req = (ResetAllVariablesOfObjectTreeReq)request;
+
+                            ObjectRef obj = req.ObjectID;
+                            string mod = obj.ModuleID;
+                            ModuleState module = ModuleFromIdOrThrow(mod);
+                            ObjectInfo? objInfo = module.GetObjectInfo(obj);
+                            if (objInfo == null) throw new Exception($"Invalid object ref: {obj}");
+                            ObjectInfos allObj = module.AllObjects;
+                            HashSet<ObjectRef> objsWithChildren = module.ObjectsWithChildren;
+                            var varRefs = new List<VariableRef>();
+                            GetAllVarRefsOfObjTree(allObj, objInfo, objsWithChildren, varRefs);
+
+                            var checkPermission = module.GetChecker(info.Origin);
+                            try {
+                                foreach (VariableRef varRef in varRefs) {
+                                    // assume permission if the user is allowed to modify the Name of the object containing the variable
+                                    var member = MemberRef.Make(varRef.Object, "Name");
+                                    checkPermission(member, "");
+                                }
+                            }
+                            catch (Exception) {
+                                throw new Exception("No permission to reset variables!");
+                            }
+
+                            await module.ResetVariablesToDefaultTruncatingHistory(varRefs);
+                            return Result_OK();
+                        }
+
                     case HistorianDeleteVariablesReq.ID: {
 
                             var req = (HistorianDeleteVariablesReq)request;

@@ -42,8 +42,19 @@
               <v-btn text @click="addCalculation">Add Calculation</v-btn>
             </template>
 
-            <v-btn style="min-width: 18px;" text @click="moveObject(true)"  :disabled="selectedItem === null || selectedItem.first"><v-icon>arrow_upward</v-icon></v-btn>
-            <v-btn style="min-width: 18px;" text @click="moveObject(false)" :disabled="selectedItem === null || selectedItem.last"><v-icon>arrow_downward</v-icon></v-btn>
+            <v-btn icon @click="moveObject(true)"  :disabled="selectedItem === null || selectedItem.first"><v-icon>arrow_upward</v-icon></v-btn>
+            <v-btn icon @click="moveObject(false)" :disabled="selectedItem === null || selectedItem.last"><v-icon>arrow_downward</v-icon></v-btn>
+
+            <v-menu bottom left offset-y>
+              <template v-slot:activator="{ on }">
+                <v-btn v-on="on" icon><v-icon>more_vert</v-icon></v-btn>
+              </template>
+              <v-list>
+                <v-list-item @click="resetVariables">
+                  <v-list-item-title>Reset Variables</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
 
           </v-toolbar>
 
@@ -222,6 +233,17 @@ export default class ViewCalc extends Vue {
     dashboard.sendViewRequest('MoveObject', info, (strResponse) => {
       context.initModel(strResponse, id)
     })
+  }
+
+  async resetVariables(): Promise<void> {
+    const confirm = this.$refs.confirm as any
+    const name = this.objectTitle
+    if (await confirm.open('Confirm Reset', 'Do you want to reset all variables (including history) of ' + name + '?', { color: 'red' })) {
+      const id = this.editObject.ID
+      const dashboard = window.parent['dashboardApp']
+      dashboard.sendViewRequest('ResetVariables', JSON.stringify(id), (strResponse) => {
+      })
+    }
   }
 
   async deleteObject() {

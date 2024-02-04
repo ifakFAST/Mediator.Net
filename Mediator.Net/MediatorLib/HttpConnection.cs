@@ -359,6 +359,12 @@ namespace Ifak.Fast.Mediator
             await PostVoid(request);
         }
 
+        public override async Task ResetAllVariablesOfObjectTree(ObjectRef objectID) {
+            var request = MakeSessionRequest<ResetAllVariablesOfObjectTreeReq>();
+            request.ObjectID = objectID;
+            await PostVoid(request);
+        }
+
         public override async Task HistorianDeleteVariables(params VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<HistorianDeleteVariablesReq>();

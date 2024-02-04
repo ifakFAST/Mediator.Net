@@ -103,6 +103,10 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public abstract long DeleteAll();
 
+        public virtual void Truncate() {
+            DeleteAll();
+        }
+
         public abstract long CountAll();
 
         public abstract long CountData(Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter);

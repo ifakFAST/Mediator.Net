@@ -97,6 +97,11 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             }
         }
 
+        public override void Truncate() {
+            using var command = Factory.MakeCommand($"TRUNCATE TABLE {table}", connection);
+            command.ExecuteNonQuery();
+        }
+
         public override long DeleteData(Timestamp[] timestamps) {
             return stmtDeleteOne.RunTransaction(stmt => {
                 long counter = 0;

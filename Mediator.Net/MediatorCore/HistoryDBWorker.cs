@@ -200,6 +200,26 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        public Task Truncate(VariableRef variable) {
+            var promise = new TaskCompletionSource();
+            if (CheckPrecondition(promise)) {
+                queue.Post(new WI_Truncate(variable, promise));
+            }
+            return promise.Task;
+        }
+
+        private class WI_Truncate : WorkItem {
+            public readonly VariableRef Variable;
+
+            public readonly TaskCompletionSource Promise;
+            public override bool IsReadRequest => false;
+
+            public WI_Truncate(VariableRef variable, TaskCompletionSource promise) {
+                Variable = variable;
+                Promise = promise;
+            }
+        }
+
         public Task<VTTQ?> GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
             var promise = new TaskCompletionSource<VTTQ?>();
             if (CheckPrecondition(promise)) {
@@ -285,6 +305,18 @@ namespace Ifak.Fast.Mediator
             return true;
         }
 
+        private bool CheckPrecondition(TaskCompletionSource promise) {
+            if (terminated) {
+                promise.SetException(new Exception("HistoryDBWorker terminated"));
+                return false;
+            }
+            if (!started) {
+                promise.SetException(new Exception("HistoryDBWorker not yet started"));
+                return false;
+            }
+            return true;
+        }
+
         private TimeSeriesDB? db = null;
         private readonly Dictionary<VariableRef, Channel> mapChannels = new Dictionary<VariableRef, Channel>();
 
@@ -315,6 +347,9 @@ namespace Ifak.Fast.Mediator
                 }
                 else if (it is WI_DeleteInterval deleteInterval) {
                     DoDeleteInterval(deleteInterval);
+                }
+                else if (it is WI_Truncate truncate) {
+                    DoTruncate(truncate);
                 }
                 else if (it is WI_Modify modify) {
                     DoModify(modify);
@@ -412,6 +447,23 @@ namespace Ifak.Fast.Mediator
                     }
 
                     promise.SetResult(res);
+                }
+            }
+            catch (Exception exp) {
+                promise.SetException(exp);
+            }
+        }
+
+        private void DoTruncate(WI_Truncate req) {
+            var promise = req.Promise;
+            try {
+                Channel? ch = GetChannelOrNull(req.Variable);
+                if (ch == null) {
+                    promise.SetResult();
+                }
+                else {
+                    ch.Truncate();
+                    promise.SetResult();
                 }
             }
             catch (Exception exp) {

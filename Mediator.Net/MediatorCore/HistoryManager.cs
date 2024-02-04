@@ -140,6 +140,14 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
+        public async Task HistorianTruncate(VariableRef variable) {
+
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
+            CheckExistingVariable(variable);
+            await worker.Truncate(variable);
+            NotifyChange(variable, Timestamp.Empty, Timestamp.Max, HistoryChangeType.Delete);
+        }
+
         public async Task<VTTQ?> HistorianGetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
 
             HistoryDBWorker? worker = WorkerByVarRef(variable);

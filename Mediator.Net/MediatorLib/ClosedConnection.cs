@@ -166,6 +166,10 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("ReadVariablesSyncIgnoreMissing on closed connection");
         }
 
+        public override Task ResetAllVariablesOfObjectTree(ObjectRef objectID) {
+            throw new InvalidOperationException("ResetAllVariablesOfObjectTree on closed connection");
+        }
+
         public override Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             throw new InvalidOperationException("UpdateConfig on closed connection");
         }

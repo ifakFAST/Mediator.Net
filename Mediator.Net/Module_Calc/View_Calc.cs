@@ -67,6 +67,13 @@ namespace Ifak.Fast.Mediator.Calc
                         return await GetModelResult();
                     }
 
+                case "ResetVariables": {
+
+                        ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString() ?? "");
+                        await Connection.ResetAllVariablesOfObjectTree(obj);
+                        return ReqResult.OK();
+                    }
+
                 case "AddObject": {
 
                         AddObjectParams addParams = parameters.Object<AddObjectParams>() ?? throw new Exception("AddObjectParams is null");

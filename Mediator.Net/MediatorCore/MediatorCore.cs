@@ -649,8 +649,33 @@ namespace Ifak.Fast.Mediator
         }
         public void ValidateVariableValuesOrThrow(IList<VariableValue> values) => variables.ValidateVariableValuesOrThrow(values);
         public void ValidateVariableRefsOrThrow(IList<VariableRef> varRefs) => variables.ValidateVariableRefsOrThrow(varRefs);
-        public int UpdateVariableValues(IList<VariableValue> values) {
+
+        public async Task ResetVariablesToDefaultTruncatingHistory(IList<VariableRef> varRefs) {
+
+            int N = varRefs.Count;
+            logger.Info($"Resetting {N} variables to default and truncating history...");
+
+            var variableValues = new List<VariableValue>();
+            foreach (VariableRef varRef in varRefs) {
+                Variable? v = GetVarDescription(varRef);
+                if (v != null) {
+                    VTQ vtq = new(Timestamp.Empty, Quality.Bad, v.DefaultValue);
+                    variableValues.Add(new VariableValue(varRef, vtq));
+                }
+            }
+            UpdateVariableValues(variableValues, historyUpdate: false);
+
+            for (int i = 0; i < varRefs.Count; i++) {
+                VariableRef varRef = varRefs[i];
+                logger.Info($"Truncating history of variable {i+1}/{N}: {varRef} ...");
+                await core.history.HistorianTruncate(varRef);
+            }
+        }
+
+        public int UpdateVariableValues(IList<VariableValue> values, bool historyUpdate = true) {
+
             if (values.Count > 0) {
+
                 VariableValuePrev[] valuesWithPrev = variables.UpdateVariableValues(values);
 
                 //if (values.Count == 1) {
@@ -667,7 +692,11 @@ namespace Ifak.Fast.Mediator
                 //}
 
                 core.reqHandler.OnVariableValuesChanged(valuesWithPrev, GetObjectParent);
-                return core.history.OnVariableValuesChanged(Config.ID, valuesWithPrev);
+
+                if (historyUpdate)
+                    return core.history.OnVariableValuesChanged(Config.ID, valuesWithPrev);
+
+                return 0;
             }
             else {
                 return 0;
