@@ -2,6 +2,7 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using Ifak.Fast.Json.Linq;
 using System;
 using System.Linq;
 using System.Xml;
@@ -41,6 +42,21 @@ namespace Ifak.Fast.Mediator
         public readonly string JSON => jsonOrNull ?? "null";
 
         public readonly string? JsonOrNull => jsonOrNull;
+
+        /// <summary>
+        /// Query using JSONPath expression. Returns an empty DataValue if no match is found.
+        /// </summary>
+        /// <param name="key">JSONPath expression</param>
+        /// <returns></returns>
+        public DataValue this[string key] {
+            get {
+                if (IsEmpty) return Empty;
+                JToken token = StdJson.JTokenFromString(jsonOrNull)!;
+                JToken? sub = token.SelectToken(key, errorWhenNoMatch: false);
+                string strJson = StdJson.ObjectToString(sub, indented: true);
+                return FromJSON(strJson);
+            }
+        }
 
         public readonly override string ToString() => JSON;
 
@@ -134,7 +150,7 @@ namespace Ifak.Fast.Mediator
 
         public static DataValue FromObject(object? obj, bool indented = false) => FromJSON(StdJson.ObjectToString(obj, indented: indented));
 
-        public static DataValue FromJSON(string json) => string.IsNullOrWhiteSpace(json) || json == "null" ? new DataValue(null) : new DataValue(json);
+        public static DataValue FromJSON(string? json) => string.IsNullOrWhiteSpace(json) || json == "null" ? new DataValue(null) : new DataValue(json);
 
         public static DataValue FromDataType(DataType dt, int dimension) {
             if (dimension < 0) throw new ArgumentException(nameof(dimension) + " may not be negative", nameof(dimension));

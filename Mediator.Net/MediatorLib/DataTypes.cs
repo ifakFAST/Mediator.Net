@@ -1049,7 +1049,7 @@ namespace Ifak.Fast.Mediator
     }
 
     [JsonConverter(typeof(TimeseriesEntryConverter))]
-    public struct TimeseriesEntry : IEquatable<TimeseriesEntry> {
+    public struct TimeseriesEntry : IEquatable<TimeseriesEntry>, IComparable {
 
         public Timestamp Time { get; set; }
         public DataValue Value { get; set; }
@@ -1057,6 +1057,11 @@ namespace Ifak.Fast.Mediator
         public TimeseriesEntry(Timestamp time, double value) {
             this.Time = time;
             this.Value = DataValue.FromDouble(value);
+        }
+
+        public TimeseriesEntry(Timestamp time, double? value) {
+            this.Time = time;
+            this.Value = value.HasValue ? DataValue.FromDouble(value.Value) : DataValue.Empty;
         }
 
         public TimeseriesEntry(Timestamp time, DataValue value) {
@@ -1081,6 +1086,10 @@ namespace Ifak.Fast.Mediator
                 return Equals(te);
             }
             return false;
+        }
+
+        public readonly int CompareTo(object obj) {
+            return Time.CompareTo(((TimeseriesEntry)obj).Time);
         }
     }
 }
