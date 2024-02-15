@@ -67,6 +67,10 @@ def _verifyOptionalInt(name: str, value: Optional[int]) -> Optional[int]:
         return int(value)
     return value
 
+def _verifyString(name: str, value: str) -> None:
+    if not isinstance(value, str):
+        raise Exception(f"{name} must be a str but is {type(value).__name__}")
+
 def _verifyOptionalString(name: str, value: Optional[str]) -> None:
     if value is not None and not isinstance(value, str):
         raise Exception(f"{name} must be a str or None but is {type(value).__name__}")
@@ -181,6 +185,22 @@ class InputString(MyInputBase):
         if self.HasValidValue:
             return self.Value
         return default
+
+
+class InputJson(MyInputBase):
+
+    def __init__(self, name: str, defaultValue: str) -> None:
+        _verifyString(f"Input {name}: defaultValue", defaultValue)
+        super().__init__(name, "", Ifak.Fast.Mediator.DataType.JSON, 1, Ifak.Fast.Mediator.DataValue.FromJSON(defaultValue))
+        self._defaultValue: str = defaultValue
+
+    @property
+    def DefaultValue(self) -> str:
+        return self._defaultValue
+
+    @property
+    def Value(self) -> str:
+        return self.VTQ.V.JSON
 
 
 class InputTimestamp(MyInputBase):

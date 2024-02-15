@@ -295,6 +295,32 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class InputJson : InputBase {
+
+        public string DefaultValue { get; private set; }
+
+        public string Value {
+            get {
+                return VTQ.V.JSON;
+            }
+        }
+
+        public string this[string jsonPath] {
+            get {
+                DataValue dv = DataValue.FromJSON(Value);
+                return dv[jsonPath].JSON;
+            }
+        }
+
+        public static implicit operator string(InputJson d) => d.Value;
+
+        public InputJson(string name, string defaultValue) :
+            base(name: name, unit: "", type: DataType.JSON, dimension: 1, defaultValue: DataValue.FromJSON(defaultValue)) {
+            if (!StdJson.IsValidJson(defaultValue)) throw new ArgumentException($"InputJson {name}: defaultValue is not a valid JSON string");
+            DefaultValue = defaultValue;
+        }
+    }
+
     public class InputTimestamp : InputBase {
 
         public Timestamp? DefaultValue { get; private set; }
