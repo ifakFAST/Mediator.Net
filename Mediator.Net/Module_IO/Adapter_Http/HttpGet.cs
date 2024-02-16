@@ -80,7 +80,9 @@ public class HttpGet : AdapterBase {
                 vtqs[i] = VTQ.Make(dv, Now, Quality.Good);
             }
             catch (Exception exp) {
-                PrintLine($"Error reading DataItem {dataItem.ID}: {exp.Message}");
+                bool hasInner = exp.InnerException != null;
+                string msg = hasInner ? exp.InnerException!.Message : exp.Message;
+                PrintLine($"Error reading DataItem {dataItem.ID}: {msg}");
             }
         }
 
