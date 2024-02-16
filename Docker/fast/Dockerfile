@@ -7,6 +7,8 @@ COPY ./Mediator_Linux64.tar.gz /app
 
 RUN apt-get update && \
     apt-get install -y tar libicu-dev && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates && \
     tar -xzf Mediator_Linux64.tar.gz && \
     rm Mediator_Linux64.tar.gz && \
     rm -rf /var/lib/apt/lists/*
