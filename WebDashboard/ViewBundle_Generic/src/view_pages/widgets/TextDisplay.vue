@@ -93,10 +93,7 @@ export default class TextDisplay extends Vue {
       return this.text
     }
 
-    return marked(this.config.Text || '', {
-      mangle: false,
-      headerIds: false,
-    })
+    return marked.parse(this.config.Text || '') as string
   }
 
   get theHtmlStringEdit(): string {
@@ -105,10 +102,7 @@ export default class TextDisplay extends Vue {
       return this.text
     }
 
-    return marked(this.text || '', {
-      mangle: false,
-      headerIds: false,
-    })
+    return marked.parse(this.config.Text || '') as string
   }
 
   onContextMenu(e: any): void {
