@@ -2,7 +2,6 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,8 +31,11 @@ namespace Ifak.Fast.Mediator.Dashboard
         private DashboardModel model = new DashboardModel();
         private ViewType[] viewTypes = new ViewType[0];
 
-        public Session() {
+        private readonly string configPath;
+
+        public Session(string configPath) {
             ID = Guid.NewGuid().ToString().Replace("-", "");
+            this.configPath = configPath;
         }
 
         public async Task SetConnection(Connection connection, DashboardModel model, string moduleID, ViewType[] viewTypes) {
@@ -491,6 +493,29 @@ namespace Ifak.Fast.Mediator.Dashboard
                     return;
                 }
             }
+        }
+
+        public const string WebAssets = "WebAssets";
+
+        public async Task<string> SaveWebAsset(string fileExtension, byte[] data) {
+            
+            string path = Path.Combine(configPath, WebAssets);
+            Directory.CreateDirectory(path);
+
+            string checksum = CalculateSHA256(data);
+
+            string fileName = checksum + (fileExtension.StartsWith(".") ? fileExtension : "." + fileExtension);
+            string fullFileName = Path.Combine(path, fileName);
+
+            await File.WriteAllBytesAsync(fullFileName, data);
+
+            return $"/{WebAssets}/" + fileName;
+        }
+
+        private static string CalculateSHA256(byte[] input) {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            byte[] hash = sha256.ComputeHash(input);
+            return BitConverter.ToString(hash).Replace("-", "");
         }
     }
 }

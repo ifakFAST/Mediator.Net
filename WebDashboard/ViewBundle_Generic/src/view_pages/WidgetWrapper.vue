@@ -34,6 +34,11 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></text-display>
 
+    <image-display v-if="type === 'ImageDisplay'" 
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></image-display>
+
   </v-card>
 
 </template>
@@ -48,6 +53,7 @@ import VarTable from './widgets/VarTable.vue'
 import ConfigEditNumeric from './widgets/config_edit/ConfigEditNumeric.vue'
 import PageActionsLogView from './widgets/PageActionsLogView.vue'
 import TextDisplay from './widgets/TextDisplay.vue'
+import ImageDisplay from './widgets/ImageDisplay.vue'
 import { TimeRange } from '../utils'
 
 @Component({
@@ -58,6 +64,7 @@ import { TimeRange } from '../utils'
     ConfigEditNumeric,
     PageActionsLogView,
     TextDisplay,
+    ImageDisplay,
   },
 })
 export default class WidgetWrapper extends Vue {

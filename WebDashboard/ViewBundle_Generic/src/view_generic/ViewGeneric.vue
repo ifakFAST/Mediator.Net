@@ -223,7 +223,7 @@ export default class ViewGeneric extends Vue {
     }, 500)
   }
 
-  async onImport(id: string): Promise<void> {
+  onImport(id: string): void {
     const inputElement = document.createElement('input')
     inputElement.type = 'file'
     inputElement.accept = '.xlsx'

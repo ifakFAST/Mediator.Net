@@ -22,10 +22,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
     public interface WidgetContext
     {
         Task SendEventToUI(string eventName, object payload);
-        Task SaveWidgetConfiguration(object newConfig);        
+        Task SaveWidgetConfiguration(object newConfig);
         Task LogPageAction(string action);
         VariableRef GetPageActionLogVariable();
         Task<LogAction[]> GetLoggedPageActions(int limit);
+        Task<string> SaveWebAsset(string fileExtension, byte[] data);
     }
 
     public class EmptyWidgetContext : WidgetContext
@@ -48,6 +49,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public Task<LogAction[]> GetLoggedPageActions(int limit) {
             throw new InvalidOperationException("GetLoggedPageActions on empty WidgetContext");
+        }
+
+        public Task<string> SaveWebAsset(string fileExtension, byte[] data) { 
+            throw new InvalidOperationException("SaveWebAsset on empty WidgetContext");
         }
     }
 

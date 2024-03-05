@@ -15,6 +15,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     {
         Task SendEventToUI(string eventName, object payload);
         Task SaveViewConfiguration(DataValue newConfig);
+        Task<string> SaveWebAsset(string fileExtension, byte[] data);
     }
 
     public class EmptyViewContext : ViewContext
@@ -25,6 +26,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public Task SendEventToUI(string eventName, object payload) {
             throw new InvalidOperationException("SendEventToUI on empty ViewContext");
+        }
+
+        public Task<string> SaveWebAsset(string fileExtension, byte[] data) {
+            throw new InvalidOperationException("SaveWebAsset on empty ViewContext");
         }
     }
 

@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.FileProviders;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -35,6 +36,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private static SynchronizationContext? theSyncContext = null;
         private WebApplication? webHost = null;
         private bool isRunning = false;
+        private string configPath = "";
 
         public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
             if (obj is DataValue dv && parent is View view) {
@@ -60,6 +62,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             await base.Init(info, restoreVariableValues, notifier, moduleThread);
 
+            configPath = Path.GetDirectoryName(base.modelFileName) ?? "";
             var config = info.GetConfigReader();
 
             clientPort = info.LoginPort;
@@ -151,6 +154,20 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             app.UseMiddleware<ModifyHtmlMiddleware>();
             app.UseStaticFiles();
+
+            string webAsstetsDir = Path.Combine(configPath, Session.WebAssets);
+
+            try {
+                Directory.CreateDirectory(webAsstetsDir);
+
+                app.UseStaticFiles(new StaticFileOptions {
+                    FileProvider = new PhysicalFileProvider(webAsstetsDir),
+                    RequestPath = $"/{Session.WebAssets}"
+                });
+            }
+            catch (Exception exp) {
+                Console.Error.WriteLine($"Failed to create directory for web assets: {exp.Message}");
+            }
 
             app.UseCors(builder => {
                 builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader();
@@ -338,7 +355,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
                     }
 
-                    var session = new Session();
+                    var session = new Session(configPath);
                     Connection connection;
                     try {
                         const int timeoutSeconds = 15 * 60;

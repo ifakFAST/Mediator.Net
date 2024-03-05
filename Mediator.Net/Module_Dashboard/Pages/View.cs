@@ -482,6 +482,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return page.OnAlarmOrEvents(alarmOrEvents);
         }
 
+        internal Task<string> SaveWebAsset(string fileExtension, byte[] data) {
+            return Context.SaveWebAsset(fileExtension, data);
+        }
     }
 
     public class PageState
@@ -700,6 +703,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             public VariableRef GetPageActionLogVariable() {
                 return view.GetPageActionLogVariable(pageID);
+            }
+
+            public Task<string> SaveWebAsset(string fileExtension, byte[] data) {
+                return view.SaveWebAsset(fileExtension, data);
             }
         }
     }
