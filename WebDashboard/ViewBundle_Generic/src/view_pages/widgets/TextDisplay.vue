@@ -90,7 +90,7 @@ export default class TextDisplay extends Vue {
   get theHtmlString(): string {
 
     if (this.config.Mode === 'HTML') {
-      return this.text
+      return this.config.Text
     }
 
     return marked.parse(this.config.Text || '') as string
@@ -102,7 +102,7 @@ export default class TextDisplay extends Vue {
       return this.text
     }
 
-    return marked.parse(this.config.Text || '') as string
+    return marked.parse(this.text || '') as string
   }
 
   onContextMenu(e: any): void {
