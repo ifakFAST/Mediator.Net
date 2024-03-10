@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Rewrite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Primitives;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -158,15 +159,14 @@ namespace Ifak.Fast.Mediator.Dashboard
             string webAsstetsDir = Path.Combine(configPath, Session.WebAssets);
 
             try {
-                Directory.CreateDirectory(webAsstetsDir);
 
                 app.UseStaticFiles(new StaticFileOptions {
-                    FileProvider = new PhysicalFileProvider(webAsstetsDir),
+                    FileProvider = new MyPhysicalFileProvider(webAsstetsDir),
                     RequestPath = $"/{Session.WebAssets}"
                 });
             }
             catch (Exception exp) {
-                Console.Error.WriteLine($"Failed to create directory for web assets: {exp.Message}");
+                Console.Error.WriteLine($"Failed to serve directory for web assets: {exp.Message}");
             }
 
             app.UseCors(builder => {
@@ -702,6 +702,43 @@ namespace Ifak.Fast.Mediator.Dashboard
                     .Replace("!PLACEHOLDER_TITLE!",  _options.PageTitle)
                     .Replace("!PLACEHOLDER_HEADER!", _options.Header)
                     .Replace("!PLACEHOLDER_LOGIN!",  _options.LoginTitle);
+        }
+    }
+
+
+
+    public sealed class MyPhysicalFileProvider : IFileProvider {
+
+        private readonly string _root;
+        private PhysicalFileProvider? _physicalFileProvider;
+
+        public MyPhysicalFileProvider(string root) {
+            _root = root;
+            EnsurePhysicalFileProvider();
+        }
+
+        private void EnsurePhysicalFileProvider() {
+            if (Directory.Exists(_root)) {
+                _physicalFileProvider = new PhysicalFileProvider(_root);
+            }
+        }
+
+        public IDirectoryContents GetDirectoryContents(string subpath) {
+            EnsurePhysicalFileProvider();
+            PhysicalFileProvider? pfp = _physicalFileProvider;
+            return pfp != null ? pfp.GetDirectoryContents(subpath) : NotFoundDirectoryContents.Singleton;
+        }
+
+        public IFileInfo GetFileInfo(string subpath) {
+            EnsurePhysicalFileProvider();
+            PhysicalFileProvider? pfp = _physicalFileProvider;
+            return pfp != null ? pfp.GetFileInfo(subpath) : new NotFoundFileInfo(subpath);
+        }
+
+        public IChangeToken Watch(string filter) {
+            EnsurePhysicalFileProvider();
+            PhysicalFileProvider? pfp = _physicalFileProvider;
+            return pfp != null ? pfp.Watch(filter) : NullChangeToken.Singleton;
         }
     }
 
