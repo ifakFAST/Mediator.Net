@@ -61,9 +61,18 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         string pythonDLL = config.GetString("python-dll");
         string libDirs = config.GetOptionalString("python-library-directories", "");
 
+        if (string.IsNullOrWhiteSpace(pythonDLL)) {
+            throw new Exception("python-dll not configured");
+        }
+
+        pythonDLL = Path.GetFullPath(pythonDLL);
+
+        if (!File.Exists(pythonDLL)) throw new Exception($"python-dll does not exist: {pythonDLL}");
+
         string[] libraryDirs = libDirs
             .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
             .ToArray();
 
         string[] absoluteLibDirs = libraryDirs.Select(Path.GetFullPath).ToArray();
@@ -124,7 +133,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
 
                     PyObject pyT = (t.JavaTicks/1000.0).ToPython();
                     PyObject pyDT = dt.TotalSeconds.ToPython();
-                    Console.WriteLine($"Python step({t}, {dt})...");
+                    // Console.WriteLine($"Python step({t}, {dt})...");
 
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     try {
@@ -138,8 +147,8 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
                         throw new Exception($"{name}: {msg}, {FirstLine(stackTrace).Trim()}");
                     }
                     sw.Stop();
-                    Console.WriteLine($"Python step({t}, {dt}) completed in {sw.ElapsedMilliseconds} ms");
-                    Console.WriteLine();
+                    // Console.WriteLine($"Python step({t}, {dt}) completed in {sw.ElapsedMilliseconds} ms");
+                    // Console.WriteLine();
                 }
             };
 
