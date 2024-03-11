@@ -12,11 +12,13 @@
             <ImplClass>Ifak.Fast.Mediator.EventLog.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_EventLog.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="EventLog" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_EventLog.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=DELETE</string>
                         <string>page_size=8192</string>
                         <string>cache_size=2000</string>
                     </Settings>
@@ -29,10 +31,11 @@
             <ImplClass>Ifak.Fast.Mediator.Dashboard.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file"  value="./Config/Model_Dashboard.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./Bin/WebRoot_Dashboard"/>
                 <NamedValue name="view-assemblies">
-                    ./Bin/MediatorCore/Module_EventLog.dll
-                    ./Bin/MediatorCore/Module_Calc.dll
+                    ./Bin/Mediator/Module_EventLog.dll
+                    ./Bin/Mediator/Module_Calc.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
@@ -58,12 +61,14 @@
             <ImplClass>Ifak.Fast.Mediator.IO.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_IO.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
@@ -77,14 +82,19 @@
             <ImplClass>Ifak.Fast.Mediator.Calc.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_Calc.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
+                <NamedValue name="adapter-assemblies" value=""/>
                 <NamedValue name="simba-location" value=""/>
                 <NamedValue name="csharp-libraries" value="./Config/CSharpLib.cs"/>
-                <NamedValue name="adapter-assemblies" value=""/>
+                <NamedValue name="csharp-cache-scripts" value="true"/>
+                <NamedValue name="python-dll" value="C:\Users\UserName\AppData\Local\Programs\Python\Python312\python312.dll"/>
+                <NamedValue name="python-library-directories" value=""/> <!-- Separated by ';', will be appended to sys.path -->
             </Config>
             <HistoryDBs>
                 <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_Calc.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>                    
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
@@ -98,18 +108,21 @@
             <ImplClass>Ifak.Fast.Mediator.Publish.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file" value="./Config/Model_Publish.xml"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
+                <NamedValue name="cert-dir" value="./Config"/>
+                <NamedValue name="config-var-file" value="./Config/config_vars.json"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="PUB" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_Pub.db</ConnectionString>
                     <Settings>
+                        <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
                 </HistoryDB>
             </HistoryDBs>
         </Module>
-        
     </Modules>
     
     <UserManagement>

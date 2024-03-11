@@ -12,6 +12,7 @@
     </Folders>
     <Calculations>
       <Calculation id="cs" name="Script_Smooth" type="CSharp" enabled="true">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>2 s</Cycle>
         <Definition>using Std;
 
@@ -54,6 +55,7 @@ class Script {
         </States>
       </Calculation>
       <Calculation id="Calc_Alarms" name="Script_Alarms" type="CSharp" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>5 s</Cycle>
         <Definition>using Std;
 
@@ -85,6 +87,7 @@ class Script {
         </States>
       </Calculation>
       <Calculation id="Calc_EventLog" name="Script_EventLog" type="CSharp" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>5 s</Cycle>
         <Definition>using Std;
 
@@ -117,6 +120,38 @@ class Script {
           </Input>
         </Inputs>
         <Outputs />
+      </Calculation>
+      <Calculation id="Script_Python" name="Script_Python" type="Python" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition>
+# To make Python scripts work, you first have to set the "python-dll" 
+# property in Config\AppConfig.xml
+
+# For details on what Input, State and Output types are available, 
+# look at file Bin\Mediator\Adapter_Python\FastISO.py
+
+x = Input("X", unit = "mg/L", defaultValue = 21.0)
+y = Output("Y") 
+
+def initialize(initParams):
+    name = initParams.Calculation.Name
+    print("initialize " + name)
+
+def step(t: datetime, dt: timedelta):
+    print(x.Value)
+    y.Value = 2 * x.Value
+
+def shutdown():
+    print("shutdown")</Definition>
+        <Inputs>
+          <Input id="x" name="X" unit="mg/L">
+            <Constant>21.0</Constant>
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="y" name="Y" />
+        </Outputs>
       </Calculation>
     </Calculations>
   </RootFolder>

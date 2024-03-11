@@ -121,9 +121,9 @@ class MyInputBase(PyInputBase):
 
 class InputFloat64(MyInputBase):
 
-    def __init__(self, name: str, defaultValue: Optional[float]) -> None:
+    def __init__(self, name: str, unit: str = "", defaultValue: Optional[float] = 0.0) -> None:
         defaultValue = _verifyOptionalFloat(f"Input {name}: defaultValue", defaultValue)
-        super().__init__(name, "", Ifak.Fast.Mediator.DataType.Float64, 1, Ifak.Fast.Mediator.DataValue.FromJSON(json.dumps(defaultValue)))
+        super().__init__(name, unit, Ifak.Fast.Mediator.DataType.Float64, 1, Ifak.Fast.Mediator.DataValue.FromJSON(json.dumps(defaultValue)))
         self._defaultValue: Optional[float] = defaultValue
 
     @property
