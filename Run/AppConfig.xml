@@ -9,7 +9,7 @@
 
         <Module id="EventLog" name="EventLog" enabled="true" concurrentInit="false">
             <ExternalCommand>dotnet</ExternalCommand>
-            <ExternalArgs>../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net7.0/Module_EventLog.dll {PORT}</ExternalArgs>            
+            <ExternalArgs>../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net8.0/Module_EventLog.dll {PORT}</ExternalArgs>            
             <Config>
                 <NamedValue name="model-file" value="Model_EventLog.xml"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>
@@ -27,14 +27,14 @@
         
         <Module id="Dashboard" name="Dashboard" enabled="true" concurrentInit="false">
             <ExternalCommand>dotnet</ExternalCommand>
-            <ExternalArgs>../Mediator.Net/Module_Dashboard/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Dashboard.dll {PORT}</ExternalArgs>
+            <ExternalArgs>../Mediator.Net/Module_Dashboard/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Dashboard.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file"  value="Model_Dashboard.xml"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
-                    ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net7.0/Module_EventLog.dll
-                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Calc.dll
+                    ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net8.0/Module_EventLog.dll
+                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Calc.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
@@ -48,7 +48,7 @@
         <Module id="IO" name="IO" enabled="true" concurrentInit="false">
             <VariablesFileName>Var_IO.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
-            <ExternalArgs>../Mediator.Net/Module_IO/bin/{RELEASE_OR_DEBUG}/net7.0/Module_IO.dll {PORT}</ExternalArgs>
+            <ExternalArgs>../Mediator.Net/Module_IO/bin/{RELEASE_OR_DEBUG}/net8.0/Module_IO.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_IO.xml"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>
@@ -68,7 +68,7 @@
         <Module id="CALC" name="Calc" enabled="true" concurrentInit="false">
             <VariablesFileName>Var_Calc.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
-            <ExternalArgs>../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Calc.dll {PORT}</ExternalArgs>
+            <ExternalArgs>../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Calc.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_Calc.xml"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>
@@ -93,7 +93,7 @@
         <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
             <VariablesFileName>Var_Pub.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
-            <ExternalArgs>../Mediator.Net/Module_Publish/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Publish.dll {PORT}</ExternalArgs>
+            <ExternalArgs>../Mediator.Net/Module_Publish/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Publish.dll {PORT}</ExternalArgs>
             <Config>
                 <NamedValue name="model-file" value="Model_Publish.xml"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>

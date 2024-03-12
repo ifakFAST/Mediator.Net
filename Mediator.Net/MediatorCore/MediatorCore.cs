@@ -22,14 +22,14 @@ namespace Ifak.Fast.Mediator
 {
     public class MediatorCore {
 
-        private static Logger logger = LogManager.GetLogger("Mediator.Core");
+        private static readonly Logger logger = LogManager.GetLogger("Mediator.Core");
 
         internal readonly HandleClientRequests reqHandler;
-        internal ModuleState[] modules = new ModuleState[0];
-        internal UserManagement userManagement = new UserManagement();
-        internal List<Location> locations = new List<Location>();
+        internal ModuleState[] modules = [];
+        internal UserManagement userManagement = new();
+        internal List<Location> locations = [];
 
-        internal readonly HistoryManager history = new HistoryManager();
+        internal readonly HistoryManager history = new();
         private int listenPort = 8080;
 
         private bool requestShutdown = false;
@@ -38,7 +38,7 @@ namespace Ifak.Fast.Mediator
 
         private static SynchronizationContext? theSyncContext = null;
 
-        private readonly Dictionary<string, ReqDef> mapRequests = new Dictionary<string, ReqDef>();
+        private readonly Dictionary<string, ReqDef> mapRequests = [];
 
         public MediatorCore() {
             reqHandler = new HandleClientRequests(this);
@@ -78,7 +78,7 @@ namespace Ifak.Fast.Mediator
             app.UseWebSockets(webSocketOptions);
             app.Run((context) => {
                 //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
-                var promise = new TaskCompletionSource<bool>();
+                var promise = new TaskCompletionSource();
                 theSyncContext!.Post(_ => {
                     Task task = HandleClientRequest(context);
                     task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
@@ -186,7 +186,7 @@ namespace Ifak.Fast.Mediator
                     LoginServer = "localhost",
                     LoginPort = listenPort,
                     DataFolder = GetDataFolder(module.Config),
-                    Configuration = configItems.ToArray(),
+                    Configuration = [.. configItems],
                     InProcApi = reqHandler,
                 };
                 await module.Instance.Init(initInfo, restoreVariableValues, module, null);
@@ -214,7 +214,7 @@ namespace Ifak.Fast.Mediator
         private void StartRunningModule(ModuleState module) {
 
             module.State = State.Running;
-            Func<bool> fShutdown = () => { return module.State == State.ShutdownStarted; };
+            bool fShutdown() => module.State == State.ShutdownStarted;
             Task runTask = module.Instance
                 .Run(fShutdown)
                 .ContinueOnMainThread((task) => {
@@ -307,7 +307,7 @@ namespace Ifak.Fast.Mediator
                 Log_Exception(Severity.Alarm, exp, "ModuleRestartError", $"Restart of module '{module.Name}' failed: {exp.Message}", module.ID);
                 int delayMS = Math.Min(10*1000, (tryCounter + 1) * 1000);
                 await Task.Delay(delayMS);
-                Task ignored = RestartModule(module, exp.Message, tryCounter + 1);
+                _ = RestartModule(module, exp.Message, tryCounter + 1);
             }
         }
 
@@ -350,20 +350,19 @@ namespace Ifak.Fast.Mediator
 
                 RequestBase obj = await GetRequestObject(request, reqDef);
 
-                using (ReqResult result = await reqHandler.Handle(obj, starting)) {
+                using ReqResult result = await reqHandler.Handle(obj, starting);
 
-                    //logger.Info(result.AsString());
+                //logger.Info(result.AsString());
 
-                    response.StatusCode = result.StatusCode;
-                    response.ContentLength = result.Bytes.Length;
-                    response.ContentType = result.ContentType;
+                response.StatusCode = result.StatusCode;
+                response.ContentLength = result.Bytes.Length;
+                response.ContentType = result.ContentType;
 
-                    try {
-                        await result.Bytes.CopyToAsync(response.Body);
-                    }
-                    catch (Exception) {
-                        response.StatusCode = 500;
-                    }
+                try {
+                    await result.Bytes.CopyToAsync(response.Body);
+                }
+                catch (Exception) {
+                    response.StatusCode = 500;
                 }
             }
             catch (Exception exp) {
@@ -372,37 +371,35 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private async Task<RequestBase> GetRequestObject(HttpRequest request, ReqDef def) {
+        private static async Task<RequestBase> GetRequestObject(HttpRequest request, ReqDef def) {
 
             const string mediaBinary = "application/octet-stream";
 
-            using (var memoryStream = MemoryManager.GetMemoryStream("HandleClientRequest")) {
+            using var memoryStream = MemoryManager.GetMemoryStream("HandleClientRequest");
 
-                using (var body = request.Body) {
-                    await body.CopyToAsync(memoryStream).ConfigureAwait(false);
-                }
-                memoryStream.Seek(0, SeekOrigin.Begin);
-
-                RequestBase ret;
-
-                bool binaryRequest = request.ContentType == mediaBinary;
-                if (binaryRequest) {
-                    ret = def.MakeRequestObject();
-                    using (var reader = new BinaryReader(memoryStream, Encoding.UTF8, leaveOpen: false)) {
-                        BinSerializable x = (BinSerializable)ret;
-                        x.BinDeserialize(reader);
-                    }
-                }
-                else {
-                    ret = (RequestBase)(StdJson.ObjectFromUtf8Stream(memoryStream, def.ReqType) ?? throw new Exception("Request via JSON is null"));
-                }
-
-                var accept = request.Headers["Accept"];
-                bool binaryResponse = accept.Any(a => a != null && a.Contains(mediaBinary));
-                ret.ReturnBinaryResponse = binaryResponse;
-
-                return ret;
+            using (var body = request.Body) {
+                await body.CopyToAsync(memoryStream).ConfigureAwait(false);
             }
+            memoryStream.Seek(0, SeekOrigin.Begin);
+
+            RequestBase ret;
+
+            bool binaryRequest = request.ContentType == mediaBinary;
+            if (binaryRequest) {
+                ret = def.MakeRequestObject();
+                using var reader = new BinaryReader(memoryStream, Encoding.UTF8, leaveOpen: false);
+                BinSerializable x = (BinSerializable)ret;
+                x.BinDeserialize(reader);
+            }
+            else {
+                ret = (RequestBase)(StdJson.ObjectFromUtf8Stream(memoryStream, def.ReqType) ?? throw new Exception("Request via JSON is null"));
+            }
+
+            var accept = request.Headers.Accept;
+            bool binaryResponse = accept.Any(a => a != null && a.Contains(mediaBinary));
+            ret.ReturnBinaryResponse = binaryResponse;
+
+            return ret;
         }
 
         private async Task HandleClientWebSocket(WebSocket socket) {
@@ -445,7 +442,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        internal void Notify_VariableValuesChanged(ModuleState module, List<VariableValue> values) {
+        internal static void Notify_VariableValuesChanged(ModuleState module, List<VariableValue> values) {
             if (logger.IsDebugEnabled) {
                 logger.Debug("VariableValuesChanged:\n\t" + string.Join("\n\t", values.Select(x => x.ToString())));
             }
@@ -485,18 +482,14 @@ namespace Ifak.Fast.Mediator
                     if (user != null) {
                         origin.Name = user.Name;
                     }
-                    else if (origin.Name == null) {
-                        origin.Name = "";
-                    }
+                    else origin.Name ??= "";
                 }
                 else if (origin.Type == OriginType.Module) {
                     var theModule = modules.FirstOrDefault(m => m.ID == id);
                     if (theModule != null) {
                         origin.Name = theModule.Name;
                     }
-                    else if (origin.Name == null) {
-                        origin.Name = "";
-                    }
+                    else origin.Name ??= "";
                 }
                 initiator = origin;
             }
@@ -583,31 +576,21 @@ namespace Ifak.Fast.Mediator
         }
     }
 
-    internal class ModuleState : Notifier
+    internal class ModuleState(Module config, MediatorCore core) : Notifier
     {
-        public Logger logger;
-        public Module Config { get; private set; }
-        private readonly MediatorCore core;
-        private ModuleVariables variables;
+        public Logger logger = LogManager.GetLogger(config.Name);
+        public Module Config { get; private set; } = config;
+        private readonly MediatorCore core = core;
+        private ModuleVariables variables = new(config.ID, config.Name, config.VariablesFileName);
 
         public bool IsRestarting = false;
-        private readonly ModuleConfigPermission configPermission;
-
-        public ModuleState(Module config, MediatorCore core) {
-            this.logger = LogManager.GetLogger(config.Name);
-            this.Config = config;
-            this.core = core;
-            this.State = State.Created;
-            this.Password = Guid.NewGuid().ToString();
-            this.variables = new ModuleVariables(config.ID, config.Name, config.VariablesFileName);
-            this.configPermission = new ModuleConfigPermission(config.ID);
-        }
+        private readonly ModuleConfigPermission configPermission = new(config.ID);
 
         public List<ObjectInfo> AllObjects => allObjects;
         public HashSet<ObjectRef> ObjectsWithChildren => objectsWithChildren;
-        private List<ObjectInfo> allObjects = new List<ObjectInfo>();
-        private Dictionary<ObjectRef, ObjectInfo> mapObjects = new Dictionary<ObjectRef, ObjectInfo>();
-        private HashSet<ObjectRef> objectsWithChildren = new HashSet<ObjectRef>();
+        private List<ObjectInfo> allObjects = [];
+        private readonly Dictionary<ObjectRef, ObjectInfo> mapObjects = [];
+        private readonly HashSet<ObjectRef> objectsWithChildren = [];
         private SingleThreadModule? instance;
         private MetaInfos? meta;
 
@@ -703,8 +686,8 @@ namespace Ifak.Fast.Mediator
             }
         }
         internal ObjectRef? GetObjectParent(ObjectRef o) {
-            if (!mapObjects.ContainsKey(o)) return null;
-            ObjectInfo info = mapObjects[o];
+            if (!mapObjects.TryGetValue(o, out ObjectInfo? value)) return null;
+            ObjectInfo info = value;
             if (info.Parent.HasValue) return info.Parent.Value.Object;
             return null;
         }
@@ -719,8 +702,8 @@ namespace Ifak.Fast.Mediator
         public string ID => Config.ID;
         public string Name => Config.Name;
         public bool Enabled => Config.Enabled;
-        public State State { get; set; }
-        public string Password { get; private set; }
+        public State State { get; set; } = State.Created;
+        public string Password { get; private set; } = Guid.NewGuid().ToString();
         public string LastError { get; set; } = "";
         public SingleThreadModule Instance {
             get {
@@ -758,7 +741,7 @@ namespace Ifak.Fast.Mediator
         private readonly SynchronizationContext syncContext = SynchronizationContext.Current!;
 
         public void Notify_VariableValuesChanged(List<VariableValue> values) {
-            syncContext.Post(delegate (object? state) { core.Notify_VariableValuesChanged(this, values); }, null);
+            syncContext.Post(delegate (object? state) { MediatorCore.Notify_VariableValuesChanged(this, values); }, null);
         }
 
         public void Notify_ConfigChanged(List<ObjectRef> changedObjects) {
@@ -770,7 +753,7 @@ namespace Ifak.Fast.Mediator
             syncContext.Post(delegate (object? state) { core.Notify_AlarmOrEvent(this, alarmOrEventInfo); }, null);
         }
 
-        private readonly Dictionary<string, HashSet<ObjectRef>> map = new Dictionary<string, HashSet<ObjectRef>>();
+        private readonly Dictionary<string, HashSet<ObjectRef>> map = [];
 
         public bool UpdateWarningAlarmState(AlarmOrEventInfo e) {
 
@@ -778,10 +761,11 @@ namespace Ifak.Fast.Mediator
 
             if (warnOrAlarm) {
 
-                if (!map.ContainsKey(e.Type)) {
-                    map[e.Type] = new HashSet<ObjectRef>();
+                if (!map.TryGetValue(e.Type, out HashSet<ObjectRef>? value)) {
+                    value = ([]);
+                    map[e.Type] = value;
                 }
-                var set = map[e.Type];
+                var set = value;
                 if (e.AffectedObjects != null) {
                     foreach (var obj in e.AffectedObjects) {
                         set.Add(obj);
@@ -789,9 +773,9 @@ namespace Ifak.Fast.Mediator
                 }
                 return false;
             }
-            else if (e.ReturnToNormal && map.ContainsKey(e.Type)) {
+            else if (e.ReturnToNormal && map.TryGetValue(e.Type, out HashSet<ObjectRef>? value)) {
 
-                var set = map[e.Type];
+                var set = value;
                 bool anyRemoved = false;
                 if (e.AffectedObjects != null) {
                     foreach (var obj in e.AffectedObjects) {
@@ -826,6 +810,19 @@ namespace Ifak.Fast.Mediator
 
             if (completedTask.IsCompletedSuccessfully) {
                 promise.SetResult(true);
+            }
+            else if (completedTask.IsFaulted) {
+                promise.SetException(completedTask.Exception!);
+            }
+            else {
+                promise.SetCanceled();
+            }
+        }
+
+        internal static void CompleteFromTask(this TaskCompletionSource promise, Task completedTask) {
+
+            if (completedTask.IsCompletedSuccessfully) {
+                promise.SetResult();
             }
             else if (completedTask.IsFaulted) {
                 promise.SetException(completedTask.Exception!);

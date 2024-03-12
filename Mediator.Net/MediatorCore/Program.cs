@@ -56,8 +56,9 @@ namespace Ifak.Fast.Mediator
             });
 
             string fullLogDir = Path.GetFullPath(logDir);
-            LayoutRenderer.Register("log-output-dir", (logEvent) => fullLogDir);
-            LayoutRenderer.Register("log-file-name", (logEvent) => logName);
+            var config = LogManager.Configuration;
+            config.Variables["log-output-dir"] = fullLogDir;
+            config.Variables["log-file-name"] = logName;
 
             string workingDir = Directory.GetCurrentDirectory();
             Console.Title = $"{title} - {workingDir}";
@@ -89,8 +90,9 @@ namespace Ifak.Fast.Mediator
                 logger.Info($"{title} terminate requested...");
             };
 
-            Thread t = new Thread(() => { DoReader(logger, core, title); });
-            t.IsBackground = true;
+            Thread t = new(() => { DoReader(logger, core, title); }) {
+                IsBackground = true
+            };
             t.Start();
 
             try {

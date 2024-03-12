@@ -28,9 +28,9 @@ public partial class MqttPublisher
             PayloadSegment = listData[0].ToArray(),
         };
 
-        var res = new List<MqttApplicationMessage>(listData.Count);
-
-        res.Add(msgInfo);
+        var res = new List<MqttApplicationMessage>(listData.Count) {
+            msgInfo
+        };
 
         for (int i = 1; i < listData.Count; ++i) {
             var msgBucket = new MqttApplicationMessage() {
@@ -119,7 +119,6 @@ public partial class MqttPublisher
              .WithTlsOptions(o => {
                  o
                  .UseTls(true)
-                 .WithSslProtocols(System.Security.Authentication.SslProtocols.Tls12)
                  .WithClientCertificates(new X509Certificate2[] { 
                      clientCert, 
                      caCert 

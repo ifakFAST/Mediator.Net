@@ -106,7 +106,7 @@ namespace Ifak.Fast.Mediator.IO
 
                 var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
                         fileName,
-                        sharedTypes: new Type[] { baseClass });
+                        sharedTypes: [baseClass]);
 
                 return loader.LoadDefaultAssembly()
                     .GetExportedTypes()

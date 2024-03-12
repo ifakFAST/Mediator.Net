@@ -50,7 +50,7 @@ namespace Ifak.Fast.Mediator.Util
             var processedAssemblies = new HashSet<string>();
             var processedTypes = new HashSet<string>();
 
-            Action<Assembly> loadTypes = (assembly) => {
+            void loadTypes(Assembly assembly) {
                 Type[] types = assembly.GetExportedTypes();
                 foreach (Type t in types) {
                     if (t.IsSubclassOf(baseClass) && !t.IsAbstract && !processedTypes.Contains(t.FullName)) {
@@ -58,7 +58,7 @@ namespace Ifak.Fast.Mediator.Util
                         processedTypes.Add(t.FullName);
                     }
                 }
-            };
+            }
 
             string BaseDir = EnsurePathSep(AppDomain.CurrentDomain.BaseDirectory);
             string CallingDir = EnsurePathSep(Path.GetDirectoryName(Assembly.GetCallingAssembly().Location));

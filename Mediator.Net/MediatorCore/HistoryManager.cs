@@ -15,9 +15,9 @@ namespace Ifak.Fast.Mediator
     {
         public TimestampWarnMode TimestampCheckWarning { get; set; } = TimestampWarnMode.Always;
 
-        private static Logger logger = LogManager.GetLogger("HistoryManager");
+        private static readonly Logger logger = LogManager.GetLogger("HistoryManager");
 
-        private readonly Dictionary<string, ModuleDBs> dbs = new Dictionary<string, ModuleDBs>();
+        private readonly Dictionary<string, ModuleDBs> dbs = [];
 
         private Func<VariableRef, Variable?> fVarResolver = (vr) => null;
         private Action<IList<HistoryChange>> fNotifyChanges = (changes) => { };
@@ -92,11 +92,9 @@ namespace Ifak.Fast.Mediator
         private void Notify_Append(IEnumerable<VarHistoyChange> variables) {
 
             var changes = variables.Select(v => new HistoryChange(v.Var, v.Start, v.End, HistoryChangeType.Append)).ToArray();
-            if (syncContext != null) {
-                syncContext.Post(delegate (object? state) {
+            syncContext?.Post(delegate (object? state) {
                     fNotifyChanges(changes);
                 }, null);
-            }
         }
 
         public Task Stop() {
@@ -106,34 +104,21 @@ namespace Ifak.Fast.Mediator
 
         public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
-            HistoryDBWorker? worker = WorkerByVarRef(variable);
-
-            if (worker == null) {
-                throw new Exception("Failed to find DB worker for variable " + variable);
-            }
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
             CheckExistingVariable(variable);
             return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
         }
 
         public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
 
-            HistoryDBWorker? worker = WorkerByVarRef(variable);
-
-            if (worker == null) {
-                throw new Exception("Failed to find DB worker for variable " + variable);
-            }
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
             CheckExistingVariable(variable);
             return await worker.Count(variable, startInclusive, endInclusive, filter);
         }
 
         public async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
 
-            HistoryDBWorker? worker = WorkerByVarRef(variable);
-
-            if (worker == null) {
-                throw new Exception("Failed to find DB worker for variable " + variable);
-            }
-
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
             CheckExistingVariable(variable);
             long res = await worker.DeleteInterval(variable, startInclusive, endInclusive);
             NotifyChange(variable, startInclusive, endInclusive, HistoryChangeType.Delete);
@@ -150,23 +135,14 @@ namespace Ifak.Fast.Mediator
 
         public async Task<VTTQ?> HistorianGetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
 
-            HistoryDBWorker? worker = WorkerByVarRef(variable);
-
-            if (worker == null) {
-                throw new Exception("Failed to find DB worker for variable " + variable);
-            }
-
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
             CheckExistingVariable(variable);
             return await worker.GetLatestTimestampDb(variable, startInclusive, endInclusive);
         }
 
         public async Task HistorianModify(VariableRef variable, VTQ[] data, ModifyMode mode) {
 
-            HistoryDBWorker? worker = WorkerByVarRef(variable);
-
-            if (worker == null) {
-                throw new Exception("Failed to find DB worker for variable " + variable);
-            }
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
 
             Variable varDesc = CheckExistingVariable(variable);
             await worker.Modify(variable, varDesc, data, mode);
@@ -178,18 +154,14 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private static HistoryChangeType MapMode(ModifyMode mode)
-        {
-            switch (mode)
-            {
-                case ModifyMode.Delete: return HistoryChangeType.Delete;
-                case ModifyMode.Insert: return HistoryChangeType.Insert;
-                case ModifyMode.Update: return HistoryChangeType.Update;
-                case ModifyMode.Upsert: return HistoryChangeType.Upsert;
-                case ModifyMode.ReplaceAll: return HistoryChangeType.Mixed;
-                default: throw new Exception("Unknown modify mode: " + mode);
-            }
-        }
+        private static HistoryChangeType MapMode(ModifyMode mode) => mode switch {
+            ModifyMode.Delete => HistoryChangeType.Delete,
+            ModifyMode.Insert => HistoryChangeType.Insert,
+            ModifyMode.Update => HistoryChangeType.Update,
+            ModifyMode.Upsert => HistoryChangeType.Upsert,
+            ModifyMode.ReplaceAll => HistoryChangeType.Mixed,
+            _ => throw new Exception("Unknown modify mode: " + mode),
+        };
 
         public async Task DeleteVariables(IList<VariableRef> variables) {
 
@@ -219,7 +191,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private void NotifyChange(VariableRef variable, Timestamp start, Timestamp end, HistoryChangeType changeType) {
-            fNotifyChanges(new HistoryChange[] { new HistoryChange(variable, start, end, changeType) });
+            fNotifyChanges([new HistoryChange(variable, start, end, changeType)]);
         }
 
         private Variable CheckExistingVariable(VariableRef variable) {
@@ -232,17 +204,15 @@ namespace Ifak.Fast.Mediator
 
             string moduleID = variable.Object.ModuleID;
 
-            if (dbs.ContainsKey(moduleID)) {
-
-                ModuleDBs moduleDBs = dbs[moduleID];
+            if (dbs.TryGetValue(moduleID, out ModuleDBs? moduleDBs)) {
 
                 if (moduleDBs.Workers.Length == 1) {
                     return moduleDBs.Workers[0].Worker;
                 }
                 else {
                     string varName = variable.Name;
-                    if (moduleDBs.Variable2Worker.ContainsKey(varName)) {
-                        return moduleDBs.Variable2Worker[varName].Worker;
+                    if (moduleDBs.Variable2Worker.TryGetValue(varName, out WorkerWithBuffer? worker)) {
+                        return worker.Worker;
                     }
                     else {
                         if (moduleDBs.DefaultWorker != null) {
@@ -367,7 +337,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private bool IsIntervalBetweenTimetamps(Timestamp tLeft, Timestamp tRight, History history) {
+        private static bool IsIntervalBetweenTimetamps(Timestamp tLeft, Timestamp tRight, History history) {
 
             if (!history.Interval.HasValue) return false;
 
@@ -380,7 +350,7 @@ namespace Ifak.Fast.Mediator
             return tNext < tRight;
         }
 
-        private bool IsIntervalHit(Timestamp t, History history) {
+        private static bool IsIntervalHit(Timestamp t, History history) {
 
             if (!history.Interval.HasValue) return false;
 
@@ -390,13 +360,9 @@ namespace Ifak.Fast.Mediator
             return (t.JavaTicks - offMS) % intervalMS == 0;
         }
 
-
-
         private int SaveToDB(string moduleID, IList<StoreValue> values) {
 
-            if (dbs.ContainsKey(moduleID)) {
-
-                ModuleDBs moduleDBs = dbs[moduleID];
+            if (dbs.TryGetValue(moduleID, out ModuleDBs? moduleDBs)) {
 
                 if (moduleDBs.Workers.Length == 1) {
                     return moduleDBs.Workers[0].Worker.Append(values);
@@ -405,8 +371,8 @@ namespace Ifak.Fast.Mediator
 
                     foreach (StoreValue v in values) {
                         string varName = v.Value.Variable.Name;
-                        if (moduleDBs.Variable2Worker.ContainsKey(varName)) {
-                            moduleDBs.Variable2Worker[varName].Buffer.Add(v);
+                        if (moduleDBs.Variable2Worker.TryGetValue(varName, out WorkerWithBuffer? worker)) {
+                            worker.Buffer.Add(v);
                         }
                         else {
                             if (moduleDBs.DefaultWorker != null) {
@@ -435,41 +401,21 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private class ModuleDBs
-        {
-            public string ModuleID { get; private set; }
-            public WorkerWithBuffer[] Workers { get; private set; }
-            public Dictionary<string, WorkerWithBuffer> Variable2Worker { get; private set; }
-            public WorkerWithBuffer? DefaultWorker { get; private set; }
-
-            public ModuleDBs(string moduleID, WorkerWithBuffer[] workers, Dictionary<string, WorkerWithBuffer> variable2Worker, WorkerWithBuffer? defaultWorker) {
-                ModuleID = moduleID;
-                Workers = workers;
-                Variable2Worker = variable2Worker;
-                DefaultWorker = defaultWorker;
-            }
+        private sealed class ModuleDBs(string moduleID, WorkerWithBuffer[] workers, Dictionary<string, WorkerWithBuffer> variable2Worker, WorkerWithBuffer? defaultWorker) {
+            public string ModuleID { get; private set; } = moduleID;
+            public WorkerWithBuffer[] Workers { get; private set; } = workers;
+            public Dictionary<string, WorkerWithBuffer> Variable2Worker { get; private set; } = variable2Worker;
+            public WorkerWithBuffer? DefaultWorker { get; private set; } = defaultWorker;
         }
 
-        private class WorkerWithBuffer
-        {
-            public HistoryDBWorker Worker { get; private set; }
-            public List<StoreValue> Buffer { get; private set; }
-
-            public WorkerWithBuffer(HistoryDBWorker worker) {
-                Worker = worker;
-                Buffer = new List<StoreValue>();
-            }
+        private sealed class WorkerWithBuffer(HistoryDBWorker worker) {
+            public HistoryDBWorker Worker { get; private set; } = worker;
+            public List<StoreValue> Buffer { get; private set; } = [];
         }
     }
 
-    public struct StoreValue
-    {
-        public StoreValue(VariableValue value, DataType type) {
-            Value = value;
-            Type = type;
-        }
-
-        public VariableValue Value { get; private set; }
-        public DataType Type { get; private set; }
+    public struct StoreValue(VariableValue value, DataType type) {
+        public VariableValue Value { get; private set; } = value;
+        public DataType Type { get; private set; } = type;
     }
 }

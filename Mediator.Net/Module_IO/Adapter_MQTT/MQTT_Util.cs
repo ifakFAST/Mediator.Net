@@ -43,14 +43,14 @@ public static class MQTT_Util {
             builder = builder.WithCredentials(config.User, config.Pass);
         }
 
-        List<X509Certificate> certificates = new();
+        List<X509Certificate2> certificates = [];
 
         if (config.CertFileCA != "") {
             string certFileCA = Path.Combine(certDir, config.CertFileCA);
             if (!File.Exists(certFileCA)) {
                 throw new Exception($"CA certificate file not found: {certFileCA}");
             }
-            X509Certificate caCert = X509Certificate.CreateFromCertFile(certFileCA);
+            X509Certificate2 caCert = new(certFileCA);
             certificates.Add(caCert);
         }
 
@@ -85,14 +85,14 @@ public static class MQTT_Util {
 
         if (useTLS) {
             builder = builder
-                .WithTls(new MqttClientOptionsBuilderTlsParameters() {
-                    UseTls = true,
-                    SslProtocol = System.Security.Authentication.SslProtocols.None, // None = Use system default
-                    Certificates = certificates,
-                    IgnoreCertificateRevocationErrors = config.IgnoreCertificateRevocationErrors,
-                    IgnoreCertificateChainErrors = config.IgnoreCertificateChainErrors,
-                    AllowUntrustedCertificates = config.AllowUntrustedCertificates,
-                });
+             .WithTlsOptions(o => {
+                 o
+                 .UseTls(true)
+                 .WithClientCertificates(certificates)
+                 .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
+                 .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
+                 .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+             });
         }
 
         return builder
@@ -109,7 +109,7 @@ public static class MQTT_Util {
 
         const int MaxRetry = 1;
 
-        MqttFactory factory = new MqttFactory();
+        MqttFactory factory = new();
         IMqttClient client = factory.CreateMqttClient();
 
         using var cancelSourceTimeout = new CancellationTokenSource(5000);

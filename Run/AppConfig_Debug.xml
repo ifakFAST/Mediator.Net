@@ -33,7 +33,7 @@
                 <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
-                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net7.0/Module_Calc.dll
+                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Calc.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>

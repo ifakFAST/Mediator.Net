@@ -30,12 +30,12 @@ namespace Ifak.Fast.Mediator.Dashboard
         private string absolutBaseDir = "";
         private readonly string BundlesPrefix = Guid.NewGuid().ToString().Replace("-", "");
         private int clientPort;
-        private ViewType[] viewTypes = Array.Empty<ViewType>();
+        private ViewType[] viewTypes = [];
 
-        private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
+        private readonly Dictionary<string, Session> sessions = [];
 
         private static SynchronizationContext? theSyncContext = null;
-        private WebApplication? webHost = null;
+        private readonly WebApplication? webHost = null;
         private bool isRunning = false;
         private string configPath = "";
 
@@ -83,8 +83,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 #endif
             }
 
+            char[] separators = [';', '\n', '\r'];
             string[] viewAssemblies = strViewAssemblies
-                .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Split(separators, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim())
                 .ToArray();
 
@@ -102,7 +103,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             await base.OnConfigModelChanged(init: false); // required for UnnestConfig to work (viewTypes need to be loaded)
 
             string faviconFile = config.GetOptionalString("favicon", "");
-            byte[] favicon = Array.Empty<byte>();
+            byte[] favicon = [];
             if (faviconFile != "") {
                 string faviconPath = Path.GetFullPath(faviconFile);
                 if (!File.Exists(faviconPath)) {
@@ -141,7 +142,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 string path = context.Request.Path;
                 if (path == "/") {
                     context.Response.OnStarting(() => {
-                        context.Response.Headers.Add("Expires", (DateTime.UtcNow + TimeSpan.FromMinutes(1)).ToString("r"));
+                        context.Response.Headers.Expires = (DateTime.UtcNow + TimeSpan.FromMinutes(1)).ToString("r");
                         return Task.CompletedTask;
                     });
                 }
@@ -175,7 +176,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             app.Run((context) => {
                 //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
-                var promise = new TaskCompletionSource<bool>();
+                var promise = new TaskCompletionSource();
                 theSyncContext!.Post(_ => {
                     Task task = HandleClientRequest(context);
                     task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
@@ -263,12 +264,12 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     var sessionID = Encoding.UTF8.GetString(receiveBuffer, 0, count);
 
-                    if (!sessions.ContainsKey(sessionID)) {
+                    if (!sessions.TryGetValue(sessionID, out Session? value)) {
                         Task ignored = socket.CloseAsync(WebSocketCloseStatus.ProtocolError, string.Empty, CancellationToken.None);
                         throw new InvalidSessionException();
                     }
 
-                    Session session = sessions[sessionID];
+                    Session session = value;
 
                     await session.ReadWebSocket(socket);
                 }
@@ -276,7 +277,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             catch (Exception exp) {
                 if (exp is not InvalidSessionException) {
                     Exception e = exp.GetBaseException() ?? exp;
-                    logWarn("Error handling web socket request: " + e.Message);
+                    LogWarn("Error handling web socket request: " + e.Message);
                 }
             }
         }
@@ -303,7 +304,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     case "POST":
 
-                        using (ReqResult result = await HandlePost(request, response)) {
+                        using (ReqResult result = await HandlePost(request)) {
                             response.StatusCode = result.StatusCode;
                             response.ContentLength = result.Bytes.Length;
                             response.ContentType = result.ContentType;
@@ -322,7 +323,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
             catch (Exception exp) {
                 response.StatusCode = 500;
-                logWarn("Error handling client request", exp);
+                LogWarn("Error handling client request", exp);
             }
         }
 
@@ -336,7 +337,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private const string Path_MoveView = "/moveView";
         private const string Path_DeleteView = "/deleteView";
 
-        private async Task<ReqResult> HandlePost(HttpRequest request, HttpResponse response) {
+        private async Task<ReqResult> HandlePost(HttpRequest request) {
 
             string path = request.Path;
 
@@ -362,7 +363,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session, timeoutSeconds);
                     }
                     catch (Exception exp) {
-                        logWarn(exp.Message);
+                        LogWarn(exp.Message);
                         return ReqResult.Bad(exp.Message);
                     }
                     await session.SetConnection(connection, model, moduleID, viewTypes);
@@ -373,8 +374,9 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                     DashboardUI uiModel = MakeUiModel(model, viewTypes, session.UserRole);
 
-                    var result = new JObject();
-                    result["sessionID"] = session.ID;
+                    var result = new JObject {
+                        ["sessionID"] = session.ID
+                    };
                     string str = StdJson.ObjectToString(uiModel);
                     result["model"] = new JRaw(str);
                     result["canUpdateViews"] = canUpdateViews;
@@ -471,8 +473,8 @@ namespace Ifak.Fast.Mediator.Dashboard
                         sessionID = await reader.ReadToEndAsync();
                     }
 
-                    if (sessions.ContainsKey(sessionID)) {
-                        Session session = sessions[sessionID];
+                    if (sessions.TryGetValue(sessionID, out Session? value)) {
+                        Session session = value;
                         var ignored = session.Close();
                         sessions.Remove(sessionID);
                     }
@@ -484,11 +486,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                 }
             }
             catch (InvalidSessionException exp) {
-                logWarn("HandlePost: " + exp.Message);
+                LogWarn("HandlePost: " + exp.Message);
                 return ReqResult.Bad(exp.Message);
             }
             catch (Exception exp) {
-                logWarn("HandlePost:", exp);
+                LogWarn("HandlePost:", exp);
                 return ReqResult.Bad(exp.Message);
             }
         }
@@ -501,10 +503,10 @@ namespace Ifak.Fast.Mediator.Dashboard
             string sessionID = query.Substring(1, i - 1);
             string viewID = query.Substring(i + 1);
 
-            if (!sessions.ContainsKey(sessionID)) {
+            if (!sessions.TryGetValue(sessionID, out Session? value)) {
                 throw new InvalidSessionException();
             }
-            Session session = sessions[sessionID];
+            Session session = value;
             return (session, viewID);
         }
 
@@ -532,11 +534,11 @@ namespace Ifak.Fast.Mediator.Dashboard
                         result.Add(vt);
                     }
                     else {
-                        logWarn($"No ViewBundle folder found for View {id.ID} in {absoluteBaseDir}");
+                        LogWarn($"No ViewBundle folder found for View {id.ID} in {absoluteBaseDir}");
                     }
                 }
             }
-            return result.ToArray();
+            return [.. result];
         }
 
         private static Type[] LoadTypesFromAssemblyFile(string fileName) {
@@ -545,7 +547,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                 var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
                         fileName,
-                        sharedTypes: new Type[] { baseClass });
+                        sharedTypes: [baseClass]);
 
                 return loader.LoadDefaultAssembly()
                     .GetExportedTypes()
@@ -555,13 +557,13 @@ namespace Ifak.Fast.Mediator.Dashboard
             catch (Exception exp) {
                 Console.Error.WriteLine($"Failed to load view types from assembly '{fileName}': {exp.Message}");
                 Console.Error.Flush();
-                return new Type[0];
+                return [];
             }
         }
 
         private static DashboardUI MakeUiModel(DashboardModel model, ViewType[] viewTypes, string? userRole = null) {
 
-            DashboardUI result = new DashboardUI();
+            DashboardUI result = new();
 
             foreach (View v in model.Views) {
 
@@ -572,9 +574,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     }
                 }
 
-                ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(v.Type, StringComparison.InvariantCultureIgnoreCase));
-                if (viewType == null) throw new Exception($"No view type '{v.Type}' found!");
-
+                ViewType? viewType = viewTypes.FirstOrDefault(vt => vt.Name.Equals(v.Type, StringComparison.InvariantCultureIgnoreCase)) ?? throw new Exception($"No view type '{v.Type}' found!");
                 bool url = viewType.Type == typeof(View_ExtURL);
 
                 var viewInstance = new ViewInstance() {
@@ -591,7 +591,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             return result;
         }
 
-        private static void logWarn(string msg, Exception? exp = null) {
+        private static void LogWarn(string msg, Exception? exp = null) {
             Exception? exception = exp != null ? (exp.GetBaseException() ?? exp) : null;
             if (exception != null)
                 Console.Out.WriteLine(msg + " " + exception.Message + "\n" + exception.StackTrace);
@@ -612,9 +612,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
     public class DashboardUI
     {
-        public List<ViewInstance> views = new List<ViewInstance>();
+        public List<ViewInstance> views = [];
     }
 
+#pragma warning disable IDE1006 // Naming Styles
     public class ViewInstance
     {
         public string viewID { get; set; } = "";
@@ -624,6 +625,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public string viewGroup { get; set; } = "";
         public string viewType { get; set; } = "";
     }
+#pragma warning restore IDE1006 // Naming Styles
 
     public class InvalidSessionException : Exception
     {
@@ -644,24 +646,32 @@ namespace Ifak.Fast.Mediator.Dashboard
                 promise.SetCanceled();
             }
         }
+
+        internal static void CompleteFromTask(this TaskCompletionSource promise, Task completedTask) {
+
+            if (completedTask.IsCompletedSuccessfully) {
+                promise.SetResult();
+            }
+            else if (completedTask.IsFaulted) {
+                promise.SetException(completedTask.Exception!);
+            }
+            else {
+                promise.SetCanceled();
+            }
+        }
     }
 
     public class HtmlModificationOptions {
         public string PageTitle { get; set; } = "";
         public string LoginTitle { get; set; } = "";
         public string Header { get; set; } = "";
-        public byte[] FavIcon { get; set; } = Array.Empty<byte>();
+        public byte[] FavIcon { get; set; } = [];
     }
 
-    public class ModifyHtmlMiddleware {
+    public class ModifyHtmlMiddleware(RequestDelegate next, IOptions<HtmlModificationOptions> options) {
 
-        private readonly RequestDelegate _next;
-        private readonly HtmlModificationOptions _options;
-
-        public ModifyHtmlMiddleware(RequestDelegate next, IOptions<HtmlModificationOptions> options) {
-            _next = next;
-            _options = options.Value;
-        }
+        private readonly RequestDelegate _next = next;
+        private readonly HtmlModificationOptions _options = options.Value;
 
         public async Task InvokeAsync(HttpContext context) {
 
