@@ -287,8 +287,18 @@ namespace Ifak.Fast.Mediator.Dashboard
             HttpRequest request = context.Request;
             HttpResponse response = context.Response;
 
+            async Task Respond(ReqResult result) {
+                response.StatusCode = result.StatusCode;
+                response.ContentLength = result.Bytes.Length;
+                response.ContentType = result.ContentType;
+                try {
+                    await result.Bytes.CopyToAsync(response.Body);
+                }
+                catch (Exception) { }
+            }
+
             if (!isRunning) {
-                response.StatusCode = 400; // BAD Request
+                await Respond(ReqResult.Bad("Dashboard is not running yet."));
                 return;
             }
 
@@ -305,13 +315,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     case "POST":
 
                         using (ReqResult result = await HandlePost(request)) {
-                            response.StatusCode = result.StatusCode;
-                            response.ContentLength = result.Bytes.Length;
-                            response.ContentType = result.ContentType;
-                            try {
-                                await result.Bytes.CopyToAsync(response.Body);
-                            }
-                            catch (Exception) { }
+                            await Respond(result);
                         }
                         return;
 
