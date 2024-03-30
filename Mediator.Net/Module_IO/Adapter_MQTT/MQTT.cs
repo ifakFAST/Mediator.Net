@@ -236,8 +236,8 @@ public class MQTT : AdapterBase {
     public static VTQ? TryParseVTQ(JObject obj) {
         try {
 
-            JToken? va = obj["value"];
-            JToken? ts = obj["timestamp"];
+            JToken? va = obj["value"] ?? obj["Value"] ?? obj["V"];
+            JToken? ts = obj["timestamp"] ?? obj["time"] ?? obj["T"] ?? obj["Timestamp"] ?? obj["Time"];
             
             if (va is null || ts is not JValue jvalue_ts) {
                 return null;
