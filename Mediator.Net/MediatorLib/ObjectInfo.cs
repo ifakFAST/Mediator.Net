@@ -19,7 +19,7 @@ namespace Ifak.Fast.Mediator
             Name = name ?? throw new ArgumentNullException(nameof(name), nameof(name) + " may not be null");
             ClassNameFull = classNameFull ?? throw new ArgumentNullException(nameof(classNameFull), nameof(classNameFull) + " may not be null");
             ClassNameShort = classNameShort ?? throw new ArgumentNullException(nameof(classNameShort), nameof(classNameShort) + " may not be null");
-            Variables = variables ?? Array.Empty<Variable>();
+            Variables = variables ?? [];
             Parent = parent;
             Location = location;
         }
@@ -36,12 +36,12 @@ namespace Ifak.Fast.Mediator
 
         public MemberRefIdx? Parent { get; set; } = null;
 
-        public Variable[] Variables { get; set; } = Array.Empty<Variable>();
+        public Variable[] Variables { get; set; } = [];
 
         public override string ToString() => Name + " " + ID.ToString() + " (" + ClassNameFull + ")";
 
         public bool Equals(ObjectInfo? other) {
-            if (ReferenceEquals(other, null)) return false;
+            if (other is null) return false;
             if (ReferenceEquals(other, this)) return true;
             return
                 ID == other.ID &&
@@ -58,7 +58,7 @@ namespace Ifak.Fast.Mediator
         public override int GetHashCode() => ID.GetHashCode();
 
         public static bool operator==(ObjectInfo? lhs, ObjectInfo? rhs) {
-            if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
+            if (lhs is null) return rhs is null;
             return lhs.Equals(rhs);
         }
 
@@ -74,7 +74,7 @@ namespace Ifak.Fast.Mediator
         }
 
         public Variable(string name, DataType type, DataValue defaultValue, History history, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :
-            this(name, type, defaultValue, "", "", dimension, new string[0], remember, history, writable, syncReadable) {
+            this(name, type, defaultValue, "", "", dimension, [], remember, history, writable, syncReadable) {
         }
 
         public Variable(string name, DataType type, DataValue defaultValue, string unit, string typeConstraints, int dimension, string[] dimensionNames, bool remember, History history, bool writable = false, bool syncReadable = false) {
@@ -91,7 +91,7 @@ namespace Ifak.Fast.Mediator
             TypeConstraints = typeConstraints ?? "";
             Unit = unit;
             Dimension = dimension;
-            DimensionNames = dimensionNames ?? new string[0];
+            DimensionNames = dimensionNames ?? [];
             Remember = remember;
             History = history;
             Writable = writable;
@@ -126,7 +126,7 @@ namespace Ifak.Fast.Mediator
         /// <summary>
         /// Can be used to provide descriptive names to the individual dimensions, when <see cref="Dimension"/> > 1
         /// </summary>
-        public string[] DimensionNames { get; set; } = new string[0];
+        public string[] DimensionNames { get; set; } = [];
 
         /// <summary>
         /// If true, then the last value of the variable will be restored on next <see cref="ModuleBase.Init(ModuleInitInfo, VariableValue[], Notifier, ModuleThread)"/>
@@ -140,7 +140,7 @@ namespace Ifak.Fast.Mediator
         public override string ToString() => Name ?? "";
 
         public bool Equals(Variable? other) {
-            if (ReferenceEquals(other, null)) return false;
+            if (other is null) return false;
             if (ReferenceEquals(other, this)) return true;
             return
                 Name == other.Name &&
@@ -160,38 +160,32 @@ namespace Ifak.Fast.Mediator
         public override int GetHashCode() => (Name ?? "").GetHashCode();
 
         public static bool operator ==(Variable? lhs, Variable? rhs) {
-            if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
+            if (lhs is null) return rhs is null;
             return lhs.Equals(rhs);
         }
 
         public static bool operator !=(Variable? lhs, Variable? rhs) => !(lhs == rhs);
     }
 
-    public struct History : IEquatable<History>, IXmlSerializable
+    public struct History(HistoryMode mode, Duration? interval = null, Duration? offset = null) : IEquatable<History>, IXmlSerializable
     {
-        public History(HistoryMode mode, Duration? interval = null, Duration? offset = null) {
-            Mode = mode;
-            Interval = interval;
-            Offset = offset;
-        }
+        public static History None => new();
+        public static History Complete => new(HistoryMode.Complete);
+        public static History ValueOrQualityChanged => new(HistoryMode.ValueOrQualityChanged);
+        public static History IntervalDefault(Duration interval, Duration? offset = null) => new(HistoryMode.Interval, interval, offset);
+        public static History IntervalExact(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalExact, interval, offset);
+        public static History IntervalOrChanged(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalOrChanged, interval, offset);
+        public static History IntervalExactOrChanged(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalExactOrChanged, interval, offset);
 
-        public static History None => new History();
-        public static History Complete => new History(HistoryMode.Complete);
-        public static History ValueOrQualityChanged => new History(HistoryMode.ValueOrQualityChanged);
-        public static History IntervalDefault(Duration interval, Duration? offset = null) => new History(HistoryMode.Interval, interval, offset);
-        public static History IntervalExact(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalExact, interval, offset);
-        public static History IntervalOrChanged(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalOrChanged, interval, offset);
-        public static History IntervalExactOrChanged(Duration interval, Duration? offset = null) => new History(HistoryMode.IntervalExactOrChanged, interval, offset);
+        public HistoryMode Mode { get; set; } = mode;
+        public Duration? Interval { get; set; } = interval;
+        public Duration? Offset { get; set; } = offset;
 
-        public HistoryMode Mode { get; set; }
-        public Duration? Interval { get; set; }
-        public Duration? Offset { get; set; }
+        public readonly bool Equals(History other) => Mode == other.Mode && Interval == other.Interval && Offset == other.Offset;
 
-        public bool Equals(History other) => Mode == other.Mode && Interval == other.Interval && Offset == other.Offset;
-
-        public override bool Equals(object obj) {
-            if (obj is History) {
-                return Equals((History)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is History h) {
+                return Equals(h);
             }
             return false;
         }
@@ -200,43 +194,28 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(History lhs, History rhs) => !(lhs.Equals(rhs));
 
-        public override string ToString() => Mode.ToString();
+        public readonly override string ToString() => Mode.ToString();
 
-        public override int GetHashCode() => Mode.GetHashCode();
+        public readonly override int GetHashCode() => Mode.GetHashCode();
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
 
-        public bool ShouldSerializeInterval() => Interval.HasValue;
+        public readonly bool ShouldSerializeInterval() => Interval.HasValue;
 
-        public bool ShouldSerializeOffset() => Offset.HasValue;
+        public readonly bool ShouldSerializeOffset() => Offset.HasValue;
 
         public void ReadXml(XmlReader reader) {
             string m = reader["mode"];
-            switch (m) {
-                case "None":
-                    Mode = HistoryMode.None;
-                    break;
-                case "Complete":
-                    Mode = HistoryMode.Complete;
-                    break;
-                case "ValueOrQualityChanged":
-                    Mode = HistoryMode.ValueOrQualityChanged;
-                    break;
-                case "Interval":
-                    Mode = HistoryMode.Interval;
-                    break;
-                case "IntervalExact":
-                    Mode = HistoryMode.IntervalExact;
-                    break;
-                case "IntervalOrChanged":
-                    Mode = HistoryMode.IntervalOrChanged;
-                    break;
-                case "IntervalExactOrChanged":
-                    Mode = HistoryMode.IntervalExactOrChanged;
-                    break;
-                default:
-                    throw new Exception("Unknown HistoryMode: " + m);
-            }
+            Mode = m switch {
+                "None" => HistoryMode.None,
+                "Complete" => HistoryMode.Complete,
+                "ValueOrQualityChanged" => HistoryMode.ValueOrQualityChanged,
+                "Interval" => HistoryMode.Interval,
+                "IntervalExact" => HistoryMode.IntervalExact,
+                "IntervalOrChanged" => HistoryMode.IntervalOrChanged,
+                "IntervalExactOrChanged" => HistoryMode.IntervalExactOrChanged,
+                _ => throw new Exception("Unknown HistoryMode: " + m),
+            };
             string intv = reader["interval"];
             if (intv != null) {
                 Interval = Duration.Parse(intv);
@@ -248,7 +227,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteAttributeString("mode", Mode.ToString());
             bool modeInterval = Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact || Mode == HistoryMode.IntervalOrChanged || Mode == HistoryMode.IntervalExactOrChanged;
             if (Interval.HasValue && modeInterval) {
@@ -259,7 +238,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public void ValidateOrThrow() {
+        public readonly void ValidateOrThrow() {
             bool modeInterval = Mode == HistoryMode.Interval || Mode == HistoryMode.IntervalExact || Mode == HistoryMode.IntervalOrChanged || Mode == HistoryMode.IntervalExactOrChanged;
             if (modeInterval) {
                 if (!Interval.HasValue) throw new Exception($"Missing interval value for history mode {Mode}");
@@ -267,7 +246,7 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        public History Normalize() {
+        public readonly History Normalize() {
             switch (Mode) {
                 case HistoryMode.None:
                 case HistoryMode.Complete:
@@ -290,7 +269,7 @@ namespace Ifak.Fast.Mediator
         IntervalExactOrChanged,
     }
 
-    public struct ObjectValue : IEquatable<ObjectValue>
+    public struct ObjectValue(ObjectRef obj, DataValue value) : IEquatable<ObjectValue>
     {
         public static ObjectValue Make(ObjectRef obj, DataValue value) {
             return new ObjectValue(obj, value);
@@ -300,23 +279,18 @@ namespace Ifak.Fast.Mediator
             return new ObjectValue(ObjectRef.Make(moduleID, localObjectID), value);
         }
 
-        public ObjectValue(ObjectRef obj, DataValue value) {
-            Object = obj;
-            Value = value;
-        }
+        public ObjectRef Object { get; set; } = obj;
+        public DataValue Value { get; set; } = value;
 
-        public ObjectRef Object { get; set; }
-        public DataValue Value { get; set; }
+        public readonly T? ToObject<T>() => Value.Object<T>();
 
-        public T? ToObject<T>() => Value.Object<T>();
+        public readonly override string ToString() => Object.ToString() + "=" + Value.ToString();
 
-        public override string ToString() => Object.ToString() + "=" + Value.ToString();
+        public readonly bool Equals(ObjectValue other) => Object == other.Object && Value == other.Value;
 
-        public bool Equals(ObjectValue other) => Object == other.Object && Value == other.Value;
-
-        public override bool Equals(object obj) {
-            if (obj is ObjectValue) {
-                return Equals((ObjectValue)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is ObjectValue ov) {
+                return Equals(ov);
             }
             return false;
         }
@@ -325,10 +299,10 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(ObjectValue lhs, ObjectValue rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => Object.GetHashCode();
+        public readonly override int GetHashCode() => Object.GetHashCode();
     }
 
-    public struct VariableRef : IEquatable<VariableRef>, IXmlSerializable
+    public struct VariableRef(ObjectRef obj, string variableName) : IEquatable<VariableRef>, IXmlSerializable
     {
         public static VariableRef Make(string moduleID, string localObjectID, string variableName) {
             return new VariableRef(ObjectRef.Make(moduleID, localObjectID), variableName);
@@ -338,20 +312,14 @@ namespace Ifak.Fast.Mediator
             return new VariableRef(obj, variableName);
         }
 
-        public VariableRef(ObjectRef obj, string variableName) {
-            if (variableName == null) throw new ArgumentNullException(nameof(variableName), nameof(variableName) + " may not be null");
-            Object = obj;
-            Name = variableName;
-        }
+        public ObjectRef Object { get; set; } = obj;
+        public string Name { get; set; } = variableName ?? throw new ArgumentNullException(nameof(variableName), nameof(variableName) + " may not be null");
 
-        public ObjectRef Object { get; set; }
-        public string Name { get; set; }
+        public readonly bool Equals(VariableRef other) => Object == other.Object && Name == other.Name;
 
-        public bool Equals(VariableRef other) => Object == other.Object && Name == other.Name;
-
-        public override bool Equals(object obj) {
-            if (obj is VariableRef) {
-                return Equals((VariableRef)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is VariableRef vr) {
+                return Equals(vr);
             }
             return false;
         }
@@ -360,11 +328,11 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(VariableRef lhs, VariableRef rhs) => !(lhs.Equals(rhs));
 
-        public override string ToString() => Name == null ? "" : Object.ToString() + "." + Name;
+        public readonly override string ToString() => Name == null ? "" : Object.ToString() + "." + Name;
 
-        public override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
+        public readonly override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
 
         public void ReadXml(XmlReader reader) {
             Object = ObjectRef.FromEncodedString(reader["object"]);
@@ -372,13 +340,13 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteAttributeString("object", Object.ToEncodedString());
             writer.WriteAttributeString("name", Name ?? "");
         }
     }
 
-    public struct VariableValue : IEquatable<VariableValue>
+    public struct VariableValue(VariableRef variable, VTQ value) : IEquatable<VariableValue>
     {
         public static VariableValue Make(VariableRef varRef, VTQ value) {
             return new VariableValue(varRef, value);
@@ -392,21 +360,16 @@ namespace Ifak.Fast.Mediator
             return new VariableValue(VariableRef.Make(ObjectRef.Make(moduleID, localObjectID), variable), value);
         }
 
-        public VariableValue(VariableRef variable, VTQ value) {
-            Variable = variable;
-            Value = value;
-        }
+        public VariableRef Variable { get; set; } = variable;
+        public VTQ Value { get; set; } = value;
 
-        public VariableRef Variable { get; set; }
-        public VTQ Value { get; set; }
+        public readonly override string ToString() => Variable.ToString() + "=" + Value.ToString();
 
-        public override string ToString() => Variable.ToString() + "=" + Value.ToString();
+        public readonly bool Equals(VariableValue other) => Variable == other.Variable && Value == other.Value;
 
-        public bool Equals(VariableValue other) => Variable == other.Variable && Value == other.Value;
-
-        public override bool Equals(object obj) {
-            if (obj is VariableValue) {
-                return Equals((VariableValue)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is VariableValue vv) {
+                return Equals(vv);
             }
             return false;
         }
@@ -415,10 +378,10 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(VariableValue lhs, VariableValue rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => Variable.GetHashCode();
+        public readonly override int GetHashCode() => Variable.GetHashCode();
     }
 
-    public struct MemberRef : IEquatable<MemberRef>
+    public struct MemberRef(ObjectRef obj, string memberName) : IEquatable<MemberRef>
     {
         public static MemberRef Make(string moduleID, string localObjectID, string memberName) {
             return new MemberRef(ObjectRef.Make(moduleID, localObjectID), memberName);
@@ -428,20 +391,14 @@ namespace Ifak.Fast.Mediator
             return new MemberRef(obj, memberName);
         }
 
-        public MemberRef(ObjectRef obj, string memberName) {
-            if (memberName == null) throw new ArgumentNullException(nameof(memberName), nameof(memberName) + " may not be null");
-            Object = obj;
-            Name = memberName;
-        }
+        public ObjectRef Object { get; set; } = obj;
+        public string Name { get; set; } = memberName ?? throw new ArgumentNullException(nameof(memberName), nameof(memberName) + " may not be null");
 
-        public ObjectRef Object { get; set; }
-        public string Name { get; set; }
+        public readonly override string ToString() => Object.ToString() + "." + Name;
 
-        public override string ToString() => Object.ToString() + "." + Name;
+        public readonly bool Equals(MemberRef other) => Object == other.Object && Name == other.Name;
 
-        public bool Equals(MemberRef other) => Object == other.Object && Name == other.Name;
-
-        public override bool Equals(object obj) {
+        public readonly override bool Equals(object obj) {
             if (obj is MemberRef mref) {
                 return Equals(mref);
             }
@@ -452,10 +409,10 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(MemberRef lhs, MemberRef rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
+        public readonly override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode();
     }
 
-    public struct MemberRefIdx : IEquatable<MemberRefIdx>
+    public struct MemberRefIdx(ObjectRef obj, string memberName, int index) : IEquatable<MemberRefIdx>
     {
         public static MemberRefIdx Make(string moduleID, string localObjectID, string memberName, int index) {
             return new MemberRefIdx(ObjectRef.Make(moduleID, localObjectID), memberName, index);
@@ -465,26 +422,19 @@ namespace Ifak.Fast.Mediator
             return new MemberRefIdx(obj, memberName, index);
         }
 
-        public MemberRefIdx(ObjectRef obj, string memberName, int index) {
-            if (memberName == null) throw new ArgumentNullException(nameof(memberName), nameof(memberName) + " may not be null");
-            Object = obj;
-            Name = memberName;
-            Index = index;
-        }
+        public ObjectRef Object { get; set; } = obj;
+        public string Name { get; set; } = memberName ?? throw new ArgumentNullException(nameof(memberName), nameof(memberName) + " may not be null");
+        public int Index { get; set; } = index;
 
-        public ObjectRef Object { get; set; }
-        public string Name { get; set; }
-        public int Index { get; set; }
+        public readonly MemberRef ToMemberRef() => MemberRef.Make(Object, Name);
 
-        public MemberRef ToMemberRef() => MemberRef.Make(Object, Name);
+        public readonly override string ToString() => Object.ToString() + "." + Name + "[" + Index + "]";
 
-        public override string ToString() => Object.ToString() + "." + Name + "[" + Index + "]";
+        public readonly bool Equals(MemberRefIdx other) => Object == other.Object && Name == other.Name && Index == other.Index;
 
-        public bool Equals(MemberRefIdx other) => Object == other.Object && Name == other.Name && Index == other.Index;
-
-        public override bool Equals(object obj) {
-            if (obj is MemberRefIdx) {
-                return Equals((MemberRefIdx)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is MemberRefIdx mri) {
+                return Equals(mri);
             }
             return false;
         }
@@ -493,10 +443,10 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(MemberRefIdx lhs, MemberRefIdx rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode() + Index;
+        public readonly override int GetHashCode() => Object.GetHashCode() * (Name ?? "").GetHashCode() + Index;
     }
 
-    public struct MemberValue : IEquatable<MemberValue>
+    public struct MemberValue(MemberRef member, DataValue value) : IEquatable<MemberValue>
     {
         public static MemberValue Make(MemberRef member, DataValue value) {
             return new MemberValue(member, value);
@@ -510,21 +460,16 @@ namespace Ifak.Fast.Mediator
             return new MemberValue(MemberRef.Make(ObjectRef.Make(moduleID, localObjectID), memberName), value);
         }
 
-        public MemberValue(MemberRef member, DataValue value) {
-            Member = member;
-            Value = value;
-        }
+        public MemberRef Member { get; set; } = member;
+        public DataValue Value { get; set; } = value;
 
-        public MemberRef Member { get; set; }
-        public DataValue Value { get; set; }
+        public readonly override string ToString() => Member.ToString() + "=" + Value.ToString();
 
-        public override string ToString() => Member.ToString() + "=" + Value.ToString();
+        public readonly bool Equals(MemberValue other) => Member == other.Member && Value == other.Value;
 
-        public bool Equals(MemberValue other) => Member == other.Member && Value == other.Value;
-
-        public override bool Equals(object obj) {
-            if (obj is MemberValue) {
-                return Equals((MemberValue)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is MemberValue mv) {
+                return Equals(mv);
             }
             return false;
         }
@@ -533,7 +478,7 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(MemberValue lhs, MemberValue rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => Member.GetHashCode();
+        public readonly override int GetHashCode() => Member.GetHashCode();
     }
 
     public struct AddArrayElement : IEquatable<AddArrayElement>
@@ -559,13 +504,13 @@ namespace Ifak.Fast.Mediator
         public MemberRef ArrayMember { get; set; }
         public DataValue ValueToAdd { get; set; }
 
-        public override string ToString() => ArrayMember.ToString() + "+=" + ValueToAdd.ToString();
+        public readonly override string ToString() => ArrayMember.ToString() + "+=" + ValueToAdd.ToString();
 
-        public bool Equals(AddArrayElement other) => ArrayMember == other.ArrayMember && ValueToAdd == other.ValueToAdd;
+        public readonly bool Equals(AddArrayElement other) => ArrayMember == other.ArrayMember && ValueToAdd == other.ValueToAdd;
 
-        public override bool Equals(object obj) {
-            if (obj is AddArrayElement) {
-                return Equals((AddArrayElement)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is AddArrayElement aae) {
+                return Equals(aae);
             }
             return false;
         }
@@ -574,6 +519,6 @@ namespace Ifak.Fast.Mediator
 
         public static bool operator !=(AddArrayElement lhs, AddArrayElement rhs) => !(lhs.Equals(rhs));
 
-        public override int GetHashCode() => ArrayMember.GetHashCode();
+        public readonly override int GetHashCode() => ArrayMember.GetHashCode();
     }
 }
