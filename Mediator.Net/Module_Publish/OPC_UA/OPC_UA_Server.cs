@@ -20,6 +20,31 @@ namespace OpcUaServerNet {
             this.port = port;
         }
 
+        public bool NodeExists(string nodeId) {
+            return mapNodeIDs.ContainsKey(nodeId);
+        }
+
+        public void AddFolderNode(string nodeId, string name, string? parentNodeId) {
+
+            if (pServer == IntPtr.Zero) {
+                throw new Exception($"AddFolderNode failed: OPC UA server is closed!");
+            }
+
+            IntPtr parentNode = IntPtr.Zero;
+            if (parentNodeId != null) {
+                if (!mapNodeIDs.TryGetValue(parentNodeId, out parentNode)) {
+                    throw new Exception($"Faild to add folder {nodeId}. Parent node {parentNodeId} not found.");
+                }
+            }
+
+            IntPtr pNodeId = IntPtr.Zero;
+            uint res = UA_Server_AddFolderNode(pServer, parentNode, GetUTF8NullTerminated(nodeId), GetUTF8NullTerminated(name), ref pNodeId);
+            if (res != 0) {
+                throw new Exception($"Faild to add folder {nodeId}, Error: {res:X}");
+            }
+            mapNodeIDs[nodeId] = pNodeId;
+        }
+
         private static byte[] GetUTF8NullTerminated(string s) {
             int byteCount = Encoding.UTF8.GetByteCount(s);
             byte[] array = new byte[byteCount + 1];
@@ -76,92 +101,108 @@ namespace OpcUaServerNet {
 
         private Dictionary<string, IntPtr> mapNodeIDs = new Dictionary<string, IntPtr>();
 
-        private delegate uint AddVariableDelegate<T>(IntPtr server, byte[] nodeIdUtf8, byte[] nameUtf8, bool writable, T value, ushort type, ref IntPtr nodeId);
+        private delegate uint AddVariableDelegate<T>(IntPtr server, IntPtr parentNode, byte[] nodeIdUtf8, byte[] nameUtf8, bool writable, T value, ushort type, ref IntPtr nodeId);
 
-        private void AddVariableNode<T>(string nodeId, string name, bool writable, T initialValue, AddVariableDelegate<T> addVariableMethod) {
+        private void AddVariableNode<T>(string nodeId, string name, bool writable, T initialValue, AddVariableDelegate<T> addVariableMethod, string? parentNodeId) {
             if (pServer == IntPtr.Zero) {
                 throw new Exception($"AddVariableNode failed: OPC UA server is closed!");
             }
+
+            IntPtr parentNode = IntPtr.Zero;
+            if (parentNodeId != null) {
+                if (!mapNodeIDs.TryGetValue(parentNodeId, out parentNode)) {
+                    throw new Exception($"Faild to add variable {nodeId}. Parent node {parentNodeId} not found.");
+                }
+            }
+
             IntPtr pNodeId = IntPtr.Zero;
-            uint res = addVariableMethod(pServer, GetUTF8NullTerminated(nodeId), GetUTF8NullTerminated(name), writable, initialValue, (ushort)UaVariableType.BaseDataVariableType, ref pNodeId);
+            uint res = addVariableMethod(pServer, parentNode, GetUTF8NullTerminated(nodeId), GetUTF8NullTerminated(name), writable, initialValue, (ushort)UaVariableType.BaseDataVariableType, ref pNodeId);
             if (res != 0) {
                 throw new Exception($"Faild to add variable {nodeId}, Error: {res:X}");
             }
             mapNodeIDs[nodeId] = pNodeId;
         }
 
-        private delegate uint AddVariableStringDelegate(IntPtr server, byte[] nodeIdUtf8, byte[] nameUtf8, bool writable, byte[] value, uint len, ushort type, ref IntPtr nodeId);
+        private delegate uint AddVariableStringDelegate(IntPtr server, IntPtr parentNode, byte[] nodeIdUtf8, byte[] nameUtf8, bool writable, byte[] value, uint len, ushort type, ref IntPtr nodeId);
 
-        private void AddVariableNodeBytes(string nodeId, string name, bool writable, byte[] initialValue, AddVariableStringDelegate addVariableMethod) {
+        private void AddVariableNodeBytes(string nodeId, string name, bool writable, byte[] initialValue, AddVariableStringDelegate addVariableMethod, string? parentNodeId) {
             if (pServer == IntPtr.Zero) {
                 throw new Exception($"AddVariableNode failed: OPC UA server is closed!");
             }
+            
+            IntPtr parentNode = IntPtr.Zero;
+            if (parentNodeId != null) {
+                if (!mapNodeIDs.TryGetValue(parentNodeId, out parentNode)) {
+                    throw new Exception($"Faild to add variable {nodeId}. Parent node {parentNodeId} not found.");
+                }
+            }
+
             IntPtr pNodeId = IntPtr.Zero;
-            uint res = addVariableMethod(pServer, GetUTF8NullTerminated(nodeId), GetUTF8NullTerminated(name), writable, initialValue, (uint)initialValue.Length, (ushort)UaVariableType.BaseDataVariableType, ref pNodeId);
+            uint res = addVariableMethod(pServer, parentNode, GetUTF8NullTerminated(nodeId), GetUTF8NullTerminated(name), writable, initialValue, (uint)initialValue.Length, (ushort)UaVariableType.BaseDataVariableType, ref pNodeId);
             if (res != 0) {
                 throw new Exception($"Faild to add variable {nodeId}, Error: {res:X}");
             }
             mapNodeIDs[nodeId] = pNodeId;
         }
 
-        public void AddVariableNode_Boolean(string nodeId, string name, bool writable, bool initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Boolean);
+        public void AddVariableNode_Boolean(string nodeId, string name, bool writable, bool initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Boolean, parentNodeId);
         }
 
-        public void AddVariableNode_SByte(string nodeId, string name, bool writable, sbyte initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_SByte);
+        public void AddVariableNode_SByte(string nodeId, string name, bool writable, sbyte initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_SByte, parentNodeId);
         }
 
-        public void AddVariableNode_Byte(string nodeId, string name, bool writable, byte initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Byte);
+        public void AddVariableNode_Byte(string nodeId, string name, bool writable, byte initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Byte, parentNodeId);
         }
 
-        public void AddVariableNode_Int16(string nodeId, string name, bool writable, short initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int16);
+        public void AddVariableNode_Int16(string nodeId, string name, bool writable, short initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int16, parentNodeId);
         }
 
-        public void AddVariableNode_UInt16(string nodeId, string name, bool writable, ushort initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt16);
+        public void AddVariableNode_UInt16(string nodeId, string name, bool writable, ushort initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt16, parentNodeId);
         }
 
-        public void AddVariableNode_Int32(string nodeId, string name, bool writable, int initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int32);
+        public void AddVariableNode_Int32(string nodeId, string name, bool writable, int initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int32, parentNodeId);
         }
 
-        public void AddVariableNode_UInt32(string nodeId, string name, bool writable, uint initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt32);
+        public void AddVariableNode_UInt32(string nodeId, string name, bool writable, uint initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt32, parentNodeId);
         }
 
-        public void AddVariableNode_Int64(string nodeId, string name, bool writable, long initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int64);
+        public void AddVariableNode_Int64(string nodeId, string name, bool writable, long initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Int64, parentNodeId);
         }
 
-        public void AddVariableNode_UInt64(string nodeId, string name, bool writable, ulong initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt64);
+        public void AddVariableNode_UInt64(string nodeId, string name, bool writable, ulong initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_UInt64, parentNodeId);
         }
 
-        public void AddVariableNode_Float(string nodeId, string name, bool writable, float initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Float);
+        public void AddVariableNode_Float(string nodeId, string name, bool writable, float initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Float, parentNodeId);
         }
 
-        public void AddVariableNode_Double(string nodeId, string name, bool writable, double initialValue) {
-            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Double);
+        public void AddVariableNode_Double(string nodeId, string name, bool writable, double initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, initialValue, UA_Server_AddVariable_Double, parentNodeId);
         }
 
-        public void AddVariableNode_String(string nodeId, string name, bool writable, string initialValue) {
-            AddVariableNodeBytes(nodeId, name, writable, GetUTF8(initialValue), UA_Server_AddVariable_String);
+        public void AddVariableNode_String(string nodeId, string name, bool writable, string initialValue, string? parentNodeId = null) {
+            AddVariableNodeBytes(nodeId, name, writable, GetUTF8(initialValue), UA_Server_AddVariable_String, parentNodeId);
         }
 
-        public void AddVariableNode_DateTime(string nodeId, string name, bool writable, DateTime initialValue) {
-            AddVariableNode(nodeId, name, writable, DateTimeToOpcUaTicks(initialValue), UA_Server_AddVariable_DateTime);
+        public void AddVariableNode_DateTime(string nodeId, string name, bool writable, DateTime initialValue, string? parentNodeId = null) {
+            AddVariableNode(nodeId, name, writable, DateTimeToOpcUaTicks(initialValue), UA_Server_AddVariable_DateTime, parentNodeId);
         }
 
-        public void AddVariableNode_Guid(string nodeId, string name, bool writable, Guid initialValue) {
-            AddVariableNodeBytes(nodeId, name, writable, initialValue.ToByteArray(), UA_Server_AddVariable_Guid);
+        public void AddVariableNode_Guid(string nodeId, string name, bool writable, Guid initialValue, string? parentNodeId = null) {
+            AddVariableNodeBytes(nodeId, name, writable, initialValue.ToByteArray(), UA_Server_AddVariable_Guid, parentNodeId);
         }
 
-        public void AddVariableNode_ByteString(string nodeId, string name, bool writable, byte[] initialValue) {
-            AddVariableNodeBytes(nodeId, name, writable, initialValue, UA_Server_AddVariable_ByteString);
+        public void AddVariableNode_ByteString(string nodeId, string name, bool writable, byte[] initialValue, string? parentNodeId = null) {
+            AddVariableNodeBytes(nodeId, name, writable, initialValue, UA_Server_AddVariable_ByteString, parentNodeId);
         }
 
 
@@ -469,49 +510,53 @@ namespace OpcUaServerNet {
 
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Boolean(IntPtr server, byte[] id, byte[] name, bool writable, bool initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Boolean(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, bool initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_SByte(IntPtr server, byte[] id, byte[] name, bool writable, sbyte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_SByte(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, sbyte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Byte(IntPtr server, byte[] id, byte[] name, bool writable, byte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Byte(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, byte initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Int16(IntPtr server, byte[] id, byte[] name, bool writable, short initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Int16(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, short initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_UInt16(IntPtr server, byte[] id, byte[] name, bool writable, ushort initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_UInt16(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, ushort initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Int32(IntPtr server, byte[] id, byte[] name, bool writable, int initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Int32(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, int initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_UInt32(IntPtr server, byte[] id, byte[] name, bool writable, uint initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_UInt32(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, uint initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Int64(IntPtr server, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Int64(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_UInt64(IntPtr server, byte[] id, byte[] name, bool writable, ulong initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_UInt64(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, ulong initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Float(IntPtr server, byte[] id, byte[] name, bool writable, float initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Float(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, float initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Double(IntPtr server, byte[] id, byte[] name, bool writable, double initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Double(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, double initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_String(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_String(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_DateTime(IntPtr server, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_DateTime(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, long initialValue, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_Guid(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_Guid(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
 
         [DllImport("OpcUaServerNative.dll")]
-        private static extern uint UA_Server_AddVariable_ByteString(IntPtr server, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
+        private static extern uint UA_Server_AddVariable_ByteString(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, bool writable, byte[] initialValue, uint initialValueLength, ushort variableTypeId, ref IntPtr pNodeId);
+
+
+        [DllImport("OpcUaServerNative.dll")]
+        private static extern uint UA_Server_AddFolderNode(IntPtr server, IntPtr parentNode, byte[] id, byte[] name, ref IntPtr pNodeId);
 
 
         [DllImport("OpcUaServerNative.dll")]

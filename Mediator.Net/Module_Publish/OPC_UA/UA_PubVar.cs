@@ -87,7 +87,7 @@ internal class UA_PubVar : BufferedVarPub {
     internal override string PublisherID => config.ID;
 
     private bool configHasChanged = false;
-    private readonly Dictionary<VariableRef, UA_Var> registeredVariables = new();
+    private readonly Dictionary<VariableRef, UA_Var> registeredVariables = [];
 
     private record VarInfoWithVTQ(VarInfo VarInfo, VTQ VTQ);
 
@@ -175,6 +175,25 @@ internal class UA_PubVar : BufferedVarPub {
 
             bool writable = varInfo.Variable.Writable;
 
+            List<UA_Folder> folders = [];
+
+            if (varInfo.Object.Variables.Length > 1 || !isValue) {
+                ObjectInfo obj = varInfo.Object;
+                folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}", obj.Name));
+            }
+
+            foreach (MemInfo mem in varInfo.Parents) {
+                ObjectInfo obj = mem.Obj;
+                string member = mem.Member;
+                ObjectMember? objMember = mem.ClassInfo.ObjectMember.FirstOrDefault(m => m.Name == member);
+                bool isMultiMember = objMember != null && objMember.Dimension == Dimension.Array;
+                bool addMemberFolder = mem.ClassInfo.ObjectMember.Count > 1 || isMultiMember;
+                if (addMemberFolder) {
+                    folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}__{member}", member));
+                }
+                folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}", obj.Name));
+            }
+
             var uaVar = new UA_Var() {
                 NodeId = nodeID,
                 Name =  variable.Name == "Value" ? varInfo.Object.Name : $"{varInfo.Object.Name}.{variable.Name}",
@@ -183,7 +202,8 @@ internal class UA_PubVar : BufferedVarPub {
                 IsArray = varInfo.Variable.Dimension != 1,
                 InitialValue = vtq,
                 Unit = varInfo.Variable.Unit,
-                VariableRef = variable
+                VariableRef = variable,
+                Folder = folders.ToArray(),
             };
 
             registeredVariables[variable] = uaVar;
@@ -209,6 +229,8 @@ internal class UA_PubVar : BufferedVarPub {
         };
     }
 
+    private record UA_Folder(string NodeId, string Name);
+
     private sealed class UA_Var {
 
         public string NodeId { get; set; } = "";
@@ -218,6 +240,8 @@ internal class UA_PubVar : BufferedVarPub {
         public bool IsArray { get; set; }
         public VTQ InitialValue { get; set; }
         public string Unit { get; set; } = "";
+
+        public UA_Folder[] Folder { get; set; } = []; // first element is parent folder, last element is the root folder
 
         public VariableRef VariableRef { get; set; }
 
@@ -241,10 +265,10 @@ internal class UA_PubVar : BufferedVarPub {
 
     private void UA_Runner_Thread_Inner() {
 
-        List<UA_Var> uaVariables = new();
+        List<UA_Var> uaVariables = [];
         OPC_UA_Server? uaServer = null;
 
-        Dictionary<string, VTQ> mapLastValues = new();
+        Dictionary<string, VTQ> mapLastValues = [];
 
         try {
 
@@ -309,69 +333,90 @@ internal class UA_PubVar : BufferedVarPub {
     }
 
     private static bool AddVariable(OPC_UA_Server uaServer, UA_Var uaVar) {
+
+        if (uaVar.Folder.Length > 0) {
+            UA_Folder parentFolder = uaVar.Folder.First();
+            if (!uaServer.NodeExists(parentFolder.NodeId)) {
+                string? parentNodeID = null;
+                foreach (var folder in uaVar.Folder.Reverse()) {
+                    if (!uaServer.NodeExists(folder.NodeId)) {
+                        try {
+                            uaServer.AddFolderNode(folder.NodeId, folder.Name, parentNodeID);
+                        }
+                        catch (Exception exp) {
+                            Console.Error.WriteLine(exp.Message);
+                            return false;
+                        }
+                    }
+                    parentNodeID = folder.NodeId;
+                }
+            }
+        }
+
+        string? parentNodeId = uaVar.Folder.Length > 0 ? uaVar.Folder.First().NodeId : null;
         string nodeId = uaVar.NodeId;
         string name = uaVar.Name;
         try {
             switch (uaVar.Type) {
 
                 case DataType.Bool:
-                    uaServer.AddVariableNode_Boolean(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetBool());
+                    uaServer.AddVariableNode_Boolean(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetBool(), parentNodeId);
                     break;
 
                 case DataType.SByte:
-                    uaServer.AddVariableNode_SByte(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetSByte());
+                    uaServer.AddVariableNode_SByte(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetSByte(), parentNodeId);
                     break;
 
                 case DataType.Byte:
                     if (!uaVar.IsArray)
-                        uaServer.AddVariableNode_Byte(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetByte());
+                        uaServer.AddVariableNode_Byte(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetByte(), parentNodeId);
                     else
-                        uaServer.AddVariableNode_ByteString(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetByteArray() ?? Array.Empty<byte>());
+                        uaServer.AddVariableNode_ByteString(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetByteArray() ?? [], parentNodeId);
                     break;
 
                 case DataType.Int16:
-                    uaServer.AddVariableNode_Int16(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetShort());
+                    uaServer.AddVariableNode_Int16(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetShort(), parentNodeId);
                     break;
 
                 case DataType.UInt16:
-                    uaServer.AddVariableNode_UInt16(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetUShort());
+                    uaServer.AddVariableNode_UInt16(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetUShort(), parentNodeId);
                     break;
 
                 case DataType.Int32:
-                    uaServer.AddVariableNode_Int32(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetInt());
+                    uaServer.AddVariableNode_Int32(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetInt(), parentNodeId);
                     break;
 
                 case DataType.UInt32:
-                    uaServer.AddVariableNode_UInt32(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetUInt());
+                    uaServer.AddVariableNode_UInt32(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetUInt(), parentNodeId);
                     break;
 
                 case DataType.Int64:
-                    uaServer.AddVariableNode_Int64(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetLong());
+                    uaServer.AddVariableNode_Int64(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetLong(), parentNodeId);
                     break;
 
                 case DataType.UInt64:
-                    uaServer.AddVariableNode_UInt64(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetULong());
+                    uaServer.AddVariableNode_UInt64(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetULong(), parentNodeId);
                     break;
 
                 case DataType.Float32:
-                    uaServer.AddVariableNode_Float(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.AsFloat() ?? 0.0f);
+                    uaServer.AddVariableNode_Float(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.AsFloat() ?? 0.0f, parentNodeId);
                     break;
 
                 case DataType.Float64:
-                    uaServer.AddVariableNode_Double(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.AsDouble() ?? 0.0);
+                    uaServer.AddVariableNode_Double(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.AsDouble() ?? 0.0, parentNodeId);
                     break;
 
                 case DataType.String:
                 case DataType.JSON:
-                    uaServer.AddVariableNode_String(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetString() ?? "");
+                    uaServer.AddVariableNode_String(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetString() ?? "", parentNodeId);
                     break;
 
                 case DataType.Timestamp:
-                    uaServer.AddVariableNode_DateTime(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetTimestamp().ToDateTime());
+                    uaServer.AddVariableNode_DateTime(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetTimestamp().ToDateTime(), parentNodeId);
                     break;
 
                 case DataType.Guid:
-                    uaServer.AddVariableNode_Guid(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetGuid());
+                    uaServer.AddVariableNode_Guid(nodeId, name, uaVar.Writable, uaVar.InitialValue.V.GetGuid(), parentNodeId);
                     break;
             }
             return true;
@@ -405,7 +450,7 @@ internal class UA_PubVar : BufferedVarPub {
                     if (!uaVar.IsArray)
                         uaServer.WriteVariableValue_Byte(nodeId, vq.V.GetByte(), t, q);
                     else
-                        uaServer.WriteVariableValue_ByteString(nodeId, vq.V.GetByteArray() ?? Array.Empty<byte>(), t, q);
+                        uaServer.WriteVariableValue_ByteString(nodeId, vq.V.GetByteArray() ?? [], t, q);
                     break;
 
                 case DataType.Int16:

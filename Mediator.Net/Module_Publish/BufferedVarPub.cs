@@ -12,17 +12,11 @@ using Ifak.Fast.Mediator.BinSeri;
 
 namespace Ifak.Fast.Mediator.Publish;
 
-public abstract class BufferedVarPub {
+public abstract class BufferedVarPub(string dataFolder, bool bufferIfOffline) {
 
-    private readonly struct ChunkOfValues {
-
-        public readonly Timestamp Time;
-        public readonly VariableValues Values;
-
-        public ChunkOfValues(Timestamp time, VariableValues values) {
-            Time = time;
-            Values = values;
-        }
+    private readonly struct ChunkOfValues(Timestamp time, VariableValues values) {
+        public readonly Timestamp Time = time;
+        public readonly VariableValues Values = values;
     }
 
     private enum State {
@@ -35,18 +29,12 @@ public abstract class BufferedVarPub {
     private readonly AsyncQueue<ChunkOfValues> queue = new();
     private State state;
 
-    private readonly string dataFolder;
-    private readonly bool bufferIfOffline;
+    private readonly string dataFolder = dataFolder;
+    private readonly bool bufferIfOffline = bufferIfOffline;
     protected bool running = true;
 
     protected Connection? fastConnection = null;
-
-    public BufferedVarPub(string dataFolder, bool bufferIfOffline) {
-        this.dataFolder = dataFolder;
-        this.bufferIfOffline = bufferIfOffline;        
-    }
-
-    protected Dictionary<VariableRef, VarInfo> variables2Info = new Dictionary<VariableRef, VarInfo>();
+    protected Dictionary<VariableRef, VarInfo> variables2Info = [];
 
     public void UpdateVarInfos(Connection client, Dictionary<VariableRef, VarInfo> variables2Info) {
         this.variables2Info = variables2Info;
@@ -173,7 +161,7 @@ public abstract class BufferedVarPub {
         }
     }
 
-    protected readonly Dictionary<VariableRef, VTQ> lastSentValues = new();
+    protected readonly Dictionary<VariableRef, VTQ> lastSentValues = [];
 
     protected abstract Task<bool> DoSend(VariableValues values);
     protected abstract string BuffDirName { get; }
@@ -335,18 +323,18 @@ public abstract class BufferedVarPub {
             string path = TheBufferDir;
 
             if (!Directory.Exists(path)) {
-                return Array.Empty<string>();
+                return [];
             }
 
             return Directory.EnumerateFiles(path, $"{FilePrefix}*{FileSuffix}");
         }
         catch (Exception ex) {
             Console.Error.WriteLine($"EnumBufferedFiles: {ex.Message}");
-            return Array.Empty<string>();
+            return [];
         }
     }
 
-    private long JavaTicksFromFileName(string str, long defaultValue) {
+    private static long JavaTicksFromFileName(string str, long defaultValue) {
         try {
             int i = str.LastIndexOf(FilePrefix);
             if (i < 0) { return defaultValue; }
@@ -361,15 +349,10 @@ public abstract class BufferedVarPub {
         catch { return defaultValue; }
     }
 
-    public sealed class DataChunk {
+    public sealed class DataChunk(VariableValues values, string fileName) {
 
-        public readonly VariableValues Values;
-        private readonly string FileName;
-
-        public DataChunk(VariableValues values, string fileName) {
-            Values = values;
-            FileName = fileName;
-        }
+        public readonly VariableValues Values = values;
+        private readonly string FileName = fileName;
 
         public void Delete() {
             try {
@@ -382,6 +365,14 @@ public abstract class BufferedVarPub {
 
 public record VarInfo(
     VariableRef VarRef, 
-    Variable Variable, 
-    ObjectInfo Object,
-    ObjectValue ObjectValue);
+    Variable    Variable, 
+    ClassInfo   ClassInfo, 
+    ObjectInfo  Object, 
+    ObjectValue ObjectValue, 
+    MemInfo[]   Parents);
+
+public record MemInfo(
+    ClassInfo ClassInfo, 
+    ObjectInfo Obj, 
+    string Member, 
+    int Index);

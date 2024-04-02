@@ -13,8 +13,8 @@ namespace Ifak.Fast.Mediator.Publish;
 
 internal sealed class VarMetaManagerIntern {
 
-    private readonly HashSet<VariableRef> variables = new HashSet<VariableRef>();
-    internal Dictionary<VariableRef, VarInfo> variables2Info = new Dictionary<VariableRef, VarInfo>();
+    private readonly HashSet<VariableRef> variables = [];
+    internal Dictionary<VariableRef, VarInfo> variables2Info = [];
 
     internal async Task Check(VariableValues values, Connection clientFAST) {
 
@@ -44,18 +44,76 @@ internal sealed class VarMetaManagerIntern {
 
     private static async Task<VarInfoResult> GetVarInfoFromVars(Connection client, VariableRef[] vars) {
 
+        var moduleIDs = new HashSet<string>();
         var objects = new HashSet<ObjectRef>();
         foreach (var v in vars) {
             objects.Add(v.Object);
+            moduleIDs.Add(v.Object.ModuleID);
         }
 
         ObjectRef[] objectsArr = objects.ToArray();
+        string[] moduleIDsArr = moduleIDs.ToArray();
 
         List<ObjectInfo>  objInfos  = await client.GetObjectsByID(objectsArr, ignoreMissing: true);
         List<ObjectValue> objValues = await client.GetObjectValuesByID(objectsArr, ignoreMissing: true);
 
+        Dictionary<string, MetaInfos> mapModule2Meta = [];
+        foreach (string moduleID in moduleIDsArr) {
+            MetaInfos meta = await client.GetMetaInfos(moduleID);
+            mapModule2Meta[moduleID] = meta;
+        }
+
         Dictionary<ObjectRef, ObjectInfo>  mapObj2Info  = objInfos.ToDictionary(i => i.ID);
         Dictionary<ObjectRef, ObjectValue> mapObj2Value = objValues.ToDictionary(i => i.Object);
+
+        for (int i = 0; i < 100; ++i) { // avoid possible infinite loop
+
+            var missingParents = new HashSet<ObjectRef>();
+            foreach (ObjectInfo v in mapObj2Info.Values) {
+                if (v.Parent.HasValue) {
+                    ObjectRef parent = v.Parent.Value.Object;
+                    if (!mapObj2Info.ContainsKey(parent)) {
+                        missingParents.Add(parent);
+                    }
+                }
+            }
+
+            if (missingParents.Count == 0) break;
+
+            List<ObjectInfo> missingParentsObjInfos = await client.GetObjectsByID(missingParents.ToArray(), ignoreMissing: true);
+            foreach (ObjectInfo v in missingParentsObjInfos) {
+                mapObj2Info[v.ID] = v;
+            }
+
+            if (missingParentsObjInfos.Count == 0) break;
+        }
+
+        ClassInfo? GetClassInfo(ObjectInfo objInfo) {
+            MetaInfos meta = mapModule2Meta[objInfo.ID.ModuleID];
+            return meta.Classes.FirstOrDefault(c => c.FullName == objInfo.ClassNameFull);
+        }
+
+        MemInfo[]? GetMemInfo(ObjectInfo objInfo) {
+            List<MemInfo> memInfos = [];
+            ObjectInfo it = objInfo;
+            while (it.Parent.HasValue) {
+                MemberRefIdx parent = it.Parent.Value;
+                ObjectRef parentObj = parent.Object;
+                string member = parent.Name;
+                if (!mapObj2Info.TryGetValue(parentObj, out ObjectInfo? parentInfo)) {
+                    return null;
+                }
+
+                ClassInfo? clsInfo = GetClassInfo(parentInfo);
+                if (clsInfo == null) {
+                    return null;
+                }
+
+                memInfos.Add(new MemInfo(clsInfo, parentInfo, member, parent.Index));
+                it = parentInfo;
+            }
+            return memInfos.ToArray();
+        }
 
         var result = new List<VarInfo>();
         var invalidVars = new List<VariableRef>();
@@ -72,9 +130,22 @@ internal sealed class VarMetaManagerIntern {
                 continue;
             }
 
+            MemInfo[]? memInfos = GetMemInfo(objInfo);
+            if (memInfos == null) {
+                invalidVars.Add(v);
+                continue;
+            }
+
+            ClassInfo? clsInfo = GetClassInfo(objInfo);
+            if (clsInfo == null) {
+                invalidVars.Add(v);
+                continue;
+            }
+
             foreach (Variable variable in objInfo.Variables) {
                 if (variable.Name == v.Name) {
-                    result.Add(new VarInfo(v, variable, objInfo, objValue));
+                    var varInfo = new VarInfo(v, variable, clsInfo, objInfo, objValue, memInfos);
+                    result.Add(varInfo);
                 }
             }
         }
