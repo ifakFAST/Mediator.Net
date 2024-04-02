@@ -7,6 +7,7 @@
     <StartupObject>Ifak.Fast.Mediator.Publish.Program</StartupObject>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
