@@ -16,6 +16,7 @@ namespace Ifak.Fast.Mediator.Publish.OPC_UA;
 internal class UA_PubVar : BufferedVarPub {
 
     private readonly OpcUaConfig config;
+    private readonly OpcUaVarPub configVarPub;
     private readonly string host = "";
     private readonly ushort port = 4840;
     private readonly bool allowAnonym = true;
@@ -28,6 +29,7 @@ internal class UA_PubVar : BufferedVarPub {
         : base(dataFolder, bufferIfOffline: false) {
 
         this.config = config;
+        this.configVarPub = config.VarPublish ?? throw new ArgumentException("VarPublish must be set in OpcUaConfig");
 
         this.host = config.Host;
         this.port = config.Port;
@@ -160,6 +162,17 @@ internal class UA_PubVar : BufferedVarPub {
         }
     }
 
+    private string GetObjectId(VariableRef variable) => GetObjectId(variable.Object);
+
+    private static string GetFullObjectId(ObjectInfo obj) => obj.ID.ToEncodedString();
+
+    private string GetObjectId(ObjectRef obj) {
+        if (configVarPub.LocalObjectIDsForVariables) {
+            return obj.LocalObjectID;
+        }
+        return obj.ToEncodedString();
+    }
+
     private void RegisterVariables(List<VarInfoWithVTQ> varInfosForRegister) {
 
         foreach (VarInfoWithVTQ varInfoWithVTQ in varInfosForRegister) {
@@ -169,9 +182,9 @@ internal class UA_PubVar : BufferedVarPub {
             bool isValue = variable.Name == "Value";
             string nodeID;
             if (isValue)
-                nodeID = $"ns=1;s={variable.Object.LocalObjectID}";
+                nodeID = $"ns=1;s={GetObjectId(variable)}";
             else
-                nodeID = $"ns=1;s={variable.Object.LocalObjectID}.{variable.Name}";
+                nodeID = $"ns=1;s={GetObjectId(variable)}.{variable.Name}";
 
             bool writable = varInfo.Variable.Writable;
 
@@ -179,7 +192,7 @@ internal class UA_PubVar : BufferedVarPub {
 
             if (varInfo.Object.Variables.Length > 1 || !isValue) {
                 ObjectInfo obj = varInfo.Object;
-                folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}", obj.Name));
+                folders.Add(new UA_Folder($"ns=1;s={GetFullObjectId(obj)}", obj.Name));
             }
 
             foreach (MemInfo mem in varInfo.Parents) {
@@ -189,9 +202,9 @@ internal class UA_PubVar : BufferedVarPub {
                 bool isMultiMember = objMember != null && objMember.Dimension == Dimension.Array;
                 bool addMemberFolder = mem.ClassInfo.ObjectMember.Count > 1 || isMultiMember;
                 if (addMemberFolder) {
-                    folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}__{member}", member));
+                    folders.Add(new UA_Folder($"ns=1;s={GetFullObjectId(obj)}__{member}", member));
                 }
-                folders.Add(new UA_Folder($"ns=1;s={obj.ID.ToEncodedString()}", obj.Name));
+                folders.Add(new UA_Folder($"ns=1;s={GetFullObjectId(obj)}", obj.Name));
             }
 
             var uaVar = new UA_Var() {

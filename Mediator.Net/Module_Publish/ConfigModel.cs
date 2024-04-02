@@ -371,6 +371,8 @@ public class OpcUaVarPub : ModelObject, VarPubCommon {
 
     public bool BufferIfOffline { get; set; } = false;
 
+    public bool LocalObjectIDsForVariables { get; set; } = false;
+
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;
     public bool SendTagsWithNull { get; set; } = false;
