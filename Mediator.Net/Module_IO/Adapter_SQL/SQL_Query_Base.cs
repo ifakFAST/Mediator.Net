@@ -276,7 +276,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                 }
                 else {
                     CloseDB();
-                    PrintLine("DB connection lost. Trying to reconnect...");
+
+                    // Do not log warning because connection might be lost due to session timeout:
+                    // PrintLine("DB connection lost. Trying to reconnect...");
                 }
             }
 
@@ -285,9 +287,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL
                 
                 await dbConnection.OpenAsync();
 
-                alarmConnectivity.ReturnToNormal();
-                ReturnToNormal("OpenDB", "Connected to Database.", connectionUp: true);
-                
+                const string msg = "Connected to Database.";
+
+                if (alarmConnectivity.ReturnToNormal()) {
+                    PrintLine(msg);
+                }
+
+                ReturnToNormal("OpenDB", msg, connectionUp: true);
+
                 return true;
             }
             catch (Exception exp) {
