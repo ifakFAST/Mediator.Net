@@ -1006,7 +1006,11 @@ public sealed class MyUaChannel : ClientSessionChannel {
 
         base(localDescription, certificateStore, userIdentity, remoteEndpoint, loggerFactory, options) {
 
+        long timeoutMS = (options ?? new ClientSessionChannelOptions()).TimeoutHint;
+        timeoutOpen = TimeSpan.FromMilliseconds(timeoutMS) + TimeSpan.FromSeconds(2);
     }
+
+    private readonly TimeSpan timeoutOpen;
 
     internal delegate void MyEventHandler();
 
@@ -1030,15 +1034,22 @@ public sealed class MyUaChannel : ClientSessionChannel {
             Task _ = DelayAbort();
         }
 
+        Task taskTimeoutOpen = Task.Delay(timeoutOpen);
+
         FaultedWhileOpening += OnFaultedWhileOpening;
         Task taskOpen = base.OpenAsync(); // this OpenAsync Task may not fail until timeout even if channel is faulted already
         Task taskFaulted = Task.Delay(Timeout.Infinite, cancelOpenAsync.Token);
-        Task firstCompleted = await Task.WhenAny(taskOpen, taskFaulted);
+        Task firstCompleted = await Task.WhenAny(taskOpen, taskFaulted, taskTimeoutOpen);
         FaultedWhileOpening -= OnFaultedWhileOpening;
 
         if (firstCompleted == taskFaulted) {
             string msg = GetPendingException()?.Message ?? "Fault on connect.";
             throw new Exception(msg);
+        }
+
+        if (firstCompleted == taskTimeoutOpen) {
+            Task ignored = AbortAsync();
+            throw new Exception("Timeout on connect.");
         }
 
         await taskOpen;
