@@ -72,7 +72,7 @@
                   <td><v-checkbox   class="tabcontent" v-model="item.Checked"    style="margin-left: 1ex; margin-right: 1ex;"></v-checkbox></td>
                   <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
                   <td><v-btn class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
-                  <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable.Object)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
+                  <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
                   <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
                   <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
                 </tr>
@@ -94,6 +94,8 @@
             </table>
           </v-card-text>
           <v-card-actions>
+            <v-btn text @click.native="replaceEditorItemsFromCsvFromClipboard">Import</v-btn>
+            <v-btn text @click.native="copyEditorItemsAsCsvToClipboard">Export</v-btn>
             <v-spacer></v-spacer>
             <v-btn color="grey darken-1"  text @click.native="editorItems.show = false">Cancel</v-btn>
             <v-btn color="primary darken-1" text :disabled="!isItemsOK" @click.native="editorItems_Save">Save</v-btn>
@@ -898,15 +900,107 @@ export default class HistoryPlot extends Vue {
     }
   }
 
+  copyEditorItemsAsCsvToClipboard(): void {
+
+    const csvData = this.editorItems.items.map((item:ItemConfig) => {
+      return `${item.Name},${item.Color},${item.Size},${item.SeriesType},${item.Axis},${item.Checked},${item.Variable.Object},${item.Variable.Name}`;
+    }).join('\r\n');
+
+    const header = 'Name,Color,Size,SeriesType,Axis,Checked,Object,Variable';
+    const csvDataWithHeader = header + '\r\n' + csvData;
+
+    navigator.clipboard.writeText(csvDataWithHeader)
+      .then(() => {
+        alert('CSV data copied to clipboard');
+      })
+      .catch((error) => {
+        alert('Failed to copy CSV data to clipboard: ' + error)
+      });
+  }
+
+  replaceEditorItemsFromCsvFromClipboard(): void {
+
+    navigator.clipboard.readText()
+      .then((csvData) => {
+
+        const lines = csvData.split('\n')
+        const header = lines.shift()?.split(',') // get header row and split into columns
+        
+        const items = lines.filter(line => line.trim() !== '').map((line,idx) => {
+
+          const parts = line.split(',')
+          const it: ItemConfig = {
+            Name: '',
+            Color: this.editorItems.colorList[idx % this.editorItems.colorList.length],
+            Size: 3,
+            SeriesType: 'Scatter',
+            Axis: 'Left',
+            Checked: true,
+            Variable: { Object: '', Name: 'Value' },
+          }
+
+          // Assign values to properties based on header column names
+          header?.forEach((column, index) => {
+            switch (column) {
+              case 'Name':
+                it.Name = parts[index]
+                break
+              case 'Color':
+                it.Color = parts[index]
+                break
+              case 'Size':
+                it.Size = parseInt(parts[index])
+                break
+              case 'SeriesType':
+                it.SeriesType = parts[index] as SeriesType
+                break
+              case 'Axis':
+                it.Axis = parts[index] as Axis
+                break
+              case 'Checked':
+                it.Checked = parts[index] === 'true'
+                break
+              case 'Object':
+                if (parts[index]) {
+                  it.Variable = { ...it.Variable, Object: parts[index] }
+                }
+                break;
+              case 'Variable':
+                if (parts[index]) {
+                  it.Variable = { ...it.Variable, Name: parts[index] }
+                }
+                break
+            }
+          });
+
+          if (it.Name === '') {
+            // If no name is provided, use it.Variable.Object but only the part after the first semicolon:
+            const i = it.Variable.Object.indexOf(':')
+            it.Name = i > 0 ? it.Variable.Object.substring(i + 1) : it.Variable.Object
+          }
+
+          return it
+        });
+
+        this.editorItems.items = items
+      })
+      .catch((error) => {
+        alert('Failed to paste CSV data from clipboard: ' + error)
+      });
+  }
+
   editorItems_ObjectID2Name(id: string): string {
     const obj: ObjInfo = this.objectMap[id]
     if (obj === undefined) { return id }
     return obj.Name
   }
 
-  editorItems_ObjectID2Variables(id: string): string[] {
-    const obj: ObjInfo = this.objectMap[id]
-    if (obj === undefined) { return [] }
+  editorItems_ObjectID2Variables(id: Variable): string[] {
+    const obj: ObjInfo = this.objectMap[id.Object]
+    if (obj === undefined) { 
+      if (id.Name === '') { return [] }
+      return [id.Name]
+    }
     return obj.Variables
   }
 
