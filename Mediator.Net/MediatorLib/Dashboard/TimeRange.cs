@@ -37,17 +37,21 @@ namespace Ifak.Fast.Mediator.Dashboard
         }
 
         public static Duration DurationFromTimeRange(TimeRange range) {
-            switch (range.LastUnit) {
-                case TimeUnit.Minutes: return Duration.FromMinutes(range.LastCount);
-                case TimeUnit.Hours: return Duration.FromHours(range.LastCount);
-                case TimeUnit.Days: return Duration.FromDays(range.LastCount);
-                case TimeUnit.Weeks: return Duration.FromDays(7 * range.LastCount);
-                case TimeUnit.Months: return Duration.FromDays(30 * range.LastCount);
-                case TimeUnit.Years: return Duration.FromDays(365 * range.LastCount);
-                default:
-                    throw new Exception("Unknown time unit: " + range.LastUnit);
-            }
+            return DurationFromTimeUnit(range.LastCount, range.LastUnit);
         }
+
+        public static Duration DurationFromTimeUnit(int count, TimeUnit unit) {
+            return unit switch {
+                TimeUnit.Minutes => Duration.FromMinutes(count),
+                TimeUnit.Hours => Duration.FromHours(count),
+                TimeUnit.Days => Duration.FromDays(count),
+                TimeUnit.Weeks => Duration.FromDays(7 * count),
+                TimeUnit.Months => Duration.FromDays(30 * count),
+                TimeUnit.Years => Duration.FromDays(365 * count),
+                _ => throw new Exception("Unknown time unit: " + unit),
+            };
+        }
+
     }
 
     public enum TimeType

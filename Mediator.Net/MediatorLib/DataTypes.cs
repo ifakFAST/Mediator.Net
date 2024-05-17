@@ -324,7 +324,7 @@ namespace Ifak.Fast.Mediator
     [JsonConverter(typeof(TimestampConverter))]
     public struct Timestamp : IComparable<Timestamp>, IEquatable<Timestamp>, IXmlSerializable
     {
-        public static readonly Timestamp Empty = new Timestamp(0);
+        public static readonly Timestamp Empty = new(0);
         public static readonly Timestamp Max = FromDateTime(DateTime.MaxValue);
 
         private long ticks; // Java ticks (0 == 1. Jan. 1970 UTC)
@@ -333,9 +333,9 @@ namespace Ifak.Fast.Mediator
             this.ticks = ticks;
         }
 
-        public bool IsEmpty => ticks == 0;
+        public readonly bool IsEmpty => ticks == 0;
 
-        public bool NonEmpty => ticks != 0;
+        public readonly bool NonEmpty => ticks != 0;
 
         public static Timestamp FromJavaTicks(long ticks) { return new Timestamp(ticks); }
 
@@ -357,55 +357,63 @@ namespace Ifak.Fast.Mediator
 
         public static Timestamp Now => FromDotNetTicks(DateTime.UtcNow.Ticks);
 
-        public Timestamp AddMillis(long ms) {
+        public readonly Timestamp AddMillis(long ms) {
             return new Timestamp(ticks + ms);
         }
 
-        public Timestamp AddSeconds(long seconds) {
+        public readonly Timestamp AddSeconds(long seconds) {
             return new Timestamp(ticks + (seconds * 1000L));
         }
 
-        public Timestamp AddMinutes(long minutes) {
+        public readonly Timestamp AddMinutes(long minutes) {
             return new Timestamp(ticks + (minutes * 60L * 1000L));
         }
 
-        public Timestamp AddHours(long hours) {
+        public readonly Timestamp AddHours(long hours) {
             return new Timestamp(ticks + (hours * 60L * 60L * 1000L));
         }
 
-        public Timestamp AddDays(long days) {
+        public readonly Timestamp AddDays(long days) {
             return new Timestamp(ticks + (days * 24 * 60L * 60L * 1000L));
         }
 
-        public Timestamp AddTimeSpan(TimeSpan span) {
+        public readonly Timestamp AddTimeSpan(TimeSpan span) {
             return new Timestamp(ticks + span.Ticks / TimeSpan.TicksPerMillisecond);
         }
 
-        public Timestamp AddDuration(Duration duration) {
+        public readonly Timestamp AddDuration(Duration duration) {
             return new Timestamp(ticks + duration.TotalMilliseconds);
         }
 
-        public Timestamp TruncateMilliseconds() => new Timestamp((ticks / 1000) * 1000);
+        public readonly Timestamp TruncateMilliseconds() => new Timestamp((ticks / 1000) * 1000);
 
-        public long JavaTicks
+        public readonly Timestamp TruncateSeconds() => new Timestamp((ticks / 60000) * 60000);
+
+        public readonly Timestamp Truncate5Seconds() => new Timestamp((ticks / 5000) * 5000);
+
+        public readonly Timestamp Truncate10Seconds() => new Timestamp((ticks / 10000) * 10000);
+
+        public readonly Timestamp Truncate30Seconds() => new Timestamp((ticks / 30000) * 30000);
+
+        public readonly long JavaTicks
         {
             get { return ticks; }
         }
 
-        public long DotNetTicks
+        public readonly long DotNetTicks
         {
             get { return (ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH; }
         }
 
-        public DateTime ToDateTime() {
+        public readonly DateTime ToDateTime() {
             return new DateTime(DotNetTicks, DateTimeKind.Utc);
         }
 
-        public DateTime ToDateTimeUnspecified() {
+        public readonly DateTime ToDateTimeUnspecified() {
             return new DateTime(DotNetTicks, DateTimeKind.Unspecified);
         }
 
-        public override string ToString() {
+        public readonly override string ToString() {
             var d = ToDateTime();
             if (ticks % 1000 != 0)
                 return d.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffK", CultureInfo.InvariantCulture);
@@ -413,20 +421,20 @@ namespace Ifak.Fast.Mediator
                 return d.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ssK", CultureInfo.InvariantCulture);
         }
 
-        public override int GetHashCode() {
+        public readonly override int GetHashCode() {
             return (int)ticks;
         }
 
-        public override bool Equals(object obj) {
-            if (obj is Timestamp) {
-                return Equals((Timestamp)obj);
+        public readonly override bool Equals(object obj) {
+            if (obj is Timestamp timestamp) {
+                return Equals(timestamp);
             }
             return false;
         }
 
-        public bool Equals(Timestamp other) => ticks == other.ticks;
+        public readonly bool Equals(Timestamp other) => ticks == other.ticks;
 
-        public int CompareTo(Timestamp other) {
+        public readonly int CompareTo(Timestamp other) {
             long a = ticks;
             long b = other.ticks;
             if (a < b) return -1;
@@ -489,7 +497,7 @@ namespace Ifak.Fast.Mediator
         private const long TICKS_AT_EPOCH = 621355968000000000L;
         private const long TICKS_PER_MILLISECOND = 10000;
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteString(ToString());
         }
 
@@ -498,7 +506,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
