@@ -29,6 +29,7 @@ export interface TimeRange {
 export type TimeType = 'Last' | 'Range'
 
 export type TimeUnit = 'Minutes' | 'Hours' | 'Days' | 'Weeks' | 'Months' | 'Years'
+export const TimeUnitValues: TimeUnit[] = ['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']
 
 export function getMillisecondsFromTimeRange(range: TimeRange): number {
   const n = range.lastCount
@@ -47,6 +48,12 @@ export function getMillisecondsFromTimeRange(range: TimeRange): number {
     case 'Years':   return n * Year
   }
   return Hour
+}
+
+export function getDateIsoStringFromTimestamp(timestamp: number): string {
+  const date = new Date(timestamp)
+  const strDate = date.toISOString()
+  return strDate.substring(0, strDate.indexOf('T'))
 }
 
 export function timeWindowFromTimeRange(range: TimeRange): { left: number, right: number } {

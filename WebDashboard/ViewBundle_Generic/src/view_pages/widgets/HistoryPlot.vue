@@ -142,6 +142,96 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog v-model="downloadOptions.show" persistent max-width="350px" @keydown="(e) => { if (e.keyCode === 27) { downloadOptions.show = false; }}">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Download Options</span>
+        </v-card-title>
+        <v-card-text>
+          <table>
+            <tr>
+              <td><p class="mt-4 mb-0 mr-4">Range Start:</p></td>
+              <td colspan="2">
+                <v-menu
+                  v-model="downloadOptions.rangeStartShow"
+                  :close-on-content-click="false"
+                  :nudge-right="40"
+                  transition="scale-transition"
+                  offset-y
+                  min-width="auto"
+                >
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-text-field
+                      style="width: 175px;"
+                      hide-details
+                      v-model="downloadOptions.rangeStart"
+                      append-icon="mdi-calendar"                      
+                      v-bind="attrs"
+                      v-on="on"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="downloadOptions.rangeStart"
+                    @input="downloadOptions.rangeStartShow = false"
+                  ></v-date-picker>
+                </v-menu>
+              </td>
+            </tr>
+            <tr>
+              <td><p class="mt-4 mb-0 mr-4">Range End:</p></td>
+              <td colspan="2">
+                <v-menu
+                  v-model="downloadOptions.rangeEndShow"
+                  :close-on-content-click="false"
+                  :nudge-right="40"
+                  transition="scale-transition"
+                  offset-y
+                  min-width="auto"
+                >
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-text-field
+                      style="width: 175px;"
+                      hide-details
+                      v-model="downloadOptions.rangeEnd"
+                      append-icon="mdi-calendar"                      
+                      v-bind="attrs"
+                      v-on="on"
+                    ></v-text-field>
+                  </template>
+                  <v-date-picker
+                    v-model="downloadOptions.rangeEnd"
+                    @input="downloadOptions.rangeEndShow = false"
+                  ></v-date-picker>
+                </v-menu>
+              </td>
+            </tr>
+            <tr>
+              <td><p class="mt-4 mb-0 mr-4">Aggregation:</p></td>
+              <td colspan="2">
+                <v-select hide-details style="width: 185px;" v-model="downloadOptions.aggregation" :items="aggregationValues"></v-select>
+              </td>
+            </tr>
+            <tr v-if="downloadOptions.aggregation != 'None'">
+              <td><p class="mt-4 mb-0 mr-4">Resolution:</p></td>
+              <td>
+                <v-text-field hide-details style="width: 60px; margin-right: 12px;" type="Number" v-model.number="downloadOptions.resolutionCount"></v-text-field>
+              </td>
+              <td>
+                <v-select hide-details style="width: 100px;" v-model="downloadOptions.resolutionUnit" :items="timeUnitValues"></v-select>
+              </td>
+            </tr>
+          </table>
+          <v-checkbox v-if="downloadOptions.fileType === 'Spreadsheet'" hide-details v-model="downloadOptions.simbaFormat" label="SIMBA Format"></v-checkbox>
+          <v-checkbox v-if="downloadOptions.aggregation != 'None' && !downloadOptions.simbaFormat" hide-details v-model="downloadOptions.skipEmptyIntervals" label="Skip Empty Intervals"></v-checkbox>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey darken-1"    text @click.native="downloadOptions.show = false">Cancel</v-btn>
+          <v-btn color="primary darken-1" text @click.native="downloadOptions_OK">OK</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <dlg-object-select v-model="selectObject.show"
         :object-id="selectObject.selectedObjectID"
         :module-id="selectObject.selectedModuleID"
@@ -156,7 +246,7 @@
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import DyGraph from '../../components/DyGraph.vue'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
-import { TimeRange, timeWindowFromTimeRange } from '../../utils'
+import { TimeRange, TimeUnit, TimeUnitValues, timeWindowFromTimeRange, getDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
 
@@ -209,6 +299,25 @@ interface CsvDataExport {
 
 interface SpreadsheetDataExport {
   TimestampFormat: string
+}
+
+type Aggregation = 'None' | 'Average' | 'Min' | 'Max' | 'First' | 'Last' | 'Count'
+const AggregationValues: Aggregation[] = ['None', 'Average', 'Min', 'Max', 'First', 'Last', 'Count']
+
+type FileType = 'CSV' | 'Spreadsheet'
+
+interface DownloadOptions {
+  show: boolean
+  rangeStartShow: boolean
+  rangeEndShow: boolean
+  rangeStart: string
+  rangeEnd: string
+  fileType: FileType
+  aggregation: Aggregation
+  resolutionCount: number
+  resolutionUnit: TimeUnit
+  skipEmptyIntervals: boolean
+  simbaFormat: boolean
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -298,6 +407,23 @@ export default class HistoryPlot extends Vue {
     modules: [],
     selectedModuleID: '',
     selectedObjectID: '',
+  }
+
+  aggregationValues = AggregationValues
+  timeUnitValues = TimeUnitValues
+
+  downloadOptions: DownloadOptions = {
+    show: false,
+    rangeStartShow: false,
+    rangeEndShow: false,
+    rangeStart: '',
+    rangeEnd: '',
+    fileType: 'CSV',
+    aggregation: 'None',
+    resolutionCount: 15,
+    resolutionUnit: 'Minutes',
+    skipEmptyIntervals: false,
+    simbaFormat: false,
   }
 
   currentVariable: Variable = { Object: '', Name: '' }
@@ -847,25 +973,68 @@ export default class HistoryPlot extends Vue {
   }
 
   downloadSpreadsheet(): void {
-    this.downloadFile('Spreadsheet', '.xlsx')
+    this.downloadOptions.fileType = 'Spreadsheet'
+    this.showDownloadDlg()
   }
 
   downloadCSV(): void {
-    this.downloadFile('CSV', '.csv')
+    this.downloadOptions.fileType = 'CSV'
+    this.downloadOptions.simbaFormat = false
+    this.showDownloadDlg()
   }
 
-  async downloadFile(type: string, extension: string): Promise<void> {
+  showDownloadDlg(): void {
+    if (this.downloadOptions.rangeStart === '') {
+      const { left, right } = timeWindowFromTimeRange(this.timeRange)
+      this.downloadOptions.rangeStart = getDateIsoStringFromTimestamp(left)
+      this.downloadOptions.rangeEnd = getDateIsoStringFromTimestamp(right)
+    }
+    this.downloadOptions.show = true
+  }
 
+  downloadOptions_OK(): void {
+    this.downloadOptions.show = false
+    this.downloadFile()
+  }
+
+  async downloadFile(): Promise<void> {
+
+    const type = this.downloadOptions.fileType
+    const extension = type === 'CSV' ? '.csv' : '.xlsx'
     const visibilty = this.dyGraph.visibility()
 
+    const agg = {
+      Agg: this.downloadOptions.aggregation,
+      ResolutionCount: this.downloadOptions.resolutionCount,
+      ResolutionUnit: this.downloadOptions.resolutionUnit,
+      SkipEmptyIntervals: this.downloadOptions.skipEmptyIntervals || this.downloadOptions.simbaFormat,
+    }
+
+    const hasAgg = agg.Agg !== 'None'
+
+    const timeRange: TimeRange = {
+      type: 'Range',
+      lastCount: 0,
+      lastUnit: 'Minutes',
+      rangeStart: this.downloadOptions.rangeStart,
+      rangeEnd: this.downloadOptions.rangeEnd,
+    }
+
     const para = {
-      timeRange: this.timeRange,
+      timeRange: timeRange,
       variables: this.variables.filter((x, i) => visibilty[i]),
       variableNames: this.items.filter((x, i) => visibilty[i]).map((it) => it.Name),
       fileType: type,
+      simbaFormat: this.downloadOptions.simbaFormat,
+      aggregation: hasAgg ? agg : null,
     }
-    const blobResponse = await this.backendAsync('DownloadFile', para, 'blob')
-    this.downloadBlob(blobResponse, 'HistoryData' + extension)
+    try {
+      const blobResponse = await this.backendAsync('DownloadFile', para, 'blob')
+      this.downloadBlob(blobResponse, 'HistoryData' + extension)
+    }
+    catch (err) {
+      alert(err.message)
+    }
   }
 
   downloadBlob(blob: Blob, filename: string): void {

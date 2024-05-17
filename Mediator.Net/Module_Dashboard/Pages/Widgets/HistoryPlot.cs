@@ -92,7 +92,90 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return new ReqResult(200, res);
         }
 
-        private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRef> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null) {
+        private static VTTQs AggregateValues(VTTQs values, AggregationSpec aggregation) {
+
+            if (values == null || values.Count == 0) {
+                return [];
+            }
+
+            var result = new VTTQs();
+
+            long resMillis = aggregation.Resolution.TotalMilliseconds;
+
+            Timestamp currentIntervalStart = Timestamp.FromJavaTicks((values[0].T.JavaTicks / resMillis) * resMillis);
+            List<double> currentIntervalValues = [];
+
+            foreach (var value in values) {
+
+                double? vv = value.V.AsDouble();
+                if (!vv.HasValue) {
+                    continue;
+                }
+
+                Timestamp intervalStart = Timestamp.FromJavaTicks((value.T.JavaTicks / resMillis) * resMillis);
+                if (intervalStart != currentIntervalStart) {
+                    // Aggregate the current interval
+                    result.Add(AggregateCurrentInterval(currentIntervalStart, currentIntervalValues, aggregation));
+                    // Move to the next interval
+
+                    while (!aggregation.SkipEmptyIntervals && currentIntervalStart + aggregation.Resolution < intervalStart) {
+                        currentIntervalStart += aggregation.Resolution;
+                        result.Add(AggregateCurrentInterval(currentIntervalStart, [], aggregation));
+                    }
+
+                    currentIntervalStart = intervalStart;
+                    currentIntervalValues.Clear();
+                }
+                currentIntervalValues.Add(vv.Value);
+            }
+
+            // Aggregate the last interval
+            if (currentIntervalValues.Count > 0) {
+                result.Add(AggregateCurrentInterval(currentIntervalStart, currentIntervalValues, aggregation));
+            }
+
+            return result;
+        }
+
+        private static VTTQ AggregateCurrentInterval(Timestamp intervalStart, List<double> values, AggregationSpec aggregation) {
+
+            if (values.Count == 0 && aggregation.Agg != Aggregation.Count) {
+                return VTTQ.Make(DataValue.Empty, intervalStart, intervalStart, Quality.Good);
+            }
+
+            var aggregatedValue = aggregation.Agg switch {
+                Aggregation.Average => values.Average(),
+                Aggregation.Min => values.Min(),
+                Aggregation.Max => values.Max(),
+                Aggregation.First => values.First(),
+                Aggregation.Last => values.Last(),
+                Aggregation.Count => values.Count,
+                _ => throw new ArgumentOutOfRangeException(nameof(aggregation), "Invalid aggregation method."),
+            };
+            return VTTQ.Make(DataValue.FromDouble(aggregatedValue), intervalStart, intervalStart, Quality.Good);
+        }
+
+        public enum Aggregation {
+            Average,
+            Min,
+            Max,
+            First,
+            Last,
+            Count
+        }
+
+        record AggregationSpec(
+            Aggregation Agg,
+            Duration Resolution,
+            bool SkipEmptyIntervals
+        );
+
+        private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRef> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null, AggregationSpec? agg = null) {
+
+            VTTQs TransformData(VTTQs data) {
+                if (agg == null) return data;
+                return AggregateValues(data, agg);
+            }
 
             Timestamp tStartEffective = tStartSub ?? tStartRange;
 
@@ -137,7 +220,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                             VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
 
                             if (data.Count < ChunckSize) {
-                                listHistories.Add(data);
+                                listHistories.Add(TransformData(data));
                             }
                             else {
                                 var buffer = new VTTQs(data);
@@ -148,7 +231,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                                 }
                                 while (data.Count == ChunckSize);
 
-                                listHistories.Add(buffer);
+                                listHistories.Add(TransformData(buffer));
                             }
                         }
                     }
@@ -204,16 +287,40 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Spreadsheet
         }
 
+        public record AggregationSpecUI(
+            Aggregation Agg,
+            int ResolutionCount,
+            TimeUnit ResolutionUnit,
+            bool SkipEmptyIntervals
+        );
+
         public async Task<ReqResult> UiReq_DownloadFile(
             TimeRange timeRange,
             VariableRef[] variables,
             string[] variableNames,
-            FileType fileType) {
+            FileType fileType,
+            bool simbaFormat,
+            AggregationSpecUI? aggregation) {
 
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            var listHistories = await GetVariablesData(variables, tStart, tEnd);
+            if (tStart > tEnd) {
+                throw new Exception("Invalid time range: start >= end");
+            }
+
+            AggregationSpec? spec = null;
+
+            if (aggregation != null) {
+                AggregationSpecUI aggUI = aggregation;
+                if (aggUI.ResolutionCount <= 0) {
+                    throw new Exception("Resolution must be greater than zero.");
+                }
+                Duration resolution = TimeRange.DurationFromTimeUnit(aggUI.ResolutionCount, aggUI.ResolutionUnit);
+                spec = new AggregationSpec(aggUI.Agg, resolution, aggUI.SkipEmptyIntervals);
+            }
+
+            var listHistories = await GetVariablesData(variables, tStart, tEnd, agg: spec);
 
             var columns = new List<string> {
                 "Time"
@@ -238,12 +345,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                         contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                         using (var excel = new ExcelPackage(res)) {
 
-                            if (configuration.DataExport.Spreadsheet.SimbaFormat) {
+                            if (simbaFormat) {
                                 WriteExcelDataSIMBA(excel, columns, listHistories, configuration.DataExport.Spreadsheet);
                             }
                             else {
                                 ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
-                                WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);                                
+                                WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);
                             }
                             excel.Save();
                         }
@@ -710,7 +817,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class SpreadsheetDataExport
     {
         public string TimestampFormat { get; set; } = "yyyy/mm/dd hh:mm:ss;@";
-        public bool SimbaFormat { get; set; } = false;
     }
 
 }
