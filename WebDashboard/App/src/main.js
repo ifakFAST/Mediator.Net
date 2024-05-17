@@ -65,6 +65,23 @@ window.dashboardApp = new Vue({
         .catch(function (error) {
            globalState.busy = false;
            if (error.response && error.response.data) {
+
+              if (error.response.data instanceof Blob) {
+                return new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const data = JSON.parse(reader.result);
+                    if (data.error) {
+                      reject(new Error(data.error));
+                    }
+                    else {
+                      reject(new Error(reader.result));
+                    }
+                  };
+                  reader.readAsText(error.response.data);
+                });
+              }
+
               if ((typeof error.response.data) !== 'string') {
                 throw new Error(error.response.statusText);
               }
