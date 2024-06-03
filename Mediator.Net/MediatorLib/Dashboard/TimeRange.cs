@@ -30,7 +30,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                 case TimeType.Last:
                     return Timestamp.Max;
                 case TimeType.Range:
-                    return Timestamp.FromISO8601(RangeEnd) + Duration.FromDays(1);
+                    return Timestamp.FromISO8601(RangeEnd);
                 default:
                     throw new Exception("Unknown range type: " + Type);
             }

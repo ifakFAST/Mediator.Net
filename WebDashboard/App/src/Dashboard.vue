@@ -89,11 +89,18 @@
         {{ connectionText }}
       </v-alert>
 
+      <v-btn text icon v-if="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" >
+        <v-icon>chevron_left</v-icon>
+      </v-btn>
+      
+      <v-btn text icon v-if="showRangeStepButtonRight" @mousedown="onRangeStep(+1)">
+        <v-icon>chevron_right</v-icon>
+      </v-btn>
+
       <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showTimeEdit">
          <template v-slot:activator="{ on }">
           <div v-on="on">
-            Time Range:
-            <v-btn text color="primary" style="margin-left: 0px; margin-right: 30px;" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
+            <v-btn text color="primary" style="margin-left: 0px; margin-right: 20px;" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
           </div>
          </template>
          <v-list>
@@ -126,12 +133,14 @@
             <v-card-text>
                <table style="border-collapse: separate; border-spacing: 16px;">
                   <tr>
-                     <td><v-text-field label="From" v-model="timeRangeEdit.rangeStart"></v-text-field></td>
-                     <td><v-text-field label="To" v-model="timeRangeEdit.rangeEnd"></v-text-field></td>
+                     <td><v-text-field label="From" v-model="customRangeStartDate"></v-text-field></td>
+                     <td><v-text-field label=""     v-model="customRangeStartTime"></v-text-field></td>
+                     <td><v-text-field label="To"   v-model="customRangeEndDate"></v-text-field></td>
+                     <td><v-text-field label=""     v-model="customRangeEndTime"></v-text-field></td>
                   </tr>
                   <tr>
-                     <td><v-date-picker :max="today" no-title v-model="timeRangeEdit.rangeStart" class="elevation-4"></v-date-picker></td>
-                     <td><v-date-picker :max="today" no-title v-model="timeRangeEdit.rangeEnd" class="elevation-4"></v-date-picker></td>
+                     <td colspan="2"><v-date-picker no-title v-model="customRangeStartDate" class="elevation-4"></v-date-picker></td>
+                     <td colspan="2"><v-date-picker no-title v-model="customRangeEndDate"   class="elevation-4"></v-date-picker></td>
                   </tr>
                </table>
             </v-card-text>
@@ -167,6 +176,65 @@
   import globalState from "./Global.js";
   import Vue from 'vue'
 
+  const OneSecond = 1000;
+  const OneMinute = 60 * OneSecond;
+  const OneHour = 60 * OneMinute;
+  const OneDay = 24 * OneHour;
+
+  function time2Minutes(time) {
+    // e.g. '01:30' -> 90
+    const bits = time.split(':');
+    return parseInt(bits[0]) * 60 + parseInt(bits[1]);
+  };
+
+  function isMidnight(dateString) {
+    try {
+      const time = getTimePartOfISOString(dateString, '');
+      return time === '00:00' || time === '00:00:00';
+    } catch (e) {
+      return false;
+    }
+  };
+
+  function getDatePartOfISOString(s, defaultDate) {
+      if (s.length < 10) {
+      return defaultDate;
+      }
+      return s.substring(0, 10);
+  };
+      
+  function getTimePartOfISOString(s, defaultTime) {
+    if (s.length < 16) {
+      return defaultTime;
+    }
+    return s.substring(11);
+  };
+
+  function date2LocalStr(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0'); // Local time hours
+    const minutes = String(date.getMinutes()).padStart(2, '0'); // Local time minutes
+    const seconds = String(date.getSeconds()).padStart(2, '0'); // Local time seconds
+    if (seconds !== '00') {
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;          
+    }
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  function millisecondsFromCountAndUnit(count, unit) {
+    switch (unit) {
+      case 'Minutes': return count * OneMinute;
+      case 'Hours': return count * OneHour;
+      case 'Days': return count * OneDay;
+      case 'Weeks': return count * 7 * OneDay;
+      case 'Months': return count * 30 * OneDay;
+      case 'Years': return count * 365 * OneDay;
+    }
+    return 0;
+  };
+
   export default {
     props: {
       currViewID: String,
@@ -185,6 +253,10 @@
         miniVariant: false,
         title: 'Dashboard',
         showTimeEdit: false,
+        customRangeStartDate: '',
+        customRangeStartTime: '00:00',
+        customRangeEndDate: '',
+        customRangeEndTime: '00:00',
         timeRangeEdit: {
           type: 'Last',
           lastCount: 7,
@@ -201,7 +273,6 @@
           { title: 'Last 12 months',  count: 12, unit: 'Months'  },
         ],
         showCustomTimeRangeSelector: false,
-        today: '',
         contextMenuViewEntry: {
           show: false,
           clientX: 0,
@@ -244,6 +315,8 @@
       timeRangeApply2() {
          this.showCustomTimeRangeSelector = false;
          this.timeRangeEdit.type = 'Range';
+         this.timeRangeEdit.rangeStart = this.customRangeStartDate + 'T' + this.customRangeStartTime;
+         this.timeRangeEdit.rangeEnd   = this.customRangeEndDate + 'T' + this.customRangeEndTime;
          const range = Object.assign({}, this.timeRangeEdit);
          this.$emit("timechange", range);
       },
@@ -258,11 +331,80 @@
       customTimeRangeSelected() {
          this.showTimeEdit = false;
          this.showCustomTimeRangeSelector = true;
+         const now = new Date();
+         const tomorrow = new Date(now.getTime() + OneDay);
+         const todayAsStringWithoutTime    = getDatePartOfISOString(date2LocalStr(now), '');
+         const tomorrowAsStringWithoutTime = getDatePartOfISOString(date2LocalStr(tomorrow), '');
+         this.customRangeStartDate = getDatePartOfISOString(this.timeRangeEdit.rangeStart, todayAsStringWithoutTime);
+         this.customRangeStartTime = getTimePartOfISOString(this.timeRangeEdit.rangeStart, '00:00');
+         this.customRangeEndDate = getDatePartOfISOString(this.timeRangeEdit.rangeEnd, tomorrowAsStringWithoutTime);
+         this.customRangeEndTime = getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00');
       },
       editKeydown(e) {
          if (e.keyCode === 27) {
             this.showCustomTimeRangeSelector = false;
          }
+      },
+      onRangeStep(count) {
+
+        this.timeRangePrepare();
+
+        if (this.timeRangeEdit.type === 'Last') {
+
+          const dateNow = new Date();
+          dateNow.setMilliseconds(0);
+          dateNow.setSeconds(0);
+
+          let addMilliseconds;
+          switch (this.timeRangeEdit.lastUnit) {
+            case 'Minutes': 
+              addMilliseconds = OneMinute; 
+              break;
+            default:
+              dateNow.setUTCMinutes(0);
+              addMilliseconds = OneHour; 
+              break;
+          }
+
+          const dateEnd = new Date(dateNow.getTime() + addMilliseconds);
+          const dateStart = new Date(dateEnd.getTime() - millisecondsFromCountAndUnit(this.timeRangeEdit.lastCount, this.timeRangeEdit.lastUnit));
+          this.timeRangeEdit.type = 'Range';
+          this.timeRangeEdit.rangeStart = date2LocalStr(dateStart);
+          this.timeRangeEdit.rangeEnd = date2LocalStr(dateEnd);
+        }
+        
+        const dateStart = new Date(this.timeRangeEdit.rangeStart); // will interpret as local time
+        const dateEnd   = new Date(this.timeRangeEdit.rangeEnd);   // will interpret as local time
+        let diff = dateEnd - dateStart; // milliseconds
+        
+        const bothMidnightBeforeShift = isMidnight(this.timeRangeEdit.rangeStart) && isMidnight(this.timeRangeEdit.rangeEnd);
+
+        if (diff !== diff) { // check for NaN
+          return;
+        }
+        
+        const newDateStart = new Date(dateStart.getTime() + count * diff);
+        const newDateEnd   = new Date(dateEnd.getTime()   + count * diff);
+
+        this.timeRangeEdit.rangeStart = date2LocalStr(newDateStart);
+        this.timeRangeEdit.rangeEnd   = date2LocalStr(newDateEnd);
+       
+        if (bothMidnightBeforeShift && !isMidnight(this.timeRangeEdit.rangeStart)) {
+          // correct for daylight saving time shift, so that the range is still a full day (either add or substract 60 minutes usually):
+          const minutes = time2Minutes(getTimePartOfISOString(this.timeRangeEdit.rangeStart, '00:00'))
+          const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : (24*60)-minutes) * OneMinute;
+          this.timeRangeEdit.rangeStart = date2LocalStr(new Date(newDateStart.getTime() + offsetMilliseconds));
+        }
+
+        if (bothMidnightBeforeShift && !isMidnight(this.timeRangeEdit.rangeEnd)) {
+          // correct for daylight saving time shift, so that the range is still a full day (either add or substract 60 minutes usually):
+          const minutes = time2Minutes(getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00'))
+          const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : (24*60)-minutes) * OneMinute;
+          this.timeRangeEdit.rangeEnd = date2LocalStr(new Date(newDateEnd.getTime() + offsetMilliseconds));
+        }
+
+        const range = Object.assign({}, this.timeRangeEdit);
+        this.$emit("timechange", range);
       },
       isValidDate(s) {
          const bits = s.split(new RegExp('\\-', 'g'));
@@ -326,11 +468,7 @@
         this.$emit('delete', this.contextMenuViewEntry.view.viewID)
       }
     },
-    watch: {
-       showCustomTimeRangeSelector(v) {
-         const d = new Date();
-         this.today = d.toISOString().substr(0, 10);
-       },
+    watch: {       
        miniVariant(v) {
          Vue.nextTick(() => {
            globalState.resizeListener();
@@ -348,22 +486,57 @@
             return "Last " + this.timeRangeSelected.lastCount + " " + this.timeRangeSelected.lastUnit;
          }
          if (this.timeRangeSelected.type === 'Range') {
+
             const s = this.timeRangeSelected.rangeStart;
             const e = this.timeRangeSelected.rangeEnd;
-            return s + " - " + e;
+            const dateSeparator = ' \u2013 ';
+
+            if (isMidnight(s) && isMidnight(e)) {
+
+              const dateStartStr = getDatePartOfISOString(s, '');
+
+              // substract one day from e:
+              const dateEnd = new Date(e);
+              const dateEndMinus1Day = new Date(dateEnd.getTime() - OneDay);
+              const dateEndMinusOneDayStr = getDatePartOfISOString(date2LocalStr(dateEndMinus1Day));
+
+              if (dateStartStr === dateEndMinusOneDayStr) {
+                return dateStartStr;
+              }
+
+              return dateStartStr + dateSeparator + dateEndMinusOneDayStr;
+            }
+
+            const replaceTWithSpace = (str) => {
+              return str.replace('T', ' ');
+            }
+            
+            return replaceTWithSpace(s) + dateSeparator + replaceTWithSpace(e);
          }
          return "";
       },
+      showRangeStepButtonLeft() {
+        return this.showTime;
+      },
+      showRangeStepButtonRight() {
+        return this.showTime && this.timeRangeSelected.type === 'Range';
+      },
       isValidTimeRange() {
-         const s = this.timeRangeEdit.rangeStart;
-         const e = this.timeRangeEdit.rangeEnd;
-         return s.length > 0 && e.length > 0 && e >= s && this.isValidDate(s) && this.isValidDate(e);
+        const s = this.customRangeStartDate + 'T' + this.customRangeStartTime;
+        const e = this.customRangeEndDate + 'T' + this.customRangeEndTime;
+        try {
+          const sDate = new Date(s);
+          const eDate = new Date(e);
+          return sDate < eDate;
+        } catch (e) {
+          return false;
+        }
       },
       isValidTimeLast() {
          const num = this.timeRangeEdit.lastCount;
          return Number.isInteger(num) && num > 0;
       },
-       connectionColor() {
+      connectionColor() {
         if (this.connectionState === 1) { return 'warning' }
         return 'error'
       },
