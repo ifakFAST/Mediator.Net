@@ -157,12 +157,12 @@ namespace Ifak.Fast.Mediator.Dashboard
             app.UseMiddleware<ModifyHtmlMiddleware>();
             app.UseStaticFiles();
 
-            string webAsstetsDir = Path.Combine(configPath, Session.WebAssets);
+            string webAssetsDir = Path.Combine(configPath, Session.WebAssets);
 
             try {
 
                 app.UseStaticFiles(new StaticFileOptions {
-                    FileProvider = new MyPhysicalFileProvider(webAsstetsDir),
+                    FileProvider = new MyPhysicalFileProvider(webAssetsDir),
                     RequestPath = $"/{Session.WebAssets}"
                 });
             }

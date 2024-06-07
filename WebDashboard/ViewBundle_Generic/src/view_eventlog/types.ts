@@ -1,10 +1,13 @@
 
 export interface Alarm {
   T: number
+  TimeFirstLocal: string
+  TimeLastLocal: string
   TimeAckLocal: string
   TimeResetLocal: string
   TimeRTNLocal: string
   Source: string
+  Type: string
   Severity: Severity
   State: EventState
   RTN: boolean

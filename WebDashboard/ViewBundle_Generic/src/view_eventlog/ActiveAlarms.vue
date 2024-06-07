@@ -13,8 +13,11 @@
                   no-data-text="No active warnings or alarms" class="elevation-4 mt-2"
                   v-model="selected" item-key="T" show-select must-sort>
 
-      <template v-slot:item.T="{ item }">
+      <template v-slot:item.TimeFirstLocal="{ item }">
         <span v-bind:class="classObject(item)">{{ item.TimeFirstLocal }}</span>
+      </template>
+      <template v-slot:item.TimeLastLocal="{ item }">
+        <span v-bind:class="classObject(item)">{{ item.TimeLastLocal }}</span>
       </template>
       <template v-slot:item.Msg="{ item }">
         <span v-bind:class="classObject(item)">{{ item.Msg }}</span>
@@ -104,12 +107,13 @@ export default class ActiveAlarms extends Vue {
     itemsPerPageOptions: [50, 100, 500, 1000, { text: 'All', value: -1 }],
   }
   headers = [
-    { text: 'Time (Local)', align: 'left',   sortable: true,  filterable: false, value: 'T'                     },
+    { text: 'First',        align: 'left',   sortable: true,  filterable: false, value: 'TimeFirstLocal'        },
+    { text: 'Last',         align: 'left',   sortable: true,  filterable: false, value: 'TimeLastLocal'         },
     { text: 'Message',      align: 'left',   sortable: true,  filterable: true,  value: 'Msg'                   },
     { text: 'Source',       align: 'left',   sortable: true,  filterable: false, value: 'Source'                },
     { text: 'State',        align: 'left',   sortable: true,  filterable: false, value: 'State'                 },
     { text: 'Count',        align: 'center', sortable: true,  filterable: false, value: 'Count', width: '94px'  },
-    { text: 'Details',      align: 'center', sortable: false, filterable: false , value: 'Details'              },
+    { text: 'Details',      align: 'center', sortable: false, filterable: false, value: 'Details'               },
   ]
   details = false
   detailItem: Alarm | null = null

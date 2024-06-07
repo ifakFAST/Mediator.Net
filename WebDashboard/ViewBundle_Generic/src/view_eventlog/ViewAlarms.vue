@@ -135,12 +135,16 @@ export default class ViewAlarms extends Vue {
   .v-data-table > .v-data-table__wrapper > table > thead > tr > th {
     font-size: 16px;
     font-weight: bold;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
   }
   .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
     font-size: 16px;
     height: auto;
     padding-top: 8px !important;
     padding-bottom: 8px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
   }
   .container {
     padding: 16px 0px!important;
