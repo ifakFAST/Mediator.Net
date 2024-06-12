@@ -284,6 +284,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Unit = output.Unit,
                 Dimension = output.Dimension,
                 Type = output.Type,
+                DefaultValue = output.DefaultValue.HasValue ? output.DefaultValue.Value.JSON : null,
             };
         }
 

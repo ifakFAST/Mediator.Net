@@ -467,7 +467,13 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("unit")]
         public string Unit { get; set; } = "";
 
-        public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
+        [XmlAttribute("default")]
+        public string? DefaultValue { get; set; } = null;
+
+        public DataValue GetDefaultValue() => DefaultValue switch {
+            null => DataValue.FromDataType(Type, Dimension),
+            _    => DataValue.FromJSON(DefaultValue)
+        };
 
         protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
 
@@ -493,9 +499,9 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 History = history
             };
 
-            return new Variable[] {
+            return [
                 variable
-            };
+            ];
         }
 
         public bool ShouldSerializeUnit() => !string.IsNullOrEmpty(Unit);
@@ -503,5 +509,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeDimension() => Dimension != 1;
 
         public bool ShouldSerializeType() => Type != DataType.Float64;
+
+        public bool ShouldSerializeDefaultValue() => DefaultValue != null && DefaultValue != DataValue.FromDataType(Type, Dimension).JSON;
     }
 }
