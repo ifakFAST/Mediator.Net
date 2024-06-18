@@ -109,10 +109,14 @@
                             <v-text-field v-model="row.Value[idx]" v-if="row.Type === 'Int64'"    :label="'[' + idx + ']'"></v-text-field>
                             <v-text-field v-model="row.Value[idx]" v-if="row.Type === 'Duration'" :label="'[' + idx + ']'"></v-text-field>
                             <v-select     v-model="row.Value[idx]" v-if="row.Type === 'Enum'"     :label="'[' + idx + ']'" :items="row.EnumValues"></v-select>
-                            <table v-if="row.Type === 'NamedValue'">
+                            <table v-if="row.Type === 'NamedValue'"  >
                               <tr>
-                                  <td><v-text-field v-model="row.Value[idx].Name"  label="Name"></v-text-field></td>
-                                  <td><v-text-field v-model="row.Value[idx].Value" label="Value"></v-text-field></td>
+                                <td style="vertical-align: top; width:25%">
+                                  <v-text-field v-model="row.Value[idx].Name"  label="Name"></v-text-field>
+                                </td>
+                                <td style="width:75%">
+                                  <v-textarea   auto-grow rows="1" v-model="row.Value[idx].Value" label="Value"></v-textarea>
+                                </td>
                               </tr>
                             </table>
                         </td>
@@ -148,12 +152,12 @@
       <v-data-table no-data-text="No variables" :headers="varHeaders" :items="selection.Variables" hide-default-footer class="elevation-1 mx-1 mt-2 mb-1">
           <template v-slot:item="{ item }">
             <tr>
-              <td>{{ item.Name }}</td>
+              <td style="vertical-align: top;">{{ item.Name }}</td>
               <td class="text-right">
                 <a @click.stop="editVar(item)">{{ item.V }}</a>
               </td>
-              <td v-bind:style="{ color: qualityColor(item.Q) }" class="text-right">{{ item.Q }}</td>
-              <td class="text-right">{{ item.T }}</td>
+              <td style="vertical-align: top;" v-bind:style="{ color: qualityColor(item.Q) }" class="text-right">{{ item.Q }}</td>
+              <td style="vertical-align: top;" class="text-right">{{ item.T }}</td>
             </tr>
           </template>
       </v-data-table>
