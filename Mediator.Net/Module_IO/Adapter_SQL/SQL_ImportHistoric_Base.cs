@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_SQL;
@@ -75,21 +76,28 @@ public abstract class SQL_ImportHistoric_Base : SQL_Query_Base
     }
 
     protected virtual string LastTime(VTQ lastValue) {
-        Duration timeOffset = TimeOffset();
-        Timestamp lastT = Timestamp.MaxOf(lastValue.T + timeOffset, StartTime());
-        string lastTime = lastT.ToString();
-        return $"'{lastTime}'";
+        Duration timeOffset = GetTimeOffset();
+        Timestamp lastT = Timestamp.MaxOf(lastValue.T + timeOffset, GetStartTime());
+        return GetTimestampFormat() switch {
+            TimestampFormat.String => $"'{lastT.ToString()}'",
+            TimestampFormat.UnixTime => (lastT.JavaTicks/1000L).ToString(CultureInfo.InvariantCulture),
+            TimestampFormat.UnixTimeMS => lastT.JavaTicks.ToString(CultureInfo.InvariantCulture),
+            TimestampFormat.DotNetTicks => lastT.DotNetTicks.ToString(CultureInfo.InvariantCulture),
+            _ => throw new Exception("Invalid TimestampType")
+        };
     }
+
+    protected virtual TimestampFormat GetTimestampFormat() => TimestampFormat.String;
 
     protected abstract string GetQuery(DataItem item, VTQ lastValue, string lastTime, int maxRows);
 
-    protected virtual Timestamp StartTime() => Timestamp.FromComponents(2020, 1, 1);
+    protected virtual Timestamp GetStartTime() => Timestamp.FromComponents(2020, 1, 1);
 
-    protected virtual Duration TimeOffset() => Duration.FromHours(0);
+    protected virtual Duration GetTimeOffset() => Duration.FromHours(0);
 
     protected virtual Timestamp TimestampFromReader(DbDataReader reader) {
         DateTime time = reader.GetDateTime("Time");
-        return Timestamp.FromDateTime(time) - TimeOffset();
+        return Timestamp.FromDateTime(time) - GetTimeOffset();
     }
 
     protected virtual DataValue DataValueFromReader(DbDataReader reader) {
@@ -102,3 +110,4 @@ public abstract class SQL_ImportHistoric_Base : SQL_Query_Base
     }
 }
 
+public enum TimestampFormat { String, UnixTime, UnixTimeMS, DotNetTicks }

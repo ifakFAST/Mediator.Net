@@ -17,10 +17,12 @@ public class SQL_ImportHistoric_ByConfig : SQL_ImportHistoric_Base
     private string sampleDataItemAddress = "";
     private Duration offset = Duration.FromHours(0);
     private Timestamp startTime = Timestamp.FromComponents(2020, 1, 1);
+    private TimestampFormat timestampFormat = TimestampFormat.String;
 
     protected override DatabaseProvider.DatabaseType DatabaseType => databaseType;
-    protected override Timestamp StartTime() => startTime;
-    protected override Duration TimeOffset() => offset;
+    protected override Timestamp GetStartTime() => startTime;
+    protected override Duration GetTimeOffset() => offset;
+    protected override TimestampFormat GetTimestampFormat() => timestampFormat;
 
     public override Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
@@ -45,6 +47,11 @@ public class SQL_ImportHistoric_ByConfig : SQL_ImportHistoric_Base
         string strStartTime = config.GetConfigByName("StartTime", "2020-01-01");
         if (!Timestamp.TryParse(strStartTime, out startTime)) {
             PrintErrorLine($"Invalid value for config parameter 'StartTime': '{strStartTime}'");
+        }
+
+        string strTimestampFormat = config.GetConfigByName("TimestampFormat", "String");
+        if (!Enum.TryParse(strTimestampFormat, ignoreCase: true, out timestampFormat)) {
+            PrintErrorLine($"Invalid TimestampFormat: {strTimestampFormat}. Assuming String...");
         }
 
         return base.Initialize(config, callback, itemInfos);
