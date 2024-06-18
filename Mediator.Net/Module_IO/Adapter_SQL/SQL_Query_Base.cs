@@ -15,17 +15,17 @@ namespace Ifak.Fast.Mediator.IO.Adapter_SQL;
 
 public abstract class SQL_Query_Base : AdapterBase
 {
-    private DatabaseProvider db = new PostgreSQLProvider();
-    private DbConnection? dbConnection;
+    protected DatabaseProvider db = new PostgreSQLProvider();
+    protected DbConnection? dbConnection;
 
     public override bool SupportsScheduledReading => true;
 
-    private Adapter config = new();
-    private AdapterCallback? callback;
+    protected Adapter config = new();
+    protected AdapterCallback? callback;
 
-    private readonly Dictionary<string, DataItem> mapId2DataItem = [];
+    protected readonly Dictionary<string, DataItem> mapId2DataItem = [];
 
-    private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
+    protected AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
     protected abstract DatabaseProvider.DatabaseType DatabaseType { get; }
 
@@ -94,7 +94,7 @@ public abstract class SQL_Query_Base : AdapterBase
         return res;
     }
 
-    private async Task<VTQ> ReadDataItemFromDB(DataItem item, VTQ lastValue) {
+    protected virtual async Task<VTQ> ReadDataItemFromDB(DataItem item, VTQ lastValue) {
 
         string query = item.Address;
 
@@ -257,7 +257,7 @@ public abstract class SQL_Query_Base : AdapterBase
         return Task.FromResult(true);
     }
 
-    private async Task<bool> TryOpenDatabase(bool reportFailureImmediatelly = false) {
+    protected async Task<bool> TryOpenDatabase(bool reportFailureImmediatelly = false) {
 
         if (string.IsNullOrEmpty(config.Address)) {
             return false;
@@ -302,7 +302,7 @@ public abstract class SQL_Query_Base : AdapterBase
         }
     }
 
-    private void CloseDB() {
+    protected void CloseDB() {
         if (dbConnection == null) return;
         try {
             dbConnection.Close();
@@ -311,16 +311,16 @@ public abstract class SQL_Query_Base : AdapterBase
         dbConnection = null;
     }
 
-    private void PrintLine(string msg) {
+    protected void PrintLine(string msg) {
         Console.WriteLine(config.Name + ": " + msg);
     }
 
-    private void PrintErrorLine(string msg) {
+    protected void PrintErrorLine(string msg) {
         string name = config.Name ?? "";
         Console.Error.WriteLine(name + ": " + msg);
     }
 
-    private void LogWarning(string type, string msg, string? dataItem = null, bool connectionDown = false) {
+    protected void LogWarning(string type, string msg, string? dataItem = null, bool connectionDown = false) {
 
         var ae = new AdapterAlarmOrEvent() {
             Time = Timestamp.Now,
@@ -334,7 +334,7 @@ public abstract class SQL_Query_Base : AdapterBase
         callback?.Notify_AlarmOrEvent(ae);
     }
 
-    private void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
+    protected void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
         AdapterAlarmOrEvent _event = AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems);
         _event.Connection = connectionUp;
         callback?.Notify_AlarmOrEvent(_event);
