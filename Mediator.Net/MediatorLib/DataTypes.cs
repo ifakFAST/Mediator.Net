@@ -370,6 +370,20 @@ namespace Ifak.Fast.Mediator
             return FromDateTime(DateTime.Parse(str, null, DateTimeStyles.RoundtripKind));
         }
 
+        public static Timestamp Parse(string str) {
+            return FromISO8601(str);
+        }
+
+        public static bool TryParse(string s, out Timestamp result) {
+            try {
+                result = Parse(s);
+                return true;
+            } catch {
+                result = Empty;
+                return false;
+            }
+        }
+
         public static Timestamp Now => FromDotNetTicks(DateTime.UtcNow.Ticks);
 
         public readonly Timestamp AddMillis(long ms) {
