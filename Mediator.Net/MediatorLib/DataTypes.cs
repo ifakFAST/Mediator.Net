@@ -337,6 +337,21 @@ namespace Ifak.Fast.Mediator
 
         public readonly bool NonEmpty => ticks != 0;
 
+        public static Timestamp FromComponents(int year, int month, int day) {
+            var dt = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc);
+            return FromDateTime(dt);
+        }
+
+        public static Timestamp FromComponents(int year, int month, int day, int hour, int minute, int second) {
+            var dt = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
+            return FromDateTime(dt);
+        }
+
+        public static Timestamp FromComponents(int year, int month, int day, int hour, int minute, int second, int millisecond) {
+            var dt = new DateTime(year, month, day, hour, minute, second, millisecond, DateTimeKind.Utc);
+            return FromDateTime(dt);
+        }
+
         public static Timestamp FromJavaTicks(long ticks) { return new Timestamp(ticks); }
 
         public static Timestamp FromDotNetTicks(long ticks) {
