@@ -55,7 +55,7 @@ namespace Ifak.Fast.Mediator.Util
                     if (!File.Exists(file)) {
 
                         string dir = Path.GetDirectoryName(file);
-                        if (!Directory.Exists(dir)) {
+                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
                             Directory.CreateDirectory(dir);
                         }
 
