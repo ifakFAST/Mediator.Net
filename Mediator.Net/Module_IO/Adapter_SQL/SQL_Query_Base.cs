@@ -8,342 +8,335 @@ using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
+using Ifak.Fast.Mediator.IO.Adapter_SQL.DbProvider;
 using Ifak.Fast.Mediator.Util;
 
-namespace Ifak.Fast.Mediator.IO.Adapter_SQL
+namespace Ifak.Fast.Mediator.IO.Adapter_SQL;
+
+public abstract class SQL_Query_Base : AdapterBase
 {
-    public abstract class SQL_Query_Base : AdapterBase
-    {
-        protected abstract Task<bool> TestConnection(DbConnection? dbConnection);
-        protected abstract DbConnection CreateConnection(string connectionString, int timeoutSeconds);
-        protected abstract DbCommand CreateCommand(DbConnection dbConnection, string cmdText);
+    private DatabaseProvider db = new PostgreSQLProvider();
+    private DbConnection? dbConnection;
 
-        private DbConnection? dbConnection;
+    public override bool SupportsScheduledReading => true;
 
-        public override bool SupportsScheduledReading => true;
+    private Adapter config = new();
+    private AdapterCallback? callback;
 
-        private Adapter config = new Adapter();
-        private AdapterCallback? callback;
+    private readonly Dictionary<string, DataItem> mapId2DataItem = [];
 
-        private readonly Dictionary<string, DataItem> mapId2DataItem = new();
+    private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
 
-        private AlarmManager alarmConnectivity = new(activationDuration: Duration.FromMinutes(5));
+    protected abstract DatabaseProvider.DatabaseType DatabaseType { get; }
 
-        public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
+    public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
-            this.config = config;
-            this.callback = callback;
+        this.config = config;
+        this.callback = callback;
 
-            List<DataItem> dataItems = config.GetAllDataItems();
-            mapId2DataItem.Clear();
-            foreach (DataItem item in dataItems) {
-                mapId2DataItem[item.ID] = item;
-            }
+        this.db = DatabaseProvider.Create(DatabaseType);
 
-            alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
-
-            PrintLine($"Address: {config.Address}");
-
-            await TryOpenDatabase(reportFailureImmediatelly: true);
-
-            return new Group[0];
+        List<DataItem> dataItems = config.GetAllDataItems();
+        mapId2DataItem.Clear();
+        foreach (DataItem item in dataItems) {
+            mapId2DataItem[item.ID] = item;
         }
 
-        public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
+        alarmConnectivity = new(activationDuration: config.ConnectionRetryTimeout);
 
-            int N = items.Count;
-            VTQ[] res = new VTQ[N];
-            for (int i = 0; i < N; ++i) {
-                res[i] = items[i].LastValue;
-            }
+        PrintLine($"Address: {config.Address}");
 
-            bool connected = await TryOpenDatabase();
+        await TryOpenDatabase(reportFailureImmediatelly: true);
 
-            if (!connected) {
-                bool transient = !alarmConnectivity.IsActivated;
-                if (transient) {
-                    return res;
-                }
-                else {
-                    return BadVTQsFromLastValue(items);
-                }
-            }
+        return [];
+    }
 
-            for (int i = 0; i < N; ++i) {
+    public override async Task<VTQ[]> ReadDataItems(string group, IList<ReadRequest> items, Duration? timeout) {
 
-                ReadRequest req = items[i];
-                string itemID = req.ID;
-                VTQ lastVal = req.LastValue;
-                DataItem item = mapId2DataItem[itemID];
-                string query = item.Address;
-
-                try {
-                    res[i] = await ReadDataItemFromDB(query, lastVal, item.Type, item.Dimension);
-                    ReturnToNormal("ReadDataItems", $"Successful read of DataItem {itemID}", affectedDataItems: itemID);
-                }
-                catch (Exception exp) {
-                    Exception e = exp.GetBaseException() ?? exp;
-                    bool connectionOK = await TestConnection(dbConnection);
-                    if (connectionOK) {
-                        LogWarning("ReadDataItems", $"SQL query failed for {itemID}: {e.Message}", itemID);
-                    }
-                    else {
-                        PrintErrorLine($"Read exception with broken connection (closing connection, returning last values): {e.Message}");
-                        CloseDB();
-                        break;
-                    }
-                }
-            }
-
-            return res;
+        int N = items.Count;
+        VTQ[] res = new VTQ[N];
+        for (int i = 0; i < N; ++i) {
+            res[i] = items[i].LastValue;
         }
 
-        private async Task<VTQ> ReadDataItemFromDB(string query, VTQ lastValue, DataType type, int dimension) {
+        bool connected = await TryOpenDatabase();
 
-            ValueWithTime vt = await ReadDataValue(query, type, dimension);
-            if (lastValue.V == vt.Value && vt.Time == null) {
-                return lastValue;
-            }
-
-            Timestamp t = vt.Time.HasValue ? Timestamp.FromDateTime(vt.Time.Value) : Timestamp.Now.TruncateMilliseconds();
-            VTQ vtq = VTQ.Make(vt.Value, t, Quality.Good);
-
-            //int N = rows.Count;
-            //string firstRow = N == 0 ? "" : StdJson.ObjectToString(rows[0], indented: false);
-
-            //if (N == 0) {
-            //    PrintLine($"Read 0 rows for {itemID}");
-            //}
-            //else if (N == 1) {
-            //    PrintLine($"Read 1 row for {itemID}: {firstRow}");
-            //}
-            //else {
-            //    PrintLine($"Read {N} rows for {itemID}. First row: {firstRow}");
-            //}
-
-            return vtq;
+        if (!connected) {
+            bool transient = !alarmConnectivity.IsActivated;
+            return transient ? res : BadVTQsFromLastValue(items);
         }
 
-        private record struct ValueWithTime(
-            DataValue Value, 
-            DateTime? Time = null
-        );
+        for (int i = 0; i < N; ++i) {
 
-        private async Task<ValueWithTime> ReadDataValue(string query, DataType type, int dimension) {
-
-            using DbCommand cmd = CreateCommand(dbConnection!, query);
-            using DbDataReader reader = await cmd.ExecuteReaderAsync();
-
-            DateTime? GetOptionalTime() {
-                try {
-                    return reader.GetDateTime("timestamp");
-                }
-                catch (Exception) {
-                    return null;
-                }
-            }
-
-            if (type == DataType.Struct) {
-
-                var rows = new List<JObject>();
-
-                while (reader.Read()) {
-
-                    int n = reader.FieldCount;
-                    JObject objRow = new();
-
-                    for (int i = 0; i < n; ++i) {
-                        string name = reader.GetName(i);
-                        object? value = reader.GetValue(i);
-                        if (value is DBNull) {
-                            value = null;
-                        }
-                        objRow[name] = value == null ? JValue.CreateNull() : JToken.FromObject(value);
-                    }
-
-                    if (dimension == 1) {
-                        return new ValueWithTime(
-                            Value: DataValue.FromObject(objRow, indented: true),
-                            Time: GetOptionalTime());
-                    }
-
-                    rows.Add(objRow);
-                }
-
-                return new ValueWithTime(
-                            Value: DataValue.FromObject(rows, indented: true),
-                            Time: null);
-            }
-            else if (type == DataType.Timeseries) {
-
-                var rows = new List<TimeseriesEntry>();
-
-                while (reader.Read()) {
-                    DateTime time = reader.GetDateTime("Time");
-                    object? value = reader.GetValue("Value");
-                    if (value is DBNull) {
-                        value = null;
-                    }
-                    Timestamp t = Timestamp.FromDateTime(time);
-                    DataValue dv = DataValue.FromObject(value);
-                    rows.Add(new TimeseriesEntry(t, dv));
-                }
-
-                return new ValueWithTime(
-                            Value: DataValue.FromObject(rows, indented: true),
-                            Time: null);
-            }
-            else {
-
-                var rows = new List<object?>();
-
-                while (reader.Read()) {
-
-                    object? value = reader.GetValue(0);
-
-                    if (value is DBNull) {
-                        value = null;
-                    }
-
-                    if (dimension == 1) {
-
-                        DataValue dv = DataValue.Empty;
-                        if (value is string str && type != DataType.String && StdJson.IsValidJson(str)) {
-                            dv = DataValue.FromJSON(str);
-                        }
-                        else {
-                            dv = DataValue.FromObject(value);
-                        }
-
-                        return new ValueWithTime(
-                            Value: dv, 
-                            Time:  GetOptionalTime());
-                    }
-
-                    rows.Add(value);
-                }
-
-                return new ValueWithTime(
-                            Value: DataValue.FromObject(rows, indented: true),
-                            Time:  null);
-            }
-        }
-
-        public override Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
-            int N = values.Count;
-            var failed = new FailedDataItemWrite[N];
-            for (int i = 0; i < N; ++i) {
-                DataItemValue request = values[i];
-                string id = request.ID;
-                failed[i] = new FailedDataItemWrite(id, "Write not supported.");
-            }
-            return Task.FromResult(WriteDataItemsResult.Failure(failed));
-        }
-
-        public override Task<string[]> BrowseAdapterAddress() {
-            return Task.FromResult(new string[0]);
-        }
-
-        public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
-
-            string[] examples = new string[] {
-                "SELECT * FROM table_name;",
-                "SELECT * FROM table_name WHERE site_id = 1;",
-                "SELECT * FROM table_name ORDER BY time DESC LIMIT 1;",
-                "SELECT value FROM table_name WHERE tag = 'my_tag' ORDER BY time DESC LIMIT 1;"
-            };
-            return Task.FromResult(examples);
-        }
-
-        public override Task Shutdown() {
-            try {
-                CloseDB();
-            }
-            catch (Exception) { }
-            return Task.FromResult(true);
-        }
-
-        private async Task<bool> TryOpenDatabase(bool reportFailureImmediatelly = false) {
-
-            if (string.IsNullOrEmpty(config.Address)) {
-                return false;
-            }
-
-            if (dbConnection != null) {
-                bool ok = await TestConnection(dbConnection);
-                if (ok) {
-                    return true;
-                }
-                else {
-                    CloseDB();
-
-                    // Do not log warning because connection might be lost due to session timeout:
-                    // PrintLine("DB connection lost. Trying to reconnect...");
-                }
-            }
+            ReadRequest req = items[i];
+            string itemID = req.ID;
+            VTQ lastVal = req.LastValue;
+            DataItem item = mapId2DataItem[itemID];
 
             try {
-                dbConnection = CreateConnection(config.Address, timeoutSeconds: 5);
-                
-                await dbConnection.OpenAsync();
-
-                const string msg = "Connected to Database.";
-
-                if (alarmConnectivity.ReturnToNormal()) {
-                    PrintLine(msg);
-                }
-
-                ReturnToNormal("OpenDB", msg, connectionUp: true);
-
-                return true;
+                res[i] = await ReadDataItemFromDB(item, lastVal);
+                ReturnToNormal("ReadDataItems", $"Successful read of DataItem {itemID}", affectedDataItems: itemID);
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
-                string msg = $"Open database error: {e.Message}";
-                if (reportFailureImmediatelly || alarmConnectivity.OnWarning(msg)) {
-                    LogWarning("OpenDB", msg, connectionDown: true);
+                bool connectionOK = await db.TestConnection(dbConnection);
+                if (connectionOK) {
+                    LogWarning("ReadDataItems", $"SQL query failed for {itemID}: {e.Message}", itemID);
                 }
-                CloseDB();
-                return false;
+                else {
+                    PrintErrorLine($"Read exception with broken connection (closing connection, returning last values): {e.Message}");
+                    CloseDB();
+                    break;
+                }
             }
         }
 
-        private void CloseDB() {
-            if (dbConnection == null) return;
+        return res;
+    }
+
+    private async Task<VTQ> ReadDataItemFromDB(DataItem item, VTQ lastValue) {
+
+        string query = item.Address;
+
+        ValueWithTime vt = await ReadDataValue(query, item.Type, item.Dimension);
+        if (lastValue.V == vt.Value && vt.Time == null) {
+            return lastValue;
+        }
+
+        Timestamp t = vt.Time.HasValue ? Timestamp.FromDateTime(vt.Time.Value) : Timestamp.Now.TruncateMilliseconds();
+        VTQ vtq = VTQ.Make(vt.Value, t, Quality.Good);
+
+        //int N = rows.Count;
+        //string firstRow = N == 0 ? "" : StdJson.ObjectToString(rows[0], indented: false);
+
+        //if (N == 0) {
+        //    PrintLine($"Read 0 rows for {itemID}");
+        //}
+        //else if (N == 1) {
+        //    PrintLine($"Read 1 row for {itemID}: {firstRow}");
+        //}
+        //else {
+        //    PrintLine($"Read {N} rows for {itemID}. First row: {firstRow}");
+        //}
+
+        return vtq;
+    }
+
+    private record struct ValueWithTime(
+        DataValue Value, 
+        DateTime? Time = null
+    );
+
+    private async Task<ValueWithTime> ReadDataValue(string query, DataType type, int dimension) {
+
+        using DbCommand cmd = db.CreateCommand(dbConnection!, query);
+        using DbDataReader reader = await cmd.ExecuteReaderAsync();
+
+        DateTime? GetOptionalTime() {
             try {
-                dbConnection.Close();
+                return reader.GetDateTime("timestamp");
             }
-            catch (Exception) { }
-            dbConnection = null;
+            catch (Exception) {
+                return null;
+            }
         }
 
-        private void PrintLine(string msg) {
-            Console.WriteLine(config.Name + ": " + msg);
+        if (type == DataType.Struct) {
+
+            var rows = new List<JObject>();
+
+            while (reader.Read()) {
+
+                int n = reader.FieldCount;
+                JObject objRow = [];
+
+                for (int i = 0; i < n; ++i) {
+                    string name = reader.GetName(i);
+                    object? value = reader.GetValue(i);
+                    if (value is DBNull) {
+                        value = null;
+                    }
+                    objRow[name] = value == null ? JValue.CreateNull() : JToken.FromObject(value);
+                }
+
+                if (dimension == 1) {
+                    return new ValueWithTime(
+                        Value: DataValue.FromObject(objRow, indented: true),
+                        Time: GetOptionalTime());
+                }
+
+                rows.Add(objRow);
+            }
+
+            return new ValueWithTime(
+                        Value: DataValue.FromObject(rows, indented: true),
+                        Time: null);
+        }
+        else if (type == DataType.Timeseries) {
+
+            var rows = new List<TimeseriesEntry>();
+
+            while (reader.Read()) {
+                DateTime time = reader.GetDateTime("Time");
+                object? value = reader.GetValue("Value");
+                if (value is DBNull) {
+                    value = null;
+                }
+                Timestamp t = Timestamp.FromDateTime(time);
+                DataValue dv = DataValue.FromObject(value);
+                rows.Add(new TimeseriesEntry(t, dv));
+            }
+
+            return new ValueWithTime(
+                        Value: DataValue.FromObject(rows, indented: true),
+                        Time: null);
+        }
+        else {
+
+            var rows = new List<object?>();
+
+            while (reader.Read()) {
+
+                object? value = reader.GetValue(0);
+
+                if (value is DBNull) {
+                    value = null;
+                }
+
+                if (dimension == 1) {
+
+                    DataValue dv = value is string str && type != DataType.String && StdJson.IsValidJson(str)
+                        ? DataValue.FromJSON(str)
+                        : DataValue.FromObject(value);
+
+                    return new ValueWithTime(
+                        Value: dv, 
+                        Time:  GetOptionalTime());
+                }
+
+                rows.Add(value);
+            }
+
+            return new ValueWithTime(
+                        Value: DataValue.FromObject(rows, indented: true),
+                        Time:  null);
+        }
+    }
+
+    public override Task<WriteDataItemsResult> WriteDataItems(string group, IList<DataItemValue> values, Duration? timeout) {
+        int N = values.Count;
+        var failed = new FailedDataItemWrite[N];
+        for (int i = 0; i < N; ++i) {
+            DataItemValue request = values[i];
+            string id = request.ID;
+            failed[i] = new FailedDataItemWrite(id, "Write not supported.");
+        }
+        return Task.FromResult(WriteDataItemsResult.Failure(failed));
+    }
+
+    public override Task<string[]> BrowseAdapterAddress() {
+        return Task.FromResult(Array.Empty<string>());
+    }
+
+    public override Task<string[]> BrowseDataItemAddress(string? idOrNull) {
+
+        string[] examples = [
+            "SELECT * FROM table_name;",
+            "SELECT * FROM table_name WHERE site_id = 1;",
+            "SELECT * FROM table_name ORDER BY time DESC LIMIT 1;",
+            "SELECT value FROM table_name WHERE tag = 'my_tag' ORDER BY time DESC LIMIT 1;"
+        ];
+        return Task.FromResult(examples);
+    }
+
+    public override Task Shutdown() {
+        try {
+            CloseDB();
+        }
+        catch (Exception) { }
+        return Task.FromResult(true);
+    }
+
+    private async Task<bool> TryOpenDatabase(bool reportFailureImmediatelly = false) {
+
+        if (string.IsNullOrEmpty(config.Address)) {
+            return false;
         }
 
-        private void PrintErrorLine(string msg) {
-            string name = config.Name ?? "";
-            Console.Error.WriteLine(name + ": " + msg);
+        if (dbConnection != null) {
+            bool ok = await db.TestConnection(dbConnection);
+            if (ok) {
+                return true;
+            }
+            else {
+                CloseDB();
+
+                // Do not log warning because connection might be lost due to session timeout:
+                // PrintLine("DB connection lost. Trying to reconnect...");
+            }
         }
 
-        private void LogWarning(string type, string msg, string? dataItem = null, bool connectionDown = false) {
+        try {
+            dbConnection = db.CreateConnection(config.Address, timeoutSeconds: 5);
+            
+            await dbConnection.OpenAsync();
 
-            var ae = new AdapterAlarmOrEvent() {
-                Time = Timestamp.Now,
-                Severity = Severity.Warning,
-                Connection = connectionDown,
-                Type = type,
-                Message = msg,
-                AffectedDataItems = string.IsNullOrEmpty(dataItem) ? new string[0] : new string[] { dataItem }
-            };
+            const string msg = "Connected to Database.";
 
-            callback?.Notify_AlarmOrEvent(ae);
+            if (alarmConnectivity.ReturnToNormal()) {
+                PrintLine(msg);
+            }
+
+            ReturnToNormal("OpenDB", msg, connectionUp: true);
+
+            return true;
         }
-
-        private void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
-            AdapterAlarmOrEvent _event = AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems);
-            _event.Connection = connectionUp;
-            callback?.Notify_AlarmOrEvent(_event);
+        catch (Exception exp) {
+            Exception e = exp.GetBaseException() ?? exp;
+            string msg = $"Open database error: {e.Message}";
+            if (reportFailureImmediatelly || alarmConnectivity.OnWarning(msg)) {
+                LogWarning("OpenDB", msg, connectionDown: true);
+            }
+            CloseDB();
+            return false;
         }
+    }
+
+    private void CloseDB() {
+        if (dbConnection == null) return;
+        try {
+            dbConnection.Close();
+        }
+        catch (Exception) { }
+        dbConnection = null;
+    }
+
+    private void PrintLine(string msg) {
+        Console.WriteLine(config.Name + ": " + msg);
+    }
+
+    private void PrintErrorLine(string msg) {
+        string name = config.Name ?? "";
+        Console.Error.WriteLine(name + ": " + msg);
+    }
+
+    private void LogWarning(string type, string msg, string? dataItem = null, bool connectionDown = false) {
+
+        var ae = new AdapterAlarmOrEvent() {
+            Time = Timestamp.Now,
+            Severity = Severity.Warning,
+            Connection = connectionDown,
+            Type = type,
+            Message = msg,
+            AffectedDataItems = string.IsNullOrEmpty(dataItem) ? [] : [dataItem]
+        };
+
+        callback?.Notify_AlarmOrEvent(ae);
+    }
+
+    private void ReturnToNormal(string type, string msg, bool connectionUp = false, params string[] affectedDataItems) {
+        AdapterAlarmOrEvent _event = AdapterAlarmOrEvent.MakeReturnToNormal(type, msg, affectedDataItems);
+        _event.Connection = connectionUp;
+        callback?.Notify_AlarmOrEvent(_event);
     }
 }
