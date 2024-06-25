@@ -107,7 +107,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             if (faviconFile != "") {
                 string faviconPath = Path.GetFullPath(faviconFile);
                 if (!File.Exists(faviconPath)) {
-                    Console.Error.WriteLine($"favicon not found: {faviconPath}");   
+                    Console.Error.WriteLine($"favicon not found: {faviconPath}");
                 }
                 else {
                     favicon = File.ReadAllBytes(faviconPath);
@@ -120,14 +120,28 @@ namespace Ifak.Fast.Mediator.Dashboard
             });
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Services.AddCors();
-            builder.Services.Configure<HtmlModificationOptions>(opt => { 
-                opt.PageTitle  = config.GetOptionalString("page-title", "Dashboard");
+            builder.Services.Configure<HtmlModificationOptions>(opt => {
+                opt.PageTitle = config.GetOptionalString("page-title", "Dashboard");
                 opt.LoginTitle = config.GetOptionalString("login-title", "Dashboard Login");
-                opt.Header     = config.GetOptionalString("header", "Dashboard");
-                opt.FavIcon    = favicon;
+                opt.Header = config.GetOptionalString("header", "Dashboard");
+                opt.FavIcon = favicon;
             });
+
+            //string certPath = "path/to/your/certificate.pfx";
+            //string? pwd = null;
+            //var certificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(certPath, pwd);
+
+            //// Configure Kestrel to use HTTPS with a static certificate
+            //builder.WebHost.ConfigureKestrel(options => {
+            //    options.ListenAnyIP(port, listenOptions => {
+            //        listenOptions.UseHttps(certificate);
+            //    });
+            //});
+
             WebApplication app = builder.Build();
             app.Urls.Add($"http://{host}:{port}");
+            ////app.Urls.Add($"https://{host}:{port}"); /* still needed? */
+            //app.UseHttpsRedirection();
 
             var webSocketOptions = new WebSocketOptions() {
                 KeepAliveInterval = TimeSpan.FromSeconds(60)
