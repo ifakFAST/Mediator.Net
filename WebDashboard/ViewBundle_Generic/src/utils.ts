@@ -50,11 +50,13 @@ export function getMillisecondsFromTimeRange(range: TimeRange): number {
   return Hour
 }
 
-export function getDateIsoStringFromTimestamp(timestamp: number): string {
+export function getLocalDateIsoStringFromTimestamp(timestamp: number): string {
   const date = new Date(timestamp)
-  const strDate = date.toISOString()
-  return strDate.substring(0, strDate.indexOf('T'))
-}
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export function timeWindowFromTimeRange(range: TimeRange): { left: number, right: number } {
 
@@ -73,7 +75,7 @@ export function timeWindowFromTimeRange(range: TimeRange): { left: number, right
 
     return {
       left:  parseDateISOString(range.rangeStart).getTime(),
-      right: parseDateISOString(range.rangeEnd).getTime() + Day,
+      right: parseDateISOString(range.rangeEnd).getTime(),
     }
 
   }
@@ -89,9 +91,11 @@ export function parseDateISOString(str: string): Date {
   if (str.endsWith('Z')) { return new Date(str) }
   const ds = str.split(/\D+/).map((s) => parseInt(s, 10))
   switch (ds.length) {
-    case 3: return new Date(ds[0], ds[1] - 1, ds[2])
-    case 6: return new Date(ds[0], ds[1] - 1, ds[2], ds[3], ds[4], ds[5])
-    case 7: return new Date(ds[0], ds[1] - 1, ds[2], ds[3], ds[4], ds[5], ds[6])
+    case 3: return new Date(ds[0], ds[1] - 1, ds[2]) // e.g. 2021-01-01
+    case 4: return new Date(ds[0], ds[1] - 1, ds[2], ds[3]) // e.g. 2021-01-01T00
+    case 5: return new Date(ds[0], ds[1] - 1, ds[2], ds[3], ds[4]) // e.g. 2021-01-01T00:00
+    case 6: return new Date(ds[0], ds[1] - 1, ds[2], ds[3], ds[4], ds[5]) // e.g. 2021-01-01T00:00:00
+    case 7: return new Date(ds[0], ds[1] - 1, ds[2], ds[3], ds[4], ds[5], ds[6]) // e.g. 2021-01-01T00:00:00.000
     default: throw new Error('Invalid ISO date string: ' + str)
   }
 }

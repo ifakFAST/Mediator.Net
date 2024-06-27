@@ -50,8 +50,8 @@
                   <th>&nbsp;</th>
                 </tr>
               </thead>
-              <template v-for="(item, idx) in editorItems.items">
-                <tr v-bind:key="idx">
+              <template v-for="(item, idx) in editorItems.items" v-bind:key="idx">
+                <tr>
                   <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
                   <td>
                     <v-menu offset-y>
@@ -248,7 +248,7 @@
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import DyGraph from '../../components/DyGraph.vue'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
-import { TimeRange, TimeUnit, TimeUnitValues, timeWindowFromTimeRange, getDateIsoStringFromTimestamp } from '../../utils'
+import { TimeRange, TimeUnit, TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
 
@@ -1077,11 +1077,16 @@ export default class HistoryPlot extends Vue {
     this.showDownloadDlg()
   }
 
-  showDownloadDlg(): void {
-    if (this.downloadOptions.rangeStart === '') {
+  showDownloadDlg(): void {    
+    if (this.timeRange.type === 'Range') {
+      this.downloadOptions.rangeStart = this.timeRange.rangeStart
+      this.downloadOptions.rangeEnd = this.timeRange.rangeEnd
+    }
+    else {
+      const Day = 24 * 60 * 60 * 1000
       const { left, right } = timeWindowFromTimeRange(this.timeRange)
-      this.downloadOptions.rangeStart = getDateIsoStringFromTimestamp(left)
-      this.downloadOptions.rangeEnd = getDateIsoStringFromTimestamp(right)
+      this.downloadOptions.rangeStart = getLocalDateIsoStringFromTimestamp(left)
+      this.downloadOptions.rangeEnd = getLocalDateIsoStringFromTimestamp(right + Day)
     }
     this.downloadOptions.show = true
   }

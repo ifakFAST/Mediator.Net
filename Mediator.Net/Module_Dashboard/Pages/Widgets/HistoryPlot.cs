@@ -305,7 +305,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            if (tStart > tEnd) {
+            if (tStart >= tEnd) {
                 throw new Exception("Invalid time range: start >= end");
             }
 
