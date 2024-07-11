@@ -123,6 +123,26 @@
         </Module>
     </Modules>
     
+    <Locations>
+      <!--
+        <Location id="Plant"     name="Plant"   longName="Plant" parent="" />
+        
+        <Location id="Influent"  name="Influent"   longName="Influent"   parent="Plant" />
+        
+        <Location id="North"     name="North"   longName="North Secondary"   parent="Plant" />
+            <Location id="Tank01"     name="Tank07"   longName="Tank 07"   parent="North" />
+            <Location id="Tank02"     name="Tank08"   longName="Tank 08"   parent="North" />
+            <Location id="Tank03"     name="Tank09"   longName="Tank 09"   parent="North" />
+        
+        <Location id="South"     name="South"   longName="South Secondary"   parent="Plant" />
+            <Location id="Tank04"     name="Tank01"   longName="Tank 01"   parent="South" />
+            <Location id="Tank05"     name="Tank02"   longName="Tank 02"   parent="South" />
+            <Location id="Tank06"     name="Tank03"   longName="Tank 03"   parent="South" />
+        
+        <Location id="FE"        name="FE"      longName="Final Effluent" parent="Plant" />        
+      -->
+    </Locations>
+    
     <UserManagement>
         <Users>
             <User id="ifak" login="ifak" name="Demo User" encryptedPassword="cH8j7vythfU=" inactive="false">
