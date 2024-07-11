@@ -105,12 +105,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
             object obj = await objMaker.MakeObjectFromCode(parameter.Calculation.Name, code, referencedAssemblies);
 
-            inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: true).ToArray();
-            outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: true).ToArray();
-            states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true).ToArray();
-            calculations = GetIdentifiableMembers<Calculation>(obj, "", recursive: true).ToArray();
+            inputs = GetIdentifiableMembers<InputBase>(obj, "", recursive: true, []).ToArray();
+            outputs = GetIdentifiableMembers<OutputBase>(obj, "", recursive: true, []).ToArray();
+            states = GetIdentifiableMembers<AbstractState>(obj, "", recursive: true, []).ToArray();
+            calculations = GetIdentifiableMembers<Calculation>(obj, "", recursive: true, []).ToArray();
 
-            var eventProviders = GetMembers<EventProvider>(obj, recursive: true);
+            var eventProviders = GetMembers<EventProvider>(obj, recursive: true, []);
             foreach (EventProvider provider in eventProviders) {
                 provider.EventSinkRef = this;
             }
@@ -293,8 +293,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return Task.FromResult(stepRes);
         }
 
-        private static List<T> GetIdentifiableMembers<T>(object obj, string idChain, bool recursive) where T : class, Identifiable {
-            List<T> result = new List<T>();
+        private static List<T> GetIdentifiableMembers<T>(object obj, string idChain, bool recursive, HashSet<object> visited) where T : class, Identifiable {
+
+            if (visited.Contains(obj)) return [];
+            visited.Add(obj);
+
+            List<T> result = [];
             FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             foreach (FieldInfo f in fields) {
                 string id = f.Name;
@@ -305,14 +309,18 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     result.Add(x);
                 }
                 else if (recursive && f.FieldType.IsClass && fieldValue != null) {
-                    result.AddRange(GetIdentifiableMembers<T>(fieldValue, idChain + id + ".", recursive));
+                    result.AddRange(GetIdentifiableMembers<T>(fieldValue, idChain + id + ".", recursive, visited));
                 }
             }
             return result;
         }
 
-        private static List<T> GetMembers<T>(object obj, bool recursive) where T : class {
-            List<T> result = new List<T>();
+        private static List<T> GetMembers<T>(object obj, bool recursive, HashSet<object> visited) where T : class {
+
+            if (visited.Contains(obj)) return [];
+            visited.Add(obj);
+
+            List<T> result = [];
             FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             foreach (FieldInfo f in fields) {
                 object? fieldValue = f.GetValue(obj);
@@ -320,7 +328,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     result.Add(x);
                 }
                 else if (recursive && f.FieldType.IsClass && fieldValue != null) {
-                    result.AddRange(GetMembers<T>(fieldValue, recursive));
+                    result.AddRange(GetMembers<T>(fieldValue, recursive, visited));
                 }
             }
             return result;
@@ -334,7 +342,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 Unit = m.Unit,
                 Dimension = m.Dimension,
                 Type = m.Type,
-                DefaultValue = m.GetDefaultValue()
+                DefaultValue = m.GetDefaultValue(),
+                DefaultVariable = m.GetDefaultVariable()
             };
         }
 

@@ -45,6 +45,7 @@ namespace Ifak.Fast.Mediator.Calc
         public DataType Type { get; set; } = DataType.Float64;
         public int Dimension { get; set; } = 1;
         public DataValue? DefaultValue { get; set; }
+        public VariableRef? DefaultVariable { get; set; }
         public override string ToString() => Name;
     }
 

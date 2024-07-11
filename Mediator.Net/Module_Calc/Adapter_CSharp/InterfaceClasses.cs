@@ -50,7 +50,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
         public DataType Type { get; private set; }
         public int Dimension { get; private set; }
-        private DataValue dvDefaultValue { get; set; }
+        private DataValue? dvDefaultValue { get; set; }
 
         public bool IsNull => VTQ.V.IsEmpty;
         public bool NonNull => VTQ.V.NonEmpty;
@@ -76,7 +76,16 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 
         public static implicit operator VTQ(InputBase d) => d.VTQ;
 
-        public DataValue GetDefaultValue() => dvDefaultValue;
+        public DataValue? GetDefaultValue() => dvDefaultValue;
+
+        private VariableRef? defaultVariable { get; set; }
+
+        public void SetDefaultVariable(VariableRef variable) {
+            defaultVariable = variable;
+            dvDefaultValue = null;
+        }
+
+        public VariableRef? GetDefaultVariable() => defaultVariable;
 
         internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
 

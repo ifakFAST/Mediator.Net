@@ -11,6 +11,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public Input(string name, string unit = "", double? defaultValue = 0.0) :
             base(name: name, unit: unit, defaultValue: defaultValue) {
         }
+
+        public Input(string name, string unit, VariableRef variable) :
+            base(name: name, unit: unit, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputFloat64 : InputBase {
@@ -34,6 +39,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public InputFloat64(string name, string unit = "", double? defaultValue = 0.0) :
             base(name: name, unit: unit, type: DataType.Float64, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromDouble(defaultValue.Value) : DataValue.Empty) {
             DefaultValue = defaultValue;
+        }
+
+        public InputFloat64(string name, string unit, VariableRef variable) :
+            this(name: name, unit: unit, defaultValue: null) {
+            SetDefaultVariable(variable);
         }
     }
 

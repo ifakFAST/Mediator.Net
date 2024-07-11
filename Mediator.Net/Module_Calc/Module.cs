@@ -261,7 +261,7 @@ namespace Ifak.Fast.Mediator.Calc
                 Dimension = input.Dimension,
                 Type = input.Type,
                 Constant = old != null ? old.Constant : input.DefaultValue,
-                Variable = old?.Variable,
+                Variable = old != null ? old.Variable : input.DefaultVariable,
             };
         }
 
