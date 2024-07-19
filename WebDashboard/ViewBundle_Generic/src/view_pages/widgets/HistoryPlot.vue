@@ -50,8 +50,8 @@
                   <th>&nbsp;</th>
                 </tr>
               </thead>
-              <template v-for="(item, idx) in editorItems.items" v-bind:key="idx">
-                <tr>
+              <template v-for="(item, idx) in editorItems.items">
+                <tr v-bind:key="idx">
                   <td><v-text-field class="tabcontent" v-model="item.Name"></v-text-field></td>
                   <td>
                     <v-menu offset-y>

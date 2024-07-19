@@ -14,6 +14,11 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></var-table>
 
+    <var-table2-d v-if="type === 'VarTable2D'"
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></var-table2-d>
+
     <history-plot v-if="type === 'HistoryPlot'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
@@ -50,6 +55,7 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 import HistoryPlot from './widgets/HistoryPlot.vue'
 import ReadButton from './widgets/ReadButton.vue'
 import VarTable from './widgets/VarTable.vue'
+import VarTable2D from './widgets/VarTable2D.vue'
 import ConfigEditNumeric from './widgets/config_edit/ConfigEditNumeric.vue'
 import PageActionsLogView from './widgets/PageActionsLogView.vue'
 import TextDisplay from './widgets/TextDisplay.vue'
@@ -61,6 +67,7 @@ import { TimeRange } from '../utils'
     HistoryPlot,
     ReadButton,
     VarTable,
+    VarTable2D,
     ConfigEditNumeric,
     PageActionsLogView,
     TextDisplay,

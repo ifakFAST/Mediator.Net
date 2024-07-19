@@ -159,7 +159,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return res.ToArray();
         }
 
-        private static EnumValEntry[] ParseEnumValues(string enumDef) {
+        internal static EnumValEntry[] ParseEnumValues(string enumDef) {
             if (string.IsNullOrWhiteSpace(enumDef)) return new EnumValEntry[0];
             try {
                 string[] vals = enumDef.Split(';');
@@ -192,10 +192,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private static bool IsBelow(double v, double? comp) => comp.HasValue ? v < comp.Value : false;
-        private static bool IsAbove(double v, double? comp) => comp.HasValue ? v > comp.Value : false;
+        internal static bool IsBelow(double v, double? comp) => comp.HasValue ? v < comp.Value : false;
+        internal static bool IsAbove(double v, double? comp) => comp.HasValue ? v > comp.Value : false;
 
-        private static string FormatDouble(double v, int decimalPlaces) {
+        internal static string FormatDouble(double v, int decimalPlaces) {
             try {
                 decimal dec = (decimal)v;
                 decimal value = Math.Round(dec, decimalPlaces, MidpointRounding.AwayFromZero);
@@ -206,7 +206,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
-        private static string FormatTime(Timestamp t) {
+        internal static string FormatTime(Timestamp t) {
             if (t.IsEmpty) return "";
             DateTime local = t.ToDateTime().ToLocalTime();
             return local.ToString("HH:mm:ss");
@@ -334,7 +334,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
     public class VarTableConfig
     {
-        public VarItem[] Items { get; set; } = new VarItem[0];
+        public VarItem[] Items { get; set; } = [];
         public bool ShowHeader { get; set; } = true;
         public bool ShowTrendColumn { get; set; } = true;
     }
