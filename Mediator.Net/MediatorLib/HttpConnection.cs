@@ -302,10 +302,11 @@ namespace Ifak.Fast.Mediator
             return await Post<ObjectInfos>(request);
         }
 
-        public override async Task<MemberValues> GetMemberValues(MemberRef[] member) {
+        public override async Task<MemberValues> GetMemberValues(MemberRef[] member, bool ignoreMissing) {
             if (member == null) throw new ArgumentNullException(nameof(member));
             var request = MakeSessionRequest<GetMemberValuesReq>();
             request.Member = member;
+            request.IgnoreMissing = ignoreMissing;
             return await Post<MemberValues>(request);
         }
 

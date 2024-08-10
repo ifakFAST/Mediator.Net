@@ -171,7 +171,8 @@ namespace Ifak.Fast.Mediator
         /// Returns the values of object members.
         /// </summary>
         /// <param name="member">The references to members to return</param>
-        public abstract Task<MemberValues> GetMemberValues(MemberRef[] member);
+        /// <param name="ignoreMissing">If true, missing members will be ignored, otherwise an exception will be thrown for non-existing objects</param>
+        public abstract Task<MemberValues> GetMemberValues(MemberRef[] member, bool ignoreMissing = false);
 
         /// <summary>
         /// Returns the entire object value of the parent object for a given object id.
@@ -258,7 +259,7 @@ namespace Ifak.Fast.Mediator
         #region UpdateConfig
 
         /// <summary>
-        /// Returns which MemberRefs can be updated by the current user/role.
+        /// Returns which MemberRefs can be updated by the current user/role. For non-existing members, false is returned.
         /// </summary>
         public abstract Task<bool[]> CanUpdateConfig(MemberRef[] members);
 

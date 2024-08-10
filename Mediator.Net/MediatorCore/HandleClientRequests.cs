@@ -423,7 +423,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectsByIDReq.ID: {
                             var req = (GetObjectsByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? Array.Empty<ObjectRef>();
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? [];
                             bool ignoreMissing = req.IgnoreMissing;
                             ObjectInfos result = new(objectIDs.Length);
                             foreach (var id in objectIDs) {
@@ -445,7 +445,7 @@ namespace Ifak.Fast.Mediator
 
                     case GetChildrenOfObjectsReq.ID: {
                             var req = (GetChildrenOfObjectsReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? new ObjectRef[0];
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? [];
                             ObjectInfos result = objectIDs.SelectMany(id => {
                                 ModuleState module = ModuleFromIdOrThrow(id.ModuleID);
                                 if (module.AllObjects.All(x => x.ID != id)) throw new Exception("No object found with id " + id.ToString());
@@ -471,7 +471,12 @@ namespace Ifak.Fast.Mediator
 
                     case GetObjectValuesByIDReq.ID: {
                             var req = (GetObjectValuesByIDReq)request;
-                            ObjectRef[] objectIDs = req.ObjectIDs ?? Array.Empty<ObjectRef>();
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? [];
+
+                            if (objectIDs.Length == 0) {
+                                return Result_OK(new ObjectValues());
+                            }
+
                             bool ignoreMissing = req.IgnoreMissing;
 
                             var modulesMap = GetModulesMap();
@@ -518,12 +523,19 @@ namespace Ifak.Fast.Mediator
 
                     case GetMemberValuesReq.ID: {
                             var req = (GetMemberValuesReq)request;
-                            MemberRef[] member = req.Member ?? new MemberRef[0];
+                            MemberRef[] member = req.Member ?? [];
+                            bool verifyObjectsExist = !req.IgnoreMissing;
 
-                            if (member.Length <= 1 || member.All(o => o.Object.ModuleID == member[0].Object.ModuleID)) {
+                            if (member.Length == 0) {
+                                return Result_OK(new MemberValues());
+                            }
+
+                            if (member.Length == 1 || member.All(o => o.Object.ModuleID == member[0].Object.ModuleID)) {
                                 ModuleState module = ModuleFromIdOrThrow(member[0].Object.ModuleID);
-                                foreach (MemberRef mem in member) {
-                                    if (module.AllObjects.All(x => x.ID != mem.Object)) throw new Exception("No object found with id " + mem.Object.ToString());
+                                if (verifyObjectsExist) {
+                                    foreach (MemberRef mem in member) {
+                                        if (!module.HasObject(mem.Object)) throw new Exception("No object found with id " + mem.Object.ToString());
+                                    }
                                 }
                                 MemberValue[] res = await RestartOnExp(module, m => m.GetMemberValues(member));
                                 return Result_OK(res);
@@ -531,8 +543,8 @@ namespace Ifak.Fast.Mediator
 
                             Task<MemberValue[]>[] tasks = member.Select(mem => {
                                 ModuleState module = ModuleFromIdOrThrow(mem.Object.ModuleID);
-                                if (module.AllObjects.All(x => x.ID != mem.Object)) throw new Exception("No object found with id " + mem.Object.ToString());
-                                return RestartOnExp(module, m => m.GetMemberValues(new MemberRef[] { mem }));
+                                if (verifyObjectsExist && !module.HasObject(mem.Object)) throw new Exception("No object found with id " + mem.Object.ToString());
+                                return RestartOnExp(module, m => m.GetMemberValues([mem]));
                             }).ToArray();
 
                             MemberValue[][] allValues = await Task.WhenAll(tasks);

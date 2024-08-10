@@ -612,6 +612,9 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("member")]
         public MemberRef[] Member { get; set; } = Array.Empty<MemberRef>();
+
+        [JsonProperty("ignoreMissing")]
+        public bool IgnoreMissing { get; set; } = false;
     }
 
     public class GetParentOfObjectReq : RequestBase

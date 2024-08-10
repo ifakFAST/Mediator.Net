@@ -86,7 +86,7 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("GetLoginUser on closed connection");
         }
 
-        public override Task<List<MemberValue>> GetMemberValues(MemberRef[] member) {
+        public override Task<List<MemberValue>> GetMemberValues(MemberRef[] member, bool ignoreMissing) {
             throw new InvalidOperationException("GetMemberValues on closed connection");
         }
 

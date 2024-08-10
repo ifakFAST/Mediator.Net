@@ -697,6 +697,8 @@ namespace Ifak.Fast.Mediator
             return res;
         }
 
+        internal bool HasObject(ObjectRef o) => mapObjects.ContainsKey(o);
+
         public Task FlushVariables() => variables.Flush();
         public VariableValue[] GetVariableValues() => variables.GetVariableValues();
         public string ID => Config.ID;
