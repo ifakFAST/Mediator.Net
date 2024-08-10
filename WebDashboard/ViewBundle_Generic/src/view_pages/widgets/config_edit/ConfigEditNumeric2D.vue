@@ -33,17 +33,8 @@
               <td v-if="config.UnitRenderMode === 'ColumnLeft'" class="text-left" style="font-size:14px;padding-right:0px;">{{ unitFromRow(rowIdx)  }}</td>
 
               <template v-for="(col, colIdx) in config.Columns">
-                <td :key="col + '-1'" class="text-right" style="font-size:14px; height:36px; min-width: 67px;" :style="varItemStyle(rowIdx, colIdx)">
-                  <v-tooltip right open-delay="250">
-                    <template v-slot:activator="{ on, attrs }">
-                      <span v-bind="attrs" v-on="on">
-                        <span v-bind:style="{ color: itemFromRowColumn(rowIdx, colIdx).ValueColor }">
-                          {{ itemFromRowColumn(rowIdx, colIdx).Value }}
-                        </span>
-                      </span>
-                    </template>
-                    <span>{{ varItemInfo(itemFromRowColumn(rowIdx, colIdx)) }}</span>
-                  </v-tooltip>
+                <td :key="col + '-1'" @click="onWriteItem(rowIdx, colIdx)" class="text-right" style="font-size:14px; height:36px; min-width: 67px;" :style="varItemStyle(rowIdx, colIdx)">
+                  {{ valueForItem(rowIdx, colIdx) }}  
                 </td>
                 <td :key="col + '-2'" v-if="config.UnitRenderMode === 'Cell'" class="text-left" style="font-size:14px; padding-left:8px;">
                   {{ itemFromRowColumn(rowIdx, colIdx).Unit }}
@@ -58,19 +49,20 @@
       </v-simple-table>
     </div>
 
+    <dlg-text-input ref="textInput"></dlg-text-input>
+    <dlg-enum-input ref="enumInput"></dlg-enum-input>
+
   </div>
 </template>
 
 <script lang="ts">
 
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import * as fast from '../../fast_types'
-import { TimeRange } from '../../utils'
-import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
-import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
-import { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
+import { TimeRange } from '../../../utils'
+import DlgTextInput from '../../DlgTextInput.vue'
+import DlgEnumInput from './DlgEnumInput.vue'
 import { StyleValue } from 'vue/types/jsx'
-
+import { EnumValEntry, parseEnumValues, onWriteItemEnum, onWriteItemNumeric } from './util'
 export type UnitRenderMode = 'Hide' | 'Cell' | 'ColumnLeft' | 'ColumnRight' | 'Row'
 
 interface Config {
@@ -81,31 +73,29 @@ interface Config {
 }
 
 interface ItemConfig {
-  Variable: fast.VariableRef
-  WarnBelow: number | null
-  WarnAbove: number | null
-  AlarmBelow: number | null
-  AlarmAbove: number | null
+  Unit: string
+  Object: string | null
+  Member: string | null
+  Type: 'Range' | 'Enum'
+  MinValue: number | null
+  MaxValue: number | null
   EnumValues: string
 }
 
 interface VarItem {
   IsEmpty: boolean
   Value: string
-  ValueColor: string
   Unit: string
-  Time: string
-  Warning?: string
-  Alarm?: string
+  CanEdit: boolean
 }
 
 @Component({
   components: {
-    DlgObjectSelect,
-    TextFieldNullableNumber,
+    DlgTextInput,
+    DlgEnumInput,
   },
 })
-export default class VarTable2D extends Vue {
+export default class ConfigEditNumeric2D extends Vue {
 
   @Prop({ default() { return '' } }) id: string
   @Prop({ default() { return '' } }) width: string
@@ -126,6 +116,16 @@ export default class VarTable2D extends Vue {
     return this.height
   }
 
+  configItemFromRowColumn(row: number, column: number): ItemConfig {
+    const cols = this.config.Columns.length
+    const index = row * cols + column
+    const items = this.config.Items
+    if (index < items.length) {
+      return items[index]
+    }
+    return { Unit: '', Object: null, Member: null, Type: 'Range', MinValue: null, MaxValue: null, EnumValues: '' }
+  }
+
   itemFromRowColumn(row: number, column: number): VarItem {
     const cols = this.config.Columns.length
     const index = row * cols + column
@@ -133,7 +133,7 @@ export default class VarTable2D extends Vue {
     if (index < items.length) {
       return items[index]
     }
-    return { IsEmpty: true, Value: '', ValueColor: '', Unit: '', Time: '' }
+    return { IsEmpty: true, Value: '', Unit: '', CanEdit: false }
   }
 
   unitFromRow(rowIndex: number): string {
@@ -173,13 +173,19 @@ export default class VarTable2D extends Vue {
   }
 
   varItemStyle(rowIdx: number, colIdx: number): StyleValue {
-    const item: VarItem = this.itemFromRowColumn(rowIdx, colIdx)
+    const color = this.colorForItem(rowIdx, colIdx)
     const ZeroRightPadding: boolean = colIdx < this.config.Columns.length - 1
     const ZeroLeftPadding: boolean = this.config.UnitRenderMode === 'Cell'
     const style = {}
-    if (!!item.Alarm || !!item.Warning) {
-      style['font-weight'] = 'bold'
-      style['color'] = this.varItemColor(item)
+    
+    const varItem: VarItem = this.itemFromRowColumn(rowIdx, colIdx)
+
+    if (varItem.CanEdit && varItem.IsEmpty === false) {
+      style['cursor'] = 'pointer'
+    }
+
+    if (color !== '') {
+      style['color'] = color
     }
     if (ZeroLeftPadding) {
       style['padding-left'] = '0px'
@@ -190,15 +196,37 @@ export default class VarTable2D extends Vue {
     return style
   }
 
-  varItemInfo(item: VarItem): string {
-    if (item.Alarm)   { return item.Alarm }
-    if (item.Warning) { return item.Warning }
-    return item.Time
+  valueForItem(rowIdx: number, colIdx: number): string {
+    const configItem: ItemConfig = this.configItemFromRowColumn(rowIdx, colIdx)
+    const varItem: VarItem = this.itemFromRowColumn(rowIdx, colIdx)
+    if (configItem.Type === 'Enum') {
+      const vals: EnumValEntry[] = parseEnumValues(configItem.EnumValues)
+      const v = varItem.Value
+      const vnum: number = parseFloat(v)
+      for (const item of vals) {
+        if (item.num === vnum) {
+          return item.label
+        }
+      }
+      return v
+    }
+    return varItem.Value
   }
 
-  varItemColor(item: VarItem): string {
-    if (item.Alarm)   { return 'red' }
-    if (item.Warning) { return 'orange' }
+  colorForItem(rowIdx: number, colIdx: number): string {
+    const configItem: ItemConfig = this.configItemFromRowColumn(rowIdx, colIdx)
+    if (configItem.Type === 'Enum') {
+      const varItem: VarItem = this.itemFromRowColumn(rowIdx, colIdx)
+      const vals: EnumValEntry[] = parseEnumValues(configItem.EnumValues)
+      const v = varItem.Value
+      const vnum: number = parseFloat(v)
+      for (const item of vals) {
+        if (item.num === vnum) {
+          return item.color ?? ''
+        }
+      }
+      return ''
+    }
     return ''
   }
 
@@ -207,9 +235,8 @@ export default class VarTable2D extends Vue {
       const ret: VarItem = {
         IsEmpty: false,
         Value: '',
-        ValueColor: '',
-        Unit: '',
-        Time: '',
+        Unit: it.Unit,
+        CanEdit: false,
       }
       return ret
     })
@@ -222,26 +249,49 @@ export default class VarTable2D extends Vue {
   }
 
   async onLoadData(): Promise<void> {
-    const items: VarItem[] = await this.backendAsync('LoadData', { })
+    const items: VarItem[] = await this.backendAsync('ReadValues', { })
     this.items = items
+  }
+
+  writeEnabled(it: ItemConfig): boolean {
+    return true
+  }
+
+  async onWriteItem(rowIdx: number, colIdx: number): Promise<void> {
+    const it: ItemConfig = this.configItemFromRowColumn(rowIdx, colIdx)
+    const value = this.valueForItem(rowIdx, colIdx)
+    if (it.Type === 'Range') {
+      await onWriteItemNumeric(it, value, this.textInputDlg, this.backendAsync)
+    }
+    else {
+      await onWriteItemEnum(it, value, this.enumInputDlg, this.backendAsync)
+    }
   }
 
   @Watch('eventPayload')
   watch_event(newVal: object, old: object): void {
-    if (this.eventName === 'OnVarChanged') {
+    if (this.eventName === 'OnValuesChanged') {
       const updatedItems: VarItem[] = this.eventPayload as any
       if (updatedItems.length !== this.items.length) { return }
       this.items.forEach((item, index) => {
         const updated = updatedItems[index]
         if (!updated.IsEmpty) {          
           item.Value = updated.Value
-          item.ValueColor = updated.ValueColor
-          item.Time = updated.Time
-          item.Warning = updated.Warning
-          item.Alarm = updated.Alarm
+          item.Unit = updated.Unit
+          item.CanEdit = updated.CanEdit
         }
       });      
     }
+  }
+
+  async textInputDlg(title: string, message: string, value: string, valid: (str: string) => string): Promise<string | null> {
+    const textInput = this.$refs.textInput as DlgTextInput
+    return textInput.openWithValidator(title, message, value, valid)
+  }
+
+  async enumInputDlg(title: string, message: string, value: string, values: string[]): Promise<string | null> {
+    const enumInput = this.$refs.enumInput as DlgEnumInput
+    return enumInput.open(title, message, value, values)
   }
 }
 

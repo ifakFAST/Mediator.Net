@@ -59,13 +59,7 @@
   import DlgEnumInput from './DlgEnumInput.vue'
   import DlgConfigItems from './DlgConfigItems.vue'
   import { Config, ConfigItem, ItemValue } from './types'
-
-
-  interface EnumValEntry {
-    num: number
-    label: string
-    color?: string
-  }
+  import { EnumValEntry, parseEnumValues, onWriteItemEnum, onWriteItemNumeric } from './util'
 
   @Component({
     components: {
@@ -132,126 +126,18 @@
     }
   
     async onWriteItem(it: ConfigItem): Promise<void> {
-      if (it.Type === 'Range') {
-        await this.onWriteItemNumeric(it)
+      const oldValue: string = this.valueForItem(it, '')
+      if (it.Type === 'Range') {        
+        await onWriteItemNumeric(it, oldValue, this.textInputDlg, this.backendAsync)
       }
       else {
-        await this.onWriteItemEnum(it)
+        await onWriteItemEnum(it, oldValue, this.enumInputDlg, this.backendAsync)
       }
-    }
-
-    async onWriteItemNumeric(it: ConfigItem): Promise<void> {
-
-      const isValid = (str: string) => {
-        try {
-          const json = JSON.parse(str)
-          if (typeof json === 'number') {
-            const num: number = json
-            if (it.MinValue !== null && num < it.MinValue) {
-              return 'Minimum value is ' + it.MinValue
-            }
-            if (it.MaxValue !== null  && num > it.MaxValue) {
-              return 'Maximum value is ' + it.MaxValue
-            }
-            return ''
-          }
-          else {
-            return 'Value must be a number'
-          }
-        }
-        catch {
-          return 'Not a valid value'
-        }
-      }
-
-      const hint = (it.MinValue !== null && it.MaxValue !== null) ? `New value in range [${it.MinValue}, ${it.MaxValue}]` : ''
-      const oldValue = this.valueForItem(it, '')
-      const newValue = await this.textInputDlg(it.Name, hint, oldValue, isValid)
-      if (newValue === null) { return }
-
-      const para = {
-        theObject: it.Object,
-        member: it.Member,
-        jsonValue: newValue,
-        displayValue: newValue,
-      }
-      try {
-        await this.backendAsync('WriteValue', para)
-      }
-      catch (exp) {
-        alert(exp)
-      }
-      // console.info('Config: ' + JSON.stringify(this.config))
-    }
-
-    async onWriteItemEnum(it: ConfigItem): Promise<void> {
-
-      const hint = 'Select new value'
-      const oldValue = this.valueForItem(it, '')
-
-      const vals: EnumValEntry[] = this.parseEnumValues(it)
-      const values = vals.map((v) => v.label)
-      const newValue = await this.enumInputDlg(it.Name, hint, oldValue, values)
-      if (newValue === null) { return }
-
-      let newValueNum = ''
-      for (const item of vals) {
-        if (item.label === newValue) {
-          newValueNum = JSON.stringify(item.num)
-        }
-      }
-
-      const para = {
-        theObject: it.Object,
-        member: it.Member,
-        jsonValue: newValueNum,
-        displayValue: newValue,
-      }
-      try {
-        await this.backendAsync('WriteValue', para)
-      }
-      catch (exp) {
-        alert(exp)
-      }
-      // console.info('Config: ' + JSON.stringify(this.config))
-    }
-
-    parseEnumValues(it: ConfigItem): EnumValEntry[] {
-      const res: EnumValEntry[] = []
-      try {
-        const vals: string[] = it.EnumValues.split(';')
-        for (const item of vals) {
-          const items: string[] = item.split('=')
-          if (items.length === 2) {
-            const key   = items[0].trim()
-            const value = items[1].trim()
-            const isComplex = value.startsWith('{') && value.endsWith('}')
-
-            const entry: EnumValEntry = {
-              num: parseFloat(key),
-              label: value,
-            }
-
-            if (isComplex) {
-              const inner = value.substring(1, value.length - 1)
-              const props = inner.split(',')
-              entry.label = props[0].trim()
-              if (props.length > 1) {
-                entry.color = props[1].trim()
-              }
-            }
-
-            res.push(entry)
-          }
-        }
-      }
-      catch {}
-      return res
     }
 
     valueForItem(it: ConfigItem, defaultValue: string): string {
       if (it.Type === 'Enum') {
-        const vals: EnumValEntry[] = this.parseEnumValues(it)
+        const vals: EnumValEntry[] = parseEnumValues(it.EnumValues)
         for (const entry of this.result) {
           if (entry.Object === it.Object && entry.Member === it.Member) {
             const v = entry.Value
@@ -277,7 +163,7 @@
 
     colorForItem(it: ConfigItem): string {
       if (it.Type === 'Enum') {
-        const vals: EnumValEntry[] = this.parseEnumValues(it)
+        const vals: EnumValEntry[] = parseEnumValues(it.EnumValues)
         for (const entry of this.result) {
           if (entry.Object === it.Object && entry.Member === it.Member) {
             const v = entry.Value
@@ -295,7 +181,7 @@
         return ''
       }
     }
-  
+
     async onToggleShowHeader(): Promise<void> {
       try {
         await this.backendAsync('ToggleShowHeader', {})
@@ -308,7 +194,7 @@
     @Watch('eventPayload')
     watch_event(newVal: any, old: any): void {
       if (this.eventName === 'OnValuesChanged') {
-        console.info('OnValuesChanged event! ' + JSON.stringify(newVal))
+        // console.info('OnValuesChanged event! ' + JSON.stringify(newVal))
         this.result = newVal
       }
     }

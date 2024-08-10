@@ -5,7 +5,7 @@ export interface Config {
 }
 
 export interface ConfigItem {
-  Name: string
+  Name?: string
   Unit: string
   Object: string | null
   Member: string | null

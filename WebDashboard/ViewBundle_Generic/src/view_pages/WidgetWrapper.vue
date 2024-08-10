@@ -29,6 +29,11 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></config-edit-numeric>
 
+    <config-edit-numeric2-d v-if="type === 'ConfigEditNumeric2D'"
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></config-edit-numeric2-d>
+
     <page-actions-log-View v-if="type === 'PageActionsLogView'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
@@ -57,6 +62,7 @@ import ReadButton from './widgets/ReadButton.vue'
 import VarTable from './widgets/VarTable.vue'
 import VarTable2D from './widgets/VarTable2D.vue'
 import ConfigEditNumeric from './widgets/config_edit/ConfigEditNumeric.vue'
+import ConfigEditNumeric2D from './widgets/config_edit/ConfigEditNumeric2D.vue'
 import PageActionsLogView from './widgets/PageActionsLogView.vue'
 import TextDisplay from './widgets/TextDisplay.vue'
 import ImageDisplay from './widgets/ImageDisplay.vue'
@@ -69,6 +75,7 @@ import { TimeRange } from '../utils'
     VarTable,
     VarTable2D,
     ConfigEditNumeric,
+    ConfigEditNumeric2D,
     PageActionsLogView,
     TextDisplay,
     ImageDisplay,
