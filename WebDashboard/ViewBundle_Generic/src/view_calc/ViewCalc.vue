@@ -206,7 +206,11 @@ export default class ViewCalc extends Vue {
 
   get objectTitle(): string {
     if (this.editObject === null || this.editObject.Name === undefined) { return '' }
-    return this.editObjectType + ': ' + this.editObject.Name
+    const type = this.editObjectType
+    const name = this.editObject.Name
+    const id = this.editObject.ID
+    const idAppend = id === name ? '' : ' (ID: ' + id + ')'
+    return type + ': ' + name + idAppend
   }
 
   saveObject(): void {
