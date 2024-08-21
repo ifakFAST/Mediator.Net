@@ -35,6 +35,7 @@ export interface Calculation {
   Subtype: string
   RunMode: string // e.g. Continuous, Triggered
   InitErrorResponse: string // e.g. Fail, Retry, Stop
+  HistoryScope: string // e.g. All, ExcludeInputs, ExcludeStates, ExcludeInputsAndStates
   Enabled: boolean
   EnableOutputVarWrite: boolean
   History: fast.History | null

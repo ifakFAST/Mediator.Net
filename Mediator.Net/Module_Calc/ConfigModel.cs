@@ -168,6 +168,25 @@ namespace Ifak.Fast.Mediator.Calc.Config
         Stop,
     }
 
+    public enum HistoryScope
+    {
+        All,
+        ExcludeInputs,
+        ExcludeStates,
+        ExcludeInputsAndStates,
+    }
+
+    public static class HistoryScopeExtensions
+    {
+        public static bool ExcludeInputs(this HistoryScope scope) {
+            return scope == HistoryScope.ExcludeInputs || scope == HistoryScope.ExcludeInputsAndStates;
+        }
+
+        public static bool ExcludeStates(this HistoryScope scope) {
+            return scope == HistoryScope.ExcludeStates || scope == HistoryScope.ExcludeInputsAndStates;
+        }
+    }
+
     public class Calculation : ModelObject
     {
         [XmlAttribute("id")]
@@ -188,6 +207,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public RunMode RunMode { get; set; } = RunMode.Continuous;
 
         public InitErrorResponse InitErrorResponse { get; set; } = InitErrorResponse.Retry;
+
+        public HistoryScope HistoryScope { get; set; } = HistoryScope.All;
 
         public bool EnableOutputVarWrite { get; set; } = true;
 
@@ -215,7 +236,8 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
         public bool ShouldSerializeRunMode() => RunMode != RunMode.Continuous;
         public bool ShouldSerializeInitErrorResponse() => InitErrorResponse != InitErrorResponse.Retry;
-        
+        public bool ShouldSerializeHistoryScope() => HistoryScope != HistoryScope.All;
+
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {
                 ID = ID,
@@ -349,6 +371,11 @@ namespace Ifak.Fast.Mediator.Calc.Config
                     history = calcu.History.Value;
                     break;
                 }
+            }
+
+            Calculation calc = (Calculation)parents.First();
+            if (calc.HistoryScope.ExcludeInputs()) {
+                history = History.None;
             }
 
             var variable = new Variable() {
@@ -496,6 +523,11 @@ namespace Ifak.Fast.Mediator.Calc.Config
                     history = calcu.History.Value;
                     break;
                 }
+            }
+
+            Calculation calc = (Calculation)parents.First();
+            if (calc.HistoryScope.ExcludeStates()) {
+                history = History.None;
             }
 
             var variable = new Variable() {

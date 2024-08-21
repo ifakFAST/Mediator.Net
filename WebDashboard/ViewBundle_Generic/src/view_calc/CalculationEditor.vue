@@ -18,6 +18,7 @@
         <member-row name="RunMode"         v-model="value.RunMode"       type="Enum"     :optional="false" :enumValues="runModes"></member-row>
         <member-row name="Init Error Response" v-model="value.InitErrorResponse"       type="Enum"     :optional="false" :enumValues="initErrorResponses"></member-row>
         <member-row name="History"         v-model="value.History"       type="History"  :optional="true"></member-row>
+        <member-row name="History Scope"   v-model="value.HistoryScope"  type="Enum"     :optional="false" :enumValues="historyScopes"></member-row>
         <member-row name="Cycle"           v-model="value.Cycle"         type="Duration" :optional="false"></member-row>
         <member-row name="Cycle Offset" v-if="isContinuous" v-model="value.Offset" type="Duration" :optional="false"></member-row>
         <member-row name="Ignore Offset For Timestamps" v-model="value.IgnoreOffsetForTimestamps" type="Boolean" :optional="false" v-if="isContinuous && value.Offset !== '0 s'"></member-row>
@@ -238,6 +239,10 @@ export default class CalculationEditor extends Vue {
 
   get initErrorResponses(): string[] {
     return ['Fail', 'Retry', 'Stop']
+  }
+
+  get historyScopes(): string[] {
+    return ['All', 'ExcludeInputs', 'ExcludeStates', 'ExcludeInputsAndStates']
   }
 
   get adapterSubtypes(): string[] {
