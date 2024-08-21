@@ -81,7 +81,7 @@ namespace Ifak.Fast.Mediator.Calc
             }
 
             try {
-                Task[] initTasks = adapters.Select(InitAdapter).ToArray();
+                Task[] initTasks = adapters.Select(a => InitAdapter(a, InitContext.Init)).ToArray();
                 await Task.WhenAll(initTasks);
             }
             catch (Exception exp) {
@@ -173,11 +173,11 @@ namespace Ifak.Fast.Mediator.Calc
                         adapter.SetInitialOutputValues(varMap);
                     }
 
-                    Task[] initTasks = newAdapters.Select(InitAdapter).ToArray();
+                    Task[] initTasks = newAdapters.Select(a => InitAdapter(a, InitContext.ConfigChanged)).ToArray();
                     await Task.WhenAll(initTasks);
 
                     foreach (CalcInstance adapter in newAdapters) {
-                        StartRunLoopTask(adapter);
+                        StartRunLoopTaskIfInitCompleted(adapter);
                     }
                 }
 
@@ -191,7 +191,9 @@ namespace Ifak.Fast.Mediator.Calc
             // await connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), inputVars.ToArray());
         }
 
-        private async Task InitAdapter(CalcInstance adapter) {
+        enum InitContext { Init, ConfigChanged, Restart }
+
+        private async Task InitAdapter(CalcInstance adapter, InitContext context) {
             if (adapter.Instance == null) {
                 throw new Exception("InitAdapter: instance is null");
             }
@@ -242,14 +244,37 @@ namespace Ifak.Fast.Mediator.Calc
                     }
 
                     adapter.State = State.InitComplete;
+                    Log_ReturnToNormal("CalcInit", $"Init of calculation {info.Name} completed successfully.", [ adapter.ID ]);
                 }
             }
             catch (Exception e) {
+
                 Exception exp = e.GetBaseException() ?? e;
                 adapter.State = State.InitError;
                 adapter.LastError = exp.Message;
-                throw new Exception($"Initialize of calculation {info.Name} failed: " + exp.Message, exp);
+
+                bool init = context == InitContext.Init;
+                bool failOnInitError = adapter.CalcConfig.InitErrorResponse == Config.InitErrorResponse.Fail;
+
+                bool throwException = !init || failOnInitError;
+
+                if (throwException) {
+                    throw new Exception($"Initialize of calculation {info.Name} failed: " + exp.Message, exp);
+                }
+                
+                bool retry = adapter.CalcConfig.InitErrorResponse == Config.InitErrorResponse.Retry;
+                if (retry) {
+                    Task _ = WaitAndRetry(adapter, "Init failed: " + exp.Message);
+                    return;
+                }
+
+                Log_ErrorDetails("CalcInit", $"Init of calculation {info.Name} failed (no retry): {exp.Message}", exp.StackTrace ?? "", [ adapter.ID ]);
             }
+        }
+
+        private async Task WaitAndRetry(CalcInstance adapter, string reason) {
+            await Task.Delay(5000);
+            await RestartAdapter(adapter, reason);
         }
 
         private static Config.Input MakeInput(InputDef input, Config.Calculation calc) {
@@ -312,10 +337,8 @@ namespace Ifak.Fast.Mediator.Calc
                     // go ahead and hope for the best...
                 }
                 adapter.CreateInstance(mapAdapterTypes, initInfo);
-                await InitAdapter(adapter);
-                if (adapter.State == State.InitComplete) {
-                    StartRunLoopTask(adapter);
-                }
+                await InitAdapter(adapter, InitContext.Restart);
+                StartRunLoopTaskIfInitCompleted(adapter);
                 adapter.IsRestarting = false;
             }
             catch (Exception exception) {
@@ -326,8 +349,11 @@ namespace Ifak.Fast.Mediator.Calc
                     Log_Error("CalcRestartError", errMsg);
                     // Thread.Sleep(500);
                     // Environment.Exit(1); // will result in restart of entire module by Mediator
-                    int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
-                    await Task.Delay(delayMS);
+                    TimeSpan delay = BoundDuration(
+                        duration: TimeSpan.FromSeconds(5 + 2 * tryCounter), 
+                        min: TimeSpan.FromSeconds(5), 
+                        max: TimeSpan.FromSeconds(60));
+                    await Task.Delay(delay);
                     Task _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
                 }
                 else {
@@ -336,6 +362,12 @@ namespace Ifak.Fast.Mediator.Calc
                     throw new Exception(errMsg);
                 }
             }
+        }
+
+        private static TimeSpan BoundDuration(TimeSpan duration, TimeSpan min, TimeSpan max) {
+            if (duration < min) return min;
+            if (duration > max) return max;
+            return duration;
         }
 
         private Task Shutdown() {
@@ -389,7 +421,7 @@ namespace Ifak.Fast.Mediator.Calc
             _ = StartCheckForModelFileModificationTask(shutdown);
 
             foreach (CalcInstance a in adapters) {
-                StartRunLoopTask(a);
+                StartRunLoopTaskIfInitCompleted(a);
             }
 
             while (!shutdown()) {
@@ -429,7 +461,12 @@ namespace Ifak.Fast.Mediator.Calc
             }
         }
 
-        private void StartRunLoopTask(CalcInstance adapter) {
+        private void StartRunLoopTaskIfInitCompleted(CalcInstance adapter) {
+
+            if (adapter.State != State.InitComplete) {
+                return;
+            }
+
             Task readTask = AdapterRunLoopTask(adapter);
             adapter.RunLoopTask = readTask;
             var ignored1 = readTask.ContinueOnMainThread(t => {
