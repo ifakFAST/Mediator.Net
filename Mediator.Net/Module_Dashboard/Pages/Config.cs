@@ -11,31 +11,31 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
     public class Config : ModelObject
     {
-        protected override string GetID(IEnumerable<IModelObject> parents) {
+        protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
             var parentView = (Dashboard.View)parents.First();
             return parentView.ID + ".Config";
         }
 
-        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+        protected override string GetDisplayName(IReadOnlyCollection<IModelObject> parents) {
             var parentView = (Dashboard.View)parents.First();
             return parentView.Name + ".Config";
         }
 
-        public Page[] Pages { get; set; } = new Page[0];
+        public Page[] Pages { get; set; } = [];
     }
 
     public class Page : ModelObject 
     {
-        protected override string GetID(IEnumerable<IModelObject> parents) {
+        protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
             var parentView = (Dashboard.View)parents.Skip(1).First();
             return parentView.ID + ".Page." + ID;
         }
 
         public string ID { get; set; } = "";
         public string Name { get; set; } = "";
-        public Row[] Rows { get; set; } = new Row[0];
+        public Row[] Rows { get; set; } = [];
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             var variable = new Variable(
                     name: "ActionLog",
@@ -44,7 +44,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                     unit: "",
                     typeConstraints: "",
                     dimension: 1,
-                    dimensionNames: new string[0],
+                    dimensionNames: [],
                     remember: false,
                     history: History.None,
                     writable: false,
@@ -56,13 +56,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
     public class Row
     {
-        public Column[] Columns { get; set; } = new Column[0];
+        public Column[] Columns { get; set; } = [];
     }
 
     public class Column
     {
         public ColumnWidth Width { get; set; } = ColumnWidth.Fill;
-        public Widget[] Widgets { get; set; } = new Widget[0];
+        public Widget[] Widgets { get; set; } = [];
     }
 
     public class Widget

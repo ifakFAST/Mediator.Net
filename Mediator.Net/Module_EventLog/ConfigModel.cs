@@ -26,7 +26,7 @@ namespace Ifak.Fast.Mediator.EventLog
 
         public MailNotificationSettings MailNotificationSettings { get; set; } = new MailNotificationSettings();
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             var variableLastEvent = new Variable(
                 name: "LastEvent",

@@ -15,7 +15,7 @@ namespace Ifak.Fast.Mediator.Util
 
     public interface IModelObject
     {
-        ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents, Unnestable unnestable);
+        ObjInfo GetObjectInfo(string moduleID, IReadOnlyCollection<IModelObject> parents, Unnestable unnestable);
         DataValue GetMemberValueByName(string memberName);
         void SetMemberValue(string memberName, DataValue value);
         void RemoveChildObject(string memberName, IModelObject childObject);
@@ -60,7 +60,7 @@ namespace Ifak.Fast.Mediator.Util
 
     public abstract class ModelObject : IModelObject
     {
-        public ObjInfo GetObjectInfo(string moduleID, IEnumerable<IModelObject> parents, Unnestable unnestable) => new ObjInfo(
+        public ObjInfo GetObjectInfo(string moduleID, IReadOnlyCollection<IModelObject> parents, Unnestable unnestable) => new ObjInfo(
             ObjectRef.Make(moduleID, GetID(parents)),
             GetDisplayName(parents),
             GetClassName(),
@@ -69,9 +69,9 @@ namespace Ifak.Fast.Mediator.Util
             GetVariablesOrNull(parents),
             GetLocation());
 
-        protected virtual string GetID(IEnumerable<IModelObject> parents) => GetPropertyByNameOrThrow("ID").GetValue(this, null).ToString();
+        protected virtual string GetID(IReadOnlyCollection<IModelObject> parents) => GetPropertyByNameOrThrow("ID").GetValue(this, null).ToString();
 
-        protected virtual string GetDisplayName(IEnumerable<IModelObject> parents) => GetPropertyByNameOrThrow("Name").GetValue(this, null).ToString();
+        protected virtual string GetDisplayName(IReadOnlyCollection<IModelObject> parents) => GetPropertyByNameOrThrow("Name").GetValue(this, null).ToString();
 
         protected virtual string GetClassName() => GetType().FullName;
 
@@ -88,7 +88,7 @@ namespace Ifak.Fast.Mediator.Util
             return null;
         }
 
-        protected virtual Variable[]? GetVariablesOrNull(IEnumerable<IModelObject> parents) => null;
+        protected virtual Variable[]? GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) => null;
 
         protected virtual List<ChildObjectsInMember> GetChildObjectsInMember(Unnestable unnestable) {
             var res = new List<ChildObjectsInMember>();

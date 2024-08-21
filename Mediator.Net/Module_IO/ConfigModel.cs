@@ -154,7 +154,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public const string LastInnerReadDuration = "LastInnerReadDuration";
         public const string LastInnerWriteDuration = "LastInnerWriteDuration";
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history;
 
@@ -418,7 +418,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         [Category("Advanced")]
         public List<NamedValue> Config { get; set; } = new List<NamedValue>();
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history;
 

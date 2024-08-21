@@ -104,7 +104,7 @@ public class MqttVarPub : ModelObject, VarPubCommon {
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var mqttConfig = (MqttConfig)parents.First();
         return mqttConfig.ID + ".VarPub";
     }
@@ -163,7 +163,7 @@ public class MqttConfigPub : ModelObject {
     [XmlAttribute("name")]
     public string Name { get; set; } = "ConfigPub";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var mqttConfig = (MqttConfig)parents.First();
         return mqttConfig.ID + ".ConfigPub";
     }
@@ -188,7 +188,7 @@ public class MqttVarReceive : ModelObject {
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarReceive";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var mqttConfig = (MqttConfig)parents.First();
         return mqttConfig.ID + ".VarReceive";
     }
@@ -209,7 +209,7 @@ public class MqttConfigReceive : ModelObject {
     [XmlAttribute("name")]
     public string Name { get; set; } = "ConfigReceive";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var mqttConfig = (MqttConfig)parents.First();
         return mqttConfig.ID + ".ConfigReceive";
     }
@@ -232,7 +232,7 @@ public class MqttMethodPub : ModelObject {
     [XmlAttribute("name")]
     public string Name { get; set; } = "MethodPub";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var mqttConfig = (MqttConfig)parents.First();
         return mqttConfig.ID + ".MethodPub";
     }
@@ -295,7 +295,7 @@ public class SQLVarPub : ModelObject, VarPubCommon {
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var sqlConfig = (SQLConfig)parents.First();
         return sqlConfig.ID + ".VarPub";
     }
@@ -361,7 +361,7 @@ public class OpcUaVarPub : ModelObject, VarPubCommon {
     [XmlAttribute("name")]
     public string Name { get; set; } = "VarPub";
 
-    protected override string GetID(IEnumerable<IModelObject> parents) {
+    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
         var uaConfig = (OpcUaConfig)parents.First();
         return uaConfig.ID + ".VarPub";
     }

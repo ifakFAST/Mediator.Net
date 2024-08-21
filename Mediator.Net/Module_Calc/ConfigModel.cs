@@ -119,7 +119,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeUnit() => !string.IsNullOrEmpty(Unit);
         public bool ShouldSerializeDimension() => Dimension != 1;
         public bool ShouldSerializeType() => Type != DataType.Float64;
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history;
 
@@ -215,7 +215,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
         public bool ShouldSerializeRunMode() => RunMode != RunMode.Continuous;
         public bool ShouldSerializeInitErrorResponse() => InitErrorResponse != InitErrorResponse.Retry;
-
+        
         public Calc.Calculation ToCalculation() {
             return new Calc.Calculation() {
                 ID = ID,
@@ -229,7 +229,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
             };
         }
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history = new History(HistoryMode.None);
 
@@ -264,10 +264,10 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 History = history
             };
 
-            return new Variable[] {
+            return [
                 varLastRunDuration,
                 varLastRunTime
-            };
+            ];
         }
 
         public bool ShouldSerializeStates() => States.Count > 0;
@@ -309,7 +309,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         internal const string ID_Separator = ".In.";
 
-        protected override string GetID(IEnumerable<IModelObject> parents) {
+        protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
@@ -317,7 +317,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("name")]
         public string Name { get; set; } = "";
 
-        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+        protected override string GetDisplayName(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.Name + ".In." + Name;
         }
@@ -335,11 +335,11 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public DataValue? Constant { get; set; } // if defined, its value will be used instead of Variable
 
-        public DataValue GetDefaultValue() => Constant.HasValue ? Constant.Value : DataValue.FromDataType(Type, Dimension);
+        public DataValue GetDefaultValue() => Constant ?? DataValue.FromDataType(Type, Dimension);
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
-            History history = new History(HistoryMode.None);
+            History history = History.None;
             foreach (IModelObject obj in parents) {
                 if (obj is Folder folder && folder.History.HasValue) {
                     history = folder.History.Value;
@@ -361,9 +361,9 @@ namespace Ifak.Fast.Mediator.Calc.Config
                 History = history
             };
 
-            return new Variable[] {
+            return [
                 variable
-            };
+            ];
         }
 
         public bool ShouldSerializeVariable() => Variable.HasValue;
@@ -383,7 +383,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         internal const string ID_Separator = ".Out.";
 
-        protected override string GetID(IEnumerable<IModelObject> parents) {
+        protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
@@ -391,7 +391,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("name")]
         public string Name { get; set; } = "";
 
-        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+        protected override string GetDisplayName(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.Name + ".Out." + Name;
         }
@@ -409,7 +409,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history = new History(HistoryMode.None);
             foreach (IModelObject obj in parents) {
@@ -454,7 +454,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         internal const string ID_Separator = ".State.";
 
-        protected override string GetID(IEnumerable<IModelObject> parents) {
+        protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.ID + ID_Separator + ID;
         }
@@ -462,7 +462,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
         [XmlAttribute("name")]
         public string Name { get; set; } = "";
 
-        protected override string GetDisplayName(IEnumerable<IModelObject> parents) {
+        protected override string GetDisplayName(IReadOnlyCollection<IModelObject> parents) {
             var calculation = (Calculation)parents.First();
             return calculation.Name + ".State." + Name;
         }
@@ -484,7 +484,7 @@ namespace Ifak.Fast.Mediator.Calc.Config
             _    => DataValue.FromJSON(DefaultValue)
         };
 
-        protected override Variable[] GetVariablesOrNull(IEnumerable<IModelObject> parents) {
+        protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
             History history = new History(HistoryMode.None);
             foreach (IModelObject obj in parents) {
