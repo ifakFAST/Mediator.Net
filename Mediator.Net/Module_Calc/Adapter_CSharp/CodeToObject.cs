@@ -30,10 +30,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             sb.Append("using System.Linq; ");
             sb.Append("using System.Globalization; ");
             sb.Append("using System.Text; ");
+            sb.Append("using InitParameter = Ifak.Fast.Mediator.Calc.InitParameter; ");
             sb.Append("using Ifak.Fast.Mediator.Calc.Adapter_CSharp; ");
             sb.Append("using Ifak.Fast.Mediator; ");
             sb.Append(code);
-
+            
             CompileResult compileRes = CompileLib.CSharpCode2Assembly(sb.ToString(), referencedAssemblies); ;
             string assemblyFileName = compileRes.AssemblyFileName;
 
@@ -107,8 +108,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                            .WithReferences(referencedAssemblies)
                            .WithEmitDebugInformation(true);
 
+            var sb = new StringBuilder();
+            sb.Append("using InitParameter = Ifak.Fast.Mediator.Calc.InitParameter; ");
+            sb.Append(code);
+
             var script = CSharpScript.
-                Create<object>(code, options).
+                Create<object>(sb.ToString(), options).
                 ContinueWith($"new {className}()");
 
             ScriptState<object> scriptState = await script.RunAsync();
