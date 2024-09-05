@@ -147,7 +147,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
             }
         }
 
-        public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue) {
+        public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue, string oldValue) {
 
             DataValue dataValue = DataValue.FromJSON(jsonValue);
             MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(theObject), member);
@@ -162,7 +162,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
             ConfigItem? item = ConfigItemByMemberRef(memberRef);
             string name = item != null ? item.Name : "???";
-            Task _ = Context.LogPageAction($"{name} = {displayValue}");
+            Task _ = Context.LogPageAction($"{name}: {oldValue} 🡒 {displayValue}");
 
             return ReqResult.OK();
         }

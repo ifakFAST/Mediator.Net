@@ -139,7 +139,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         return res.ToArray();
     }
 
-    public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue) {
+    public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue, string oldValue) {
 
         DataValue dataValue = DataValue.FromJSON(jsonValue);
         MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(theObject), member);
@@ -160,7 +160,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         string Col = configuration.Columns[colIdx];
 
         string name = $"{Row} {Col}";
-        Task _ = Context.LogPageAction($"{name} = {displayValue}");
+        Task _ = Context.LogPageAction($"{name}: {oldValue} 🡒 {displayValue}");
 
         return ReqResult.OK();
     }

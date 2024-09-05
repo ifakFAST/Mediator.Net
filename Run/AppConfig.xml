@@ -43,6 +43,15 @@
                 <NamedValue name="header" value="Dashboard"/>
                 <NamedValue name="favicon" value=""/>
             </Config>
+            <HistoryDBs>
+                <HistoryDB name="Dashboard" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=DB_Dashboard.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
         </Module>
         
         <Module id="IO" name="IO" enabled="true" concurrentInit="false">

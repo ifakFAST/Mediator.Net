@@ -64,6 +64,7 @@ export async function onWriteItemEnum(
     member: it.Member,
     jsonValue: newValueNum,
     displayValue: newValue,
+    oldValue
   }
   try {
     await backendAsync('WriteValue', para)
@@ -111,6 +112,7 @@ export async function onWriteItemNumeric(
     member: it.Member,
     jsonValue: newValue,
     displayValue: newValue,
+    oldValue
   }
   try {
     await backendAsync('WriteValue', para)
