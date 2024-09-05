@@ -622,7 +622,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 viewID = v.ID,
                 viewName = v.Name,
                 viewURL = url ? v.Config.Object<ViewURLConfig>()!.URL : viewType.HtmlPath,
-                viewIcon = viewType.Icon,
+                viewIcon = v.Icon ?? viewType.Icon,
                 viewGroup = v.Group,
                 viewType = v.Type,
             };

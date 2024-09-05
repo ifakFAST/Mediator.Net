@@ -32,6 +32,9 @@ namespace Ifak.Fast.Mediator.Dashboard
         [XmlAttribute("type")]
         public string Type { get; set; } = "";
 
+        [XmlAttribute("icon")]
+        public string? Icon { get; set; } = null;
+
         [XmlAttribute("group")]
         public string Group { get; set; } = "";
 
@@ -44,5 +47,6 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public bool ShouldSerializeRestrictVisibility() => RestrictVisibility;
         public bool ShouldSerializeVisibleForRoles() => !string.IsNullOrEmpty(VisibleForRoles);
+        public bool ShouldSerializeIcon() => Icon != null;
     }
 }
