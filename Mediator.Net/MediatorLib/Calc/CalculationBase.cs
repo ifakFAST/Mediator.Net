@@ -25,6 +25,7 @@ namespace Ifak.Fast.Mediator.Calc
         public OutputValue[] LastOutput { get; set; } = new OutputValue[0];
         public string ConfigFolder { get; set; } = "";
         public string DataFolder { get; set; } = "";
+        public string ModuleID { get; set; } = "";
         public NamedValue[] ModuleConfig { get; set; } = new NamedValue[0];
     }
 

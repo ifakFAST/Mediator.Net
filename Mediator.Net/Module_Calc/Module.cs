@@ -205,6 +205,7 @@ namespace Ifak.Fast.Mediator.Calc
                     LastState = adapter.LastStateValues,
                     ConfigFolder = Path.GetDirectoryName(base.modelFileName) ?? "",
                     DataFolder = initInfo.DataFolder,
+                    ModuleID = initInfo.ModuleID,
                     ModuleConfig = moduleConfig.ToNamedValues()
                 };
                 adapter.State = State.InitStarted;

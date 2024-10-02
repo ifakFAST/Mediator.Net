@@ -115,6 +115,12 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 provider.EventSinkRef = this;
             }
 
+            var apis = GetMembers<Api>(obj, recursive: true, []);
+            foreach (Api api in apis) {
+                api.moduleID = parameter.ModuleID;
+                api.connectionGetter = retriever;
+            }
+
             Type type = obj.GetType();
 
             MethodInfo[] methods =

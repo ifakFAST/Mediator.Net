@@ -80,6 +80,9 @@ namespace Ifak.Fast.Mediator.Calc.Config
             foreach (var calc in Calculations) {
                 calc.Normalize(adapters);
             }
+            if (string.IsNullOrWhiteSpace(Name)) {
+                Name = ID;
+            }
         }
     }
 
@@ -108,11 +111,11 @@ namespace Ifak.Fast.Mediator.Calc.Config
 
         public string Comment { get; set; } = "";
 
-        public VariableRef? ValueSource { get; set; } = null;
+        //public VariableRef? ValueSource { get; set; } = null;
 
         public History? History { get; set; } = null;
 
-        public bool ShouldSerializeValueSource() => ValueSource.HasValue;
+        //public bool ShouldSerializeValueSource() => ValueSource.HasValue;
         public bool ShouldSerializeHistory() => History.HasValue;
         public bool ShouldSerializeComment() => !string.IsNullOrEmpty(Comment);
         public bool ShouldSerializeLocation() => Location.HasValue;
@@ -153,6 +156,9 @@ namespace Ifak.Fast.Mediator.Calc.Config
         public void Normalize() {
             if (History.HasValue) {
                 History = History.Value.Normalize();
+            }
+            if (string.IsNullOrWhiteSpace(Name)) {
+                Name = ID;
             }
         }
     }
