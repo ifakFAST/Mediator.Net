@@ -366,6 +366,33 @@ public class Api
 
     internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
 
+    public List<VTQ> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+
+        VTTQs vttqs = new();
+        string? errMsg = null;
+
+        SingleThreadedAsync.Run(async () => {
+            try {
+                Connection con = await connectionGetter();
+                vttqs = await con.HistorianReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                errMsg = e.Message;
+            }
+        });
+
+        if (errMsg != null) {
+            throw new Exception(errMsg);
+        }
+
+        var res = new List<VTQ>(vttqs.Count);
+        foreach (var vttq in vttqs) {
+            res.Add(vttq.ToVTQ());
+        }
+        return res;
+    }
+
     public void HistorianModify(VariableRef variable, ModifyMode mode, VTQ[] data) {
 
         string? errMsg = null;
