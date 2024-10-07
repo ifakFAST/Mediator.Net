@@ -413,12 +413,34 @@ public class Api
         }
     }
 
+    public void HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+
+        string? errMsg = null;
+
+        SingleThreadedAsync.Run(async () => {
+            try {
+                Connection con = await connectionGetter();
+                await con.HistorianDeleteInterval(variable, startInclusive, endInclusive);
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                errMsg = e.Message;
+            }
+        });
+
+        if (errMsg != null) {
+            throw new Exception(errMsg);
+        }
+    }
+
     public VariableRef CreateSignalIfNotExists(string parentFolderID, SignalInfo signal) {
+        signal = string.IsNullOrWhiteSpace(signal.Name) ? signal with { Name = signal.ID } : signal;
         ObjectRef objRef = CreateObjectIfNotExists(parentFolderID, signal);
         return VariableRef.Make(objRef, "Value");
     }
 
     public ObjectRef CreateFolderIfNotExists(string parentFolderID, FolderInfo folder) {
+        folder = string.IsNullOrWhiteSpace(folder.Name) ? folder with { Name = folder.ID } : folder;
         return CreateObjectIfNotExists(parentFolderID, folder);
     }
 
