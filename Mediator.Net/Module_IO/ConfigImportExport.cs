@@ -52,7 +52,8 @@ public static class ConfigImportExport {
         }
 
         var items = new List<FlatDataItem>();
-        IEnumerable<IXLRangeRow> rows = sheet.RangeUsed().RowsUsed().Skip(1); // Skip header row
+        IXLRange? rangeUsed = sheet.RangeUsed();
+        IEnumerable<IXLRangeRow> rows = rangeUsed == null ? [] : rangeUsed.RowsUsed().Skip(1); // Skip header row
 
         foreach (IXLRangeRow row in rows) {
 
