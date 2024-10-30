@@ -299,7 +299,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return Task.FromResult(stepRes);
         }
 
-        private static List<T> GetIdentifiableMembers<T>(object obj, string idChain, bool recursive, HashSet<object> visited) where T : class, Identifiable {
+        internal static List<T> GetIdentifiableMembers<T>(object obj, string idChain, bool recursive, HashSet<object> visited) where T : class, Identifiable {
 
             if (visited.Contains(obj)) return [];
             visited.Add(obj);
@@ -311,7 +311,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 object? fieldValue = f.GetValue(obj);
                 if (fieldValue is T x) {
                     x.ID = idChain + id;
-                    x.Name = idChain + x.Name;
+                    string name = string.IsNullOrWhiteSpace(x.Name) ? id : x.Name;
+                    x.Name = idChain + name;
                     result.Add(x);
                 }
                 else if (recursive && f.FieldType.IsClass && fieldValue != null) {

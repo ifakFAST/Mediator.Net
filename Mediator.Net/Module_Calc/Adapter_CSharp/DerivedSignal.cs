@@ -5,16 +5,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Ifak.Fast.Mediator;
 using Ifak.Fast.Mediator.Calc.Adapter_CSharp;
 
 namespace StdLib;
 
-public sealed class DerivedSignal
+public sealed class DerivedSignal : Identifiable
 {
-    public string ID { get; }
-    public string Name { get; } = "";
+    public string FullID { get; set; } = ""; // if set, this is used as the ID
+    public string FullName { get; set; } = ""; // if set, this is used as the Name
+    public string ID { get; set; } = "";
+    public string Name { get; set; } = "";
     public string Unit { get; } = "";
     public string ParentFolderID { get; } = "";
     public Duration Resolution { get; } = Duration.FromMinutes(1);
@@ -23,9 +24,9 @@ public sealed class DerivedSignal
 
     private bool parametersAsArray = false;
 
-    public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string id = "", string name = "", string unit = "") {
-        ID = id;
-        Name = string.IsNullOrWhiteSpace(name) ? id : name;
+    public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "") {
+        FullID = fullID;
+        FullName = string.IsNullOrWhiteSpace(fullName) ? fullID : fullName;
         Unit = unit;
         ParentFolderID = parentFolderID;
         Resolution = resolution;
@@ -95,30 +96,25 @@ public sealed class DerivedSignal
         return VariableRef.Make(moduleID, objectID, name);
     }
 
-    private static (T value, string fieldName)[] GetFieldsOfTypeWithFieldName<T>(object script) {
-        return script.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-            .Where(f => f.FieldType == typeof(T))
-            .Where(f => f.GetValue(script) != null)
-            .Select(f => ((T)f.GetValue(script)!, f.Name))
-            .ToArray();
-    }
+    public static void UpdateDerivedSignals(object script, Timestamp tEnd) {
 
-    public static void UpdateDerivedSignals(object script, Timestamp t, Duration dt) {
-        foreach (var (value, fieldName) in GetFieldsOfTypeWithFieldName<DerivedSignal>(script)) {
-            value.Update(t, fieldName);
+        List<DerivedSignal> derivedSignals = CSharp.GetIdentifiableMembers<DerivedSignal>(script, "", recursive: true, []);
+
+        foreach (var signal in derivedSignals) {
+            signal.Update(tEnd);
         }
     }
 
     readonly Api api = new();
 
-    private void Update(Timestamp tEnd, string fieldName) {
+    public void Update(Timestamp tEnd) {
 
         if (Inputs.Length == 0) return;
 
         const int ChunckSize = 5000;
 
-        string signalID = string.IsNullOrWhiteSpace(ID) ? fieldName : ID;
-        string signalName = string.IsNullOrWhiteSpace(Name) ? signalID : Name;
+        string signalID   = string.IsNullOrWhiteSpace(FullID)   ? ID   : FullID;
+        string signalName = string.IsNullOrWhiteSpace(FullName) ? Name : FullName;
 
         var signalInfo = new SignalInfo(signalID) {
             Name = signalName,
@@ -158,7 +154,10 @@ public sealed class DerivedSignal
             values.Clear();
 
             foreach (var param in Inputs) {
-                double? v = param.GetValueFor(api, time, Resolution);
+                double? v = param.GetValueFor(api, time, Resolution, out bool canAbort);
+                if (canAbort) {
+                    return;
+                }
                 if (v == null) {
                     // Console.WriteLine($"No value found for {param.Name} at {time}");
                     allValuesFound = false;
@@ -194,7 +193,9 @@ public record InputDef(string Name, VariableRef Var)
     private readonly List<VTQ> buffer = new(ChunckSize);
     private int bufferStartIdx = 0;
 
-    public double? GetValueFor(Api api, Timestamp t, Duration interval) {
+    public double? GetValueFor(Api api, Timestamp t, Duration interval, out bool canAbort) {
+
+        canAbort = false;
 
         if (buffer.Count == 0 || bufferStartIdx >= buffer.Count || buffer.Last().T < t) {
 
@@ -203,6 +204,7 @@ public record InputDef(string Name, VariableRef Var)
             buffer.AddRange(api.HistorianReadRaw(Var, startInclusive: t, Timestamp.Max, ChunckSize, BoundingMethod.TakeFirstN));
 
             if (buffer.Count == 0) {
+                canAbort = true;
                 return null;
             }
 

@@ -290,7 +290,8 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             bool isIdentifiable = f.TryConvertTo(out Identifiable? identifiable);
             if (isIdentifiable && identifiable is T x) {
                 x.ID = idChain + id;
-                x.Name = idChain + x.Name;
+                string name = string.IsNullOrWhiteSpace(x.Name) ? id : x.Name;
+                x.Name = idChain + name;
                 result.Add(x);
             }
             else if (!isIdentifiable) {
