@@ -600,6 +600,9 @@ namespace Ifak.Fast.Mediator
         }
 
         public void SetAllObjects(ObjectInfo[] allObjs) {
+            if (meta == null) { // SetAllObjectsInitial has not been called yet: ignore
+                return;
+            }
             allObjects = new List<ObjectInfo>(allObjs);
             mapObjects.Clear();
             objectsWithChildren.Clear();
@@ -611,7 +614,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
             variables.Sync(allObjects);
-            configPermission.InitUserRoles(allObjects, GetObjectParent, core.userManagement.Roles, meta!);
+            configPermission.InitUserRoles(allObjects, GetObjectParent, core.userManagement.Roles, meta);
         }
 
         public Action<MemberRef, string> GetChecker(Origin origin) {

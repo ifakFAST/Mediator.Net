@@ -315,6 +315,14 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                     x.Name = idChain + name;
                     result.Add(x);
                 }
+                else if (fieldValue is IReadOnlyCollection<T> arr) {
+                    for (int i = 0; i < arr.Count; ++i) {
+                        T it = arr.ElementAt(i);
+                        it.ID   = idChain + id + "." + it.ID;
+                        it.Name = idChain + id + "." + it.Name;
+                        result.Add(it);
+                    }
+                }
                 else if (recursive && f.FieldType.IsClass && fieldValue != null) {
                     result.AddRange(GetIdentifiableMembers<T>(fieldValue, idChain + id + ".", recursive, visited));
                 }

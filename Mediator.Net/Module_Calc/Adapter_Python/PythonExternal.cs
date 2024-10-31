@@ -283,7 +283,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
     }
 
     private static List<T> GetIdentifiableMembers<T>(PyObject obj, string idChain) where T : class, Identifiable {
-        List<T> result = new();
+        List<T> result = [];
         MemberInfo[] fields = GetPyObjectMember(obj);
         foreach (MemberInfo f in fields) {
             string id = f.Name;

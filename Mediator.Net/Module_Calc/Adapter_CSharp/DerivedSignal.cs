@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Ifak.Fast.Mediator;
 using Ifak.Fast.Mediator.Calc.Adapter_CSharp;
 
@@ -20,9 +21,12 @@ public sealed class DerivedSignal : Identifiable
     public string ParentFolderID { get; } = "";
     public Duration Resolution { get; } = Duration.FromMinutes(1);
     public InputDef[] Inputs { get; }
+    public readonly StateFloat64[] States;
     public Delegate Calculation { get; }
 
     private bool parametersAsArray = false;
+    private readonly object?[] calcParameterValues;
+    private readonly MethodInfo calcMethod;
 
     public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "") {
         FullID = fullID;
@@ -33,27 +37,40 @@ public sealed class DerivedSignal : Identifiable
         Inputs = inputs;
         Calculation = calculation;
 
-        InitTest();
+        States = InitTest();
+        calcParameterValues = new object?[(parametersAsArray ? 1 : Inputs.Length) + States.Length];
+        calcMethod = Calculation.Method;
     }
 
-    private void InitTest() {
+    private StateFloat64[] InitTest() {
 
         if (Inputs.Length == 0) {
             throw new ArgumentException("No parameters defined.");
         }
 
-        var method = Calculation.Method;
-        var parametersMethod = method.GetParameters();
-        if (parametersMethod.Length != Inputs.Length && parametersMethod.Length != 1) {
+        MethodInfo method = Calculation.Method;
+        ParameterInfo[] parameters = method.GetParameters();
+        ParameterInfo[] parametersNotRef = parameters.Where(p => !p.ParameterType.IsByRef).ToArray();
+        ParameterInfo[] parametersByRef = parameters.Where(p => p.ParameterType.IsByRef).ToArray();
+
+        if (parametersNotRef.Length != Inputs.Length && parametersNotRef.Length != 1) {
             throw new ArgumentException("Number of parameters does not match.");
         }
 
-        parametersAsArray = parametersMethod.Length == 1 && parametersMethod[0].ParameterType == typeof(double[]);
+        // verify that all by ref parameters come after all non by ref parameters:
+        if (parametersByRef.Length > 0) {
+            int idx = Array.IndexOf(parameters, parametersByRef[0]);
+            if (idx < parametersNotRef.Length) {
+                throw new ArgumentException("ByRef parameters must come after all non ByRef parameters.");
+            }
+        }
+
+        parametersAsArray = parametersNotRef.Length == 1 && parametersNotRef[0].ParameterType == typeof(double[]);
 
         if (!parametersAsArray) {
             // Verify that the parameter types and names match:
             for (int i = 0; i < Inputs.Length; ++i) {
-                var paramMethod = parametersMethod[i];
+                var paramMethod = parameters[i];
                 var param = Inputs[i];
                 if (paramMethod.ParameterType != typeof(double)) {
                     throw new ArgumentException("Parameter type does not match.");
@@ -64,16 +81,57 @@ public sealed class DerivedSignal : Identifiable
             }
         }
 
+        List<StateFloat64> states = [];
+
+        foreach (var param in parametersByRef) {
+            string name = param.Name ?? throw new ArgumentException("Parameter name is missing.");
+            Type type = param.ParameterType;
+            Type elementType = type.GetElementType()!;
+            bool isNullable = elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(Nullable<>);
+            double ? defaultValue = isNullable ? null : 0.0;
+            StateFloat64 state = new(name, defaultValue: defaultValue) {
+                ID = name
+            };
+            Console.WriteLine($"Adding state {state.ID} with default value {state.DefaultValue}");
+            states.Add(state);
+        }
+
         // Verify that the return type is double:
         if (method.ReturnType != typeof(double)) {
             throw new ArgumentException("Return type is not double.");
         }
+
+        return states.ToArray();
     }
 
     public double Calculate(double[] values) {
-        return parametersAsArray ?
-            (double)Calculation.DynamicInvoke([values])! :
-            (double)Calculation.DynamicInvoke(values.Select(v => (object)v).ToArray())!;
+
+        int numberOfInputParameters;
+
+        if (parametersAsArray) {
+            calcParameterValues[0] = values;
+            numberOfInputParameters = 1;
+        }
+        else {
+            for (int i = 0; i < values.Length; ++i) {
+                calcParameterValues[i] = values[i];
+            }
+            numberOfInputParameters = values.Length;
+        }
+
+        for (int i = 0; i < States.Length; ++i) {
+            calcParameterValues[numberOfInputParameters + i] = States[i].ValueOrNull;
+        }
+
+        double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
+
+        for (int i = 0; i < States.Length; ++i) {
+            object? updatedStateValue = calcParameterValues[numberOfInputParameters + i];
+            double? value = (double?)updatedStateValue;
+            States[i].ValueOrNull = value;
+        }
+
+        return result;
     }
 
     public static InputDef DefineInput(string name, VariableRef var) {
