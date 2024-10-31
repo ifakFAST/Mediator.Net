@@ -25,6 +25,8 @@ public sealed class DerivedSignal : Identifiable
     public Delegate Calculation { get; }
 
     private bool parametersAsArray = false;
+    private int? idxParameterLast = null;
+    private int? idxParameter_dt = null;
     private readonly object?[] calcParameterValues;
     private readonly MethodInfo calcMethod;
 
@@ -38,7 +40,8 @@ public sealed class DerivedSignal : Identifiable
         Calculation = calculation;
 
         States = InitTest();
-        calcParameterValues = new object?[(parametersAsArray ? 1 : Inputs.Length) + States.Length];
+        int countParameterValues = (parametersAsArray ? 1 : Inputs.Length) + States.Length + (idxParameterLast.HasValue ? 1 : 0) + (idxParameter_dt.HasValue ? 1 : 0);
+        calcParameterValues = new object?[countParameterValues];
         calcMethod = Calculation.Method;
     }
 
@@ -50,34 +53,54 @@ public sealed class DerivedSignal : Identifiable
 
         MethodInfo method = Calculation.Method;
         ParameterInfo[] parameters = method.GetParameters();
-        ParameterInfo[] parametersNotRef = parameters.Where(p => !p.ParameterType.IsByRef).ToArray();
-        ParameterInfo[] parametersByRef = parameters.Where(p => p.ParameterType.IsByRef).ToArray();
 
-        if (parametersNotRef.Length != Inputs.Length && parametersNotRef.Length != 1) {
-            throw new ArgumentException("Number of parameters does not match.");
+        if (parameters.Length == 0) {
+            throw new ArgumentException("No parameters defined in calculation.");
         }
 
-        // verify that all by ref parameters come after all non by ref parameters:
-        if (parametersByRef.Length > 0) {
-            int idx = Array.IndexOf(parameters, parametersByRef[0]);
-            if (idx < parametersNotRef.Length) {
-                throw new ArgumentException("ByRef parameters must come after all non ByRef parameters.");
-            }
+        ParameterInfo pFirst = parameters.First();
+        int idxNextParamIdx = 0;
+
+        if (pFirst.ParameterType == typeof(double[])) {
+            parametersAsArray = true;
+            idxNextParamIdx = 1;
         }
-
-        parametersAsArray = parametersNotRef.Length == 1 && parametersNotRef[0].ParameterType == typeof(double[]);
-
-        if (!parametersAsArray) {
-            // Verify that the parameter types and names match:
-            for (int i = 0; i < Inputs.Length; ++i) {
-                var paramMethod = parameters[i];
-                var param = Inputs[i];
-                if (paramMethod.ParameterType != typeof(double)) {
-                    throw new ArgumentException("Parameter type does not match.");
-                }
-                if (paramMethod.Name != param.Name) {
+        else if (pFirst.ParameterType == typeof(double) && pFirst.Name == Inputs[0].Name) {
+            parametersAsArray = false;
+            for (int i = 1; i < Inputs.Length; ++i) {
+                ParameterInfo p = parameters[i];
+                if (p.Name != Inputs[i].Name) {
                     throw new ArgumentException("Parameter name does not match.");
                 }
+                if (p.ParameterType != typeof(double)) {
+                    throw new ArgumentException("Parameter type does not match.");
+                }
+            }
+            idxNextParamIdx = Inputs.Length;
+        }
+
+        List<ParameterInfo> parametersByRef = [];
+        while (idxNextParamIdx < parameters.Length && parameters[idxNextParamIdx].ParameterType.IsByRef) {
+            parametersByRef.Add(parameters[idxNextParamIdx]);
+            idxNextParamIdx++;
+        }
+
+        static bool IsNullableDouble(Type t) {
+            return t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>) && t.GetGenericArguments()[0] == typeof(double);
+        }
+
+        for (int i = idxNextParamIdx; i < parameters.Length; ++i) {
+            ParameterInfo p = parameters[i];
+            string name = p.Name ?? throw new ArgumentException("Parameter name is missing.");
+            Type type = p.ParameterType;
+            if (IsNullableDouble(type) && name == "last") {
+                idxParameterLast = i;
+            }
+            else if (type == typeof(Duration) && name == "dt") {
+                idxParameter_dt = i;
+            }
+            else {
+                throw new ArgumentException($"Unexpected parameter {name}.");
             }
         }
 
@@ -88,7 +111,7 @@ public sealed class DerivedSignal : Identifiable
             Type type = param.ParameterType;
             Type elementType = type.GetElementType()!;
             bool isNullable = elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(Nullable<>);
-            double ? defaultValue = isNullable ? null : 0.0;
+            double? defaultValue = isNullable ? null : 0.0;
             StateFloat64 state = new(name, defaultValue: defaultValue) {
                 ID = name
             };
@@ -104,23 +127,31 @@ public sealed class DerivedSignal : Identifiable
         return states.ToArray();
     }
 
-    public double Calculate(double[] values) {
+    public double Calculate(IReadOnlyList<double> values, double? last, Duration dt) {
 
         int numberOfInputParameters;
 
         if (parametersAsArray) {
-            calcParameterValues[0] = values;
+            calcParameterValues[0] = values.ToArray();
             numberOfInputParameters = 1;
         }
         else {
-            for (int i = 0; i < values.Length; ++i) {
+            for (int i = 0; i < values.Count; ++i) {
                 calcParameterValues[i] = values[i];
             }
-            numberOfInputParameters = values.Length;
+            numberOfInputParameters = values.Count;
         }
 
         for (int i = 0; i < States.Length; ++i) {
             calcParameterValues[numberOfInputParameters + i] = States[i].ValueOrNull;
+        }
+
+        if (idxParameterLast.HasValue) {
+           calcParameterValues[idxParameterLast.Value] = last;
+        }
+
+        if (idxParameter_dt.HasValue) {
+            calcParameterValues[idxParameter_dt.Value] = dt;
         }
 
         double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
@@ -184,6 +215,7 @@ public sealed class DerivedSignal : Identifiable
         List<VTQ> oldVTQ = api.HistorianReadRaw(varRef, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeLastN);
 
         Timestamp time;
+        double? resultPreviousCalculation = null;
 
         if (oldVTQ.Count == 0) {
 
@@ -199,10 +231,13 @@ public sealed class DerivedSignal : Identifiable
         }
         else {
             time = oldVTQ[0].T;
+            resultPreviousCalculation = oldVTQ[0].V.AsDouble();
         }
 
         var values = new List<double>();
         var buffer = new List<VTQ>(ChunckSize);
+
+        Timestamp tPreviousCalculation = time;
 
         while (time < tEnd) {
 
@@ -228,8 +263,11 @@ public sealed class DerivedSignal : Identifiable
                 continue;
             }
 
-            double valueRes = Calculate(values.ToArray());
+            Duration dt = time - tPreviousCalculation;
+            double valueRes = Calculate(values, resultPreviousCalculation, dt);
             buffer.Add(VTQ.Make(valueRes, time, Quality.Good));
+            tPreviousCalculation = time;
+            resultPreviousCalculation = valueRes;
 
             if (buffer.Count >= ChunckSize) {
                 api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
