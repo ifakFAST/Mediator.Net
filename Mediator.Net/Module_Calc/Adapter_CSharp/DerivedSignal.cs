@@ -237,6 +237,12 @@ public sealed class DerivedSignal : Identifiable
         var values = new List<double>();
         var buffer = new List<VTQ>(ChunckSize);
 
+        void DrainBuffer() {
+            if (buffer.Count <= 0) { return; }
+            api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
+            buffer.Clear();
+        }
+
         Timestamp tPreviousCalculation = time;
 
         while (time < tEnd) {
@@ -249,6 +255,7 @@ public sealed class DerivedSignal : Identifiable
             foreach (var param in Inputs) {
                 double? v = param.GetValueFor(api, time, Resolution, out bool canAbort);
                 if (canAbort) {
+                    DrainBuffer();
                     return;
                 }
                 if (v == null) {
@@ -275,10 +282,7 @@ public sealed class DerivedSignal : Identifiable
             }
         }
 
-        if (buffer.Count > 0) {
-            api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
-            buffer.Clear();
-        }
+        DrainBuffer();
     }
 }
 
