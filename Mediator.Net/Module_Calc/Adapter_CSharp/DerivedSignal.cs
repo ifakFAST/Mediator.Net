@@ -21,7 +21,8 @@ public sealed class DerivedSignal : Identifiable
     public string ParentFolderID { get; } = "";
     public Duration Resolution { get; } = Duration.FromMinutes(1);
     public InputDef[] Inputs { get; }
-    public readonly StateFloat64[] States;
+    public readonly List<StateFloat64> ParamStates = [];
+    public readonly List<StateBase> InputStates = [];
     public Delegate Calculation { get; }
 
     private bool parametersAsArray = false;
@@ -39,13 +40,13 @@ public sealed class DerivedSignal : Identifiable
         Inputs = inputs;
         Calculation = calculation;
 
-        States = InitTest();
-        int countParameterValues = (parametersAsArray ? 1 : Inputs.Length) + States.Length + (idxParameterLast.HasValue ? 1 : 0) + (idxParameter_dt.HasValue ? 1 : 0);
+        InitTest();
+        int countParameterValues = (parametersAsArray ? 1 : Inputs.Length) + ParamStates.Count + (idxParameterLast.HasValue ? 1 : 0) + (idxParameter_dt.HasValue ? 1 : 0);
         calcParameterValues = new object?[countParameterValues];
         calcMethod = Calculation.Method;
     }
 
-    private StateFloat64[] InitTest() {
+    private void InitTest() {
 
         if (Inputs.Length == 0) {
             throw new ArgumentException("No parameters defined.");
@@ -104,7 +105,6 @@ public sealed class DerivedSignal : Identifiable
             }
         }
 
-        List<StateFloat64> states = [];
 
         foreach (var param in parametersByRef) {
             string name = param.Name ?? throw new ArgumentException("Parameter name is missing.");
@@ -116,15 +116,17 @@ public sealed class DerivedSignal : Identifiable
                 ID = name
             };
             Console.WriteLine($"Adding state {state.ID} with default value {state.DefaultValue}");
-            states.Add(state);
+            ParamStates.Add(state);
+        }
+
+        foreach (InputDef input in Inputs) {
+            input.AddStates(InputStates);
         }
 
         // Verify that the return type is double:
         if (method.ReturnType != typeof(double)) {
             throw new ArgumentException("Return type is not double.");
         }
-
-        return states.ToArray();
     }
 
     public double Calculate(IReadOnlyList<double> values, double? last, Duration dt) {
@@ -142,8 +144,8 @@ public sealed class DerivedSignal : Identifiable
             numberOfInputParameters = values.Count;
         }
 
-        for (int i = 0; i < States.Length; ++i) {
-            calcParameterValues[numberOfInputParameters + i] = States[i].ValueOrNull;
+        for (int i = 0; i < ParamStates.Count; ++i) {
+            calcParameterValues[numberOfInputParameters + i] = ParamStates[i].ValueOrNull;
         }
 
         if (idxParameterLast.HasValue) {
@@ -156,10 +158,10 @@ public sealed class DerivedSignal : Identifiable
 
         double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
 
-        for (int i = 0; i < States.Length; ++i) {
+        for (int i = 0; i < ParamStates.Count; ++i) {
             object? updatedStateValue = calcParameterValues[numberOfInputParameters + i];
             double? value = (double?)updatedStateValue;
-            States[i].ValueOrNull = value;
+            ParamStates[i].ValueOrNull = value;
         }
 
         return result;
@@ -213,11 +215,12 @@ public sealed class DerivedSignal : Identifiable
         VariableRef varRef = api.CreateSignalIfNotExists(ParentFolderID, signalInfo);
 
         List<VTQ> oldVTQ = api.HistorianReadRaw(varRef, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeLastN);
+        VTQ? latestVTQ = oldVTQ.Count > 0 ? oldVTQ.First() : null;
 
         Timestamp time;
         double? resultPreviousCalculation = null;
 
-        if (oldVTQ.Count == 0) {
+        if (!latestVTQ.HasValue) {
 
             VariableRef v = Inputs[0].Var;
             List<VTQ> firstVTQ = api.HistorianReadRaw(v, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeFirstN);
@@ -228,10 +231,21 @@ public sealed class DerivedSignal : Identifiable
             }
 
             time = firstVTQ[0].T - Resolution;
+
+            foreach (InputDef input in Inputs) {
+                // reset state values:
+                if (input.PT1TimeConstant.HasValue) {
+                    Console.WriteLine($"Resetting PT1 state values for {input.Name}");
+                    StateFloat64 stateValue = (StateFloat64)InputStates[input.IndexPT1StateValue];
+                    StateTimestamp stateTime = (StateTimestamp)InputStates[input.IndexPT1StateTime];
+                    stateValue.ValueOrNull = stateValue.DefaultValue;
+                    stateTime.ValueOrNull = stateTime.DefaultValue;
+                }
+            }
         }
         else {
-            time = oldVTQ[0].T;
-            resultPreviousCalculation = oldVTQ[0].V.AsDouble();
+            time = latestVTQ.Value.T;
+            resultPreviousCalculation = latestVTQ.Value.V.AsDouble();
         }
 
         var values = new List<double>();
@@ -252,8 +266,8 @@ public sealed class DerivedSignal : Identifiable
             bool allValuesFound = true;
             values.Clear();
 
-            foreach (var param in Inputs) {
-                double? v = param.GetValueFor(api, time, Resolution, out bool canAbort);
+            foreach (InputDef input in Inputs) {
+                double? v = input.GetValueFor(api, time, Resolution, out bool canAbort);
                 if (canAbort) {
                     DrainBuffer();
                     return;
@@ -263,6 +277,24 @@ public sealed class DerivedSignal : Identifiable
                     allValuesFound = false;
                     break;
                 }
+
+                if (input.PT1TimeConstant.HasValue) {
+                    StateFloat64 stateValue = (StateFloat64)InputStates[input.IndexPT1StateValue];
+                    StateTimestamp stateTime = (StateTimestamp)InputStates[input.IndexPT1StateTime];
+
+                    Timestamp tLast = stateTime.ValueOrNull ?? time - Resolution;
+                    Duration dt = time - tLast;
+
+                    double T_ms = input.PT1TimeConstant.Value.TotalMilliseconds;
+                    double dt_ms = dt.TotalMilliseconds;
+                    double alpha = dt_ms / (T_ms + dt_ms);
+                    
+                    double vPrev = stateValue.ValueOrNull ?? v.Value;
+                    v = alpha * v.Value + (1.0 - alpha) * vPrev;
+                    stateValue.ValueOrNull = v;
+                    stateTime.ValueOrNull = time;
+                }
+
                 values.Add(v.Value);
             }
 
@@ -270,8 +302,8 @@ public sealed class DerivedSignal : Identifiable
                 continue;
             }
 
-            Duration dt = time - tPreviousCalculation;
-            double valueRes = Calculate(values, resultPreviousCalculation, dt);
+            Duration dt_calc = time - tPreviousCalculation;
+            double valueRes = Calculate(values, resultPreviousCalculation, dt_calc);
             buffer.Add(VTQ.Make(valueRes, time, Quality.Good));
             tPreviousCalculation = time;
             resultPreviousCalculation = valueRes;
@@ -351,5 +383,27 @@ public record InputDef(string Name, VariableRef Var)
             }
         }
         return buffer.Count - 1;
+    }
+
+    internal Duration? PT1TimeConstant = null;
+    internal int IndexPT1StateValue = -1;
+    internal int IndexPT1StateTime = -1;
+
+    internal void AddStates(List<StateBase> states) {
+        if (PT1TimeConstant.HasValue) {
+            states.Add(new StateFloat64(Name + "_PT1_Value", defaultValue: null) {
+                ID = Name + "_PT1_Value"
+            });
+            IndexPT1StateValue = states.Count - 1;
+            states.Add(new StateTimestamp(Name + "_PT1_Time", defaultValue: null) {
+                ID = Name + "_PT1_Time"
+            });
+            IndexPT1StateTime = states.Count - 1;
+        }
+    }
+
+    public InputDef PT1Filter(Duration duration) {
+        PT1TimeConstant = duration;
+        return this;
     }
 }
