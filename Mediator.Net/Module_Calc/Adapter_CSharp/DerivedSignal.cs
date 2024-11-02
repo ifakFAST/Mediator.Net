@@ -31,6 +31,8 @@ public sealed class DerivedSignal : Identifiable
     private readonly object?[] calcParameterValues;
     private readonly MethodInfo calcMethod;
 
+    private VariableRef? VarRefSelf = null;
+
     public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "") {
         FullID = fullID;
         FullName = string.IsNullOrWhiteSpace(fullName) ? fullID : fullName;
@@ -168,11 +170,23 @@ public sealed class DerivedSignal : Identifiable
     }
 
     public static InputDef DefineInput(string name, VariableRef var) {
-        return new InputDef(name, var);
+        return new InputDef(name, VarRef: var);
+    }
+
+    public static InputDef DefineInput(string name, SiblingSignal sibling) {
+        return new InputDef(name, SiblingRef: sibling);
     }
 
     public static InputDef DefineInput(VariableRef var) {
-        return new InputDef("", var);
+        return new InputDef("", VarRef: var);
+    }
+
+    public static InputDef DefineInput(SiblingSignal sibling) {
+        return new InputDef("", SiblingRef: sibling);
+    }
+
+    public static SiblingSignal SiblingSignalRef(string id) {
+        return new SiblingSignal(id);
     }
 
     public static VariableRef SignalRef(string id) {
@@ -192,13 +206,32 @@ public sealed class DerivedSignal : Identifiable
         List<DerivedSignal> derivedSignals = CSharp.GetIdentifiableMembers<DerivedSignal>(script, "", recursive: true, []);
 
         foreach (var signal in derivedSignals) {
-            signal.Update(tEnd);
+
+            VariableRef GetSiblingWithLocalID(string siblingLocalID) {
+                var (path, _) = signal.SplitId();
+                string siblingID = path + "." + siblingLocalID;
+                DerivedSignal? sibling = derivedSignals.FirstOrDefault(s => s.ID == siblingID);
+                if (sibling == null) {
+                    throw new ArgumentException($"Sibling signal {siblingID} not found.");
+                }
+                return sibling.VarRefSelf ?? throw new ArgumentException($"Sibling signal {siblingID} not initialized yet.");
+            }
+
+            signal.Update(tEnd, GetSiblingWithLocalID);
         }
     }
 
     readonly Api api = new();
 
-    public void Update(Timestamp tEnd) {
+    private (string path, string localID) SplitId() {
+        int idx = ID.LastIndexOf('.');
+        if (idx < 0) {
+            return ("", ID);
+        }
+        return (ID.Substring(0, idx), ID.Substring(idx + 1));
+    }
+
+    public void Update(Timestamp tEnd, Func<string, VariableRef> siblingResolver) {
 
         if (Inputs.Length == 0) return;
 
@@ -213,6 +246,12 @@ public sealed class DerivedSignal : Identifiable
         };
 
         VariableRef varRef = api.CreateSignalIfNotExists(ParentFolderID, signalInfo);
+
+        VarRefSelf = varRef;
+
+        foreach (InputDef inputDef in Inputs) {
+            inputDef.ResolveVarRef(siblingResolver);
+        }
 
         List<VTQ> oldVTQ = api.HistorianReadRaw(varRef, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeLastN);
         VTQ? latestVTQ = oldVTQ.Count > 0 ? oldVTQ.First() : null;
@@ -318,12 +357,25 @@ public sealed class DerivedSignal : Identifiable
     }
 }
 
-public record InputDef(string Name, VariableRef Var)
+public record SiblingSignal(string Id);
+
+public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? SiblingRef = null)
 {
     const int ChunckSize = 5000;
 
     private readonly List<VTQ> buffer = new(ChunckSize);
     private int bufferStartIdx = 0;
+
+    public VariableRef Var { get; private set; }
+
+    internal void ResolveVarRef(Func<string, VariableRef> siblingResolver) {
+        if (VarRef != null) {
+            Var = VarRef.Value;
+        }
+        else if (SiblingRef != null) {
+            Var = siblingResolver(SiblingRef.Id);
+        }
+    }
 
     public double? GetValueFor(Api api, Timestamp t, Duration interval, out bool canAbort) {
 
