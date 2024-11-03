@@ -138,7 +138,7 @@ namespace Ifak.Fast.Mediator.Calc
             return res;
         }
 
-        private Dictionary<string, VariableValue> mapInputValues = new Dictionary<string, VariableValue>();
+        private readonly Dictionary<string, VariableValue> mapInputValues = [];
 
         //public void UpdateInputValues(VariableValue[] variables) {
         //    foreach (Config.Input input in Config.Inputs) {

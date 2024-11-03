@@ -291,9 +291,10 @@ public sealed class DerivedSignal : Identifiable
         var buffer = new List<VTQ>(ChunckSize);
 
         void DrainBuffer() {
-            if (buffer.Count <= 0) { return; }
-            api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
-            buffer.Clear();
+            if (buffer.Count > 0) {
+                api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
+                buffer.Clear();
+            }
         }
 
         Timestamp tPreviousCalculation = time;
@@ -348,8 +349,7 @@ public sealed class DerivedSignal : Identifiable
             resultPreviousCalculation = valueRes;
 
             if (buffer.Count >= ChunckSize) {
-                api.HistorianModify(varRef, ModifyMode.Insert, buffer.ToArray());
-                buffer.Clear();
+                DrainBuffer();
             }
         }
 

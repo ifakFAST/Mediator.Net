@@ -626,8 +626,8 @@ namespace Ifak.Fast.Mediator.Calc
 
                 StepResult result = await instance.Step(t, dt, inputValues);
 
-                OutputValue[] outValues = result.Output ?? Array.Empty<OutputValue>();
-                StateValue[] stateValues = result.State ?? Array.Empty<StateValue>();
+                OutputValue[] outValues = result.Output ?? [];
+                StateValue[] stateValues = result.State ?? [];
 
                 // Console.WriteLine($"{Timestamp.Now}: out: " + StdJson.ObjectToString(outValues));
                 var listVarValues = new VariableValues(outValues.Length + stateValues.Length + 2);

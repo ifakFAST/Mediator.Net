@@ -15,15 +15,15 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
 {
     [Identify(id: "CSharp", showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true, codeLang: "csharp")]
     public class CSharp : CalculationBase, EventSink, ConnectionConsumer {
-        private InputBase[] inputs = new Input[0];
-        private OutputBase[] outputs = new Output[0];
-        private AbstractState[] states = new AbstractState[0];
-        private Calculation[] calculations = new Calculation[0];
+        private InputBase[] inputs = [];
+        private OutputBase[] outputs = [];
+        private AbstractState[] states = [];
+        private Calculation[] calculations = [];
         private Action<Timestamp, Duration> stepAction = (t, dt) => { };
         private Action shutdownAction = () => { };
         private AdapterCallback? callback;
 
-        private static readonly object handleInitLock = new object();
+        private static readonly object handleInitLock = new();
 
         public override async Task<InitResult> Initialize(InitParameter parameter, AdapterCallback callback) {
 
