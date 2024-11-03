@@ -11,6 +11,9 @@ namespace Ifak.Fast.Mediator.Calc
 
         public abstract Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues);
 
+        // Called from a different thread!
+        public virtual void SignalStepAbort() { }
+
         public abstract Task Shutdown();
     }
 

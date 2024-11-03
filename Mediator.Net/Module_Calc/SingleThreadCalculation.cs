@@ -52,6 +52,10 @@ namespace Ifak.Fast.Mediator.Calc
             return promise.Task;
         }
 
+        public override void SignalStepAbort() {
+            adapter.SignalStepAbort();
+        }
+
         public override Task Shutdown() {
             if (isStarted) {
                 var promise = new TaskCompletionSource<bool>();

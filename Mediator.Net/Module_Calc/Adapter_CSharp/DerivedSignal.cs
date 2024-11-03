@@ -235,6 +235,11 @@ public sealed class DerivedSignal : Identifiable
 
         if (Inputs.Length == 0) return;
 
+        if (api.abortStep) {
+            Console.WriteLine($"Calculation aborted for {ID}");
+            return;
+        }
+
         const int ChunckSize = 5000;
 
         string signalID   = string.IsNullOrWhiteSpace(FullID)   ? ID   : FullID;
@@ -350,6 +355,10 @@ public sealed class DerivedSignal : Identifiable
 
             if (buffer.Count >= ChunckSize) {
                 DrainBuffer();
+                if (api.abortStep) {
+                    Console.WriteLine($"Calculation aborted for {ID} after DrainBuffer()");
+                    return;
+                }
             }
         }
 

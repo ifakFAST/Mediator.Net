@@ -362,6 +362,8 @@ public class EventLog : EventProvider
 
 public class Api
 {
+    internal bool abortStep { get; set; } = false;
+
     internal string moduleID { get; set; } = "";
 
     internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());

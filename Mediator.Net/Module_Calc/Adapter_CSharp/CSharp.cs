@@ -23,6 +23,8 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         private Action shutdownAction = () => { };
         private AdapterCallback? callback;
 
+        private List<Api> apis = [];
+
         private static readonly object handleInitLock = new();
 
         public override async Task<InitResult> Initialize(InitParameter parameter, AdapterCallback callback) {
@@ -115,7 +117,7 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
                 provider.EventSinkRef = this;
             }
 
-            var apis = GetMembers<Api>(obj, recursive: true, []);
+            apis = GetMembers<Api>(obj, recursive: true, []);
             foreach (Api api in apis) {
                 api.moduleID = parameter.ModuleID;
                 api.connectionGetter = retriever;
@@ -244,6 +246,13 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             return Task.FromResult(true);
         }
 
+        // Called from a different thread!
+        public override void SignalStepAbort() {
+            foreach (Api api in apis) {
+                api.abortStep = true;
+            }
+        }
+
         public override Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
 
             foreach (InputValue v in inputValues) {
@@ -309,6 +318,17 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             foreach (FieldInfo f in fields) {
                 string id = f.Name;
                 object? fieldValue = f.GetValue(obj);
+
+                if (fieldValue is Delegate) {
+                    continue;
+                }
+                if (fieldValue is MethodInfo) {
+                    continue;
+                }
+                if (fieldValue is string) {
+                    continue;
+                }
+
                 if (fieldValue is T x) {
                     x.ID = idChain + id;
                     string name = string.IsNullOrWhiteSpace(x.Name) ? id : x.Name;
@@ -339,6 +359,17 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             FieldInfo[] fields = obj.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             foreach (FieldInfo f in fields) {
                 object? fieldValue = f.GetValue(obj);
+
+                if (fieldValue is Delegate) {
+                    continue;
+                }
+                if (fieldValue is MethodInfo) {
+                    continue;
+                }
+                if (fieldValue is string) {
+                    continue;
+                }
+
                 if (fieldValue is T x) {
                     result.Add(x);
                 }

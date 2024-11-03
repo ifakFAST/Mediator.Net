@@ -388,6 +388,9 @@ namespace Ifak.Fast.Mediator.Calc
 
         private async Task ShutdownAdapter(CalcInstance adapter) {
             adapter.State = State.ShutdownStarted;
+
+            // Console.WriteLine($"Shutting down calculation {adapter.Name} with SignalStepAbort...");
+            adapter.Instance?.SignalStepAbort();
             try {
 
                 while (adapter.RunLoopRunning) {
