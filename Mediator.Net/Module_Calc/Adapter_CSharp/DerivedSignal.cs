@@ -386,9 +386,11 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
         }
     }
 
-    public double? GetValueFor(Api api, Timestamp t, Duration interval, out bool canAbort) {
+    public double? GetValueFor(Api api, Timestamp tt, Duration interval, out bool canAbort) {
 
         canAbort = false;
+
+        Timestamp t = tt - (TimeShiftConstant ?? Duration.FromSeconds(0));
 
         if (buffer.Count == 0 || bufferStartIdx >= buffer.Count || buffer.Last().T < t) {
 
@@ -450,6 +452,8 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
     internal int IndexPT1StateValue = -1;
     internal int IndexPT1StateTime = -1;
 
+    internal Duration? TimeShiftConstant = null;
+
     internal void AddStates(List<StateBase> states) {
         if (PT1TimeConstant.HasValue) {
             states.Add(new StateFloat64(Name + "_PT1_Value", defaultValue: null) {
@@ -465,6 +469,11 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
 
     public InputDef PT1Filter(Duration duration) {
         PT1TimeConstant = duration;
+        return this;
+    }
+
+    public InputDef TimeShifted(Duration duration) {
+        TimeShiftConstant = duration;
         return this;
     }
 }
