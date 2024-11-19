@@ -102,7 +102,7 @@ namespace Ifak.Fast.Mediator.Util
                 }
 
                 try {
-                    FileWrite.WriteFileOrThrow(fileName, it.Content, Encoding.UTF8, maxRetry: 5, retryDelayFactor: 50);
+                    FileWrite.WriteFileOrThrow(fileName, it.Content, Encoding.UTF8, maxRetry: 12, retryDelayFactor: 100);
                     it.Promise.SetResult(true);
                 }
                 catch (Exception exp) {

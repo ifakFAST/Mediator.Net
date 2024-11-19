@@ -199,7 +199,8 @@ namespace Ifak.Fast.Mediator
                 }
             }
             catch (Exception exp) {
-                logger.Error(exp, "Failed to persist variables for module " + moduleName);
+                Exception e = exp.GetBaseException() ?? exp;
+                logger.Warn($"Failed to persist variables for module {moduleName}: {e.Message}");
             }
         }
 
