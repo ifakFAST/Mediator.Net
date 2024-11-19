@@ -243,8 +243,8 @@ public class MQTT : AdapterBase {
                 return null;
             }
 
-            DataValue value = TryParseValue(va);
-            Timestamp timestamp = TryParseTimestamp(jvalue_ts);
+            DataValue value = ParseValue(va);
+            Timestamp timestamp = ParseTimestampOrThrow(jvalue_ts);
 
             DateTime Now = DateTime.UtcNow;
             Timestamp tsMin = Timestamp.FromDateTime(Now.AddYears(-15));
@@ -261,17 +261,12 @@ public class MQTT : AdapterBase {
         }
     }
 
-    private static DataValue TryParseValue(JToken va) {
-        try {
-            double value = (double)va;
-            return DataValue.FromDouble(value);
-        }
-        catch (Exception) {
-            return DataValue.FromObject(va);
-        }
+    private static DataValue ParseValue(JToken va) {
+        string json = va.ToString();
+        return DataValue.FromJSON(json);
     }
 
-    private static Timestamp TryParseTimestamp(JValue ts) {
+    private static Timestamp ParseTimestampOrThrow(JValue ts) {
         object? vv = ts.Value;
         if (vv is long timestamp) {
             if (timestamp < uint.MaxValue) { // heuristic to test for seconds vs. milliseconds
