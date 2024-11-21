@@ -77,6 +77,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputFloat64Array: dimension != defaultValue.Length");
             DefaultValue = defaultValue;
         }
+
+        public InputFloat64Array(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputFloat32Array : InputBase {
@@ -109,6 +114,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputFloat32Array: dimension != defaultValue.Length");
             DefaultValue = defaultValue;
         }
+
+        public InputFloat32Array(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputStruct<T> : InputBase where T : struct {
@@ -139,6 +149,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public InputStruct(string name, T? defaultValue) :
             base(name: name, unit: "", type: DataType.Struct, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
             DefaultValue = defaultValue;
+        }
+
+        public InputStruct(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
         }
     }
 
@@ -172,6 +187,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension < 0) throw new ArgumentException("InputStructArray: dimension must be >= 0");
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputStructArray: dimension != defaultValue.Length");
             DefaultValue = defaultValue;
+        }
+
+        public InputStructArray(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
         }
     }
 
@@ -208,6 +228,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.Timeseries, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
             DefaultValue = defaultValue;
         }
+
+        public InputTimeseries(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputClass<T> : InputBase where T : class {
@@ -238,6 +263,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public InputClass(string name, T? defaultValue) :
             base(name: name, unit: "", type: DataType.Struct, dimension: 1, defaultValue: DataValue.FromObject(defaultValue)) {
             DefaultValue = defaultValue;
+        }
+
+        public InputClass(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
         }
     }
 
@@ -272,6 +302,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             if (dimension != 0 && defaultValue != null && defaultValue.Length != dimension) throw new ArgumentException("InputClassArray: dimension != defaultValue.Length");
             DefaultValue = defaultValue;
         }
+
+        public InputClassArray(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputString : InputBase {
@@ -303,6 +338,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.String, dimension: 1, defaultValue: DataValue.FromString(defaultValue)) {
             DefaultValue = defaultValue;
         }
+
+        public InputString(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
+        }
     }
 
     public class InputJson : InputBase {
@@ -328,6 +368,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
             base(name: name, unit: "", type: DataType.JSON, dimension: 1, defaultValue: DataValue.FromJSON(defaultValue)) {
             if (!StdJson.IsValidJson(defaultValue)) throw new ArgumentException($"InputJson {name}: defaultValue is not a valid JSON string");
             DefaultValue = defaultValue;
+        }
+
+        public InputJson(string name, VariableRef variable) :
+            this(name: name, defaultValue: "null") {
+            SetDefaultVariable(variable);
         }
     }
 
@@ -361,6 +406,11 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         public InputTimestamp(string name, Timestamp? defaultValue) :
             base(name: name, unit: "", type: DataType.Timestamp, dimension: 1, defaultValue: defaultValue.HasValue ? DataValue.FromTimestamp(defaultValue.Value) : DataValue.Empty) {
             DefaultValue = defaultValue;
+        }
+
+        public InputTimestamp(string name, VariableRef variable) :
+            this(name: name, defaultValue: null) {
+            SetDefaultVariable(variable);
         }
     }
 }
