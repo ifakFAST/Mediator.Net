@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Ifak.Fast.Json.Linq;
 using Ifak.Fast.Mediator.Util;
 using MQTTnet;
 using MQTTnet.Client;
@@ -205,8 +205,12 @@ public class MQTT : AdapterBase {
                     return;
                 }
                 try {
-                    JToken token = StdJson.JTokenFromString(payload); // test if valid JSON
-                    if (token is JObject obj) {
+
+                    var options = new JsonNodeOptions { PropertyNameCaseInsensitive = true };
+                    JsonNode jsonNode = JsonNode.Parse(payload, options) ?? throw new Exception("Invalid JSON");
+
+                    if (jsonNode is JsonObject obj) {
+
                         VTQ? vtqFromObj = TryParseVTQ(obj);
                         if (vtqFromObj.HasValue) {
                             vtq = vtqFromObj.Value;
@@ -233,13 +237,27 @@ public class MQTT : AdapterBase {
         }
     }
 
-    public static VTQ? TryParseVTQ(JObject obj) {
+    public static VTQ? TryParseVTQ(JsonObject obj) {
+
+        string[] valueKeys = ["Value", "V", "Val"];
+        string[] timestampKeys = ["Timestamp", "Time", "T"];
+
+        JsonNode? FindFirst(string[] keys) {
+            foreach (var key in keys) {
+                JsonNode? node = obj[key];
+                if (node != null) {
+                    return node;
+                }
+            }
+            return null;
+        }
+
         try {
 
-            JToken? va = obj["value"] ?? obj["Value"] ?? obj["V"];
-            JToken? ts = obj["timestamp"] ?? obj["time"] ?? obj["T"] ?? obj["Timestamp"] ?? obj["Time"];
-            
-            if (va is null || ts is not JValue jvalue_ts) {
+            JsonNode? va = FindFirst(valueKeys);
+            JsonNode? ts = FindFirst(timestampKeys);
+
+            if (va is null || ts is not JsonValue jvalue_ts) {
                 return null;
             }
 
@@ -261,22 +279,24 @@ public class MQTT : AdapterBase {
         }
     }
 
-    private static DataValue ParseValue(JToken va) {
-        string json = va.ToString();
+    private static DataValue ParseValue(JsonNode va) {
+        string json = va.ToJsonString();
         return DataValue.FromJSON(json);
     }
 
-    private static Timestamp ParseTimestampOrThrow(JValue ts) {
-        object? vv = ts.Value;
-        if (vv is long timestamp) {
-            if (timestamp < uint.MaxValue) { // heuristic to test for seconds vs. milliseconds
+    private static Timestamp ParseTimestampOrThrow(JsonValue ts) {
+
+        if (ts.TryGetValue(out string? str)) {
+           return Timestamp.FromISO8601(str);
+        }
+
+        if (ts.TryGetValue(out long timestamp)) {
+            if (timestamp < uint.MaxValue) {// heuristic to test for seconds vs. milliseconds
                 timestamp *= 1000;
             }
             return Timestamp.FromJavaTicks(timestamp);
         }
-        else if (vv is string str) {
-            return Timestamp.FromISO8601(str);
-        }
+
         throw new Exception("Invalid timestamp");
     }
 
