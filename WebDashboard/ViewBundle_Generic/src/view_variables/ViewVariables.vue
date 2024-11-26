@@ -46,7 +46,7 @@
               <template v-slot:expanded-item="{ headers, item }">
                 <td :colspan="headers.length">
                   <struct-view v-if="item.Type==='Struct' || item.Type==='Timeseries'" style="float: right;" :value="item.V" :vertical="item.Dimension !== 1 || item.Type==='Timeseries'"></struct-view>
-                  <div v-else style="word-break: break-all; white-space: pre-wrap;">{{item.V}}</div>
+                  <div v-else style="word-break: break-all; white-space: pre-wrap;">{{unwrapJsonString(item)}}</div>
                 </td>
               </template>
 
@@ -141,6 +141,31 @@ export default class ViewVariables extends Vue {
     }
     else {
       return str
+    }
+  }
+
+  unwrapJsonString(item: VarEntry): string {
+    const value = item.V
+    if (value === undefined) {
+      console.log('unwrapJsonString: value is undefined')
+      return '' 
+    }
+    if (value === null) {
+      console.log('unwrapJsonString: value is null')
+      return '' 
+    }
+    if (value.length === 0) { 
+      return value 
+    }
+    if (value[0] !== '"') { 
+      return value 
+    }
+    try {
+      const str: string = JSON.parse(value)
+      return str
+    }
+    catch (error) {
+      return value
     }
   }
 
