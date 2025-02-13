@@ -127,6 +127,19 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
         }
     }
 
+    public class OutputJson : OutputBase
+    {
+        public OutputJson(string name) :
+            base(name: name, unit: "", type: DataType.JSON, dimension: 1) {
+        }
+
+        public DataValue Value {
+            set {
+                VTQ = VTQ.WithValue(value);
+            }
+        }
+    }
+
     public class OutputStruct : OutputBase {
 
         public OutputStruct(string name) :
