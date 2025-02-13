@@ -57,6 +57,24 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
             return new ReqResult(200, res, contentType: contentType);
         }
+
+        public static ReqResult OK(DataValue obj) {
+            var res = MemoryManager.GetMemoryStream("ReqResult.OK");
+            try {
+                string json = obj.JSON;
+                using (var writer = new StreamWriter(res, UTF8_NoBOM, 1024, leaveOpen: true)) {
+                    writer.Write(json);
+                }
+                res.Seek(0, SeekOrigin.Begin);
+            }
+            catch (Exception) {
+                res.Dispose();
+                throw;
+            }
+            return new ReqResult(200, res, "application/json");
+        }
+
+        private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
     }
 
     [AttributeUsage(AttributeTargets.Class)]
