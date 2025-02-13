@@ -36,16 +36,22 @@
             <v-list-item @click="editPage = !editPage" v-if="hasPage">
               <v-list-item-title>{{ editPage ? 'Fix Page Layout' : 'Edit Page Layout' }}</v-list-item-title>
             </v-list-item>
+            <v-list-item @click="editConfigVariables">
+              <v-list-item-title>Edit Config Variables</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
 
       </v-toolbar>
 
-      <page :page="currentPage" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged" :widgetTypes="widgetTypes" :editPage="editPage" @configchanged="onPageConfigChanged"></page>
+      <page :page="currentPage" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged" 
+            :widgetTypes="widgetTypes" :editPage="editPage" @configchanged="onPageConfigChanged"
+            :configVariables="configVariableValues"></page>
 
       <confirm ref="confirm"></confirm>
       <dlg-text-input ref="textInput"></dlg-text-input>
-
+      <dlg-config-variables ref="dlgConfigVariables"></dlg-config-variables>
+      
     </v-main>
   </v-app>
 </template>
@@ -54,6 +60,7 @@
 
 import { Component, Vue } from 'vue-property-decorator'
 import DlgTextInput from './DlgTextInput.vue'
+import DlgConfigVariables from './DlgConfigVariables.vue'
 import Confirm from '../components/Confirm.vue'
 import Page from './Page.vue'
 import * as model from './model'
@@ -64,10 +71,12 @@ import * as utils from '../utils'
     Page,
     Confirm,
     DlgTextInput,
+    DlgConfigVariables,
   },
 })
 export default class ViewPages extends Vue {
 
+  configVariableValues: model.ConfigVariableValues = { VarDefs: [], VarValues: {} }
   pages: model.Page[] = []
   currentPageID = ''
   widgetTypes: string[] = []
@@ -103,6 +112,16 @@ export default class ViewPages extends Vue {
           }
         }
       }
+      else if (eventName === 'ConfigVariableValuesChanged') {
+        const newValues: { [key: string]: string } = eventPayload.ChangedVarValues
+        Object.keys(newValues).forEach(key => {
+          context.$set(context.configVariableValues.VarValues, key, newValues[key])
+        })
+        context.configVariableValues = { 
+          VarDefs: context.configVariableValues.VarDefs, 
+          VarValues: context.configVariableValues.VarValues 
+        } // reassignment to trigger Vue reactivity
+      }
     })
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
     this.loadAllPages()
@@ -113,6 +132,8 @@ export default class ViewPages extends Vue {
     window.parent['dashboardApp'].sendViewRequest('Init', { }, (strResponse: string) => {
       const response = JSON.parse(strResponse)
       context.pages = response.configuration.Pages
+      context.configVariableValues.VarDefs = response.configuration.ConfigVariables
+      this.initVarValuesFromVarDefs()
       context.widgetTypes = response.widgetTypes
       context.currentPageID = (context.pages.length > 0) ? context.pages[0].ID : ''
       context.updateWidgetMap()
@@ -351,6 +372,22 @@ export default class ViewPages extends Vue {
     }
     return false
   }
+
+  async editConfigVariables(): Promise<void> {
+    const dlg = this.$refs.dlgConfigVariables as DlgConfigVariables
+    const newConfigVariables = await dlg.open(this.configVariableValues.VarDefs)
+    if (newConfigVariables !== null) {
+      this.configVariableValues.VarDefs = newConfigVariables
+      this.initVarValuesFromVarDefs()
+    }
+  }
+
+  initVarValuesFromVarDefs(): void {
+    for (const varDef of this.configVariableValues.VarDefs) {
+      this.configVariableValues.VarValues[varDef.ID] = varDef.DefaultValue
+    }
+  }
+
 }
 </script>
 

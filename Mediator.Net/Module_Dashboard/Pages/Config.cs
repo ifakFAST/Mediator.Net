@@ -21,8 +21,17 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return parentView.Name + ".Config";
         }
 
+        public ConfigVariable[] ConfigVariables { get; set; } = [];
+
         public Page[] Pages { get; set; } = [];
     }
+
+    public class ConfigVariable 
+    {
+        public string ID { get; set; } = "";
+        public string DefaultValue { get; set; } = "";
+    }
+
 
     public class Page : ModelObject 
     {
@@ -165,7 +174,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 SeriesType = MapSeriesType(it.SeriesType),
                 Axis = MapAxis(it.Axis),
                 Checked = it.Checked,
-                Variable = it.Variable,
+                Variable = new VariableRefUnresolved(it.Variable.Object, it.Variable.Name),
             };
         }
 

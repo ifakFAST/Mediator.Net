@@ -90,7 +90,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
                 }
             }
 
-            View.ObjInfo[] res = await View.ReadObjects(Connection, infos, View.ObjectFilter.WithMembers);
+            View.ObjInfo[] res = await View.ReadObjectsWithMembers(Connection, infos);
             
             var objectMap = new Dictionary<string, ObjInfo>();
 

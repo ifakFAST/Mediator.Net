@@ -2,7 +2,7 @@
 
   <v-card elevation="1" class="pa-3" outlined >
 
-    <p v-if="title !== ''" class="pl-4 mb-2" style="font-weight: 500;">{{ title }}</p>
+    <p v-if="resolvedTitle !== ''" class="pl-4 mb-2" style="font-weight: 500;">{{ resolvedTitle }}</p>
 
     <read-button v-if="type === 'ReadButton'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
@@ -22,7 +22,8 @@
     <history-plot v-if="type === 'HistoryPlot'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
-      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></history-plot>
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"
+      :configVariables="configVariables"></history-plot>
 
     <config-edit-numeric v-if="type === 'ConfigEditNumeric'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
@@ -49,6 +50,11 @@
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></image-display>
 
+    <geo-map v-if="type === 'GeoMap'" 
+      :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
+      :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></geo-map>
+
   </v-card>
 
 </template>
@@ -66,7 +72,9 @@ import ConfigEditNumeric2D from './widgets/config_edit/ConfigEditNumeric2D.vue'
 import PageActionsLogView from './widgets/PageActionsLogView.vue'
 import TextDisplay from './widgets/TextDisplay.vue'
 import ImageDisplay from './widgets/ImageDisplay.vue'
+import GeoMap from './widgets/GeoMap.vue'
 import { TimeRange } from '../utils'
+import * as model from './model'
 
 @Component({
   components: {
@@ -79,6 +87,7 @@ import { TimeRange } from '../utils'
     PageActionsLogView,
     TextDisplay,
     ImageDisplay,
+    GeoMap,
   },
 })
 export default class WidgetWrapper extends Vue {
@@ -95,9 +104,14 @@ export default class WidgetWrapper extends Vue {
   @Prop({ default() { return {} } }) timeRange: TimeRange
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
+  @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
 
   onDateWindowChanged(window: number[]): void {
     this.$emit('date-window-changed', window)
+  }
+
+  get resolvedTitle(): string {
+    return model.VariableReplacer.replaceVariables(this.title, this.configVariables.VarValues)
   }
 
 }

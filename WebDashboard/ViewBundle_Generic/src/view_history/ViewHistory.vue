@@ -279,7 +279,6 @@ interface ItemConfig {
 }
 
 interface Obj {
-  Type: string
   ID: string
   Name: string
   Variables: string[]

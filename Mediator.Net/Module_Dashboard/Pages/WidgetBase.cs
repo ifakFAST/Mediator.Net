@@ -27,6 +27,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         VariableRef GetPageActionLogVariable();
         Task<LogAction[]> GetLoggedPageActions(int limit);
         Task<string> SaveWebAsset(string fileExtension, byte[] data);
+        VariableRef ResolveVariableRef(VariableRefUnresolved v);
     }
 
     public class EmptyWidgetContext : WidgetContext
@@ -53,6 +54,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public Task<string> SaveWebAsset(string fileExtension, byte[] data) { 
             throw new InvalidOperationException("SaveWebAsset on empty WidgetContext");
+        }
+
+        public VariableRef ResolveVariableRef(VariableRefUnresolved v) {
+            throw new InvalidOperationException("ResolveVariableRef on empty WidgetContext");
         }
     }
 

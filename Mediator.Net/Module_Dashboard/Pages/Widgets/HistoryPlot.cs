@@ -18,8 +18,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     [IdentifyWidget(id: "HistoryPlot")]
     public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     {
-        private VariableRef[] Variables = new VariableRef[0];
-        private readonly Dictionary<VariableRef, DataType> VariablesType = new();
+        private VariableRefUnresolved[] variablesUnresolved = [];
+        private VariableRef[] variables = [];
+
+        private readonly Dictionary<VariableRef, DataType> VariablesType = [];
 
         private TimeRange LastTimeRange = new TimeRange();
         private bool IsLoaded = false;
@@ -33,12 +35,27 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         HistoryPlotConfig configuration => Config;
 
         public override Task OnActivate() {
-
-            Variables = configuration.Items.Select(it => it.Variable).ToArray();
-
-            Task ignored = Connection.EnableVariableHistoryChangedEvents(Variables);
-
+            VariablesUnresolved = configuration.Items.Select(it => it.Variable).ToArray();
             return Task.FromResult(true);
+        }
+
+        public VariableRefUnresolved[] VariablesUnresolved {
+            get => variablesUnresolved;
+            set {
+                variablesUnresolved = value;
+                ResolveVariables();
+            }
+        }
+
+        VariableRef[] ResolvedVariablesFromCache => variables;
+
+        VariableRef[] ResolveVariables() {
+            VariableRef[] newVariables = variablesUnresolved.Select(v => Context.ResolveVariableRef(v)).ToArray();
+            if (!Arrays.Equals(newVariables, variables)) {
+                variables = newVariables;
+                Task ignored = Connection.EnableVariableHistoryChangedEvents(newVariables);
+            }
+            return variables;
         }
 
         public Task<ReqResult> UiReq_GetItemsData() {
@@ -65,7 +82,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            List<VTTQs> listHistories = await GetVariablesData(Variables, tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
+            List<VTTQs> listHistories = await GetVariablesData(ResolveVariables(), tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
            
             IsLoaded = true;
 
@@ -246,18 +263,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public async Task<ReqResult> UiReq_SaveItems(ItemConfig[] items) {
 
-            VariableRef[] newVariables = items.Select(it => it.Variable).ToArray();
-            bool reloadData = !Arrays.Equals(newVariables, Variables);
+            VariableRefUnresolved[] newVariables = items.Select(it => it.Variable).ToArray();
+            bool reloadData = !Arrays.Equals(newVariables, VariablesUnresolved);
 
-            Variables = newVariables;
+            VariablesUnresolved = newVariables;
 
             configuration.Items = items;
 
             await Context.SaveWidgetConfiguration(configuration);
-
-            if (reloadData) {
-                Task ignored = Connection.EnableVariableHistoryChangedEvents(Variables);
-            }
 
             return ReqResult.OK(new {
                 ReloadData = reloadData
@@ -296,7 +309,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public async Task<ReqResult> UiReq_DownloadFile(
             TimeRange timeRange,
-            VariableRef[] variables,
+            VariableRefUnresolved[] variables,
             string[] variableNames,
             FileType fileType,
             bool simbaFormat,
@@ -320,7 +333,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 spec = new AggregationSpec(aggUI.Agg, resolution, aggUI.SkipEmptyIntervals);
             }
 
-            var listHistories = await GetVariablesData(variables, tStart, tEnd, agg: spec);
+            VariableRef[] resolvedVariables = variables.Select(v => Context.ResolveVariableRef(v)).ToArray();
+            var listHistories = await GetVariablesData(resolvedVariables, tStart, tEnd, agg: spec);
 
             var columns = new List<string> {
                 "Time"
@@ -372,9 +386,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
 
-            if (IsLoaded && Variables.Any(v => setOfChangedVariables.Contains(v))) {
+            VariableRef[] variables = ResolvedVariablesFromCache;
 
-                VariableRef[] changedTabVariables = Variables.Where(v => setOfChangedVariables.Contains(v)).ToArray();
+            if (IsLoaded && variables.Any(v => setOfChangedVariables.Contains(v))) {
+
+                VariableRef[] changedTabVariables = variables.Where(v => setOfChangedVariables.Contains(v)).ToArray();
 
                 Timestamp tMinChanged = Timestamp.Max;
 
@@ -393,7 +409,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     return;
                 }
 
-                List<VTTQs> listHistories = await GetVariablesData(Variables, tStartRange, tEndRange, 5000, tStartEffective);
+                List<VTTQs> listHistories = await GetVariablesData(variables, tStartRange, tEndRange, 5000, tStartEffective);
 
                 var (windowLeft, windowRight) = GetTimeWindow(LastTimeRange, listHistories);
 
@@ -785,7 +801,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         public SeriesType SeriesType { get; set; } = SeriesType.Scatter;
         public Axis Axis { get; set; } = Axis.Left;
         public bool Checked { get; set; } = true;
-        public VariableRef Variable { get; set; }
+        public VariableRefUnresolved Variable { get; set; }
 
         public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
     }

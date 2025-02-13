@@ -72,7 +72,7 @@
                   <td><v-checkbox   class="tabcontent" v-model="item.Checked"    style="margin-left: 1ex; margin-right: 1ex;"></v-checkbox></td>
                   <td style="font-size:16px; max-width:17ch; word-wrap:break-word;">{{editorItems_ObjectID2Name(item.Variable.Object)}}</td>
                   <td><v-btn class="ml-2 mr-4" style="min-width:36px;width:36px;" @click="editorItems_SelectObj(item)"><v-icon>edit</v-icon></v-btn></td>
-                  <td><v-select     class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable)" style="width:12ch;" v-model="item.Variable.Name"></v-select></td>
+                  <td><v-combobox class="tabcontent" :items="editorItems_ObjectID2Variables(item.Variable)" style="width:12ch;" v-model="item.Variable.Name"></v-combobox></td>
                   <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" @click="editorItems_DeleteItem(idx)"><v-icon>delete</v-icon></v-btn></td>
                   <td><v-btn class="ml-2 mr-2" style="min-width:36px;width:36px;" v-if="idx > 0" @click="editorItems_MoveUpItem(idx)"><v-icon>keyboard_arrow_up</v-icon></v-btn></td>
                 </tr>
@@ -238,6 +238,7 @@
         :object-id="selectObject.selectedObjectID"
         :module-id="selectObject.selectedModuleID"
         :modules="selectObject.modules"
+        :allow-config-variables="true"
         @onselected="selectObject_OK"></dlg-object-select>
 
   </div>
@@ -251,6 +252,7 @@ import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 import { TimeRange, TimeUnit, TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
+import * as model from '../model'
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -354,6 +356,7 @@ export default class HistoryPlot extends Vue {
   @Prop({ default() { return {} } }) timeRange: TimeRange
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
+  @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
 
   qualityFilterValues = QualityFilterValues
 
@@ -467,7 +470,10 @@ export default class HistoryPlot extends Vue {
     const plotConfig = this.plotConfig
     const items = this.items
 
-    const makeLabel = (it: ItemConfig) => it.Name + ((it.Axis === 'Right') ? ' [R]' : '')
+    const makeLabel = (it: ItemConfig) => {
+      const name = model.VariableReplacer.replaceVariables(it.Name, this.configVariables.VarValues)
+      return name + ((it.Axis === 'Right') ? ' [R]' : '') 
+    }
 
     const seriesOptions = {}
     for (const it of items) {
@@ -544,11 +550,29 @@ export default class HistoryPlot extends Vue {
       drawAxesAtZero: true,
       includeZero: true,
       connectSeparatedPoints: true,
-      ylabel: plotConfig.LeftAxisName,
-      y2label: plotConfig.RightAxisName,
+      ylabel: this.resolvedLeftAxisName,
+      y2label: this.resolvedRightAxisName,
       visibility: items.map((it) => it.Checked),
       legendFormatter,
       zoomCallback,
+    }
+  }
+
+  get resolvedLeftAxisName(): string {
+    return model.VariableReplacer.replaceVariables(this.plotConfig.LeftAxisName, this.configVariables.VarValues)
+  }
+
+  get resolvedRightAxisName(): string {
+    return model.VariableReplacer.replaceVariables(this.plotConfig.RightAxisName, this.configVariables.VarValues)
+  }
+
+  @Watch('configVariables.VarValues', { deep: true })
+  watch_configVariablesVarValues(newVal: object, oldVal: object): void {
+    const anyVars = this.items.some((it) => {
+      return it.Variable.Object.includes('${') || it.Variable.Name.includes('${') || it.Name.includes('${')
+    })
+    if (anyVars) {
+      this.onLoadDataForNextTab(true)
     }
   }
 

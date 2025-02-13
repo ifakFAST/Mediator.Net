@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
@@ -17,17 +18,20 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
     [Identify(id: "Pages", bundle: "Generic", path: "pages.html", configType: typeof(Config), icon: "mdi-chart-line-variant")]
     public class View : ViewBase
     {
-        private Config configuration = new Config();
-        private readonly Dictionary<string, PageState> Pages = new Dictionary<string, PageState>();
+        private Config configuration = new();
+        private readonly Dictionary<string, PageState> Pages = [];
 
         private PageState? activePage = null;
         private ImmutableDictionary<string, Type> widgetTypes = ImmutableDictionary<string, Type>.Empty;
+        private readonly Dictionary<string, string> configVarValues = [];
 
         public override Task OnActivate() {
 
             if (Config.NonEmpty) {
                 configuration = Config.Object<Config>() ?? new Config();
                 // configuration = Example.Get();
+
+                InitConfigVariables();
             }
 
             widgetTypes = Reflect
@@ -42,6 +46,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return Task.FromResult(true);
         }
 
+        private void InitConfigVariables() {
+            configVarValues.Clear();
+            foreach (var v in configuration.ConfigVariables) {
+                configVarValues[v.ID] = v.DefaultValue;
+            }
+        }
+
         public async Task<ReqResult> UiReq_Init() {
 
             if (configuration.Pages.Length > 0) {
@@ -50,7 +61,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             var result = ReqResult.OK(new {
                 configuration,
-                widgetTypes = widgetTypes.Keys.OrderBy(s => s).ToArray()
+                widgetTypes = widgetTypes.Keys.OrderBy(s => s).ToArray(),
             });
 
             return result;
@@ -79,6 +90,55 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 await Connection.DisableChangeEvents(true, true, true);
                 activePage = null;
             }
+        }
+
+        public async Task<ReqResult> UiReq_SaveConfigVariables(ConfigVariable[] configVariables) {
+
+            // check if all variables are unique:
+            var unique = new HashSet<string>();
+            foreach (var v in configVariables) {
+
+                if (string.IsNullOrWhiteSpace(v.ID)) {
+                    throw new Exception("Config variable id must not be empty");
+                }
+
+                int idx = v.ID.IndexOfAny(['.', '$', '{', '}', '-', '>', '<']);
+                if (idx >= 0) {
+                    throw new Exception($"Invalid character '{v.ID[idx]}' in config variable id: {v.ID}");
+                }
+
+                if (!unique.Add(v.ID)) {
+                    throw new Exception($"Duplicate config variable id: {v.ID}");
+                }
+            }
+
+            configuration.ConfigVariables = configVariables;
+            DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
+            await Context.SaveViewConfiguration(newViewConfig);
+            InitConfigVariables();
+            return ReqResult.OK();
+        }
+
+        public async Task<ReqResult> UiReq_SetConfigVariableValues(Dictionary<string, string> variableValues) {
+
+            foreach (var variableID in variableValues.Keys) {
+                if (!configVarValues.ContainsKey(variableID)) {
+                    throw new Exception($"Unknown config variable id: {variableID}");
+                }
+            }
+
+            foreach (var pair in variableValues) {
+                string variableID = pair.Key;
+                string value = pair.Value;
+                configVarValues[variableID] = value;
+            }
+
+            var payload = new {
+                ChangedVarValues = variableValues
+            };
+            await Context.SendEventToUI("ConfigVariableValuesChanged", payload);
+
+            return ReqResult.OK();
         }
 
         public async Task<ReqResult> UiReq_ConfigPageAdd(string pageID, string title) {
@@ -294,7 +354,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             WithMembers
         }
 
-        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID, ObjectFilter Filter = ObjectFilter.WithVariables) {
+        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID, DataType ForType = DataType.Float64, ObjectFilter Filter = ObjectFilter.WithVariables) {
 
             ObjectInfos objects;
 
@@ -302,66 +362,80 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 objects = await Connection.GetAllObjects(ModuleID);
             }
             catch (Exception) {
-                objects = new ObjectInfos();
+                objects = [];
             }
 
-            ObjInfo[] res = await ReadObjects(Connection, objects, Filter);
+            async Task<ObjInfo[]> GetObjInfos() {
+                if (Filter == ObjectFilter.WithVariables) {
+                    Func<Variable, bool> isMatch = GetMatchPredicate(ForType);
+                    return ReadObjectsWithVariables(Connection, objects, isMatch);
+                }
+                else {
+                    return await ReadObjectsWithMembers(Connection, objects);
+                }
+            }
+
+            ObjInfo[] res = await GetObjInfos();
             return ReqResult.OK(new {
                 Items = res
             });
+        }
+
+        private static Func<Variable, bool> GetMatchPredicate(DataType type) {
+            if (type.IsNumeric() || type == DataType.Bool) {
+                return (v) => v.IsNumeric || v.Type == DataType.Bool;
+            }
+            return (v) => v.Type == type;
         }
 
         public sealed class ObjInfo {
             public string ID { get; set; } = "";
             public string Name { get; set; } = "";
             public string Type { get; set; } = "";
-            public string[] Members { get; set; } = new string[0];
-            public string[] Variables { get; set; } = new string[0];
+            public string[] Members { get; set; } = [];
+            public string[] Variables { get; set; } = [];
         }
 
-        public static async Task<ObjInfo[]> ReadObjects(Connection Connection, ObjectInfos objects, ObjectFilter filter) {
+        public static async Task<ObjInfo[]> ReadObjectsWithMembers(Connection connection, ObjectInfos objects) {
 
-            if (filter == ObjectFilter.WithMembers) {
-
-                string[] moduleIDs = objects.Select(obj => obj.ID.ModuleID).Distinct().ToArray();
-                var mapMeta = new Dictionary<string, Dictionary<string, ClassInfo>>();
-                foreach (string moduleID in moduleIDs) {
-                    MetaInfos meta = await Connection.GetMetaInfos(moduleID);
-                    mapMeta[moduleID] = meta.Classes.ToDictionary(cls => cls.FullName);
-                }
-
-                Func<SimpleMember, bool> isNumeric = (sm) => sm.Type.IsNumeric() || sm.Type == DataType.Bool || sm.Type == DataType.JSON;
-
-                Func<ObjectInfo, bool> hasMembers = (obj) => {
-                    var mapClasses = mapMeta[obj.ID.ModuleID];
-                    if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return false;
-                    return cls.SimpleMember.Any(isNumeric);
-                };
-
-                Func<ObjectInfo, string[]> getMembers = (obj) => {
-                    var mapClasses = mapMeta[obj.ID.ModuleID];
-                    if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return new string[0];
-                    return cls.SimpleMember.Where(isNumeric).Select(sm => sm.Name).ToArray();
-                };
-
-                return objects.Where(hasMembers).Select(o => new ObjInfo() {
-                    Type = o.ClassNameFull,
-                    ID = o.ID.ToEncodedString(),
-                    Name = o.Name,
-                    Members = getMembers(o)
-                }).ToArray();
-
+            string[] moduleIDs = objects.Select(obj => obj.ID.ModuleID).Distinct().ToArray();
+            var mapMeta = new Dictionary<string, Dictionary<string, ClassInfo>>();
+            foreach (string moduleID in moduleIDs) {
+                MetaInfos meta = await connection.GetMetaInfos(moduleID);
+                mapMeta[moduleID] = meta.Classes.ToDictionary(cls => cls.FullName);
             }
-            else {
 
-                return objects.Where(o => o.Variables.Any(IsNumericOrBoolOrString))
-                     .Select(o => new ObjInfo() {
-                         Type = o.ClassNameFull,
-                         ID = o.ID.ToEncodedString(),
-                         Name = o.Name,
-                         Variables = o.Variables.Where(IsNumericOrBoolOrString).Select(v => v.Name).ToArray()
-                     }).ToArray();
-            }
+            Func<SimpleMember, bool> isNumeric = (sm) => sm.Type.IsNumeric() || sm.Type == DataType.Bool || sm.Type == DataType.JSON;
+
+            Func<ObjectInfo, bool> hasMembers = (obj) => {
+                var mapClasses = mapMeta[obj.ID.ModuleID];
+                if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return false;
+                return cls.SimpleMember.Any(isNumeric);
+            };
+
+            Func<ObjectInfo, string[]> getMembers = (obj) => {
+                var mapClasses = mapMeta[obj.ID.ModuleID];
+                if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) return [];
+                return cls.SimpleMember.Where(isNumeric).Select(sm => sm.Name).ToArray();
+            };
+
+            return objects.Where(hasMembers).Select(o => new ObjInfo() {
+                Type = o.ClassNameFull,
+                ID = o.ID.ToEncodedString(),
+                Name = o.Name,
+                Members = getMembers(o)
+            }).ToArray();
+        }
+
+        public static ObjInfo[] ReadObjectsWithVariables(Connection connection, ObjectInfos objects, Func<Variable, bool> isVariableMatch) {
+
+            return objects.Where(o => o.Variables.Any(isVariableMatch))
+                 .Select(o => new ObjInfo() {
+                     Type = o.ClassNameFull,
+                     ID = o.ID.ToEncodedString(),
+                     Name = o.Name,
+                     Variables = o.Variables.Where(isVariableMatch).Select(v => v.Name).ToArray()
+                 }).ToArray();
         }
 
         private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String || v.Type == DataType.Timeseries;
@@ -412,7 +486,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return VariableRef.Make(viewID.ModuleID, fullPageID, "ActionLog");
         }
 
-        internal async Task LogPageAction(string pageID, string action) {            
+        internal async Task LogPageAction(string pageID, string action) {
             var varRef = GetPageLogRef(pageID);
             var user = await Connection.GetLoginUser();
             var logAction = new LogAction() {
@@ -485,6 +559,35 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         internal Task<string> SaveWebAsset(string fileExtension, byte[] data) {
             return Context.SaveWebAsset(fileExtension, data);
         }
+
+        internal VariableRef ResolveVariableRef(VariableRefUnresolved v) {
+            string objID = v.Object.LocalObjectID;
+            string newObjID = VariableReplacer.ReplaceVariables(objID, configVarValues);
+            ObjectRef newObject = ObjectRef.Make(v.Object.ModuleID, newObjID);
+            return VariableRef.Make(newObject, v.Name);
+        }
+    }
+
+    internal static partial class VariableReplacer {
+
+        internal static string ReplaceVariables(string input, Dictionary<string, string> variables) {
+
+            if (string.IsNullOrEmpty(input) || variables == null) {
+                return input;
+            }
+
+            return MyRegex().Replace(input, match => {
+                var varId = match.Groups[1].Value;
+                if (!variables.TryGetValue(varId, out var value)) {
+                    return match.Value; // Keep original if varId not found
+                }
+                return value;
+            });
+        }
+
+        // Pattern matches ${varID.key} where varID and key are non-empty strings not containing dots or closing braces
+        [GeneratedRegex(@"\$\{([^\}]+)\}")]
+        private static partial Regex MyRegex();
     }
 
     public class PageState
@@ -708,6 +811,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             public Task<string> SaveWebAsset(string fileExtension, byte[] data) {
                 return view.SaveWebAsset(fileExtension, data);
             }
+
+            public VariableRef ResolveVariableRef(VariableRefUnresolved v) {
+                return view.ResolveVariableRef(v);
+            }
         }
     }
 
@@ -734,4 +841,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             throw new Exception($"Failed to find column of Widget '{widgetID}'");
         }
     }
+
+    public record struct VariableRefUnresolved(ObjectRef Object, string Name);
+
 }

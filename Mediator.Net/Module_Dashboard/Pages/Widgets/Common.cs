@@ -32,10 +32,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return GetVarItemsData(connection, usedObjects, IsNumericOrBoolOrString);
         }
 
-        public static async Task<ReqResult> GetVarItemsData(Connection connection, ObjectRef[] usedObjects, Func<Variable, bool> f) {
+        public static async Task<ReqResult> GetVarItemsData(Connection connection, ObjectRef[] usedObjects, Func<DataType, bool> f) {
 
             var modules = (await connection.GetModules())
-                .Where(m => m.HasNumericVariables)
+                .Where(m => m.VariableDataTypes.Any(f))
                 .Select(m => new ModuleInfo() {
                     ID = m.ID,
                     Name = m.Name
@@ -53,7 +53,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                         infos.Add(await connection.GetObjectByID(obj));
                     }
                     catch (Exception) {
-                        infos.Add(new ObjectInfo(obj, "???", "???", "???"));
+                        infos.Add(new ObjectInfo(obj, obj.ToEncodedString(), "???", "???"));
                     }
                 }
             }
@@ -61,10 +61,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             var objectMap = new Dictionary<string, ObjInfo>();
 
             foreach (ObjectInfo info in infos) {
-                var numericVariables = info.Variables.Where(f).Select(v => v.Name).ToArray();
+                var relevantVariables = info.Variables.Where(v => f(v.Type)).Select(v => v.Name).ToArray();
                 objectMap[info.ID.ToEncodedString()] = new ObjInfo() {
                     Name = info.Name,
-                    Variables = numericVariables
+                    Variables = relevantVariables
                 };
             }
 
@@ -74,9 +74,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             });
         }
 
-        public static bool IsNumericOrBoolOrTimeseries(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Timeseries;
+        public static bool IsNumericOrBoolOrTimeseries(DataType t) => t.IsNumeric() || t == DataType.Bool || t == DataType.Timeseries;
 
-        private static bool IsNumericOrBoolOrString(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.String;
+        private static bool IsNumericOrBoolOrString(DataType t) => t.IsNumeric() || t == DataType.Bool || t == DataType.String;
 
     }
 }

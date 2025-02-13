@@ -122,6 +122,7 @@
             :timeRange="timeRange"
             :resize="resize"
             :dateWindow="dateWindow"
+            :configVariables="configVariables"
             @date-window-changed="onDateWindowChanged"
           ></widget-wrapper>
 
@@ -166,6 +167,7 @@ export default class Page extends Vue {
   @Prop({ default() { return [] } }) widgetTypes: string[]
   @Prop({ default() { return false } }) editPage: boolean
   @Prop({ default() { return null } }) dateWindow: number[]
+  @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
 
   timeRange = {}
   resize = 0
