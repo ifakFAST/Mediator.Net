@@ -39,8 +39,7 @@
 
 <script lang="ts">
 
-import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
-import * as fast from '../fast_types'
+import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class StructView extends Vue {

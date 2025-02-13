@@ -178,7 +178,6 @@ interface SelectObject {
 }
 
 interface Obj {
-  Type: string
   ID: string
   Name: string
   Variables: string[]

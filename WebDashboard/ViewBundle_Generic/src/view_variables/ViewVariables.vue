@@ -10,9 +10,13 @@
         <div v-else>
           <v-toolbar>
               <v-toolbar-title>Module</v-toolbar-title>
-              <v-select class="ml-4 mr-4" style="max-width: 20em" solo hide-details v-bind:items="modules" v-model="selectedModuleID" item-text="Name" item-value="ID"
-                @change='refreshVariables' label="Module" single-line menu-props="bottom"></v-select>
-              <v-btn @click.stop="refresh">Refresh</v-btn>
+              
+              <div class="ml-4 mt-1" style="display: flex; flex-wrap: wrap;">
+                <v-btn :small="modules.length > 4" v-for="module in modules" text :key="module.ID" @click="selectedModuleID = module.ID; refresh({})" :class="{ 'primary--text': selectedModuleID === module.ID }">
+                {{ module.Name }}
+                </v-btn>
+              </div>
+
               <v-spacer></v-spacer>
               <v-text-field class="ml-4" append-icon="search" label="Search" single-line hide-details v-model="search"></v-text-field>
           </v-toolbar>
@@ -35,8 +39,8 @@
               </template>
 
               <template v-slot:item.data-table-expand="{ item, isExpanded, expand  }">
-                <v-icon v-if="!isExpanded && itemNeedsExapnd(item)" @click="expand(true)" >mdi-chevron-down</v-icon>
-                <v-icon v-if="isExpanded  && itemNeedsExapnd(item)" @click="expand(false)">mdi-chevron-up</v-icon>
+                <v-icon v-if="!isExpanded && itemNeedsExpand(item)" @click="expand(true)" >mdi-chevron-down</v-icon>
+                <v-icon v-if="isExpanded  && itemNeedsExpand(item)" @click="expand(false)">mdi-chevron-up</v-icon>
               </template>
 
               <template v-slot:item.sync-read="{ item }">
@@ -94,6 +98,11 @@ interface VarEntry {
   Q: fast.Quality
 }
 
+interface Module {
+  ID: string
+  Name: string
+}
+
 @Component({
   components: {
     StructView,
@@ -105,7 +114,7 @@ export default class ViewVariables extends Vue {
   expanded: string[] = []
   loading = true
   search = ''
-  modules = []
+  modules: Module[] = []
   selectedModuleID = ''
   items: VarEntry[] = []
   noDataText = 'No variables in selected module'
@@ -169,7 +178,7 @@ export default class ViewVariables extends Vue {
     }
   }
 
-  itemNeedsExapnd(item: VarEntry): boolean {
+  itemNeedsExpand(item: VarEntry): boolean {
     return item.Type === 'Struct' || item.V.length > this.maxValueLen
   }
 
