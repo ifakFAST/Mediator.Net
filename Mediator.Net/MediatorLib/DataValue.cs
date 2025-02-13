@@ -326,6 +326,13 @@ namespace Ifak.Fast.Mediator
             return DataType.Struct;
         }
 
+        public bool IsString { 
+            get {
+                string json = JSON;
+                return !string.IsNullOrEmpty(json) && (json[0] == '"' || FirstNonWhitespace(json) == '"');
+            }
+        }
+
         public bool IsObject {
             get {
                 string json = JSON;
@@ -358,6 +365,22 @@ namespace Ifak.Fast.Mediator
             StdJson.PopulateObject(jsonOrNull, obj);
         }
 
+        /// <summary>
+        /// Returns the value as a double, or null if the value is not a number or NaN or Infinity
+        /// </summary>
+        public double? AsDoubleNoNaN() {
+            double? v = AsDouble();
+            if (v == null) return null;
+            double d = v.Value;
+            if (double.IsNaN(d)) return null;
+            if (double.IsInfinity(d)) return null;
+            return d;
+        }
+
+        /// <summary>
+        /// Returns the value as a double, or null if the value is not a number (the result may still ne NaN or Infinity!)
+        /// </summary>
+        /// <returns></returns>
         public double? AsDouble() {
             try {
                 return StdJson.ToDouble(jsonOrNull!);
@@ -366,12 +389,28 @@ namespace Ifak.Fast.Mediator
                 if (jsonOrNull == "true") return 1;
                 if (jsonOrNull == "false") return 0;
                 if (jsonOrNull == null) return null;
+                if (IsString) {
+                    try {
+                        string str = GetString()!;
+                        return StdJson.ToDouble(str);
+                    }
+                    catch (Exception) { }
+                }
                 try {
                     return StdJson.ToDoubleArrayAcceptingBools(jsonOrNull)![0];
                 }
                 catch (Exception) { }
             }
             return null;
+        }
+
+        public float? AsFloatNoNaN() {
+            float? v = AsFloat();
+            if (v == null) return null;
+            float d = v.Value;
+            if (float.IsNaN(d)) return null;
+            if (float.IsInfinity(d)) return null;
+            return d;
         }
 
         public float? AsFloat() {
@@ -382,6 +421,13 @@ namespace Ifak.Fast.Mediator
                 if (jsonOrNull == "true") return 1;
                 if (jsonOrNull == "false") return 0;
                 if (jsonOrNull == null) return null;
+                if (IsString) {
+                    try {
+                        string str = GetString()!;
+                        return StdJson.ToFloat(str);
+                    }
+                    catch (Exception) { }
+                }
                 try {
                     return StdJson.ToFloatArrayAcceptingBools(jsonOrNull)![0];
                 }
