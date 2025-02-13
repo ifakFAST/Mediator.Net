@@ -17,15 +17,15 @@ namespace Ifak.Fast.Mediator.IO.Adapter_MQTT;
 public class MQTT : AdapterBase {
 
     private Adapter? config = null;
-    private MqttClientOptions mqttOptions = new MqttClientOptions();
+    private MqttClientOptions mqttOptions = new();
     private AdapterCallback? callback = null;
     private IMqttClient? clientMQTT = null;
 
     private bool overrideTimestamp = false;
 
     private CancellationTokenSource? cancelSource;
-    private readonly Dictionary<string, List<string>> mapTopicsToReadableDataItemIDs = new();
-    private readonly Dictionary<string, string> mapDataItemID2Topic = new();
+    private readonly Dictionary<string, List<string>> mapTopicsToReadableDataItemIDs = [];
+    private readonly Dictionary<string, string> mapDataItemID2Topic = [];
 
     private bool runLoopTerminated = false;
 
@@ -39,7 +39,7 @@ public class MQTT : AdapterBase {
         this.callback = callback;
 
         string strOverrideTimestamp = config.GetConfigByName("OverrideTimestamp", defaultValue: "false");
-        overrideTimestamp = strOverrideTimestamp.ToLower() == "true";
+        overrideTimestamp = strOverrideTimestamp.Equals("true", StringComparison.OrdinalIgnoreCase);
 
         var mqttConfig = MqttConfigFromAdapterConfig(config);
         this.mqttOptions = MakeMqttOptions(certBaseDir, mqttConfig);
@@ -62,7 +62,7 @@ public class MQTT : AdapterBase {
                         items.Add(id);
                     }
                     else {
-                        mapTopicsToReadableDataItemIDs[topic] = new List<string> { id };
+                        mapTopicsToReadableDataItemIDs[topic] = [id];
                     }
                 }
             }
@@ -194,7 +194,7 @@ public class MQTT : AdapterBase {
             LogWarn("Acknowledge", err, dataItem: null, details: e.ToString());
         }
 
-        if (mapTopicsToReadableDataItemIDs.TryGetValue(msg.Topic, out List<string>? ids)) {
+        if (mapTopicsToReadableDataItemIDs.TryGetValue(topic, out List<string>? ids)) {
 
             ArraySegment<byte> payloadBytes = msg.PayloadSegment;
             var vtq = VTQ.Make(DataValue.Empty, Now, Quality.Good);
@@ -399,7 +399,7 @@ public class MQTT : AdapterBase {
             Type = type,
             Message = msg,
             Details = details ?? "",
-            AffectedDataItems = string.IsNullOrEmpty(dataItem) ? new string[0] : new string[] { dataItem }
+            AffectedDataItems = string.IsNullOrEmpty(dataItem) ? [] : [dataItem]
         };
 
         callback?.Notify_AlarmOrEvent(ae);

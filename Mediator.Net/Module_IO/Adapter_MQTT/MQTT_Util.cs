@@ -85,14 +85,12 @@ public static class MQTT_Util {
 
         if (useTLS) {
             builder = builder
-             .WithTlsOptions(o => {
-                 o
+             .WithTlsOptions(o => o
                  .UseTls(true)
                  .WithClientCertificates(certificates)
                  .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
                  .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
-                 .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
-             });
+                 .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates));
         }
 
         return builder
