@@ -59,7 +59,7 @@ namespace Ifak.Fast.Mediator
                         d.ClearDatabase(db.Name, db.ConnectionString, db.Settings);
                     }
 
-                    var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, fCreateDB, Notify_Append);
+                    var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, fCreateDB, Notify_Append);
                     var wb = new WorkerWithBuffer(worker);
 
                     workers.Add(wb);
@@ -89,9 +89,9 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private void Notify_Append(IEnumerable<VarHistoyChange> variables) {
-
-            var changes = variables.Select(v => new HistoryChange(v.Var, v.Start, v.End, HistoryChangeType.Append)).ToArray();
+        private void Notify_Append(IEnumerable<VarHistoyChange> variables, bool allowOutOfOrder) {
+            HistoryChangeType type = allowOutOfOrder ? HistoryChangeType.Upsert : HistoryChangeType.Append;
+            var changes = variables.Select(v => new HistoryChange(v.Var, v.Start, v.End, type)).ToArray();
             syncContext?.Post(delegate (object? state) {
                     fNotifyChanges(changes);
                 }, null);
@@ -237,6 +237,19 @@ namespace Ifak.Fast.Mediator
 
         public int OnVariableValuesChanged(string moduleID, IList<VariableValuePrev> values) {
 
+            dbs.TryGetValue(moduleID, out ModuleDBs? moduleDBs);
+
+            bool oneDbWorker = moduleDBs != null && moduleDBs.Workers.Length == 1;
+            bool doAllowOutOfOrder = oneDbWorker && moduleDBs!.Workers[0].Worker.AllowOutOfOrderAppend;
+
+            bool AllowOutOfOrder(in VariableValue v) {
+                if (oneDbWorker) return doAllowOutOfOrder;
+                if (moduleDBs == null) return false;
+                WorkerWithBuffer? worker = moduleDBs.Variable2Worker.GetValueOrDefault(v.Variable.Name);
+                if (worker != null) return worker.Worker.AllowOutOfOrderAppend;
+                return moduleDBs.DefaultWorker?.Worker.AllowOutOfOrderAppend ?? false;
+            }
+
             var valuesToSave = new List<StoreValue>();
 
             for (int i = 0; i < values.Count; ++i) {
@@ -254,12 +267,14 @@ namespace Ifak.Fast.Mediator
                 Timestamp tOld = previousValue.T;
                 History history = variable.History;
 
-                if (tNew < tOld) {
+                bool preventOutOfOrderAppend = !AllowOutOfOrder(value);
+
+                if (preventOutOfOrderAppend && tNew < tOld) {
                     if (ReportTimestampWarning(history)) {
                         logger.Warn("Timestamp of new VTQ is older than current timestamp: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
                     }
                 }
-                else if (tNew == tOld) {
+                else if (preventOutOfOrderAppend && tNew == tOld) {
                     if (value.Value != previousValue) {
                         if (ReportTimestampWarning(history)) {
                             logger.Warn("Timestamp of new VTQ is equal to current timestamp but value (or quality) differs: " + value.Variable.ToString() + "\n\tOld: " + previousValue + "\n\tNew: " + value.Value);
@@ -330,7 +345,7 @@ namespace Ifak.Fast.Mediator
             }
 
             if (valuesToSave.Count > 0) {
-                return SaveToDB(moduleID, valuesToSave);
+                return SaveToDB(moduleDBs, moduleID, valuesToSave);
             }
             else {
                 return 0;
@@ -360,9 +375,9 @@ namespace Ifak.Fast.Mediator
             return (t.JavaTicks - offMS) % intervalMS == 0;
         }
 
-        private int SaveToDB(string moduleID, IList<StoreValue> values) {
+        private int SaveToDB(ModuleDBs? moduleDBs, string moduleID, IList<StoreValue> values) {
 
-            if (dbs.TryGetValue(moduleID, out ModuleDBs? moduleDBs)) {
+            if (moduleDBs != null) {
 
                 if (moduleDBs.Workers.Length == 1) {
                     return moduleDBs.Workers[0].Worker.Append(values);

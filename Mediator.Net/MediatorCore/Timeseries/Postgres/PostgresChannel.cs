@@ -223,7 +223,26 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             });
         }
 
-        public override Func<PrepareContext, string?> PrepareAppend(VTQ data) {
+        public override Func<PrepareContext, string?> PrepareAppend(VTQ data, bool allowOutOfOrder) {
+
+            if (allowOutOfOrder) {
+
+                return (PrepareContext ctx) => {
+
+                    var context = (PostgresContext)ctx;
+
+                    PreparedStatement stmt = stmtUpsert;
+                    try {
+                        WriteVTQ(stmt, data, context.TimeDB);
+                        stmt.ExecuteNonQuery(context.Transaction);
+                        return null;
+                    }
+                    catch (Exception exp) {
+                        stmt.Reset();
+                        return table + ": " + exp.Message;
+                    }
+                };
+            }
 
             return (PrepareContext ctx) => {
 
@@ -441,7 +460,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         private readonly int countParameters;
 
         private DbCommand? command = null;
-        private NpgsqlDbType[] types;
+        private readonly NpgsqlDbType[] types;
 
         internal PreparedStatement(DbConnection connection, string sql, params NpgsqlDbType[] types) {
             this.connection = connection;

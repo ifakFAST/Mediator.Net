@@ -83,8 +83,9 @@ namespace Ifak.Fast.Mediator.Timeseries
         /// error message otherwise.
         /// </summary>
         /// <param name="data"></param>
+        /// <param name="allowOutOfOrder"></param>
         /// <returns></returns>
-        public abstract Func<PrepareContext, string?> PrepareAppend(VTQ data);
+        public abstract Func<PrepareContext, string?> PrepareAppend(VTQ data, bool allowOutOfOrder);
 
         public abstract VTTQ? GetLatest();
 

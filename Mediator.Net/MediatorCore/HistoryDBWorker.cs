@@ -23,24 +23,26 @@ namespace Ifak.Fast.Mediator
 
     public class HistoryDBWorker
     {
-        private static Logger logger = LogManager.GetLogger("HistoryDBWorker");
+        private static readonly Logger logger = LogManager.GetLogger("HistoryDBWorker");
 
         private readonly string dbName;
         private readonly string dbConnectionString;
         private readonly string[] dbSettings;
         private readonly bool prioritizeReadRequests;
+        private readonly bool allowOutOfOrderAppend;
         private readonly Func<TimeSeriesDB> dbCreator;
-        private readonly Action<IEnumerable<VarHistoyChange>> notifyAppend;
+        private readonly Action<IEnumerable<VarHistoyChange>, bool> notifyAppend;
 
         private readonly AsyncQueue<WorkItem> queue = new AsyncQueue<WorkItem>();
         private volatile bool started = false;
         private volatile bool terminated = false;
 
-        public HistoryDBWorker(string dbName, string dbConnectionString, string[] dbSettings, bool prioritizeReadRequests, Func<TimeSeriesDB> dbCreator, Action<IEnumerable<VarHistoyChange>> notifyAppend) {
+        public HistoryDBWorker(string dbName, string dbConnectionString, string[] dbSettings, bool prioritizeReadRequests, bool allowOutOfOrderAppend, Func<TimeSeriesDB> dbCreator, Action<IEnumerable<VarHistoyChange>, bool> notifyAppend) {
             this.dbName = dbName;
             this.dbConnectionString = dbConnectionString;
             this.dbSettings = dbSettings;
             this.prioritizeReadRequests = prioritizeReadRequests;
+            this.allowOutOfOrderAppend = allowOutOfOrderAppend;
             this.dbCreator = dbCreator;
             this.notifyAppend = notifyAppend;
 
@@ -48,6 +50,8 @@ namespace Ifak.Fast.Mediator
             thread.IsBackground = true;
             thread.Start();
         }
+
+        public bool AllowOutOfOrderAppend => allowOutOfOrderAppend;
 
         private void TheThread() {
             try {
@@ -601,7 +605,7 @@ namespace Ifak.Fast.Mediator
 
             Func<PrepareContext, string?>[] appendActions = append.Values.Select(v => {
                 Channel ch = GetChannelOrThrow(v.Value.Variable);
-                Func<PrepareContext, string?> f = ch.PrepareAppend(v.Value.Value);
+                Func<PrepareContext, string?> f = ch.PrepareAppend(v.Value.Value, allowOutOfOrderAppend);
                 return f;
             }).ToArray();
 
@@ -613,7 +617,7 @@ namespace Ifak.Fast.Mediator
                 logger.Error("Batch append actions failed ({0} of {1}): \n\t{2}", errors.Length, appendActions.Length, string.Join("\n\t", errors));
             }
 
-            notifyAppend(set.Values);
+            notifyAppend(set.Values, allowOutOfOrderAppend);
         }
 
         private bool ExistsChannel(VariableRef v) {

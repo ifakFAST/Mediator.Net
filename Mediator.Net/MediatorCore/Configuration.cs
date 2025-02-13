@@ -138,6 +138,9 @@ namespace Ifak.Fast.Mediator
         [XmlAttribute("prioritizeReadRequests")]
         public bool PrioritizeReadRequests { get; set; } = true;
 
+        [XmlAttribute("allowOutOfOrderAppend")]
+        public bool AllowOutOfOrderAppend { get; set; } = false;
+
         public string[] Variables { get; set; } = new string[0];
 
         public string[] Settings { get; set; } = new string[0];

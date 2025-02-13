@@ -225,7 +225,27 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             });
         }
 
-        public override Func<PrepareContext, string?> PrepareAppend(VTQ data) {
+        public override Func<PrepareContext, string?> PrepareAppend(VTQ data, bool allowOutOfOrder) {
+
+            if (allowOutOfOrder) {
+
+                return (PrepareContext ctx) => {
+
+                    var context = (SQLiteContext)ctx;
+
+                    PreparedStatement stmt = stmtUpsert;
+                    try {
+                        WriteVTQ(stmt, data, context.TimeDB);
+                        stmt.ExecuteNonQuery(context.Transaction);
+                        return null;
+                    }
+                    catch (Exception exp) {
+                        stmt.Reset();
+                        return table + ": " + exp.Message;
+                    }
+                };
+            }
+
 
             return (PrepareContext ctx) => {
 
