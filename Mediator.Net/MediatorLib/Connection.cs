@@ -18,6 +18,7 @@ using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.Variable
 using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml;
+using System.Linq;
 
 namespace Ifak.Fast.Mediator
 {
@@ -699,10 +700,11 @@ namespace Ifak.Fast.Mediator
         public string ID { get; set; } = "";
         public string Name { get; set; } = "";
         public bool Enabled { get; set; }
+        public DataType[] VariableDataTypes { get; set; } = [];
         /// <summary>
         /// Return true if the module contains any object with at least one variable that is numeric or boolean
         /// </summary>
-        public bool HasNumericVariables { get; set; }
+        public bool HasNumericVariables => VariableDataTypes.Any(t => t.IsNumeric() || t == DataType.Bool );
         public override string ToString() => Name;
     }
 

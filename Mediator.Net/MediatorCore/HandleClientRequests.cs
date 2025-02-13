@@ -356,15 +356,22 @@ namespace Ifak.Fast.Mediator
 
                     case GetModulesReq.ID: {
 
-                            Func<ModuleState, bool> hasNumericVariables = (m) => {
-                                return m.AllObjects.Any(obj => obj.Variables != null && obj.Variables.Any(v => v.IsNumeric || v.Type == DataType.Bool));
+                            Func<ModuleState, HashSet<DataType>> getVariableTypes = (m) => {
+                                var res = new HashSet<DataType>();
+                                foreach (ObjectInfo obj in m.AllObjects) {
+                                    if (obj.Variables != null) {
+                                        foreach (Variable v in obj.Variables) {
+                                            res.Add(v.Type);
+                                        }
+                                    }
+                                }
+                                return res;
                             };
 
                             ModuleInfos res = core.modules.Select(m => new ModuleInfo() {
                                 ID = m.ID,
                                 Name = m.Name,
-                                Enabled = m.Enabled,
-                                HasNumericVariables = hasNumericVariables(m),
+                                VariableDataTypes = getVariableTypes(m).ToArray(),
                             }).ToList();
 
                             return Result_OK(res);
