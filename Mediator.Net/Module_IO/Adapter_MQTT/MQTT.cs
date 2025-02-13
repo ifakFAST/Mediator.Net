@@ -21,6 +21,8 @@ public class MQTT : AdapterBase {
     private AdapterCallback? callback = null;
     private IMqttClient? clientMQTT = null;
 
+    private bool overrideTimestamp = false;
+
     private CancellationTokenSource? cancelSource;
     private readonly Dictionary<string, List<string>> mapTopicsToReadableDataItemIDs = new();
     private readonly Dictionary<string, string> mapDataItemID2Topic = new();
@@ -35,6 +37,9 @@ public class MQTT : AdapterBase {
 
         this.config = config;
         this.callback = callback;
+
+        string strOverrideTimestamp = config.GetConfigByName("OverrideTimestamp", defaultValue: "false");
+        overrideTimestamp = strOverrideTimestamp.ToLower() == "true";
 
         var mqttConfig = MqttConfigFromAdapterConfig(config);
         this.mqttOptions = MakeMqttOptions(certBaseDir, mqttConfig);
@@ -214,6 +219,9 @@ public class MQTT : AdapterBase {
                         VTQ? vtqFromObj = TryParseVTQ(obj);
                         if (vtqFromObj.HasValue) {
                             vtq = vtqFromObj.Value;
+                            if (overrideTimestamp) {
+                                vtq = vtq.WithTime(Now);
+                            }
                         }
                         else {
                             vtq.V = DataValue.FromJSON(payload);
