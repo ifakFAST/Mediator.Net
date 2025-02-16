@@ -48,6 +48,13 @@ namespace Ifak.Fast.Mediator.IO.Config
             return res;
         }
 
+        public List<Node> GetAllNodes() {
+            var res = new List<Node>();
+            foreach (Adapter a in GetAllAdapters())
+                res.AddRange(a.GetAllNodes());
+            return res;
+        }
+
         public void ValidateOrThrow() {
             Scheduling.ValidateOrThrow();
             History.ValidateOrThrow();
@@ -209,6 +216,15 @@ namespace Ifak.Fast.Mediator.IO.Config
             return res;
         }
 
+        public List<Node> GetAllNodes() {
+            var res = new List<Node>();
+            foreach (Node n in Nodes) {
+                res.Add(n);
+                res.AddRange(n.GetAllNodes());
+            }
+            return res;
+        }
+
         public List<Tuple<DataItem, Scheduling>> GetAllDataItemsWithScheduling(Scheduling defaultScheduling) {
             Scheduling s = Scheduling ?? defaultScheduling;
             var res = new List<Tuple<DataItem, Scheduling>>();
@@ -291,6 +307,15 @@ namespace Ifak.Fast.Mediator.IO.Config
             foreach (Node n in Nodes)
                 res.AddRange(n.GetAllDataItems());
             res.AddRange(DataItems);
+            return res;
+        }
+
+        public List<Node> GetAllNodes() {
+            var res = new List<Node>();
+            foreach (Node n in Nodes) {
+                res.Add(n);
+                res.AddRange(n.GetAllNodes());
+            }
             return res;
         }
 

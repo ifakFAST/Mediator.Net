@@ -157,6 +157,37 @@ namespace Ifak.Fast.Mediator.IO
         void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo);
         void Notify_DataItemsChanged(DataItemValue[] values); // Only used for events
         void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value);
+        void UpdateConfig(ConfigUpdate info);
+    }
+
+    public sealed class ConfigUpdate
+    {
+        public NodeUpsert[] NodeUpserts { get; set; } = [];
+        public DataItemUpsert[] DataItemUpserts { get; set; } = [];
+    }
+
+    public sealed class NodeUpsert 
+    {
+        public string? ParentNodeID { get; set; } = null;
+        public string ID { get; set; } = "";
+        public string Name { get; set; } = "";
+        public List<NamedValue> Config { get; set; } = [];
+    }
+
+    public sealed class DataItemUpsert 
+    {
+        public string? ParentNodeID { get; set; } = null;
+        public string ID { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Unit { get; set; } = "";
+        public DataType Type { get; set; }
+        public string TypeConstraints { get; set; } = "";
+        public int Dimension { get; set; }
+        public string[] DimensionNames { get; set; } = [];
+        public bool Read { get; set; }
+        public bool Write { get; set; }
+        public string Address { get; set; } = "";
+        public List<NamedValue> Config { get; set; } = [];
     }
 
     public enum AdapterVar {

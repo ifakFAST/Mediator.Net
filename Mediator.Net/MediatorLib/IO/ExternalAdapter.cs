@@ -281,6 +281,7 @@ namespace Ifak.Fast.Mediator.IO
         public const byte ID_Event_AlarmOrEvent = 1;
         public const byte ID_Event_DataItemsChanged = 2;
         public const byte ID_Event_AdapterVarChanged = 3;
+        public const byte ID_Event_UpdateConfig = 4;
 
         public const byte ID_ParentInfo = 99;
         public const byte ID_Initialize = 1;

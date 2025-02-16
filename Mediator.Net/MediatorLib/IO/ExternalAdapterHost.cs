@@ -213,6 +213,10 @@ namespace Ifak.Fast.Mediator.IO
                 if (values == null || values.Count == 0) return;
                 connector.SendEvent(eventID, s => StdJson.ObjectToStream(values, s));
             }
+
+            public void UpdateConfig(ConfigUpdate info) {
+                connector.SendEvent(AdapterMsg.ID_Event_UpdateConfig, s => StdJson.ObjectToStream(info, s));
+            }
         }
 
         public sealed class AdapterVarUpdate {

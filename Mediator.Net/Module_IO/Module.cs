@@ -371,6 +371,7 @@ namespace Ifak.Fast.Mediator.IO
             }
 
             _ = StartCheckForModelFileModificationTask(shutdown);
+            _ = UpdateConfigLoop();
 
             while (!shutdown()) {
                 await Task.Delay(500);
@@ -1281,7 +1282,7 @@ namespace Ifak.Fast.Mediator.IO
                             UpdateModelWithFlatDataItems(modelCopy, items);
 
                             var ov = ObjectValue.Make(moduleID, modelCopy.ID, DataValue.FromObject(modelCopy));
-                            Result res = await UpdateConfig(origin, new ObjectValue[] { ov }, null, null);
+                            Result res = await UpdateConfig(origin, [ ov ], null, null);
 
                             if (res.IsOK) {
                                 return Result<DataValue>.OK(DataValue.Empty);
@@ -1354,7 +1355,7 @@ namespace Ifak.Fast.Mediator.IO
                 ReturnToNormal = true,
                 Message = msg,
                 Details = "",
-                AffectedObjects = new ObjectRef[] { ObjectRef.Make(moduleID, affectedObjectID) },
+                AffectedObjects = [ ObjectRef.Make(moduleID, affectedObjectID) ],
                 Initiator = null
             };
 
@@ -1369,11 +1370,196 @@ namespace Ifak.Fast.Mediator.IO
                 Type = type,
                 Message = msg,
                 Details = details,
-                AffectedObjects = affectedObjID == null ? new ObjectRef[0] : new ObjectRef[] { ObjectRef.Make(moduleID, affectedObjID) },
+                AffectedObjects = affectedObjID == null ? [] : [ ObjectRef.Make(moduleID, affectedObjID) ],
                 Initiator = initiator
             };
 
             notifier?.Notify_AlarmOrEvent(ae);
+        }
+
+        // This will be called from a different Thread, therefore post it to the main thread!
+        void UpdateConfigByAdapter(ConfigUpdate info, Adapter adapter) {
+            //moduleThread?.Post(Do_UpdateConfigByAdapter, info, adapter);
+            configUpdateQueue.Post(new UpdateConfigItem(adapter, info));
+        }
+
+        private record UpdateConfigItem(
+            Adapter Adapter, 
+            ConfigUpdate Info);
+
+        private readonly AsyncQueue<UpdateConfigItem> configUpdateQueue = new();
+
+        private async Task UpdateConfigLoop() {
+            while (true) {
+                UpdateConfigItem item = await configUpdateQueue.ReceiveAsync();
+                try {
+                    await Do_UpdateConfigByAdapter(item.Info, item.Adapter);
+                }
+                catch (Exception exp) {
+                    Log_Error("UpdateConfigByAdapter", $"Exception while updating config: {exp.Message}");
+                }
+            }
+        }
+
+        private async Task Do_UpdateConfigByAdapter(ConfigUpdate info, Adapter sourceAdapter) {
+
+            Config.IO_Model modelCopy = DeserializeModelFromString(modelAsString);
+            var mapAdapter = modelCopy.GetAllAdapters().ToDictionary(a => a.ID);
+
+            if (!mapAdapter.TryGetValue(sourceAdapter.ID, out Config.Adapter? adapter)) {
+                Log_Error("UpdateConfigByAdapter", $"Adapter {sourceAdapter.ID} not found in model");
+                return;
+            }
+
+            var mapAllDataItems = modelCopy.GetAllDataItems().ToDictionary(di => di.ID);
+            var mapAdapterDataItems = adapter.GetAllDataItems().ToDictionary(di => di.ID);
+
+            var mapID2ParentNodeID = new Dictionary<string, string?>();
+
+            void VisitNodes(List<Config.Node> nodes, string? parentID) {
+                foreach (Config.Node node in nodes) {
+                    mapID2ParentNodeID[node.ID] = parentID;
+                    foreach (Config.DataItem dataItem in node.DataItems) {
+                        mapID2ParentNodeID[dataItem.ID] = node.ID;
+                    }
+                    VisitNodes(node.Nodes, node.ID);
+                }
+            }
+
+            VisitNodes(adapter.Nodes, null);
+            foreach (Config.DataItem dataItem in adapter.DataItems) {
+                mapID2ParentNodeID[dataItem.ID] = null;
+            }
+
+            var mapAllNodes = modelCopy.GetAllNodes().ToDictionary(n => n.ID);
+            var mapAdapterNodes = adapter.GetAllNodes().ToDictionary(n => n.ID);
+
+            void RemoveNodeFromParent(Config.Node node, string? parentNodeID) {
+                if (parentNodeID == null) {
+                    adapter.Nodes.Remove(node);
+                }
+                else if (mapAdapterNodes.TryGetValue(parentNodeID, out Config.Node? parent)) {
+                    parent.Nodes.Remove(node);
+                }
+                else {
+                    Log_Error("UpdateConfigByAdapter", $"Parent node {parentNodeID} not found for node {node.ID}");
+                }
+            }
+
+            void AddNodeToParent(Config.Node node, string? parentNodeID) {
+                if (parentNodeID == null) {
+                    adapter.Nodes.Add(node);
+                }
+                else if (mapAdapterNodes.TryGetValue(parentNodeID, out Config.Node? parent)) {
+                    parent.Nodes.Add(node);
+                }
+                else {
+                    Log_Error("UpdateConfigByAdapter", $"Parent node {parentNodeID} not found for node {node.ID}");
+                }
+            }
+
+            foreach (NodeUpsert nodeUpsert in info.NodeUpserts) {
+                string id = nodeUpsert.ID;
+                if (mapAllNodes.TryGetValue(id, out Config.Node? node)) {
+                    bool nodeForAdapter = mapAdapterNodes.ContainsKey(id);
+                    if (nodeForAdapter) {
+                        string? parentNodeID = mapID2ParentNodeID[node.ID];
+                        if (parentNodeID == nodeUpsert.ParentNodeID) {
+                            UpdateNodeFromUpsert(node, nodeUpsert);
+                        }
+                        else {
+                            RemoveNodeFromParent(node, parentNodeID);
+                            UpdateNodeFromUpsert(node, nodeUpsert);
+                            AddNodeToParent(node, nodeUpsert.ParentNodeID);
+                        }
+                    }
+                    else {
+                        Log_Error("UpdateConfigByAdapter", $"Existing node {id} not found in adapter {sourceAdapter.ID}");
+                    }
+                }
+                else {
+                    node = UpdateNodeFromUpsert(new Config.Node() { ID = id }, nodeUpsert);
+                    AddNodeToParent(node, nodeUpsert.ParentNodeID);
+                }
+            }
+
+            void RemoveDataItemFromParent(Config.DataItem dataItem, string? parentNodeID) {
+                if (parentNodeID == null) {
+                    adapter.DataItems.Remove(dataItem);
+                }
+                else if (mapAdapterNodes.TryGetValue(parentNodeID, out Config.Node? node)) {
+                    node.DataItems.Remove(dataItem);
+                }
+                else {
+                    Log_Error("UpdateConfigByAdapter", $"Parent node {parentNodeID} not found for data item {dataItem.ID}");
+                }
+            }
+
+            void AddDataItemToParent(Config.DataItem dataItem, string? parentNodeID) {
+                if (parentNodeID == null) {
+                    adapter.DataItems.Add(dataItem);
+                }
+                else if (mapAdapterNodes.TryGetValue(parentNodeID, out Config.Node? node)) {
+                    node.DataItems.Add(dataItem);
+                }
+                else {
+                    Log_Error("UpdateConfigByAdapter", $"Parent node {parentNodeID} not found for data item {dataItem.ID}");
+                }
+            }
+
+            foreach (DataItemUpsert dataItemUpsert in info.DataItemUpserts) {
+                string id = dataItemUpsert.ID;
+                if (mapAllDataItems.TryGetValue(id, out Config.DataItem? dataItem)) {
+                    bool itemForAdapter = mapAdapterDataItems.ContainsKey(id);
+                    if (itemForAdapter) {
+                        string? parentNodeID = mapID2ParentNodeID[dataItem.ID];
+                        if (parentNodeID == dataItemUpsert.ParentNodeID) {
+                            UpdateDataItemFromUpsert(dataItem, dataItemUpsert);
+                        }
+                        else {
+                            RemoveDataItemFromParent(dataItem, parentNodeID);
+                            UpdateDataItemFromUpsert(dataItem, dataItemUpsert);
+                            AddDataItemToParent(dataItem, dataItemUpsert.ParentNodeID);
+                        }
+                    }
+                    else {
+                        Log_Error("UpdateConfigByAdapter", $"Existing data item {id} not found in adapter {sourceAdapter.ID}");
+                    }
+                }
+                else {
+                    dataItem = UpdateDataItemFromUpsert(new Config.DataItem() { ID = id }, dataItemUpsert);
+                    AddDataItemToParent(dataItem, dataItemUpsert.ParentNodeID);
+                }
+            }
+
+            var ov = ObjectValue.Make(moduleID, adapter.ID, DataValue.FromObject(adapter));
+            Result r = await UpdateConfig(GetModuleOrigin(), [ov], null, null);
+            if (r.IsOK) {
+                Log_Info("UpdateConfigByAdapter", $"Config updated by adapter {sourceAdapter.ID}");
+            }
+            else {
+                Log_Error("UpdateConfigByAdapter", $"Config update failed: {r.Error}");
+            }
+        }
+
+        private static Config.DataItem UpdateDataItemFromUpsert(Config.DataItem item, DataItemUpsert upsert) {
+            item.Name = upsert.Name;
+            item.Unit = upsert.Unit;
+            item.Type = upsert.Type;
+            item.TypeConstraints = upsert.TypeConstraints;
+            item.Dimension = upsert.Dimension;
+            item.DimensionNames = upsert.DimensionNames;
+            item.Read = upsert.Read;
+            item.Write = upsert.Write;
+            item.Address = upsert.Address;
+            item.Config = upsert.Config;
+            return item;
+        }
+
+        private static Config.Node UpdateNodeFromUpsert(Config.Node node, NodeUpsert upsert) {
+            node.Name = upsert.Name;
+            node.Config = upsert.Config;
+            return node;
         }
 
         // This will be called from a different Thread, therefore post it to the main thread!
@@ -1697,6 +1883,10 @@ namespace Ifak.Fast.Mediator.IO
 
             public void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value) {
                 m.Notify_AdapterVarUpdate(variable, value, a);
+            }
+
+            public void UpdateConfig(ConfigUpdate info) {
+                m.UpdateConfigByAdapter(info, a);
             }
         }
     }
