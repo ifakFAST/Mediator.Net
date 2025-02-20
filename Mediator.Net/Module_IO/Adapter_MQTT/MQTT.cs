@@ -21,7 +21,13 @@ public class MQTT : AdapterBase {
     private AdapterCallback? callback = null;
     private IMqttClient? clientMQTT = null;
 
+    private string valueProperty = "";
+    private string timestampProperty = "";
     private bool overrideTimestamp = false;
+    private bool autoCreateDataItems = false;
+    private string autoCreateDataItems_RootTopic = ""; // e.g. "my/sensors" (no leading or trailing slashes!)
+
+    private readonly BufferNewDataItems bufferNewDataItems = new();
 
     private CancellationTokenSource? cancelSource;
     private readonly Dictionary<string, List<string>> mapTopicsToReadableDataItemIDs = [];
@@ -38,8 +44,17 @@ public class MQTT : AdapterBase {
         this.config = config;
         this.callback = callback;
 
-        string strOverrideTimestamp = config.GetConfigByName("OverrideTimestamp", defaultValue: "false");
-        overrideTimestamp = strOverrideTimestamp.Equals("true", StringComparison.OrdinalIgnoreCase);
+        static bool Str2Bool(string str) => str.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+        valueProperty = config.GetConfigByName("ValueProperty", defaultValue: "");
+        timestampProperty = config.GetConfigByName("TimestampProperty", defaultValue: "");
+        overrideTimestamp = Str2Bool(config.GetConfigByName("OverrideTimestamp", defaultValue: "false"));
+        autoCreateDataItems = Str2Bool(config.GetConfigByName("AutoCreateDataItems", defaultValue: "false"));
+        autoCreateDataItems_RootTopic = config
+            .GetConfigByName("AutoCreateDataItems_RootTopic", defaultValue: "")
+            .Trim('/');
+
+        Console.Out.WriteLine($"MQTT Adapter: overrideTimestamp={overrideTimestamp}, autoCreateDataItems={autoCreateDataItems}, autoCreateDataItems_RootTopic={autoCreateDataItems_RootTopic}");
 
         var mqttConfig = MqttConfigFromAdapterConfig(config);
         this.mqttOptions = MakeMqttOptions(certBaseDir, mqttConfig);
@@ -137,6 +152,10 @@ public class MQTT : AdapterBase {
 
             List<string> topics = mapTopicsToReadableDataItemIDs.Keys.ToList();
 
+            if (autoCreateDataItems) {
+                topics.Add("/" + autoCreateDataItems_RootTopic + "/#");
+            }
+
             foreach (string top in topics) {
                 try {
                     await clientMQTT.SubscribeAsync(top, MqttQualityOfServiceLevel.AtLeastOnce, cancelSrc.Token);
@@ -167,6 +186,13 @@ public class MQTT : AdapterBase {
                     await Time.WaitSeconds(ConnectRetryDelaySeconds, abort: () => cancelSrc.IsCancellationRequested);
                     break;
                 }
+
+                DataItemUpsert[] newDataItems = bufferNewDataItems.GetAllNewItemsIfLastUpdateOlderThan(Duration.FromSeconds(10));
+                if (newDataItems.Length > 0) {
+                    callback?.UpdateConfig(new ConfigUpdate() {
+                        DataItemUpserts = newDataItems
+                    });
+                }
             }
         }
 
@@ -196,59 +222,133 @@ public class MQTT : AdapterBase {
 
         if (mapTopicsToReadableDataItemIDs.TryGetValue(topic, out List<string>? ids)) {
 
-            ArraySegment<byte> payloadBytes = msg.PayloadSegment;
-            var vtq = VTQ.Make(DataValue.Empty, Now, Quality.Good);
+            SendAssignedValues(topic, ids, Now, msg.PayloadSegment);
+        }
+        else if(autoCreateDataItems) {
 
-            if (payloadBytes.Array != null && payloadBytes.Count > 0) {
-                string payload;
-                try {
-                    payload = Encoding.UTF8.GetString(payloadBytes);
-                }
-                catch (Exception) {
-                    string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Count} bytes.";
-                    LogWarn("Value", err);
-                    return;
-                }
-                try {
-
-                    var options = new JsonNodeOptions { PropertyNameCaseInsensitive = true };
-                    JsonNode jsonNode = JsonNode.Parse(payload, options) ?? throw new Exception("Invalid JSON");
-
-                    if (jsonNode is JsonObject obj) {
-
-                        VTQ? vtqFromObj = TryParseVTQ(obj);
-                        if (vtqFromObj.HasValue) {
-                            vtq = vtqFromObj.Value;
-                            if (overrideTimestamp) {
-                                vtq = vtq.WithTime(Now);
-                            }
-                        }
-                        else {
-                            vtq.V = DataValue.FromJSON(payload);
-                        }
-                    }
-                    else {
-                        vtq.V = DataValue.FromJSON(payload);
-                    }
-                }
-                catch (Exception) {
-                    vtq.V = DataValue.FromString(payload);
-                }
-            }
-            
-            var dataItems = new DataItemValue[ids.Count];
-            for (int i = 0; i < ids.Count; i++) {
-                string id = ids[i];
-                dataItems[i] = new DataItemValue(id, vtq);
-            }
-            callback?.Notify_DataItemsChanged(dataItems);
+            CreateNewDataItemFromTopic(topic, msg.PayloadSegment);
         }
     }
 
-    public static VTQ? TryParseVTQ(JsonObject obj) {
+    private void CreateNewDataItemFromTopic(string topic, ArraySegment<byte> payloadBytes) {
 
-        string[] valueKeys = ["Value", "V", "Val"];
-        string[] timestampKeys = ["Timestamp", "Time", "T"];
+        string? id = GetIdFromTopic(topic);
+        if (id == null) {
+            return;
+        }
+
+        (VTQ vtq, string unit)? payload = ParsePayload(topic, Timestamp.Now, payloadBytes);
+
+        var item = new DataItemUpsert() {
+            ParentNodeID = null,
+            ID = id,
+            Name = id,
+            Unit = payload.HasValue ? payload.Value.unit : "",
+            Type = DataType.Float64,
+            Dimension = 1,
+            Read = true,
+            Write = false,
+            Address = topic
+        };
+
+        bufferNewDataItems.Add(item);
+
+        //callback?.UpdateConfig(new ConfigUpdate() {
+        //    DataItemUpserts = [item]
+        //});
+    }
+
+    private string? GetIdFromTopic(string topic) {
+
+        topic = topic.Trim('/');
+
+        if (!topic.StartsWith(autoCreateDataItems_RootTopic)) {
+            return null;
+        }
+
+        string topicSuffix = topic
+            .Substring(autoCreateDataItems_RootTopic.Length)
+            .Trim('/');
+
+        return topicSuffix.Replace('/', '_').Replace(" ", "_");
+    }
+
+    private void SendAssignedValues(string topic, List<string> ids, Timestamp now, ArraySegment<byte> payloadBytes) {
+
+        (VTQ vtq, string unit)? payload = ParsePayload(topic, now, payloadBytes);
+
+        if (payload == null) {
+            return;
+        }
+
+        var dataItems = new DataItemValue[ids.Count];
+        for (int i = 0; i < ids.Count; i++) {
+            string id = ids[i];
+            dataItems[i] = new DataItemValue(id, payload.Value.vtq);
+        }
+        callback?.Notify_DataItemsChanged(dataItems);
+    }
+
+    private (VTQ vtq, string unit)? ParsePayload(string topic, Timestamp now, ArraySegment<byte> payloadBytes) {
+
+        string unit = "";
+        var vtq = VTQ.Make(DataValue.Empty, now, Quality.Good);
+
+        if (payloadBytes.Array == null || payloadBytes.Count <= 0) {
+            return (vtq, unit);
+        }
+
+        string payload;
+        try {
+            payload = Encoding.UTF8.GetString(payloadBytes);
+        }
+        catch (Exception) {
+            string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Count} bytes.";
+            LogWarn("Value", err);
+            return null;
+        }
+
+        try {
+
+            var options = new JsonNodeOptions { PropertyNameCaseInsensitive = true };
+            JsonNode jsonNode = JsonNode.Parse(payload, options) ?? throw new Exception("Invalid JSON");
+
+            if (jsonNode is JsonObject obj) {
+
+                VTQ? vtqFromObj = TryParseVTQ(obj, valueProperty, timestampProperty);
+                if (vtqFromObj.HasValue) {
+                    vtq = vtqFromObj.Value;
+                    if (overrideTimestamp) {
+                        vtq = vtq.WithTime(now);
+                    }
+
+                    JsonNode? unitNode = obj["unit"];
+                    if (unitNode is JsonValue jv && jv.TryGetValue(out string? str)) {
+                        unit = str;
+                    }
+                }
+                else {
+                    vtq.V = DataValue.FromJSON(payload);
+                }
+            }
+            else {
+                vtq.V = DataValue.FromJSON(payload);
+            }
+        }
+        catch (Exception) {
+            vtq.V = DataValue.FromString(payload);
+        }
+
+        return (vtq, unit);
+    }
+
+    public static VTQ? TryParseVTQ(JsonObject obj, string valueProperty, string timestampProperty) {
+
+        bool hasValueProperty = !string.IsNullOrWhiteSpace(valueProperty);
+        bool hasTimestampProperty = !string.IsNullOrWhiteSpace(timestampProperty);
+        
+        string[] valueKeys     = hasValueProperty     ? [valueProperty]     : ["Value", "V", "Val"];
+        string[] timestampKeys = hasTimestampProperty ? [timestampProperty] : ["Timestamp", "Time", "T"];
 
         JsonNode? FindFirst(string[] keys) {
             foreach (var key in keys) {
@@ -422,6 +522,40 @@ internal static class TaskUtil {
         }
         else {
             promise.SetCanceled();
+        }
+    }
+}
+
+sealed class BufferNewDataItems {
+
+    private readonly Dictionary<string, DataItemUpsert> items = new();
+    private Timestamp timeLastNewAdd = Timestamp.Now;
+    private readonly object lockObj = new();
+
+    public void Add(DataItemUpsert item) {
+        lock (lockObj) {
+            if (!items.ContainsKey(item.ID)) {
+                timeLastNewAdd = Timestamp.Now;
+                Console.Out.WriteLine($"MQTT BufferNewDataItems: Add new DataItem {item.ID}");
+            }
+            items[item.ID] = item;
+        }
+    }
+
+    public DataItemUpsert[] GetAllNewItemsIfLastUpdateOlderThan(Duration duration) {
+        lock (lockObj) {
+            Timestamp now = Timestamp.Now;
+            if (now - timeLastNewAdd < duration) {
+                return [];
+            }
+            var res = items
+                .Values
+                .OrderBy(it => it.ID)
+                .ToArray();
+
+            items.Clear();
+            timeLastNewAdd = now;
+            return res;
         }
     }
 }
