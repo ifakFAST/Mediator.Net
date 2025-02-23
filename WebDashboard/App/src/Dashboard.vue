@@ -198,7 +198,7 @@
 
   function getDatePartOfISOString(s, defaultDate) {
       if (s.length < 10) {
-      return defaultDate;
+        return defaultDate;
       }
       return s.substring(0, 10);
   };
@@ -491,10 +491,10 @@
             const e = this.timeRangeSelected.rangeEnd;
             const dateSeparator = ' \u2013 ';
 
+            const dateStartStr = getDatePartOfISOString(s, '');
+            const dateEndStr = getDatePartOfISOString(e, '');
+
             if (isMidnight(s) && isMidnight(e)) {
-
-              const dateStartStr = getDatePartOfISOString(s, '');
-
               // substract one day from e:
               const dateEnd = new Date(e);
               const dateEndMinus1Day = new Date(dateEnd.getTime() - OneDay);
@@ -510,7 +510,14 @@
             const replaceTWithSpace = (str) => {
               return str.replace('T', ' ');
             }
-            
+
+            if (dateStartStr === dateEndStr) {
+              const timeEndStr = getTimePartOfISOString(e, '');
+              if (timeEndStr !== '') {
+                return replaceTWithSpace(s) + dateSeparator + timeEndStr;
+              }
+            }
+
             return replaceTWithSpace(s) + dateSeparator + replaceTWithSpace(e);
          }
          return "";
