@@ -89,18 +89,10 @@
         {{ connectionText }}
       </v-alert>
 
-      <v-btn text icon v-if="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" >
-        <v-icon>chevron_left</v-icon>
-      </v-btn>
-      
-      <v-btn text icon v-if="showRangeStepButtonRight" @mousedown="onRangeStep(+1)">
-        <v-icon>chevron_right</v-icon>
-      </v-btn>
-
       <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showTimeEdit">
          <template v-slot:activator="{ on }">
           <div v-on="on">
-            <v-btn text color="primary" style="margin-left: 0px; margin-right: 20px;" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
+            <v-btn text color="primary" class="pl-1 pr-1" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
           </div>
          </template>
          <v-list>
@@ -128,6 +120,14 @@
          </v-list>
       </v-menu>
 
+      <v-btn text icon v-show="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" >
+        <v-icon>chevron_left</v-icon>
+      </v-btn>
+      
+      <v-btn text icon v-show="showRangeStepButtonRight" @mousedown="onRangeStep(+1)">
+        <v-icon>chevron_right</v-icon>
+      </v-btn>
+
       <v-dialog v-model="showCustomTimeRangeSelector" max-width="670px" @keydown="editKeydown">
          <v-card>
             <v-card-text>
@@ -153,7 +153,7 @@
 
       <v-tooltip bottom>
         <template v-slot:activator="{ on, attrs }">
-          <v-chip class="ma-1" outlined @click.stop="logout" v-bind="attrs" v-on="on">        
+          <v-chip class="ma-1 ml-4" outlined @click.stop="logout" v-bind="attrs" v-on="on">        
             <v-icon left>mdi-account-outline</v-icon>
             {{ user }}
           </v-chip>
@@ -519,7 +519,7 @@
         return this.showTime;
       },
       showRangeStepButtonRight() {
-        return this.showTime && this.timeRangeSelected.type === 'Range';
+        return this.showTime;
       },
       isValidTimeRange() {
         const s = this.customRangeStartDate + 'T' + this.customRangeStartTime;
