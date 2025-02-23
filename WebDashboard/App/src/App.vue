@@ -45,7 +45,14 @@ export default {
       this.sessionID = event.session;
       this.user = event.user;
       this.model = event.model;
-      this.canUpdateViews = event.canUpdateViews;
+      this.canUpdateViews = event.canUpdateViews;      
+      if (event.initialTimeRange) {
+        this.timeRange.type = event.initialTimeRange.Type;
+        this.timeRange.lastCount = event.initialTimeRange.LastCount;
+        this.timeRange.lastUnit = event.initialTimeRange.LastUnit;
+        this.timeRange.rangeStart = event.initialTimeRange.RangeStart;
+        this.timeRange.rangeEnd = event.initialTimeRange.RangeEnd;
+      }     
       this.openWebSocket(event.user, event.pass)
       const viewIdx = this.model.views.findIndex((v) => v.viewID === event.viewID)
       if (viewIdx >= 0) {

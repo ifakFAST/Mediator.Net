@@ -70,7 +70,8 @@ export default {
             user: context.loginUser,
             pass: context.loginPass,
             viewID: context.viewID,
-            canUpdateViews: response.data.canUpdateViews
+            canUpdateViews: response.data.canUpdateViews,
+            initialTimeRange: response.data.initialTimeRange
           });
           context.loginPass = "";
         })

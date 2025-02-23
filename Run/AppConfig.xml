@@ -40,6 +40,7 @@
                 <NamedValue name="listen-port" value="8082"/>
                 <NamedValue name="page-title" value="Dashboard"/>
                 <NamedValue name="login-title" value="Dashboard Login"/>
+                <NamedValue name="initial-time-range" value="Last 6 hours"/>
                 <NamedValue name="header" value="Dashboard"/>
                 <NamedValue name="favicon" value=""/>
             </Config>

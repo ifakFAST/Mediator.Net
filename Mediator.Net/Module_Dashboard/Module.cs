@@ -40,6 +40,8 @@ public class Module : ModelObjectModule<DashboardModel>
     private bool isRunning = false;
     private string configPath = "";
 
+    private TimeRange initialTimeRange = new();
+
     public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
         if (obj is DataValue dv && parent is View view) {
             string type = view.Type;
@@ -73,6 +75,9 @@ public class Module : ModelObjectModule<DashboardModel>
         string host = config.GetString("listen-host");
         int port = config.GetInt("listen-port");
         string certificatePath = config.GetOptionalString("certificate", "");
+
+        string initialTimeRange = config.GetOptionalString("initial-time-range", "Last 6 hours");
+        this.initialTimeRange = TimeRange.Parse(initialTimeRange);
 
         string strViewAssemblies = config.GetString("view-assemblies");
 
@@ -421,6 +426,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 string str = StdJson.ObjectToString(uiModel);
                 result["model"] = new JRaw(str);
                 result["canUpdateViews"] = canUpdateViews;
+                result["initialTimeRange"] = new JRaw(StdJson.ObjectToString(initialTimeRange));
                 return ReqResult.OK(result);
             }
             else if (path.StartsWith(Path_ViewReq)) {

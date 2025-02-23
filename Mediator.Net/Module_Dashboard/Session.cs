@@ -20,7 +20,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private WebSocket? WebSocket { get; set; }
 
         private Connection connection = new ClosedConnection();
-        private readonly Dictionary<string, ViewBase> views = new Dictionary<string, ViewBase>();
+        private readonly Dictionary<string, ViewBase> views = [];
         private string moduleID = "";
 
         private ViewBase? currentView = null;
@@ -28,8 +28,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public Timestamp lastActivity = Timestamp.Now;
 
-        private DashboardModel model = new DashboardModel();
-        private ViewType[] viewTypes = new ViewType[0];
+        private DashboardModel model = new();
+        private ViewType[] viewTypes = [];
 
         private readonly string configPath;
 
