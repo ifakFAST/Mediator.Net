@@ -219,7 +219,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                         VTTQs timeseries = new VTTQs(entries.Length);
                         foreach (var entry in entries) {
                             Timestamp t = entry.Time;
-                            if (t >= tStartEffective && t <= tEndRange && entry.Value.AsDouble().HasValue) {
+                            if (t >= tStartEffective /* && t <= tEndRange */ && entry.Value.AsDouble().HasValue) {
                                 timeseries.Add(VTTQ.Make(entry.Value, t, t, Quality.Good));
                             }
                         }
