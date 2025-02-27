@@ -383,7 +383,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         private static Func<Variable, bool> GetMatchPredicate(DataType type) {
             if (type.IsNumeric() || type == DataType.Bool) {
-                return (v) => v.IsNumeric || v.Type == DataType.Bool;
+                return (v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Timeseries;
             }
             return (v) => v.Type == type;
         }
