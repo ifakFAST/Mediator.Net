@@ -120,13 +120,34 @@
          </v-list>
       </v-menu>
 
-      <v-btn text icon v-show="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" >
+      <v-btn text icon v-show="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" class="mr-n2">
         <v-icon>chevron_left</v-icon>
       </v-btn>
       
-      <v-btn text icon v-show="showRangeStepButtonRight" @mousedown="onRangeStep(+1)">
+      <v-btn text icon v-show="showRangeStepButtonRight" @mousedown="onRangeStep(+1)" class="ml-n2">
         <v-icon>chevron_right</v-icon>
       </v-btn>
+
+      <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showStepSizeMenu">
+        <template v-slot:activator="{ on: menu }">
+          <v-tooltip bottom :open-delay="1000">
+            <template v-slot:activator="{ on: tooltip }">
+              <v-btn text icon v-bind="attrs" v-on="{ ...tooltip, ...menu }">
+                <v-icon>mdi-tune</v-icon>
+              </v-btn>
+            </template>
+            <span>Step size...</span>
+          </v-tooltip>
+        </template>
+        <v-list>
+          <v-list-item @click="autoStepSizeSelected">
+            <v-list-item-title>Auto</v-list-item-title>
+          </v-list-item>
+          <v-list-item v-for="item in predefinedStepSizes" :key="item.title" @click="predefinedStepSizeSelected(item)">
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
 
       <v-dialog v-model="showCustomTimeRangeSelector" max-width="670px" @keydown="editKeydown">
          <v-card>
@@ -151,7 +172,7 @@
          </v-card>
       </v-dialog>
 
-      <v-tooltip bottom>
+      <v-tooltip bottom :open-delay="1000">
         <template v-slot:activator="{ on, attrs }">
           <v-chip class="ma-1 ml-4" outlined @click.stop="logout" v-bind="attrs" v-on="on">        
             <v-icon left>mdi-account-outline</v-icon>
@@ -253,6 +274,7 @@
         miniVariant: false,
         title: 'Dashboard',
         showTimeEdit: false,
+        showStepSizeMenu: false,
         customRangeStartDate: '',
         customRangeStartTime: '00:00',
         customRangeEndDate: '',
@@ -264,6 +286,7 @@
           rangeStart: '',
           rangeEnd: ''
         },
+        diffStepSizeMS: 0, // 0 means automatically calculate based on time range
         predefinedTimeRanges: [
           { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
           { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
@@ -271,6 +294,13 @@
           { title: 'Last 7 days',     count:  7, unit: 'Days'    },
           { title: 'Last 30 days',    count: 30, unit: 'Days'    },
           { title: 'Last 12 months',  count: 12, unit: 'Months'  },
+        ],
+        predefinedStepSizes: [
+          { title: '5 minutes',  count:  5, unit: 'Minutes' },
+          { title: '15 minutes', count: 15, unit: 'Minutes' },
+          { title: '1 hour',     count:  1, unit: 'Hours'   },
+          { title: '1 day',      count:  1, unit: 'Days'    },
+          { title: '7 days',     count:  7, unit: 'Days'    },
         ],
         showCustomTimeRangeSelector: false,
         contextMenuViewEntry: {
@@ -340,6 +370,14 @@
          this.customRangeEndDate = getDatePartOfISOString(this.timeRangeEdit.rangeEnd, tomorrowAsStringWithoutTime);
          this.customRangeEndTime = getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00');
       },
+      predefinedStepSizeSelected(stepSize) {
+         this.showStepSizeMenu = false;
+         this.diffStepSizeMS = millisecondsFromCountAndUnit(stepSize.count, stepSize.unit);
+      },
+      autoStepSizeSelected() {
+         this.showStepSizeMenu = false;
+         this.diffStepSizeMS = 0;
+      },
       editKeydown(e) {
          if (e.keyCode === 27) {
             this.showCustomTimeRangeSelector = false;
@@ -375,7 +413,7 @@
         
         const dateStart = new Date(this.timeRangeEdit.rangeStart); // will interpret as local time
         const dateEnd   = new Date(this.timeRangeEdit.rangeEnd);   // will interpret as local time
-        let diff = dateEnd - dateStart; // milliseconds
+        const diff = this.diffStepSizeMS === 0 ? (dateEnd - dateStart) : this.diffStepSizeMS; // milliseconds
         
         const bothMidnightBeforeShift = isMidnight(this.timeRangeEdit.rangeStart) && isMidnight(this.timeRangeEdit.rangeEnd);
 
