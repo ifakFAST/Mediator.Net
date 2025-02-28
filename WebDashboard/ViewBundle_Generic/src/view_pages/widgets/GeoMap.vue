@@ -171,11 +171,16 @@ export default class GeoMap extends Vue {
 
     control.addTo(this.map)
     
-    for (const mainLayer of config.MainLayers) {
+    await this.loadLayers()
+  }
+
+  async loadLayers(): Promise<void> {
+
+    for (const mainLayer of this.config.MainLayers) {
       await this.loadGeoJson(this.mainLayers[mainLayer.Name], mainLayer.Variable)
     }
 
-    for (const optionalLayer of config.OptionalLayers) {
+    for (const optionalLayer of this.config.OptionalLayers) {
       await this.loadGeoJson(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable)
     }
   }
@@ -272,18 +277,23 @@ export default class GeoMap extends Vue {
           })
         }
       })
+    }
   }
 
+  @Watch('timeRange')
+  watch_timeRange(newVal: object, old: object): void {
+    this.loadLayers()
   }
 
   async loadGeoJson(layer: L.GeoJSON, variable: fast.VariableRef): Promise<void> {
     try {
-      const data: FeatureCollection = await this.backendAsync('GetGeoJson', { variable: variable })
+      const data: FeatureCollection = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })      
       layer.clearLayers()
       layer.addData(data)
     } 
     catch (err) {
-      console.error(err)
+      layer.clearLayers()
+      console.error(err.message)
     }
   }
 

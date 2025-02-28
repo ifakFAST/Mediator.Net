@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
 
@@ -16,6 +17,8 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     public override string DefaultWidth => "100%";
 
     GeoMapConfig configuration => Config;
+
+    private bool showLatest = true;
 
     public override Task OnActivate() {
 
@@ -40,9 +43,26 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return Common.GetVarItemsData(Connection, usedObjects, IsJson);
     }
 
-    public async Task<ReqResult> UiReq_GetGeoJson(VariableRef variable) {
-        VTQ vtq = await Connection.ReadVariable(variable);
-        return ReqResult.OK(vtq.V);
+    public async Task<ReqResult> UiReq_GetGeoJson(VariableRef variable, TimeRange timeRange) {
+        showLatest = timeRange.Type == TimeType.Last;
+        if (timeRange.Type == TimeType.Last) {
+            VTQ vtq = await Connection.ReadVariable(variable);
+            return ReqResult.OK(vtq.V);
+        }
+        else {
+            Timestamp end = timeRange.GetEnd();
+            DataValue? v = await ReadLatestOlderOrEqualT(variable, end);
+            if (v == null) return ReqResult.Bad($"No data found for t = {end}");
+            return ReqResult.OK(v.Value);
+        }
+    }
+
+    async Task<DataValue?> ReadLatestOlderOrEqualT(VariableRef vref, Timestamp t) {
+        Timestamp tMaxLoockback = t - Duration.FromSeconds(59); // TODO: make configurable?
+        VTTQs vttqs = await Connection.HistorianReadRaw(vref, tMaxLoockback, t, 1, BoundingMethod.TakeLastN);
+        if (vttqs.Count == 0) return null;
+        VTTQ vtq = vttqs[0];
+        return vtq.V;
     }
 
     public async Task<ReqResult> UiReq_SaveConfig(GeoMapConfig config) {
@@ -55,6 +75,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     }
 
     public override async Task OnVariableValueChanged(List<VariableValue> variables) {
+        if (!showLatest) return;
         foreach (VariableValue variable in variables) {
             VariableRef var = variable.Variable;
             VTQ vtq = variable.Value;
