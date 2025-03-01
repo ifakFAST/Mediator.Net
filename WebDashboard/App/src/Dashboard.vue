@@ -103,13 +103,15 @@
                <table>
                   <tr>
                      <td>
-                        <v-text-field style="width: 60px; margin-right: 12px;" type="Number" v-model.number="timeRangeEdit.lastCount"></v-text-field>
+                        <v-text-field hide-details style="width: 60px; margin-right: 12px; padding-top: 0px;" type="Number" v-model.number="timeRangeEdit.lastCount"></v-text-field>
                      </td>
                      <td>
-                        <v-select style="width: 110px;" v-model="timeRangeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']"></v-select>
+                        <v-select hide-details style="width: 110px; padding-top: 0px;" v-model="timeRangeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']"></v-select>
                      </td>
                      <td>
-                        <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidTimeLast" text @click="timeRangeApply"><v-icon>check</v-icon></v-btn>
+                        <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidTimeLast" text @click="timeRangeApply">
+                          <v-icon>check</v-icon>
+                        </v-btn>
                      </td>
                   </tr>
                </table>
@@ -146,6 +148,23 @@
           <v-list-item v-for="item in predefinedStepSizes" :key="item.title" @click="predefinedStepSizeSelected(item)" :class="stepSize === millisecondsFromCountAndUnit(item.count, item.unit) ? 'primary--text' : ''">
             <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
+          <v-list-item>
+            <table>
+              <tr>
+                <td>
+                  <v-text-field hide-details style="width: 50px; margin-right: 12px; padding-top: 0px;" type="Number" v-model.number="stepSizeEdit.lastCount"></v-text-field>
+                </td>
+                <td>
+                  <v-select hide-details style="width: 95px; padding-top: 0px;" v-model="stepSizeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days']"></v-select>
+                </td>
+                <td>
+                  <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidStepSizeCount" text @click="stepSizeApply">
+                    <v-icon>check</v-icon>
+                  </v-btn>
+                </td>
+              </tr>
+            </table>
+            </v-list-item>
         </v-list>
       </v-menu>
 
@@ -286,6 +305,10 @@
           rangeStart: '',
           rangeEnd: ''
         },
+        stepSizeEdit: {
+          lastCount: 7,
+          lastUnit: 'Days'
+        },
         predefinedTimeRanges: [
           { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
           { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
@@ -299,7 +322,6 @@
           { title: '15 minutes', count: 15, unit: 'Minutes' },
           { title: '1 hour',     count:  1, unit: 'Hours'   },
           { title: '1 day',      count:  1, unit: 'Days'    },
-          { title: '7 days',     count:  7, unit: 'Days'    },
         ],
         showCustomTimeRangeSelector: false,
         contextMenuViewEntry: {
@@ -368,6 +390,10 @@
          this.customRangeStartTime = getTimePartOfISOString(this.timeRangeEdit.rangeStart, '00:00');
          this.customRangeEndDate = getDatePartOfISOString(this.timeRangeEdit.rangeEnd, tomorrowAsStringWithoutTime);
          this.customRangeEndTime = getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00');
+      },
+      stepSizeApply() {
+         this.showStepSizeMenu = false;
+         globalState.diffStepSizeMS = millisecondsFromCountAndUnit(this.stepSizeEdit.lastCount, this.stepSizeEdit.lastUnit);
       },
       predefinedStepSizeSelected(stepSize) {
          this.showStepSizeMenu = false;
@@ -584,6 +610,10 @@
       },
       isValidTimeLast() {
          const num = this.timeRangeEdit.lastCount;
+         return Number.isInteger(num) && num > 0;
+      },
+      isValidStepSizeCount() {
+         const num = this.stepSizeEdit.lastCount;
          return Number.isInteger(num) && num > 0;
       },
       connectionColor() {
