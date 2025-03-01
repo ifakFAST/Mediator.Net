@@ -140,10 +140,10 @@
           </v-tooltip>
         </template>
         <v-list>
-          <v-list-item @click="autoStepSizeSelected">
+          <v-list-item @click="autoStepSizeSelected" :class="stepSize === 0 ? 'primary--text' : ''">
             <v-list-item-title>Auto</v-list-item-title>
           </v-list-item>
-          <v-list-item v-for="item in predefinedStepSizes" :key="item.title" @click="predefinedStepSizeSelected(item)">
+          <v-list-item v-for="item in predefinedStepSizes" :key="item.title" @click="predefinedStepSizeSelected(item)" :class="stepSize === millisecondsFromCountAndUnit(item.count, item.unit) ? 'primary--text' : ''">
             <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
         </v-list>
@@ -377,6 +377,9 @@
          this.showStepSizeMenu = false;
          globalState.diffStepSizeMS = 0;
       },
+      millisecondsFromCountAndUnit(count, unit) {
+         return millisecondsFromCountAndUnit(count, unit);
+      },
       editKeydown(e) {
          if (e.keyCode === 27) {
             this.showCustomTimeRangeSelector = false;
@@ -558,6 +561,9 @@
             return replaceTWithSpace(s) + dateSeparator + replaceTWithSpace(e);
          }
          return "";
+      },
+      stepSize() {
+        return globalState.diffStepSizeMS;
       },
       showRangeStepButtonLeft() {
         return this.showTime;
