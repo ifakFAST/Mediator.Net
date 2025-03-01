@@ -22,7 +22,7 @@
 
           <v-data-table dense no-data-text="No relevant objects in selected module" :headers="headers" :items="items"
                         :search="search" :custom-filter="customObjectFilter" class="elevation-4 mt-2 mb-1"
-                        show-select single-select :footer-props="footer" item-key="ID" v-model="selected">
+                        show-select single-select :footer-props="footer" item-key="ID" v-model="selected" :options.sync="pagination">
 
               <template #[`item.Type`]="{ item }">
                 {{ getShortTypeName(item.Type) }}
@@ -90,6 +90,10 @@ export default class DlgObjectSelect extends Vue {
   ]
 
   objIdWithVars: string = ''
+  pagination = {
+    page: 1,
+    itemsPerPage: 10
+  }
 
   @Watch('moduleId')
   watch_moduleId(val: string, oldVal: string) {
@@ -154,6 +158,14 @@ export default class DlgObjectSelect extends Vue {
       context.items = response.Items
       context.selected = response.Items.filter((it: Obj) => it.ID === selectID)
       context.objIdWithVars = selectID
+      
+      // After receiving items and selecting the item, find the page that contains it
+      if (selectID && context.items.length > 0) {
+        context.$nextTick(() => {
+          context.navigateToSelectedItem()
+        })
+      }
+      
       if (context.selected.length === 0 && context.allowConfigVariables && selectID !== '') {
         context.$nextTick(() => {
           if (this.$refs.txtObjIdWithVars) {
@@ -169,6 +181,21 @@ export default class DlgObjectSelect extends Vue {
         })
       }
     })
+  }
+
+  // Function to find and navigate to the page containing the selected item
+  navigateToSelectedItem() {
+    if (!this.objectId) return
+    const selectedIndex = this.items.findIndex(item => item.ID === this.objectId)
+    if (selectedIndex === -1) return
+    const itemsPerPage = this.pagination.itemsPerPage
+    if (itemsPerPage === -1) return // All items on one page
+    const targetPage = Math.floor(selectedIndex / itemsPerPage) + 1
+    // Update pagination to show the correct page
+    this.pagination = {
+      ...this.pagination,
+      page: targetPage
+    }
   }
 
   selectObject_OK() {
