@@ -33,7 +33,7 @@
         </v-card-text>
 
         <v-card-actions>
-          <v-text-field ref="txtObjIdWithVars" class="mt-0 pt-0 ml-3" v-if="allowConfigVariables && selected.length === 0" v-model="objIdWithVars" label="Object ID with variables, e.g. IO:Tank_${Tank}" hide-details></v-text-field>
+          <v-text-field ref="txtObjIdWithVars" class="mt-0 pt-0 ml-3" v-if="allowConfigVariables" v-model="objIdWithVars" label="Object ID with variables, e.g. IO:Tank_${Tank}" hide-details></v-text-field>
           <v-spacer></v-spacer>
           <v-btn color="grey darken-1"  text @click.native="close">Cancel</v-btn>
           <v-btn color="primary darken-1" text @click.native="selectObject_OK" :disabled="!isOK">OK</v-btn>
@@ -96,6 +96,18 @@ export default class DlgObjectSelect extends Vue {
     this.currModuleID = val
   }
 
+  @Watch('selected')
+  watch_selected(val: Obj[], oldVal: Obj[]) {
+    if (val.length === 1) {
+      this.objIdWithVars = val[0].ID
+    }
+  }
+
+  @Watch('objIdWithVars')
+  watch_objIdWithVars(val: string, oldVal: string) {
+    this.selected = this.items.filter((it: Obj) => it.ID === val)
+  }
+
   get isOK() {
     return this.selected.length === 1 || 
       (this.allowConfigVariables && this.objIdWithVars !== '' && this.objIdWithVars.trim().includes(':', 1))
@@ -141,8 +153,8 @@ export default class DlgObjectSelect extends Vue {
       const response = JSON.parse(strResponse)
       context.items = response.Items
       context.selected = response.Items.filter((it: Obj) => it.ID === selectID)
+      context.objIdWithVars = selectID
       if (context.selected.length === 0 && context.allowConfigVariables && selectID !== '') {
-        context.objIdWithVars = selectID
         context.$nextTick(() => {
           if (this.$refs.txtObjIdWithVars) {
             (this.$refs.txtObjIdWithVars as HTMLInputElement).focus()
@@ -162,11 +174,7 @@ export default class DlgObjectSelect extends Vue {
   selectObject_OK() {
     this.close()
     const selected: Obj[] = this.selected
-    if (selected.length === 1) {
-      const obj: Obj = selected[0]
-      this.$emit('onselected', obj)
-    }
-    else if (this.allowConfigVariables && this.objIdWithVars !== '') {
+    if (this.allowConfigVariables && this.objIdWithVars !== '') {
       const objIdWithVars = this.objIdWithVars
       const obj: Obj = {
         Type: 'Object',
@@ -175,6 +183,10 @@ export default class DlgObjectSelect extends Vue {
         Variables: ["Value"],
         Members: [],
       }
+      this.$emit('onselected', obj)
+    }
+    else if (selected.length === 1) {
+      const obj: Obj = selected[0]
       this.$emit('onselected', obj)
     }
     this.objIdWithVars = ''
