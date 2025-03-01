@@ -71,7 +71,8 @@ export default {
             pass: context.loginPass,
             viewID: context.viewID,
             canUpdateViews: response.data.canUpdateViews,
-            initialTimeRange: response.data.initialTimeRange
+            initialTimeRange: response.data.initialTimeRange,
+            initialStepSizeMS: response.data.initialStepSizeMS
           });
           context.loginPass = "";
         })

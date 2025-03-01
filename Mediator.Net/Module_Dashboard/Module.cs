@@ -41,6 +41,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private string configPath = "";
 
     private TimeRange initialTimeRange = new();
+    private long initialStepSizeMS = 0; // 0 means auto
 
     public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
         if (obj is DataValue dv && parent is View view) {
@@ -78,6 +79,15 @@ public class Module : ModelObjectModule<DashboardModel>
 
         string initialTimeRange = config.GetOptionalString("initial-time-range", "Last 6 hours");
         this.initialTimeRange = TimeRange.Parse(initialTimeRange);
+
+        string initialStepSize = config.GetOptionalString("initial-step-size", "");
+
+        if (string.IsNullOrWhiteSpace(initialStepSize) || initialStepSize.Equals("auto", StringComparison.InvariantCultureIgnoreCase)) {
+            this.initialStepSizeMS = 0; // auto
+        }
+        else {
+            this.initialStepSizeMS = Duration.Parse(initialStepSize).TotalMilliseconds;
+        }
 
         string strViewAssemblies = config.GetString("view-assemblies");
 
@@ -427,6 +437,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 result["model"] = new JRaw(str);
                 result["canUpdateViews"] = canUpdateViews;
                 result["initialTimeRange"] = new JRaw(StdJson.ObjectToString(initialTimeRange));
+                result["initialStepSizeMS"] = initialStepSizeMS;
                 return ReqResult.OK(result);
             }
             else if (path.StartsWith(Path_ViewReq)) {

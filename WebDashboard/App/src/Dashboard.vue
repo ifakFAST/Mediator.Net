@@ -286,7 +286,6 @@
           rangeStart: '',
           rangeEnd: ''
         },
-        diffStepSizeMS: 0, // 0 means automatically calculate based on time range
         predefinedTimeRanges: [
           { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
           { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
@@ -372,11 +371,11 @@
       },
       predefinedStepSizeSelected(stepSize) {
          this.showStepSizeMenu = false;
-         this.diffStepSizeMS = millisecondsFromCountAndUnit(stepSize.count, stepSize.unit);
+         globalState.diffStepSizeMS = millisecondsFromCountAndUnit(stepSize.count, stepSize.unit);
       },
       autoStepSizeSelected() {
          this.showStepSizeMenu = false;
-         this.diffStepSizeMS = 0;
+         globalState.diffStepSizeMS = 0;
       },
       editKeydown(e) {
          if (e.keyCode === 27) {
@@ -413,8 +412,8 @@
         
         const dateStart = new Date(this.timeRangeEdit.rangeStart); // will interpret as local time
         const dateEnd   = new Date(this.timeRangeEdit.rangeEnd);   // will interpret as local time
-        const diff = this.diffStepSizeMS === 0 ? (dateEnd - dateStart) : this.diffStepSizeMS; // milliseconds
-        
+        const diff = globalState.diffStepSizeMS === 0 ? (dateEnd - dateStart) : globalState.diffStepSizeMS; // milliseconds
+
         const bothMidnightBeforeShift = isMidnight(this.timeRangeEdit.rangeStart) && isMidnight(this.timeRangeEdit.rangeEnd);
 
         if (diff !== diff) { // check for NaN
