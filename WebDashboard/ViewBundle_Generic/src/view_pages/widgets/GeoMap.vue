@@ -95,9 +95,13 @@ export default class GeoMap extends Vue {
     this.clearMap()
 
     const config: GeoMapConfig = this.config
+
+    const centerParts = config.MapConfig.Center.split(',')
+    const lat = parseFloat(centerParts[0])
+    const lng = parseFloat(centerParts[1])
    
     const mapOptions: L.MapOptions = {
-      center: [52.38671, 9.75749],
+      center: [lat, lng],
       zoom: config.MapConfig.ZoomDefault,
       zoomControl: true,
       zoomSnap: 0.5,
@@ -235,8 +239,8 @@ export default class GeoMap extends Vue {
       }
 
       const options: L.PopupOptions = {
-        autoClose: false,
-        closeOnClick: false,
+        autoClose: true,
+        closeOnClick: true,
         //className: 'geo-feature-popup'
       }
 

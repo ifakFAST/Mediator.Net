@@ -119,6 +119,7 @@ public sealed class GeoMapConfig {
 }
 
 public sealed class MapConfig {
+    public string Center { get; set; } = "52.38671, 9.75749";
     public double ZoomDefault { get; set; } = 11.7;
     public string MainGroupLabel { get; set; } = "Main";
     public string OptionalGroupLabel { get; set; } = "Optional";

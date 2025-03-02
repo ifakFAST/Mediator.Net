@@ -10,26 +10,32 @@
           <!-- Map Configuration -->
           <v-subheader>Map Settings</v-subheader>
           <v-row>
-            <v-col cols="3">
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.Center"
+                label="Center"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="2">
               <v-text-field
                 v-model="theConfig.MapConfig.ZoomDefault"
                 label="Default Zoom Level"
                 type="number"
               ></v-text-field>
             </v-col>
-            <v-col cols="3">
+            <v-col cols="2">
               <v-text-field
                 v-model="theConfig.MapConfig.MainGroupLabel"
                 label="Main Group Label"
               ></v-text-field>
             </v-col>
-            <v-col cols="3">
+            <v-col cols="2">
               <v-text-field
                 v-model="theConfig.MapConfig.OptionalGroupLabel"
                 label="Optional Group Label"
               ></v-text-field>
             </v-col>
-            <v-col cols="3">
+            <v-col cols="2">
               <v-text-field
                 v-model="theConfig.MapConfig.MouseOverOpacityDelta"
                 label="MouseOver Opacity Delta"

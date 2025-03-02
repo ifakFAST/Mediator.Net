@@ -9,6 +9,7 @@ export interface GeoMapConfig {
 
 export const DefaultGeoMapConfig: GeoMapConfig = {
   MapConfig: {
+    Center: '52.38671, 9.75749',
     ZoomDefault: 2,
     MainGroupLabel: 'Main',
     OptionalGroupLabel: 'Optional',
@@ -20,6 +21,7 @@ export const DefaultGeoMapConfig: GeoMapConfig = {
 }
 
 export interface MapConfig {
+  Center: string
   ZoomDefault: number
   MainGroupLabel: string
   OptionalGroupLabel: string
