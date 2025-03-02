@@ -82,7 +82,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             Timestamp tStart = timeRange.GetStart();
             Timestamp tEnd = timeRange.GetEnd();
 
-            List<VTTQs> listHistories = await GetVariablesData(ResolveVariables(), tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
+            ResolveVariables();
+            List<VTTQs> listHistories = await GetVariablesData(VariablesUnresolved, tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
            
             IsLoaded = true;
 
@@ -187,7 +188,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             bool SkipEmptyIntervals
         );
 
-        private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRef> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null, AggregationSpec? agg = null) {
+        private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRefUnresolved> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null, AggregationSpec? agg = null) {
 
             VTTQs TransformData(VTTQs data) {
                 if (agg == null) return data;
@@ -200,8 +201,29 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             QualityFilter filter = configuration.PlotConfig.FilterByQuality;
 
-            foreach (var variable in variables) {
+            foreach (var variableUnresoved in variables) {
 
+                ItemConfig itemConfig = configuration.Items.First(it => it.Variable == variableUnresoved);
+                double scaleDivisor = itemConfig.Axis == Axis.Left ? configuration.PlotConfig.LeftAxisScaleDivisor : configuration.PlotConfig.RightAxisScaleDivisor;
+
+                VTTQs Scale(VTTQs vttqs) {
+                    if (scaleDivisor == 1.0) return vttqs;
+                    var res = new VTTQs(vttqs.Count);
+                    foreach (VTTQ vttq in vttqs) {
+                        double? value = vttq.V.AsDouble();
+                        if (value.HasValue) {
+                            DataValue dv = DataValue.FromDouble(value.Value / scaleDivisor);
+                            res.Add(VTTQ.Make(dv, vttq.T, vttq.T_DB, vttq.Q));
+                        }
+                        else {
+                            res.Add(vttq);
+                        }
+                    }
+                    return res;
+                }
+
+                var variable = Context.ResolveVariableRef(variableUnresoved);
+                
                 try {
 
                     DataType variableType = await GetDataTypeOrThrow(variable);
@@ -210,10 +232,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
                         VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, 1, BoundingMethod.TakeLastN, filter);
 
-                        TimeseriesEntry[] entries = Array.Empty<TimeseriesEntry>();
+                        TimeseriesEntry[] entries = [];
 
                         if (data.Count > 0) {
-                            entries = data[0].V.Object<TimeseriesEntry[]>() ?? Array.Empty<TimeseriesEntry>();
+                            entries = data[0].V.Object<TimeseriesEntry[]>() ?? [];
                         }
 
                         VTTQs timeseries = new VTTQs(entries.Length);
@@ -223,13 +245,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                                 timeseries.Add(VTTQ.Make(entry.Value, t, t, Quality.Good));
                             }
                         }
-                        listHistories.Add(timeseries);
+                        listHistories.Add(Scale(timeseries));
                     }
                     else {
 
                         if (maxDataPoints.HasValue) {
                             VTTQs data = await Connection.HistorianReadRaw(variable, tStartEffective, tEndRange, maxDataPoints.Value, BoundingMethod.CompressToN, filter);
-                            listHistories.Add(data);
+                            listHistories.Add(Scale(data));
                         }
                         else { // Get all data in range (no compression)
 
@@ -237,7 +259,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                             VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
 
                             if (data.Count < ChunckSize) {
-                                listHistories.Add(TransformData(data));
+                                listHistories.Add(Scale(TransformData(data)));
                             }
                             else {
                                 var buffer = new VTTQs(data);
@@ -248,13 +270,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                                 }
                                 while (data.Count == ChunckSize);
 
-                                listHistories.Add(TransformData(buffer));
+                                listHistories.Add(Scale(TransformData(buffer)));
                             }
                         }
                     }
                 }
                 catch (Exception) {
-                    listHistories.Add(new VTTQs());
+                    listHistories.Add([]);
                 }
             }
 
@@ -267,6 +289,21 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             bool reloadData = !Arrays.Equals(newVariables, VariablesUnresolved);
 
             VariablesUnresolved = newVariables;
+
+            if (!reloadData && (configuration.PlotConfig.LeftAxisScaleDivisor != 1.0 || configuration.PlotConfig.RightAxisScaleDivisor != 1.0)) {
+                // compare Axis property to see if we need to reload data:
+                if (items.Length != configuration.Items.Length) {
+                    reloadData = true;
+                }
+                else {
+                    for (int i = 0; i < items.Length; ++i) {
+                        if (items[i].Axis != configuration.Items[i].Axis) {
+                            reloadData = true;
+                            break;
+                        }
+                    }
+                }
+            }
 
             configuration.Items = items;
 
@@ -281,9 +318,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
             bool reloadData =
                 configuration.PlotConfig.MaxDataPoints != plot.MaxDataPoints ||
+                configuration.PlotConfig.LeftAxisScaleDivisor != plot.LeftAxisScaleDivisor ||
                 configuration.PlotConfig.FilterByQuality != plot.FilterByQuality ||
                 configuration.PlotConfig.LeftAxisLimitY != plot.LeftAxisLimitY ||
-                configuration.PlotConfig.RightAxisLimitY != plot.RightAxisLimitY;
+                configuration.PlotConfig.RightAxisLimitY != plot.RightAxisLimitY ||
+                configuration.PlotConfig.RightAxisScaleDivisor != plot.RightAxisScaleDivisor;
 
             configuration.PlotConfig = plot;
 
@@ -333,8 +372,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                 spec = new AggregationSpec(aggUI.Agg, resolution, aggUI.SkipEmptyIntervals);
             }
 
-            VariableRef[] resolvedVariables = variables.Select(v => Context.ResolveVariableRef(v)).ToArray();
-            var listHistories = await GetVariablesData(resolvedVariables, tStart, tEnd, agg: spec);
+            var listHistories = await GetVariablesData(variables, tStart, tEnd, agg: spec);
 
             var columns = new List<string> {
                 "Time"
@@ -409,7 +447,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     return;
                 }
 
-                List<VTTQs> listHistories = await GetVariablesData(variables, tStartRange, tEndRange, 5000, tStartEffective);
+                List<VTTQs> listHistories = await GetVariablesData(VariablesUnresolved, tStartRange, tEndRange, 5000, tStartEffective);
 
                 var (windowLeft, windowRight) = GetTimeWindow(LastTimeRange, listHistories);
 
@@ -770,7 +808,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
     public class HistoryPlotConfig
     {
         public PlotConfig PlotConfig { get; set; } = new PlotConfig();
-        public ItemConfig[] Items { get; set; } = new ItemConfig[0];
+        public ItemConfig[] Items { get; set; } = [];
         public DataExport DataExport { get; set; } = new DataExport();
     }
 
@@ -782,9 +820,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
 
         public string LeftAxisName { get; set; } = "";
         public bool LeftAxisStartFromZero { get; set; } = true;
+        public double LeftAxisScaleDivisor { get; set; } = 1.0;
 
         public string RightAxisName { get; set; } = "";
         public bool RightAxisStartFromZero { get; set; } = true;
+        public double RightAxisScaleDivisor { get; set; } = 1.0;
+
         public double? LeftAxisLimitY { get; set; } = null;
 
         public double? RightAxisLimitY { get; set; } = null;

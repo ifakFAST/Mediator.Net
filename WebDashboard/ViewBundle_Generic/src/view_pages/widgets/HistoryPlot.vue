@@ -111,28 +111,34 @@
         <v-card-text>
           <table style="width:100%;">
             <tr>
-              <td><v-text-field v-model="editorPlot.plot.LeftAxisName"  label="Left Axis Caption" ></v-text-field></td>
+              <td><v-text-field hide-details v-model="editorPlot.plot.LeftAxisName"  label="Left Axis Caption" ></v-text-field></td>
             </tr>
             <tr>
-              <td><v-checkbox v-model="editorPlot.plot.LeftAxisStartFromZero" label="Left Y Axis: Start From Zero"></v-checkbox></td>
+              <td><v-text-field hide-details v-model="editorPlot.plot.LeftAxisScaleDivisor"  label="Left Axis Scale Divisor" ></v-text-field></td>
+            </tr>
+            <tr>
+              <td><v-checkbox hide-details v-model="editorPlot.plot.LeftAxisStartFromZero" label="Left Y Axis: Start From Zero"></v-checkbox></td>
             </tr>
             <tr>
               <td><text-field-nullable-number v-model="editorPlot.plot.LeftAxisLimitY" label="Left Y Axis: Limit Y Value" ></text-field-nullable-number></td>
             </tr>
             <tr>
-              <td><v-text-field v-model="editorPlot.plot.RightAxisName" label="Right Axis Caption" ></v-text-field></td>
+              <td><v-text-field hide-details v-model="editorPlot.plot.RightAxisName" label="Right Axis Caption" ></v-text-field></td>
             </tr>
             <tr>
-              <td><v-checkbox v-model="editorPlot.plot.RightAxisStartFromZero" label="Right Y Axis: Start From Zero"></v-checkbox></td>
+              <td><v-text-field hide-details v-model="editorPlot.plot.RightAxisScaleDivisor"  label="Right Axis Scale Divisor" ></v-text-field></td>
+            </tr>
+            <tr>
+              <td><v-checkbox hide-details v-model="editorPlot.plot.RightAxisStartFromZero" label="Right Y Axis: Start From Zero"></v-checkbox></td>
             </tr>
             <tr>
               <td><text-field-nullable-number v-model="editorPlot.plot.RightAxisLimitY" label="Right Y Axis: Limit Y Value" ></text-field-nullable-number></td>
             </tr>
             <tr>
-              <td><v-text-field v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
+              <td><v-text-field hide-details v-model="editorPlot.plot.MaxDataPoints" label="Max DataPoints"    ></v-text-field></td>
             </tr>
             <tr>
-              <td><v-select v-model="editorPlot.plot.FilterByQuality" label="QualityFilter" :items="qualityFilterValues"></v-select></td>
+              <td><v-select hide-details v-model="editorPlot.plot.FilterByQuality" label="QualityFilter" :items="qualityFilterValues"></v-select></td>
             </tr>
           </table>
         </v-card-text>
@@ -268,9 +274,11 @@ interface PlotConfig {
   LeftAxisName: string
   LeftAxisStartFromZero: boolean
   LeftAxisLimitY?: number | null
+  LeftAxisScaleDivisor: number
   RightAxisName: string
   RightAxisStartFromZero: boolean
   RightAxisLimitY?: number | null
+  RightAxisScaleDivisor: number
 }
 
 type QualityFilter = 'ExcludeNone' | 'ExcludeBad' | 'ExcludeNonGood'
@@ -401,9 +409,11 @@ export default class HistoryPlot extends Vue {
       LeftAxisName: '',
       LeftAxisStartFromZero: true,
       LeftAxisLimitY: null,
+      LeftAxisScaleDivisor: 1,
       RightAxisName: '',
       RightAxisStartFromZero: true,
       RightAxisLimitY: null,
+      RightAxisScaleDivisor: 1,
     },
   }
 
@@ -449,10 +459,12 @@ export default class HistoryPlot extends Vue {
       FilterByQuality: 'ExcludeBad',
       LeftAxisName: '',
       LeftAxisLimitY: null,
+      LeftAxisScaleDivisor: 1,
       RightAxisName: '',
       LeftAxisStartFromZero: true,
       RightAxisStartFromZero: true,
       RightAxisLimitY: null,
+      RightAxisScaleDivisor: 1,
     }
   }
 
