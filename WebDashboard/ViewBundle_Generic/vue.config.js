@@ -1,8 +1,21 @@
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const path = require('path');
+
 module.exports = {
   publicPath: '/ViewBundle_Generic/',
   outputDir: '../../Run/DashboardDist/ViewBundle_Generic',
   configureWebpack: {
-    performance: { hints: false }
+    performance: { hints: false },
+    plugins: [
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: path.resolve(__dirname, 'src/assets/images'),
+            to: path.resolve(__dirname, '../../Run/DashboardDist/ViewBundle_Generic/images')
+          }
+        ]
+      })
+    ]
   },
   pages: {
     variables: 'src/view_variables/main.ts',

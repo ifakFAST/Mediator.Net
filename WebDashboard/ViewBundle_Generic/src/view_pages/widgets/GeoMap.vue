@@ -32,6 +32,10 @@ import GeoMapConfigDlg from './GeoMapConfigDlg.vue'
 
 let dgUUID = 0
 
+L.Icon.Default.prototype.options.iconRetinaUrl = 'images/marker-icon-2x.png';
+L.Icon.Default.prototype.options.iconUrl = 'images/marker-icon.png';
+L.Icon.Default.prototype.options.shadowUrl = 'images/marker-shadow.png';
+
 @Component({
   components: {
     GeoMapConfigDlg,
@@ -130,7 +134,8 @@ export default class GeoMap extends Vue {
     for (const mainLayer of config.MainLayers) {
       const layer = L.geoJSON(null, { 
         style: this.getFeatureStyle,
-        onEachFeature: this.onEachFeature 
+        onEachFeature: this.onEachFeature,
+        pointToLayer: this.pointToLayer
       })
       this.mainLayers[mainLayer.Name] = layer
       if (isFirstMainLayer) {
@@ -143,7 +148,8 @@ export default class GeoMap extends Vue {
     for (const optionalLayer of config.OptionalLayers) {
       const layer = L.geoJSON(null, { 
         style: this.getFeatureStyle,
-        onEachFeature: this.onEachFeature 
+        onEachFeature: this.onEachFeature,
+        pointToLayer: this.pointToLayer
       })
       this.optionalLayers[optionalLayer.Name] = layer
       if (optionalLayer.IsSelected) {
@@ -195,6 +201,20 @@ export default class GeoMap extends Vue {
     }
     return {
     }
+  }
+
+  pointToLayer(feature: Feature, latlng: L.LatLng): L.Layer {
+    // return L.circleMarker(latlng, this.getFeatureStyle(feature))
+    return L.marker(latlng);
+    /*
+    return L.marker(latlng, {
+      icon: L.icon({
+        iconUrl: 'important-marker.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41]
+      })
+    })
+      */
   }
 
   onEachFeature(feature: Feature, layer: L.Layer): void {
