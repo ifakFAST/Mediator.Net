@@ -222,9 +222,10 @@ public class Module : ModelObjectModule<DashboardModel>
             Console.Error.WriteLine($"Failed to serve directory for web assets: {exp.Message}");
         }
 
-        app.UseCors(builder => {
-            builder.WithOrigins("http://localhost:8080").AllowAnyMethod().AllowAnyHeader();
-        });
+        app.UseCors(builder => builder
+                .SetIsOriginAllowed(origin => origin.StartsWith("http://localhost:"))
+                .AllowAnyMethod()
+                .AllowAnyHeader());
 
         app.Run((context) => {
             //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
