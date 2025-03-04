@@ -237,6 +237,16 @@ export default class GeoMap extends Vue {
         className: 'geomap-label'
       }
       layer.bindTooltip(text, options)
+      if (label.style && typeof label.style === 'object' && label.style !== null) {
+        layer.on('tooltipopen', (event) => {
+          const tooltipElement = event.tooltip.getElement()
+          if (tooltipElement) {
+            for (const [key, value] of Object.entries(label.style)) {
+              tooltipElement.style[key] = value
+            }
+          }
+        })
+      }
     }
 
     if (feature?.properties?.tooltip) {
