@@ -215,16 +215,30 @@ export default class GeoMap extends Vue {
         iconSize: [width, height],
         iconAnchor: [anchorX, anchorY],
       })
-      const marker = L.marker(latlng, {
+      return L.marker(latlng, {
         icon: theIcon
       })
-      //marker.bindTooltip("42,5 m", {permanent: true, direction: 'right'});
-      return marker
     }
     return L.marker(latlng)
   }
 
   onEachFeature(feature: Feature, layer: L.Layer): void {
+
+    if (feature?.properties?.label) {
+      const label = feature.properties.label
+      const text: string = label.text      
+      const direction = label.direction || 'right'
+      const offsetX = label.offsetX || 0
+      const offsetY = label.offsetY || 0
+      const options: L.TooltipOptions = {
+        permanent: true,
+        direction: direction,
+        offset: [offsetX, offsetY],
+        className: 'geomap-label'
+      }
+      layer.bindTooltip(text, options)
+    }
+
     if (feature?.properties?.tooltip) {
       let tooltip = feature.properties.tooltip
       if (typeof tooltip === 'string') {
@@ -388,5 +402,23 @@ export default class GeoMap extends Vue {
 <style src="../../assets/leaflet.groupedlayercontrol.css"></style>
 
 <style>
-
+.geomap-label {
+	position: absolute;
+	padding: 0px;
+	padding-right: 3px;
+	padding-left: 3px;
+	background-color: #ffffff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	font-weight: bold;
+	color: #222;
+	line-height: 16px;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
 </style>
