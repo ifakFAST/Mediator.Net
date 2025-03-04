@@ -204,17 +204,24 @@ export default class GeoMap extends Vue {
   }
 
   pointToLayer(feature: Feature, latlng: L.LatLng): L.Layer {
-    // return L.circleMarker(latlng, this.getFeatureStyle(feature))
-    return L.marker(latlng);
-    /*
-    return L.marker(latlng, {
-      icon: L.icon({
-        iconUrl: 'important-marker.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41]
+    if (feature?.properties?.markerIcon) {
+      const url = feature.properties.markerIcon.url
+      const width = feature.properties.markerIcon.width
+      const height = feature.properties.markerIcon.height
+      const anchorX = feature.properties.markerIcon.anchorX
+      const anchorY = feature.properties.markerIcon.anchorY
+      const theIcon = L.icon({
+        iconUrl: url,
+        iconSize: [width, height],
+        iconAnchor: [anchorX, anchorY],
       })
-    })
-      */
+      const marker = L.marker(latlng, {
+        icon: theIcon
+      })
+      //marker.bindTooltip("42,5 m", {permanent: true, direction: 'right'});
+      return marker
+    }
+    return L.marker(latlng)
   }
 
   onEachFeature(feature: Feature, layer: L.Layer): void {
