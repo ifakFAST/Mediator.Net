@@ -29,6 +29,7 @@ import type { Feature, FeatureCollection } from 'geojson'
 import { GeoMapConfig } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
 import GeoMapConfigDlg from './GeoMapConfigDlg.vue'
+import * as model from '../model'
 
 let dgUUID = 0
 
@@ -53,6 +54,7 @@ export default class GeoMap extends Vue {
   @Prop({ default() { return {} } }) timeRange: TimeRange
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
+  @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
 
   uid = dgUUID.toString()
   map: L.Map = null
@@ -94,18 +96,29 @@ export default class GeoMap extends Vue {
     }
   }
 
+  @Watch('configVariables.VarValues', { deep: true })
+  watch_configVariablesVarValues(newVal: object, oldVal: object): void {
+    const centerOrig = this.config.MapConfig.Center
+    const resolvedCenter = model.VariableReplacer.replaceVariables(centerOrig, this.configVariables.VarValues)
+    if (resolvedCenter !== centerOrig) {
+      this.map.panTo(this.getResolvedCenter())
+    }
+  }
+
+  getResolvedCenter(): [number, number] {
+    const center = model.VariableReplacer.replaceVariables(this.config.MapConfig.Center, this.configVariables.VarValues)
+    const parts = center.split(',')
+    return [parseFloat(parts[0]), parseFloat(parts[1])]
+  }
+
   async initMap(): Promise<void> {
 
     this.clearMap()
 
     const config: GeoMapConfig = this.config
-
-    const centerParts = config.MapConfig.Center.split(',')
-    const lat = parseFloat(centerParts[0])
-    const lng = parseFloat(centerParts[1])
    
     const mapOptions: L.MapOptions = {
-      center: [lat, lng],
+      center: this.getResolvedCenter(),
       zoom: config.MapConfig.ZoomDefault,
       zoomControl: true,
       zoomSnap: 0.5,

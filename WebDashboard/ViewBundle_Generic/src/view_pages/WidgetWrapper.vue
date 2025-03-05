@@ -53,7 +53,8 @@
     <geo-map v-if="type === 'GeoMap'" 
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
-      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"></geo-map>
+      :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"
+      :configVariables="configVariables"></geo-map>
 
   </v-card>
 
