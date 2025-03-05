@@ -24,6 +24,8 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         public ConfigVariable[] ConfigVariables { get; set; } = [];
 
         public Page[] Pages { get; set; } = [];
+
+        public bool HideHeader { get; set; } = false;
     }
 
     public class ConfigVariable 

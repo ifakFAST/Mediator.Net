@@ -2,7 +2,7 @@
   <v-app>
     <v-main>
 
-      <v-toolbar flat dense color="white" style="margin-top: 0px; margin-bottom: 14px;">
+      <v-toolbar v-if="!hideHeader" flat dense color="white" style="margin-top: 0px; margin-bottom: 14px;">
         <a v-bind:class="classObject(page.ID)"
             v-for="page in pages" :key="page.ID"
             @click="switchPage(page.ID)"> {{ page.Name }} </a>
@@ -77,6 +77,7 @@ import * as utils from '../utils'
 export default class ViewPages extends Vue {
 
   configVariableValues: model.ConfigVariableValues = { VarDefs: [], VarValues: {} }
+  hideHeader = false
   pages: model.Page[] = []
   currentPageID = ''
   widgetTypes: string[] = []
@@ -133,6 +134,7 @@ export default class ViewPages extends Vue {
       const response = JSON.parse(strResponse)
       context.pages = response.configuration.Pages
       context.configVariableValues.VarDefs = response.configuration.ConfigVariables
+      context.hideHeader = response.configuration.HideHeader
       this.initVarValuesFromVarDefs()
       context.widgetTypes = response.widgetTypes
       context.currentPageID = (context.pages.length > 0) ? context.pages[0].ID : ''
