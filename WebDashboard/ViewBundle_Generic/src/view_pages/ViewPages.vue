@@ -2,7 +2,7 @@
   <v-app>
     <v-main>
 
-      <v-toolbar v-if="!hideHeader" flat dense color="white" style="margin-top: 0px; margin-bottom: 14px;">
+      <v-toolbar v-if="!hideHeader" flat dense color="white" style="margin-top: 0px; margin-bottom: 12px;">
         <a v-bind:class="classObject(page.ID)"
             v-for="page in pages" :key="page.ID"
             @click="switchPage(page.ID)"> {{ page.Name }} </a>

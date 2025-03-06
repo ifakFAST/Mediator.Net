@@ -170,30 +170,52 @@ export default class GeoMap extends Vue {
       }
     }
 
-    const MainLabel = config.MapConfig.MainGroupLabel
-    const OptionalLabel = config.MapConfig.OptionalGroupLabel
-
-    const groupedOverlays = {}
-    groupedOverlays[MainLabel] = this.mainLayers
-    groupedOverlays[OptionalLabel] = this.optionalLayers
-
+    const hasSeveralBaseMaps = Object.keys(this.baseMaps).length > 1
     const hasSeveralMainLayers = Object.keys(this.mainLayers).length > 1
-    if (!hasSeveralMainLayers) {
-      delete groupedOverlays[MainLabel]
+    const hasOptionalLayers = Object.keys(this.optionalLayers).length > 0
+
+    // Only add the control if there's something to select
+    if (hasSeveralBaseMaps || hasSeveralMainLayers || hasOptionalLayers) {
+
+      const MainLabel = config.MapConfig.MainGroupLabel
+      const OptionalLabel = config.MapConfig.OptionalGroupLabel
+
+      const groupedOverlays = {}
+      groupedOverlays[MainLabel] = this.mainLayers
+      groupedOverlays[OptionalLabel] = this.optionalLayers
+
+      const hasSeveralMainLayers = Object.keys(this.mainLayers).length > 1
+      if (!hasSeveralMainLayers) {
+        delete groupedOverlays[MainLabel]
+      }
+
+      const options: L.ControlOptions = {
+        exclusiveGroups: hasSeveralMainLayers ? [MainLabel] : [],
+        groupCheckboxes: false
+      }
+
+      const control = L.control.groupedLayers(
+        this.baseMaps, 
+        groupedOverlays, 
+        options)
+
+      control.addTo(this.map)
+      
+      
     }
+    else {
 
-    const options: L.ControlOptions = {
-      exclusiveGroups: hasSeveralMainLayers ? [MainLabel] : [],
-      groupCheckboxes: false
+      if (Object.keys(this.baseMaps).length > 0) {
+        const singleBaseMap = Object.values(this.baseMaps)[0]
+        singleBaseMap.addTo(this.map)
+      }
+
+      if (Object.keys(this.mainLayers).length > 0) {
+        const singleMainLayer = Object.values(this.mainLayers)[0]
+        singleMainLayer.addTo(this.map)
+      }
+
     }
-
-    const control = L.control.groupedLayers(
-      this.baseMaps, 
-      groupedOverlays, 
-      options)
-
-    control.addTo(this.map)
-    
     await this.loadLayers()
   }
 
