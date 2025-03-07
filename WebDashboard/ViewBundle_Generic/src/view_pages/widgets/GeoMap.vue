@@ -23,13 +23,24 @@
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import { TimeRange } from '../../utils'
 
-import L from '../../assets/leaflet.js'
-import '../../assets/leaflet.groupedlayercontrol.js'
-import type { Feature, FeatureCollection } from 'geojson'
+import * as L from 'leaflet'
+import 'leaflet-groupedlayercontrol'
+import type { Feature, GeoJsonObject } from 'geojson'
 import { GeoMapConfig } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
 import GeoMapConfigDlg from './GeoMapConfigDlg.vue'
 import * as model from '../model'
+import parseGeoraster from 'georaster'
+import GeoRasterLayer from 'georaster-layer-for-leaflet'
+
+//import 'leaflet/dist/leaflet.css'
+import '../../assets/leaflet.css'
+import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
+
+interface GeoTiffUrl {
+  type: 'GeoTiffUrl'
+  url: string
+}
 
 let dgUUID = 0
 
@@ -82,7 +93,7 @@ export default class GeoMap extends Vue {
 
   mounted(): void {
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
-    this.initMap()
+    this.initMap()    
   }
 
   beforeDestroy() {
@@ -377,9 +388,18 @@ export default class GeoMap extends Vue {
 
   async loadGeoJson(layer: L.GeoJSON, variable: fast.VariableRef): Promise<void> {
     try {
-      const data: FeatureCollection = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })      
-      layer.clearLayers()
-      layer.addData(data)
+      const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
+      const isGeoJson= data.type !== 'GeoTiffUrl'
+      if (isGeoJson) {
+        console.info('Loading GeoJson')
+        const geoJsonLayer = layer
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(data as GeoJsonObject)
+      }
+      else {
+        console.info('Loading GeoTiff')
+       
+      }
     } 
     catch (err) {
       layer.clearLayers()
@@ -422,7 +442,7 @@ export default class GeoMap extends Vue {
         const obj = this.eventPayload['Object'] as string
         const name = this.eventPayload['Name'] as string
         const valueStr = this.eventPayload['Value'] as string
-        const value: FeatureCollection = JSON.parse(valueStr)
+        const value: GeoJsonObject = JSON.parse(valueStr)
       
         for (const mainLayer of this.config.MainLayers) {
           if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
@@ -442,9 +462,6 @@ export default class GeoMap extends Vue {
 }
 
 </script>
-
-<style src="../../assets/leaflet.css"></style>
-<style src="../../assets/leaflet.groupedlayercontrol.css"></style>
 
 <style>
 .geomap-label {
