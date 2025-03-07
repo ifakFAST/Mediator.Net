@@ -36,13 +36,17 @@ export interface TileLayer {
   MaxZoom: number
 }
 
+export type GeoLayerType = 'GeoJson' | 'GeoTiff'
+
 export interface MainLayer {
   Name: string
+  Type: GeoLayerType
   Variable: fast.VariableRef
 }
 
 export interface OptionalLayer {
   Name: string
+  Type: GeoLayerType
   Variable: fast.VariableRef
   IsSelected: boolean
 }

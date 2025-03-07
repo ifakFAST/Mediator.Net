@@ -136,11 +136,18 @@ public sealed class TileLayer {
 
 public sealed class MainLayer {
     public string Name { get; set; } = "";
+    public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRef Variable { get; set; }
 }
 
 public sealed class OptionalLayer {
     public string Name { get; set; } = "";
+    public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRef Variable { get; set; }
     public bool IsSelected { get; set; } = true;
+}
+
+public enum LayerType {
+    GeoJson,
+    GeoTiff
 }
