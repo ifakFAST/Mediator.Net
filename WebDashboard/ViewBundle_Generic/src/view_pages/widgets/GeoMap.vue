@@ -200,7 +200,7 @@ export default class GeoMap extends Vue {
         delete groupedOverlays[MainLabel]
       }
 
-      const options: L.ControlOptions = {
+      const options: L.GroupedLayersOptions = {
         exclusiveGroups: hasSeveralMainLayers ? [MainLabel] : [],
         groupCheckboxes: false
       }
