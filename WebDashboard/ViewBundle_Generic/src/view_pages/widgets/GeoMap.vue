@@ -26,12 +26,12 @@ import { TimeRange } from '../../utils'
 import * as L from 'leaflet'
 import 'leaflet-groupedlayercontrol'
 import type { Feature, GeoJsonObject } from 'geojson'
-import { GeoMapConfig } from './GeoMapConfigTypes'
+import { GeoMapConfig, NamedLayerType, GeoLayerType } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
 import GeoMapConfigDlg from './GeoMapConfigDlg.vue'
 import * as model from '../model'
-import parseGeoraster from 'georaster'
-import GeoRasterLayer from 'georaster-layer-for-leaflet'
+import parseGeoraster from 'georaster';
+import GeoRasterLayer, { GeoRasterLayerOptions } from 'georaster-layer-for-leaflet'
 
 //import 'leaflet/dist/leaflet.css'
 import '../../assets/leaflet.css'
@@ -40,6 +40,22 @@ import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
 interface GeoTiffUrl {
   type: 'GeoTiffUrl'
   url: string
+}
+
+type GeoLayer = L.GeoJSON | L.GridLayer
+
+const pixelValuesToColorFn = (values: number[]): string | null => {
+  const value = values[0];
+  if (value >= 0.000000001 && value < 0.1) return "transparent";
+  if (value >= 0.1 && value < 0.25) return "#caf0f6";
+  if (value >= 0.25 && value < 0.5) return "#a9c9dd";
+  if (value >= 0.5 && value < 0.75) return "#88a2c4";
+  if (value >= 0.75 && value < 1) return "#677bab";
+  if (value >= 1 && value < 1.5) return "#475492";
+  if (value >= 1.5 && value < 2) return "#262d79";
+  if (value >= 2 && value < 10) return "#03045e";
+  if (value >= 10 && value < 1000) return "#000000";
+  return null;
 }
 
 let dgUUID = 0
@@ -73,8 +89,8 @@ export default class GeoMap extends Vue {
   showConfigDialog = false
 
   baseMaps: {[key: string]: L.Layer} = { }
-  mainLayers: {[key: string]: L.GeoJSON} = { }
-  optionalLayers: {[key: string]: L.GeoJSON} = { }
+  mainLayers: {[key: string]: GeoLayer} = { }
+  optionalLayers: {[key: string]: GeoLayer} = { }
   
   contextMenu = {
     show: false,
@@ -123,7 +139,7 @@ export default class GeoMap extends Vue {
   }
 
   async initMap(): Promise<void> {
-
+    
     this.clearMap()
 
     const config: GeoMapConfig = this.config
@@ -156,11 +172,7 @@ export default class GeoMap extends Vue {
     this.mainLayers = { }
     let isFirstMainLayer = true
     for (const mainLayer of config.MainLayers) {
-      const layer = L.geoJSON(null, { 
-        style: this.getFeatureStyle,
-        onEachFeature: this.onEachFeature,
-        pointToLayer: this.pointToLayer
-      })
+      const layer = this.createLayer(mainLayer)
       this.mainLayers[mainLayer.Name] = layer
       if (isFirstMainLayer) {
         layer.addTo(this.map)
@@ -170,11 +182,7 @@ export default class GeoMap extends Vue {
 
     this.optionalLayers = { }
     for (const optionalLayer of config.OptionalLayers) {
-      const layer = L.geoJSON(null, { 
-        style: this.getFeatureStyle,
-        onEachFeature: this.onEachFeature,
-        pointToLayer: this.pointToLayer
-      })
+      const layer = this.createLayer(optionalLayer)
       this.optionalLayers[optionalLayer.Name] = layer
       if (optionalLayer.IsSelected) {
         layer.addTo(this.map)
@@ -230,14 +238,35 @@ export default class GeoMap extends Vue {
     await this.loadLayers()
   }
 
+  createLayer(layer: NamedLayerType): GeoLayer {
+    if (layer.Type === 'GeoJson' || layer.Type === undefined) {
+      return L.geoJSON(null, { 
+        style: this.getFeatureStyle,
+        onEachFeature: this.onEachFeature,
+        pointToLayer: this.pointToLayer
+      })
+    }
+    else if (layer.Type === 'GeoTiff') {
+      // create a temporary geoJSON layer: it will be replaced by a GeoRasterLayer once the GeoTiff is loaded
+      return L.geoJSON(null, { 
+        style: this.getFeatureStyle,
+        onEachFeature: this.onEachFeature,
+        pointToLayer: this.pointToLayer
+      })
+    }
+    else {
+      throw new Error('Unknown layer type: ' + layer.Type)
+    }
+  }
+
   async loadLayers(): Promise<void> {
 
     for (const mainLayer of this.config.MainLayers) {
-      await this.loadGeoJson(this.mainLayers[mainLayer.Name], mainLayer.Variable)
+      this.mainLayers[mainLayer.Name] = await this.loadLayerContent(this.mainLayers[mainLayer.Name], mainLayer.Variable, mainLayer.Type)     
     }
 
     for (const optionalLayer of this.config.OptionalLayers) {
-      await this.loadGeoJson(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable)
+      this.optionalLayers[optionalLayer.Name] = await this.loadLayerContent(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable, optionalLayer.Type)
     }
   }
 
@@ -386,24 +415,65 @@ export default class GeoMap extends Vue {
     this.loadLayers()
   }
 
-  async loadGeoJson(layer: L.GeoJSON, variable: fast.VariableRef): Promise<void> {
+  async loadLayerContent(layer: GeoLayer, variable: fast.VariableRef, layerType: GeoLayerType): Promise<GeoLayer> {
     try {
       const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
-      const isGeoJson= data.type !== 'GeoTiffUrl'
+      const isGeoJson = data.type !== 'GeoTiffUrl'
+      if (isGeoJson && layerType !== 'GeoJson') {
+        throw new Error('Expected GeoJson, got GeoTiff')
+      }
       if (isGeoJson) {
-        console.info('Loading GeoJson')
-        const geoJsonLayer = layer
+        console.info('Loading GeoJson...')
+        const geoJsonLayer = layer as L.GeoJSON
         geoJsonLayer.clearLayers()
         geoJsonLayer.addData(data as GeoJsonObject)
+        return geoJsonLayer
       }
       else {
-        console.info('Loading GeoTiff')
-       
+        console.info('Loading GeoTiff...')
+        const geoTiffUrl = data as GeoTiffUrl
+        const response = await fetch(geoTiffUrl.url)
+        const arrayBuffer = await response.arrayBuffer()
+        const georaster = await parseGeoraster(arrayBuffer)
+        const options: GeoRasterLayerOptions = {
+          georaster: georaster,
+          opacity: 0.9,
+          pixelValuesToColorFn: pixelValuesToColorFn
+        }
+        const newLayer = new GeoRasterLayer(options)
+        this.replaceLayer(layer, newLayer)
+        return newLayer
       }
     } 
     catch (err) {
-      layer.clearLayers()
       console.error(err.message)
+      if (layerType === 'GeoJson') {
+        (layer as L.GeoJSON).clearLayers()
+      }
+      return layer
+    }
+  }
+
+  replaceLayer(oldLayer: L.Layer, newLayer: L.Layer) {
+    
+    let layerIndex = -1
+    const layers = []
+  
+    this.map.eachLayer(function(layer) {
+      layers.push(layer)
+      if (layer === oldLayer) {
+        layerIndex = layers.length - 1
+      }
+    })
+
+    for (let i = layerIndex; i < layers.length; i++) {
+      this.map.removeLayer(layers[i])
+    }
+
+    layers[layerIndex] = newLayer 
+
+    for (let i = layerIndex; i < layers.length; i++) {
+      layers[i].addTo(this.map)
     }
   }
 
@@ -437,7 +507,7 @@ export default class GeoMap extends Vue {
   @Watch('eventPayload')
   watch_event(newVal: object, old: object): void {
 
-    if (this.eventName === 'OnVarChanged') {
+    if (this.eventName === 'OnGeoJsonVarChanged') {
 
         const obj = this.eventPayload['Object'] as string
         const name = this.eventPayload['Name'] as string
@@ -446,15 +516,17 @@ export default class GeoMap extends Vue {
       
         for (const mainLayer of this.config.MainLayers) {
           if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
-            this.mainLayers[mainLayer.Name].clearLayers()
-            this.mainLayers[mainLayer.Name].addData(value)
+            const layer = this.mainLayers[mainLayer.Name] as L.GeoJSON
+            layer.clearLayers()
+            layer.addData(value)
           }
         }
 
         for (const optionalLayer of this.config.OptionalLayers) {
           if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
-            this.optionalLayers[optionalLayer.Name].clearLayers()
-            this.optionalLayers[optionalLayer.Name].addData(value)
+            const layer = this.optionalLayers[optionalLayer.Name] as L.GeoJSON
+            layer.clearLayers()
+            layer.addData(value)
           }
         }
     }

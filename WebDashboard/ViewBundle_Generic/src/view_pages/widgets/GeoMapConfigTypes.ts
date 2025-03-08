@@ -38,13 +38,18 @@ export interface TileLayer {
 
 export type GeoLayerType = 'GeoJson' | 'GeoTiff'
 
-export interface MainLayer {
+export interface NamedLayerType {
+  Name: string
+  Type: GeoLayerType
+}
+
+export interface MainLayer extends NamedLayerType {
   Name: string
   Type: GeoLayerType
   Variable: fast.VariableRef
 }
 
-export interface OptionalLayer {
+export interface OptionalLayer extends NamedLayerType{
   Name: string
   Type: GeoLayerType
   Variable: fast.VariableRef
