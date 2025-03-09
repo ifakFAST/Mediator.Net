@@ -41,6 +41,7 @@ export type GeoLayerType = 'GeoJson' | 'GeoTiff'
 export interface NamedLayerType {
   Name: string
   Type: GeoLayerType
+  Variable: fast.VariableRef
 }
 
 export interface MainLayer extends NamedLayerType {

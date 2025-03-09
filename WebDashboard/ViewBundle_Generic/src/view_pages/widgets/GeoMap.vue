@@ -131,6 +131,19 @@ export default class GeoMap extends Vue {
     if (resolvedCenter !== centerOrig) {
       this.map.panTo(this.getResolvedCenter())
     }
+    const mainLayersWithVariables = this.config.MainLayers.filter((mainLayer) => {
+      const objOrig = mainLayer.Variable.Object
+      const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
+      return objResolved !== objOrig
+    })
+    const optionalLayersWithVariables = this.config.OptionalLayers.filter((optionalLayer) => {
+      const objOrig = optionalLayer.Variable.Object
+      const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
+      return objResolved !== objOrig
+    })
+    if (mainLayersWithVariables.length > 0 || optionalLayersWithVariables.length > 0) {
+      this.loadLayers(mainLayersWithVariables.concat(optionalLayersWithVariables))
+    }
   }
 
   getResolvedCenter(): [number, number] {
@@ -256,14 +269,14 @@ export default class GeoMap extends Vue {
     }
   }
 
-  async loadLayers(): Promise<void> {
+  async loadLayers(layers?: NamedLayerType[]): Promise<void> {
 
-    for (const mainLayer of this.config.MainLayers) {
-      await this.loadLayerContent(this.mainLayers[mainLayer.Name], mainLayer.Variable, mainLayer.Type)     
+    if (!layers) {
+      layers = this.config.MainLayers.concat(this.config.OptionalLayers)
     }
 
-    for (const optionalLayer of this.config.OptionalLayers) {
-      await this.loadLayerContent(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable, optionalLayer.Type)
+    for (const layer of layers) {
+      await this.loadLayerContent(layer)
     }
   }
 
@@ -412,7 +425,12 @@ export default class GeoMap extends Vue {
     this.loadLayers()
   }
 
-  async loadLayerContent(layer: GeoLayer, variable: fast.VariableRef, layerType: GeoLayerType): Promise<void> {
+  async loadLayerContent(layerObj: NamedLayerType): Promise<void> {
+
+    const layer: GeoLayer = this.mainLayers[layerObj.Name] || this.optionalLayers[layerObj.Name]
+    const variable: fast.VariableRef = layerObj.Variable
+    const layerType: GeoLayerType = layerObj.Type
+
     try {
       const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
       const isGeoJson = data.type !== 'GeoTiffUrl'
@@ -485,42 +503,18 @@ export default class GeoMap extends Vue {
 
   @Watch('eventPayload')
   watch_event(newVal: object, old: object): void {
-    if (this.eventName === 'OnGeoJsonVarChanged') {
+    if (this.eventName === 'OnVarChanged') {
         const obj = this.eventPayload['Object'] as string
         const name = this.eventPayload['Name'] as string
-        const valueStr = this.eventPayload['Value'] as string
-        
-        try {
-          const value: GeoJsonObject = JSON.parse(valueStr)
-          
-          // Update main layers if needed
-          for (const mainLayer of this.config.MainLayers) {
-            if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
-              const layerName = mainLayer.Name
-              const layerType = mainLayer.Type              
-              if (layerType === 'GeoJson') {
-                const layer = this.mainLayers[layerName] as L.GeoJSON
-                layer.clearLayers()
-                layer.addData(value)
-              }
-            }
+        for (const mainLayer of this.config.MainLayers) {
+          if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
+            this.loadLayerContent(mainLayer)
           }
-
-          // Update optional layers if needed
-          for (const optionalLayer of this.config.OptionalLayers) {
-            if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
-              const layerName = optionalLayer.Name
-              const layerType = optionalLayer.Type              
-              if (layerType === 'GeoJson') {
-                const layer = this.optionalLayers[layerName] as L.GeoJSON
-                layer.clearLayers()
-                layer.addData(value)
-              }
-            }
+        }
+        for (const optionalLayer of this.config.OptionalLayers) {
+          if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
+            this.loadLayerContent(optionalLayer)
           }
-        } 
-        catch (error) {
-          console.error('Error parsing GeoJSON:', error)
         }
     }
   }

@@ -185,6 +185,7 @@
     <dlg-object-select v-model="selectObject.show"
       :object-id="selectObject.selectedObjectID"
       :module-id="selectObject.selectedModuleID"
+      :allow-config-variables="true"
       :modules="selectObject.modules"
       :type="'JSON'"
       @onselected="selectObject_OK">
@@ -303,6 +304,7 @@ export default class GeoMapConfigDlg extends Vue {
   AddMainLayer(): void {
     const item: config.MainLayer = {
       Name: '',
+      Type: 'GeoJson',
       Variable: { Object: '', Name: '' }
     }
     this.theConfig.MainLayers.push(item)
@@ -311,6 +313,7 @@ export default class GeoMapConfigDlg extends Vue {
   AddOptionalLayer(): void {
     const item: config.OptionalLayer = {
       Name: '',
+      Type: 'GeoJson',
       Variable: { Object: '', Name: '' },
       IsSelected: true
     }

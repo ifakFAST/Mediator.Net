@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Ifak.Fast.Mediator.Util;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
@@ -12,6 +13,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
 [IdentifyWidget(id: "GeoMap")]
 public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
 {
+    private VariableRefUnresolved[] variablesUnresolved = [];
+    private VariableRef[] variables = [];
+
     public override string DefaultHeight => "300px";
 
     public override string DefaultWidth => "100%";
@@ -20,16 +24,33 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
 
     private bool showLatest = true;
 
+    public VariableRefUnresolved[] VariablesUnresolved {
+        get => variablesUnresolved;
+        set {
+            variablesUnresolved = value;
+            ResolveVariables();
+        }
+    }
+
+    VariableRef[] ResolveVariables() {
+        VariableRef[] newVariables = variablesUnresolved.Select(v => Context.ResolveVariableRef(v)).ToArray();
+        if (!Arrays.Equals(newVariables, variables)) {
+            variables = newVariables;
+            Task ignored = Connection.EnableVariableValueChangedEvents(SubOptions.OnlyValueAndQualityChanges(sendValueWithEvent: false), newVariables);
+        }
+        return variables;
+    }
+
     public override Task OnActivate() {
-
-        VariableRef[] variables = configuration.MainLayers.Select(layer => layer.Variable)
-           .Concat(configuration.OptionalLayers.Select(layer => layer.Variable))
-           .Distinct()
-           .ToArray();
-
-        Task ignored1 = Connection.EnableVariableValueChangedEvents(SubOptions.OnlyValueAndQualityChanges(sendValueWithEvent: true), variables);
-
+        VariablesUnresolved = GetVariablesUnresolved();
         return Task.FromResult(true);
+    }
+
+    private VariableRefUnresolved[] GetVariablesUnresolved() {
+        return configuration.MainLayers.Select(layer => layer.Variable)
+            .Concat(configuration.OptionalLayers.Select(layer => layer.Variable))
+            .Distinct()
+            .ToArray();
     }
 
     public Task<ReqResult> UiReq_GetItemsData() {
@@ -43,15 +64,17 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return Common.GetVarItemsData(Connection, usedObjects, IsJson);
     }
 
-    public async Task<ReqResult> UiReq_GetGeoJson(VariableRef variable, TimeRange timeRange) {
+    public async Task<ReqResult> UiReq_GetGeoJson(VariableRefUnresolved variable, TimeRange timeRange) {
         showLatest = timeRange.Type == TimeType.Last;
+        var variableResolved = Context.ResolveVariableRef(variable);
         if (timeRange.Type == TimeType.Last) {
-            VTQ vtq = await Connection.ReadVariable(variable);
+            
+            VTQ vtq = await Connection.ReadVariable(variableResolved);
             return ReqResult.OK(vtq.V);
         }
         else {
             Timestamp end = timeRange.GetEnd();
-            DataValue? v = await ReadLatestOlderOrEqualT(variable, end);
+            DataValue? v = await ReadLatestOlderOrEqualT(variableResolved, end);
             if (v == null) return ReqResult.Bad($"No data found for t = {end}");
             return ReqResult.OK(v.Value);
         }
@@ -66,6 +89,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     }
 
     public async Task<ReqResult> UiReq_SaveConfig(GeoMapConfig config) {
+        VariablesUnresolved = GetVariablesUnresolved();
         configuration.MapConfig = config.MapConfig;
         configuration.TileLayers = config.TileLayers;
         configuration.MainLayers = config.MainLayers;
@@ -82,7 +106,6 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
             var payload = new {
                 Object = var.Object,
                 Name = var.Name,
-                Value = vtq.V.JSON,
             };
             await Context.SendEventToUI("OnVarChanged", payload);
         }
@@ -137,13 +160,13 @@ public sealed class TileLayer {
 public sealed class MainLayer {
     public string Name { get; set; } = "";
     public LayerType Type { get; set; } = LayerType.GeoJson;
-    public VariableRef Variable { get; set; }
+    public VariableRefUnresolved Variable { get; set; }
 }
 
 public sealed class OptionalLayer {
     public string Name { get; set; } = "";
     public LayerType Type { get; set; } = LayerType.GeoJson;
-    public VariableRef Variable { get; set; }
+    public VariableRefUnresolved Variable { get; set; }
     public bool IsSelected { get; set; } = true;
 }
 
