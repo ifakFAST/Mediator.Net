@@ -94,6 +94,7 @@ export default class GeoMap extends Vue {
   optionalLayers: {[key: string]: GeoLayer} = { }
     
   variableResolvedMap: Record<string, string> = { }
+  activeRequests: Map<string, AbortController> = new Map()
 
   contextMenu = {
     show: false,
@@ -116,6 +117,12 @@ export default class GeoMap extends Vue {
   }
 
   beforeDestroy() {
+
+    this.activeRequests.forEach((controller) => {
+      controller.abort()
+    })    
+    this.activeRequests.clear()
+
     this.clearMap()
   }
 
@@ -431,12 +438,29 @@ export default class GeoMap extends Vue {
 
   async loadLayerContent(layerObj: NamedLayerType): Promise<void> {
 
-    const layer: GeoLayer = this.mainLayers[layerObj.Name] || this.optionalLayers[layerObj.Name]
+    const layerName = layerObj.Name
+    const layer: GeoLayer = this.mainLayers[layerName] || this.optionalLayers[layerName]
     const variable: fast.VariableRef = layerObj.Variable
     const layerType: GeoLayerType = layerObj.Type
 
+    // Cancel any existing request for this layer
+    if (this.activeRequests.has(layerName)) {
+      this.activeRequests.get(layerName).abort()
+      this.activeRequests.delete(layerName)
+    }
+
+    // Create a new abort controller for this request
+    const abortController = new AbortController()
+    this.activeRequests.set(layerName, abortController)
+
     try {
+
       const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
+      if (abortController.signal.aborted) {
+        console.info(`Request for layer ${layerName} was aborted after backendAsync`)
+        return
+      }
+
       const isGeoJson = data.type !== 'GeoTiffUrl'
       if (isGeoJson) { // Handle GeoJSON data
 
@@ -444,11 +468,10 @@ export default class GeoMap extends Vue {
           throw new Error('Expected GeoTiff data, but got GeoJson data')
         }
 
-        console.info('Loading GeoJson...')
         const geoJsonLayer = layer as L.GeoJSON
         geoJsonLayer.clearLayers()
         geoJsonLayer.addData(data as GeoJsonObject)
-        
+
       }
       else { // Handle GeoTiff data
 
@@ -456,25 +479,57 @@ export default class GeoMap extends Vue {
           throw new Error('Expected GeoJson data, but got GeoTiff data')
         }
         
-        console.info('Loading GeoTiff...')
         const geoTiffUrl = data as GeoTiffUrl
-        const response = await fetch(geoTiffUrl.url)
+        
+        const response = await fetch(geoTiffUrl.url, { 
+          signal: abortController.signal 
+        })
+        if (abortController.signal.aborted) {
+          console.info(`Request for layer ${layerName} was aborted after fetch`)
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to load GeoTiff data: ${response.statusText}`)
+        }
+
         const arrayBuffer = await response.arrayBuffer()
+        if (abortController.signal.aborted) {
+          console.info(`Request for layer ${layerName} was aborted after arrayBuffer`)
+          return
+        }
+
         const georaster = await parseGeoraster(arrayBuffer)
+        if (abortController.signal.aborted) {
+          console.info(`Request for layer ${layerName} was aborted after parsing GeoTiff`)
+          return
+        }
+
         const options: GeoRasterLayerOptions = {
           georaster: georaster,
           opacity: 0.9,
           pixelValuesToColorFn: pixelValuesToColorFn
         }
         const newRasterLayer = new GeoRasterLayer(options)        
-        const layerGroup = layer as L.LayerGroup
-        layerGroup.clearLayers()
-        layerGroup.addLayer(newRasterLayer)
+        layer.clearLayers()
+        layer.addLayer(newRasterLayer)
       }
     } 
     catch (err) {
-      console.error(err.message)
-      layer.clearLayers()
+      // Don't show errors for aborted requests
+      if (err.name === 'AbortError') {
+        console.info(`Request for layer ${layerName} was aborted via exception`)
+      }
+      else {
+        console.error(err.message)
+        layer.clearLayers()
+      }
+    }
+    finally {
+      // Clean up if this is still the active request
+      if (this.activeRequests.get(layerName) === abortController) {
+        this.activeRequests.delete(layerName)
+      }
     }
   }
 
