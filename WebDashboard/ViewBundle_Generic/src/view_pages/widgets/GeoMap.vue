@@ -42,7 +42,8 @@ interface GeoTiffUrl {
   url: string
 }
 
-type GeoLayer = L.GeoJSON | L.GridLayer
+// Extend types to handle both direct layers and layer groups
+type GeoLayer = L.GeoJSON | L.LayerGroup
 
 const pixelValuesToColorFn = (values: number[]): string | null => {
   const value = values[0];
@@ -91,7 +92,7 @@ export default class GeoMap extends Vue {
   baseMaps: {[key: string]: L.Layer} = { }
   mainLayers: {[key: string]: GeoLayer} = { }
   optionalLayers: {[key: string]: GeoLayer} = { }
-  
+    
   contextMenu = {
     show: false,
     clientX: 0,
@@ -247,12 +248,8 @@ export default class GeoMap extends Vue {
       })
     }
     else if (layer.Type === 'GeoTiff') {
-      // create a temporary geoJSON layer: it will be replaced by a GeoRasterLayer once the GeoTiff is loaded
-      return L.geoJSON(null, { 
-        style: this.getFeatureStyle,
-        onEachFeature: this.onEachFeature,
-        pointToLayer: this.pointToLayer
-      })
+      // Create a LayerGroup to hold the GeoTiff layer
+      return L.layerGroup()
     }
     else {
       throw new Error('Unknown layer type: ' + layer.Type)
@@ -262,11 +259,11 @@ export default class GeoMap extends Vue {
   async loadLayers(): Promise<void> {
 
     for (const mainLayer of this.config.MainLayers) {
-      this.mainLayers[mainLayer.Name] = await this.loadLayerContent(this.mainLayers[mainLayer.Name], mainLayer.Variable, mainLayer.Type)     
+      await this.loadLayerContent(this.mainLayers[mainLayer.Name], mainLayer.Variable, mainLayer.Type)     
     }
 
     for (const optionalLayer of this.config.OptionalLayers) {
-      this.optionalLayers[optionalLayer.Name] = await this.loadLayerContent(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable, optionalLayer.Type)
+      await this.loadLayerContent(this.optionalLayers[optionalLayer.Name], optionalLayer.Variable, optionalLayer.Type)
     }
   }
 
@@ -415,21 +412,28 @@ export default class GeoMap extends Vue {
     this.loadLayers()
   }
 
-  async loadLayerContent(layer: GeoLayer, variable: fast.VariableRef, layerType: GeoLayerType): Promise<GeoLayer> {
+  async loadLayerContent(layer: GeoLayer, variable: fast.VariableRef, layerType: GeoLayerType): Promise<void> {
     try {
       const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
       const isGeoJson = data.type !== 'GeoTiffUrl'
-      if (isGeoJson && layerType !== 'GeoJson') {
-        throw new Error('Expected GeoJson, got GeoTiff')
-      }
-      if (isGeoJson) {
+      if (isGeoJson) { // Handle GeoJSON data
+
+        if (layerType === 'GeoTiff') {
+          throw new Error('Expected GeoTiff data, but got GeoJson data')
+        }
+
         console.info('Loading GeoJson...')
         const geoJsonLayer = layer as L.GeoJSON
         geoJsonLayer.clearLayers()
         geoJsonLayer.addData(data as GeoJsonObject)
-        return geoJsonLayer
+        
       }
-      else {
+      else { // Handle GeoTiff data
+
+        if (layerType === 'GeoJson') {
+          throw new Error('Expected GeoJson data, but got GeoTiff data')
+        }
+        
         console.info('Loading GeoTiff...')
         const geoTiffUrl = data as GeoTiffUrl
         const response = await fetch(geoTiffUrl.url)
@@ -440,40 +444,15 @@ export default class GeoMap extends Vue {
           opacity: 0.9,
           pixelValuesToColorFn: pixelValuesToColorFn
         }
-        const newLayer = new GeoRasterLayer(options)
-        this.replaceLayer(layer, newLayer)
-        return newLayer
+        const newRasterLayer = new GeoRasterLayer(options)        
+        const layerGroup = layer as L.LayerGroup
+        layerGroup.clearLayers()
+        layerGroup.addLayer(newRasterLayer)
       }
     } 
     catch (err) {
       console.error(err.message)
-      if (layerType === 'GeoJson') {
-        (layer as L.GeoJSON).clearLayers()
-      }
-      return layer
-    }
-  }
-
-  replaceLayer(oldLayer: L.Layer, newLayer: L.Layer) {
-    
-    let layerIndex = -1
-    const layers = []
-  
-    this.map.eachLayer(function(layer) {
-      layers.push(layer)
-      if (layer === oldLayer) {
-        layerIndex = layers.length - 1
-      }
-    })
-
-    for (let i = layerIndex; i < layers.length; i++) {
-      this.map.removeLayer(layers[i])
-    }
-
-    layers[layerIndex] = newLayer 
-
-    for (let i = layerIndex; i < layers.length; i++) {
-      layers[i].addTo(this.map)
+      layer.clearLayers()
     }
   }
 
@@ -506,28 +485,42 @@ export default class GeoMap extends Vue {
 
   @Watch('eventPayload')
   watch_event(newVal: object, old: object): void {
-
     if (this.eventName === 'OnGeoJsonVarChanged') {
-
         const obj = this.eventPayload['Object'] as string
         const name = this.eventPayload['Name'] as string
         const valueStr = this.eventPayload['Value'] as string
-        const value: GeoJsonObject = JSON.parse(valueStr)
-      
-        for (const mainLayer of this.config.MainLayers) {
-          if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
-            const layer = this.mainLayers[mainLayer.Name] as L.GeoJSON
-            layer.clearLayers()
-            layer.addData(value)
+        
+        try {
+          const value: GeoJsonObject = JSON.parse(valueStr)
+          
+          // Update main layers if needed
+          for (const mainLayer of this.config.MainLayers) {
+            if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
+              const layerName = mainLayer.Name
+              const layerType = mainLayer.Type              
+              if (layerType === 'GeoJson') {
+                const layer = this.mainLayers[layerName] as L.GeoJSON
+                layer.clearLayers()
+                layer.addData(value)
+              }
+            }
           }
-        }
 
-        for (const optionalLayer of this.config.OptionalLayers) {
-          if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
-            const layer = this.optionalLayers[optionalLayer.Name] as L.GeoJSON
-            layer.clearLayers()
-            layer.addData(value)
+          // Update optional layers if needed
+          for (const optionalLayer of this.config.OptionalLayers) {
+            if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
+              const layerName = optionalLayer.Name
+              const layerType = optionalLayer.Type              
+              if (layerType === 'GeoJson') {
+                const layer = this.optionalLayers[layerName] as L.GeoJSON
+                layer.clearLayers()
+                layer.addData(value)
+              }
+            }
           }
+        } 
+        catch (error) {
+          console.error('Error parsing GeoJSON:', error)
         }
     }
   }
