@@ -93,6 +93,8 @@ export default class GeoMap extends Vue {
   mainLayers: {[key: string]: GeoLayer} = { }
   optionalLayers: {[key: string]: GeoLayer} = { }
     
+  variableResolvedMap: Record<string, string> = { }
+
   contextMenu = {
     show: false,
     clientX: 0,
@@ -134,12 +136,12 @@ export default class GeoMap extends Vue {
     const mainLayersWithVariables = this.config.MainLayers.filter((mainLayer) => {
       const objOrig = mainLayer.Variable.Object
       const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
-      return objResolved !== objOrig
+      return objResolved !== objOrig && this.variableResolvedMap[objOrig] !== objResolved
     })
     const optionalLayersWithVariables = this.config.OptionalLayers.filter((optionalLayer) => {
       const objOrig = optionalLayer.Variable.Object
       const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
-      return objResolved !== objOrig
+      return objResolved !== objOrig && this.variableResolvedMap[objOrig] !== objResolved
     })
     if (mainLayersWithVariables.length > 0 || optionalLayersWithVariables.length > 0) {
       this.loadLayers(mainLayersWithVariables.concat(optionalLayersWithVariables))
@@ -277,6 +279,8 @@ export default class GeoMap extends Vue {
 
     for (const layer of layers) {
       await this.loadLayerContent(layer)
+      const strObject = layer.Variable.Object
+      this.variableResolvedMap[strObject] = model.VariableReplacer.replaceVariables(strObject, this.configVariables.VarValues)
     }
   }
 
