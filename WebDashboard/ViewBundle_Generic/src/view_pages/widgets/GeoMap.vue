@@ -40,6 +40,7 @@ import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
 interface GeoTiffUrl {
   type: 'GeoTiffUrl'
   url: string
+  setVariableValues?: Record<string, string>
 }
 
 // Extend types to handle both direct layers and layer groups
@@ -524,6 +525,13 @@ export default class GeoMap extends Vue {
 
         const totalEndTime = performance.now()
         console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
+
+        if (geoTiffUrl.setVariableValues) {
+          const para = {
+            variableValues: geoTiffUrl.setVariableValues
+          }
+          window.parent['dashboardApp'].sendViewRequest('SetConfigVariableValues', para, (strResponse) => {})
+        }
       }
     } 
     catch (err) {
