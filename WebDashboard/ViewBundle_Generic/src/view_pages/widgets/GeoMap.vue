@@ -443,6 +443,8 @@ export default class GeoMap extends Vue {
     const variable: fast.VariableRef = layerObj.Variable
     const layerType: GeoLayerType = layerObj.Type
 
+    const totalStartTime = performance.now()
+
     // Cancel any existing request for this layer
     if (this.activeRequests.has(layerName)) {
       this.activeRequests.get(layerName).abort()
@@ -480,10 +482,12 @@ export default class GeoMap extends Vue {
         }
         
         const geoTiffUrl = data as GeoTiffUrl
-        
+
+        const fetchStartTime = performance.now()
         const response = await fetch(geoTiffUrl.url, { 
           signal: abortController.signal 
         })
+        const fetchEndTime = performance.now()
         if (abortController.signal.aborted) {
           console.info(`Request for layer ${layerName} was aborted after fetch`)
           return
@@ -492,19 +496,23 @@ export default class GeoMap extends Vue {
         if (!response.ok) {
           throw new Error(`Failed to load GeoTiff data: ${response.statusText}`)
         }
-
+        
+        const arrayBufferStartTime = performance.now()
         const arrayBuffer = await response.arrayBuffer()
+        const arrayBufferEndTime = performance.now()
         if (abortController.signal.aborted) {
           console.info(`Request for layer ${layerName} was aborted after arrayBuffer`)
           return
         }
-
+        
+        const parseStartTime = performance.now()
         const georaster = await parseGeoraster(arrayBuffer)
+        const parseEndTime = performance.now()
         if (abortController.signal.aborted) {
           console.info(`Request for layer ${layerName} was aborted after parsing GeoTiff`)
           return
         }
-
+        
         const options: GeoRasterLayerOptions = {
           georaster: georaster,
           opacity: 0.9,
@@ -513,6 +521,9 @@ export default class GeoMap extends Vue {
         const newRasterLayer = new GeoRasterLayer(options)        
         layer.clearLayers()
         layer.addLayer(newRasterLayer)
+
+        const totalEndTime = performance.now()
+        console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
       }
     } 
     catch (err) {
