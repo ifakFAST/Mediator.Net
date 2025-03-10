@@ -114,7 +114,7 @@ export default class GeoMap extends Vue {
 
   mounted(): void {
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
-    this.initMap()    
+    this.initMap()
   }
 
   beforeDestroy() {
@@ -517,6 +517,7 @@ export default class GeoMap extends Vue {
         const options: GeoRasterLayerOptions = {
           georaster: georaster,
           opacity: 0.9,
+          zIndex: 3,
           pixelValuesToColorFn: pixelValuesToColorFn
         }
         const newRasterLayer = new GeoRasterLayer(options)        
