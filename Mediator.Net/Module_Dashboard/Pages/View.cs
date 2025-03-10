@@ -121,16 +121,18 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task<ReqResult> UiReq_SetConfigVariableValues(Dictionary<string, string> variableValues) {
 
-            foreach (var variableID in variableValues.Keys) {
-                if (!configVarValues.ContainsKey(variableID)) {
-                    throw new Exception($"Unknown config variable id: {variableID}");
-                }
-            }
+            //foreach (var variableID in variableValues.Keys) {
+            //    if (!configVarValues.ContainsKey(variableID)) {
+            //        Console.Out.WriteLine($"Unknown config variable id: {variableID}");
+            //    }
+            //}
 
             foreach (var pair in variableValues) {
                 string variableID = pair.Key;
                 string value = pair.Value;
-                configVarValues[variableID] = value;
+                if (configVarValues.ContainsKey(variableID)) {
+                    configVarValues[variableID] = value;
+                }
             }
 
             var payload = new {
