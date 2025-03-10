@@ -126,6 +126,7 @@ export default class GeoMap extends Vue {
     
   variableResolvedMap: Record<string, string> = { }
   activeRequests: Map<string, AbortController> = new Map()
+  layersWithSetVariableValues: Map<string, Record<string, string>> = new Map()
 
   contextMenu = {
     show: false,
@@ -162,6 +163,7 @@ export default class GeoMap extends Vue {
       this.map.remove()
       this.map = null
     }
+    this.layersWithSetVariableValues.clear()
   }
 
   @Watch('configVariables.VarValues', { deep: true })
@@ -207,6 +209,7 @@ export default class GeoMap extends Vue {
     }
 
     this.map = L.map(this.theID, mapOptions)
+    this.map.on('layeradd', (e) => this.onLayerAdd(e))
 
     this.baseMaps = { }
     let isFirstBaseLayer = true
@@ -306,6 +309,32 @@ export default class GeoMap extends Vue {
     }
     else {
       throw new Error('Unknown layer type: ' + layer.Type)
+    }
+  }
+
+  onLayerAdd(e: L.LayerEvent): void {
+    // Find the layer name
+    let layerName: string | null = null
+    for (const [name, layer] of Object.entries(this.mainLayers)) {
+      if (layer === e.layer) {
+        layerName = name
+        break
+      }
+    }
+    if (!layerName) {
+      for (const [name, layer] of Object.entries(this.optionalLayers)) {
+        if (layer === e.layer) {
+          layerName = name
+          break
+        }
+      }
+    }
+
+    if (layerName) {
+      if (this.layersWithSetVariableValues.has(layerName)) {
+        const variableValues = this.layersWithSetVariableValues.get(layerName)
+        this.setConfigVariableValues(variableValues)
+      }
     }
   }
 
@@ -558,10 +587,10 @@ export default class GeoMap extends Vue {
         console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
 
         if (geoTiffUrl.setVariableValues) {
-          const para = {
-            variableValues: geoTiffUrl.setVariableValues
+          this.layersWithSetVariableValues.set(layerName, geoTiffUrl.setVariableValues)
+          if (this.map.hasLayer(layer)) {
+            this.setConfigVariableValues(geoTiffUrl.setVariableValues)
           }
-          window.parent['dashboardApp'].sendViewRequest('SetConfigVariableValues', para, (strResponse) => {})
         }
       }
     } 
@@ -581,6 +610,13 @@ export default class GeoMap extends Vue {
         this.activeRequests.delete(layerName)
       }
     }
+  }
+
+  setConfigVariableValues(variableValues: Record<string, string>): void {
+    const para = {
+      variableValues: variableValues
+    }
+    window.parent['dashboardApp'].sendViewRequest('SetConfigVariableValues', para, (strResponse) => {})
   }
 
   get theHeight(): string {
