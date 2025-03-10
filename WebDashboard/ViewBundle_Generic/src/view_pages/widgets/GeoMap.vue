@@ -37,10 +37,18 @@ import GeoRasterLayer, { GeoRasterLayerOptions } from 'georaster-layer-for-leafl
 import '../../assets/leaflet.css'
 import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
 
+interface ColorMapRange {
+  start: number // inclusive
+  end: number   // exclusive
+  color: string
+}
+
 interface GeoTiffUrl {
   type: 'GeoTiffUrl'
   url: string
   setVariableValues?: Record<string, string>
+  opacity?: number
+  colorMap?: ColorMapRange[]
 }
 
 // Extend types to handle both direct layers and layer groups
@@ -58,6 +66,28 @@ const pixelValuesToColorFn = (values: number[]): string | null => {
   if (value >= 2 && value < 10) return "#03045e";
   if (value >= 10 && value < 1000) return "#000000";
   return null;
+}
+
+interface ColorMapRange {
+  start: number; // inclusive
+  end: number;   // exclusive
+  color: string;
+}
+
+function createColorMapper(colorRanges: ColorMapRange[]): (values: number[]) => string | null {  
+  const ranges = [...colorRanges]  
+  return (values: number[]): string | null => {
+    if (!values || values.length === 0) {
+      return null
+    }
+    const value = values[0]
+    for (const range of ranges) {
+      if (value >= range.start && value < range.end) {
+        return range.color
+      }
+    }
+    return null
+  }
 }
 
 let dgUUID = 0
@@ -516,9 +546,9 @@ export default class GeoMap extends Vue {
         
         const options: GeoRasterLayerOptions = {
           georaster: georaster,
-          opacity: 0.9,
+          opacity: geoTiffUrl.opacity || 0.9,
           zIndex: 3,
-          pixelValuesToColorFn: pixelValuesToColorFn
+          pixelValuesToColorFn: geoTiffUrl.colorMap ? createColorMapper(geoTiffUrl.colorMap) : undefined
         }
         const newRasterLayer = new GeoRasterLayer(options)        
         layer.clearLayers()
