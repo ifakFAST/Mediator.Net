@@ -185,6 +185,28 @@ namespace Ifak.Fast.Mediator.Dashboard
             return newView.ID;
         }
 
+        public async Task OnToggleHeader(string viewID) {
+
+            lastActivity = Timestamp.Now;
+
+            View? view = model.Views.Find(v => v.ID == viewID);
+            if (view == null)
+                throw new Exception("Unknown viewID " + viewID);
+
+            var config = view.Config.Object<Pages.Config>() ?? new Pages.Config();
+            config.HideHeader = !config.HideHeader;
+
+            DataValue newConfig = DataValue.FromObject(config, indented: true);
+            DataValue dv = DataValue.FromObject(newConfig);  // need to wrap for transport because Config is itself a DataValue
+            MemberValue member = MemberValue.Make(moduleID, view.ID, nameof(View.Config), dv);
+            await connection.UpdateConfig(member);
+
+            ViewBase theView = views[viewID];
+            await theView.OnDeactivate();
+            theView.Config = newConfig;
+            await theView.OnActivate();
+        }
+
         public async Task OnDeleteView(string viewID) {
 
             lastActivity = Timestamp.Now;

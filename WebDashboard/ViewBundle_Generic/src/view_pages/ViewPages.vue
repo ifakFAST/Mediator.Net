@@ -44,6 +44,8 @@
 
       </v-toolbar>
 
+      <div v-if="hideHeader" class="mb-2"></div>
+
       <page :page="currentPage" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged" 
             :widgetTypes="widgetTypes" :editPage="editPage" @configchanged="onPageConfigChanged"
             :configVariables="configVariableValues"></page>

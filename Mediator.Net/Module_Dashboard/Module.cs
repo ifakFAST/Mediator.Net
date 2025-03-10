@@ -390,6 +390,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private const string Path_ActivateView = "/activateView";
     private const string Path_DuplicateView = "/duplicateView";
     private const string Path_DuplicateConvertView = "/duplicateConvertView";
+    private const string Path_ToggleHeader = "/toggleHeader";
     private const string Path_RenameView = "/renameView";
     private const string Path_MoveView = "/moveView";
     private const string Path_DeleteView = "/deleteView";
@@ -480,6 +481,13 @@ public class Module : ModelObjectModule<DashboardModel>
                     newViewID,
                     model = MakeUiModel(model, viewTypes, session.UserRole)
                 });
+            }
+            else if (path == Path_ToggleHeader) {
+
+                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                await session.OnToggleHeader(viewID);
+
+                return ReqResult.OK();
             }
             else if (path == Path_RenameView) {
 

@@ -21,11 +21,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return parentView.Name + ".Config";
         }
 
+        public bool HideHeader { get; set; } = false;
+
         public ConfigVariable[] ConfigVariables { get; set; } = [];
 
         public Page[] Pages { get; set; } = [];
-
-        public bool HideHeader { get; set; } = false;
     }
 
     public class ConfigVariable 

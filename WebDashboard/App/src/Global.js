@@ -4,6 +4,7 @@ export default {
   canUpdateViews: false,
   model: {},
   currentViewID: "",
+  currentViewID_Counter: 0,
   canUpdateViewConfig: false,
   intervalVar: 0,
   eventSocket: {},

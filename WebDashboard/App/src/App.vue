@@ -10,6 +10,7 @@
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
                         @duplicateView="duplicateView" @renameView="renameView"
                         @duplicateConvertView="duplicateConvertView"
+                        @toggleHeader="toggleHeader"
                         @moveUp="moveUpView" @moveDown="moveDownView" @delete="deleteView"></dashboard>
         </template>
     </div>
@@ -36,7 +37,7 @@ export default {
     currentViewSource() {
       if (this.currentViewID === "") return "";
       const view = this.model.views.find(v => v.viewID === this.currentViewID);
-      return view.viewURL + "?viewID=" + this.currentViewID;
+      return view.viewURL + "?viewID=" + this.currentViewID + "&counter=" + this.currentViewID_Counter;
     }
   },
   methods: {
@@ -244,6 +245,16 @@ export default {
           const viewID = response.data.newViewID;
           context.model = response.data.model;
           context.doActivateView(viewID);
+        })
+        .catch(this.handleError);
+    },
+    toggleHeader(viewID) {
+      const context = this;
+      axios
+        .post("/toggleHeader?" + this.sessionID + "_" + viewID)
+        .then(function(response) {
+          console.info('toggleHeader success.');
+          context.currentViewID_Counter = context.currentViewID_Counter + 1;
         })
         .catch(this.handleError);
     },

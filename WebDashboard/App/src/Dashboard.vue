@@ -29,6 +29,9 @@
           <v-list-item @click="onContextViewDuplicateConvert" v-if="contextMenuViewEntry.view.viewType === 'HistoryPlots'">
             <v-list-item-title>Duplicate Convert</v-list-item-title>
           </v-list-item>
+          <v-list-item @click="onContextViewToggleHeader" v-if="contextMenuViewEntry.view.viewType === 'Pages'">
+            <v-list-item-title>Toggle Header</v-list-item-title>
+          </v-list-item>
           <v-list-item v-if="contextMenuViewEntry.canMoveUp" @click="onContextViewMoveUp">
             <v-list-item-title>Move Up</v-list-item-title>
           </v-list-item>
@@ -514,8 +517,11 @@
       onContextViewDuplicate() {
         this.$emit('duplicateView', this.contextMenuViewEntry.view.viewID)
       },
-       onContextViewDuplicateConvert() {
+      onContextViewDuplicateConvert() {
         this.$emit('duplicateConvertView', this.contextMenuViewEntry.view.viewID)
+      },
+      onContextViewToggleHeader() {
+        this.$emit('toggleHeader', this.contextMenuViewEntry.view.viewID)
       },
       onContextViewMoveUp() {
         this.$emit('moveUp', this.contextMenuViewEntry.view.viewID)
