@@ -90,6 +90,7 @@
             <template v-slot:default>
               <thead>
                 <tr>
+                  <th>Type</th>
                   <th>Name</th>
                   <th>Object</th>
                   <th>Variable</th>
@@ -98,6 +99,14 @@
               </thead>
               <tbody>
                 <tr v-for="(layer, idx) in theConfig.MainLayers" :key="'main-' + idx">
+                  <td>
+                    <v-select
+                      style="max-width: 14ch;"
+                      v-model="layer.Type"
+                      :items="['GeoJson', 'GeoTiff']"
+                      dense
+                    ></v-select>
+                  </td>
                   <td><v-text-field v-model="layer.Name" dense></v-text-field></td>
                   <td>
                     <div class="d-flex align-center">
@@ -108,11 +117,11 @@
                     </div>
                   </td>
                   <td>
-                    <v-select
+                    <v-combobox
                       v-model="layer.Variable.Name"
-                      :items="ObjectID2Variables(layer.Variable?.Object)"
+                      :items="ObjectID2Variables(layer.Variable)"
                       dense
-                    ></v-select>
+                    ></v-combobox>
                   </td>
                   <td>
                     <v-btn icon small @click="DeleteItemFromArray(theConfig.MainLayers, idx)">
@@ -135,6 +144,7 @@
             <template v-slot:default>
               <thead>
                 <tr>
+                  <th>Type</th>
                   <th>Name</th>
                   <th>Object</th>
                   <th>Variable</th>
@@ -144,6 +154,14 @@
               </thead>
               <tbody>
                 <tr v-for="(layer, idx) in theConfig.OptionalLayers" :key="'opt-' + idx">
+                  <td>
+                    <v-select
+                      style="max-width: 14ch;"
+                      v-model="layer.Type"
+                      :items="['GeoJson', 'GeoTiff']"
+                      dense
+                    ></v-select>
+                  </td>
                   <td><v-text-field v-model="layer.Name" dense></v-text-field></td>
                   <td>
                     <div class="d-flex align-center">
@@ -154,11 +172,11 @@
                     </div>
                   </td>
                   <td>
-                    <v-select
+                    <v-combobox
                       v-model="layer.Variable.Name"
-                      :items="ObjectID2Variables(layer.Variable?.Object)"
+                      :items="ObjectID2Variables(layer.Variable)"
                       dense
-                    ></v-select>
+                    ></v-combobox>
                   </td>
                   <td>
                     <v-switch v-model="layer.IsSelected" dense></v-switch>
@@ -196,7 +214,7 @@
 <script lang="ts">
 
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
+import { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 //import TextFieldNullableNumber from '../../../components/TextFieldNullableNumber.vue'
 import * as config from './GeoMapConfigTypes'
@@ -272,9 +290,13 @@ export default class GeoMapConfigDlg extends Vue {
     this.currentVariable = item.Variable
   }
 
-  ObjectID2Variables(id: string): string[] {
-    const obj: ObjInfo = this.objectMap[id]
-    if (obj === undefined) { return [] }
+  ObjectID2Variables(id?: Variable): string[] {
+    if (id === undefined) { return [] }
+    const obj: ObjInfo = this.objectMap[id.Object]
+    if (obj === undefined) { 
+      if (id.Name === '') { return [] }
+      return [id.Name]
+    }
     return obj.Variables
   }
 
