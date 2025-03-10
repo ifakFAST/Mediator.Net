@@ -2,6 +2,7 @@ import * as fast from '../../fast_types'
 
 export interface GeoMapConfig {
   MapConfig: MapConfig
+  LegendConfig: LegendConfig
   TileLayers: TileLayer[]
   MainLayers: MainLayer[]         // Exclusive group (radio buttons or dropdown list)
   OptionalLayers: OptionalLayer[] // Non-exclusive group (checkboxes)
@@ -15,6 +16,11 @@ export const DefaultGeoMapConfig: GeoMapConfig = {
     OptionalGroupLabel: 'Optional',
     MouseOverOpacityDelta: 0.3
   },
+  LegendConfig: {
+    File: '',
+    Width: 50,
+    Height: 100
+  },
   TileLayers: [],
   MainLayers: [],
   OptionalLayers: []
@@ -26,6 +32,12 @@ export interface MapConfig {
   MainGroupLabel: string
   OptionalGroupLabel: string
   MouseOverOpacityDelta: number
+}
+
+export interface LegendConfig {
+  File: string
+  Width: number
+  Height: number
 }
 
 export interface TileLayer {

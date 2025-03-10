@@ -91,6 +91,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     public async Task<ReqResult> UiReq_SaveConfig(GeoMapConfig config) {
         VariablesUnresolved = GetVariablesUnresolved();
         configuration.MapConfig = config.MapConfig;
+        configuration.LegendConfig = config.LegendConfig;
         configuration.TileLayers = config.TileLayers;
         configuration.MainLayers = config.MainLayers;
         configuration.OptionalLayers = config.OptionalLayers;
@@ -114,6 +115,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
 
 public sealed class GeoMapConfig {
     public MapConfig   MapConfig { get; set; } = new MapConfig();
+    public LegendConfig LegendConfig { get; set; } = new LegendConfig();
     public TileLayer[] TileLayers { get; set; } = [
             new TileLayer() {
                 Name = "OpenStreetMap",
@@ -147,6 +149,12 @@ public sealed class MapConfig {
     public string MainGroupLabel { get; set; } = "Main";
     public string OptionalGroupLabel { get; set; } = "Optional";
     public double MouseOverOpacityDelta { get; set; } = 0.3;
+}
+
+public sealed class LegendConfig {
+    public string File { get; set; } = ""; // Must be located in WebAssets folder
+    public double Width { get; set; } = 50;
+    public double Height { get; set; } = 100;
 }
 
 public sealed class TileLayer {

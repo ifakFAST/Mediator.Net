@@ -43,6 +43,33 @@
             </v-col>
           </v-row>
 
+          <v-subheader>Legend Settings</v-subheader>
+          <v-row>
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.LegendConfig.File"
+                label="File in WebAssets folder"
+                hide-details
+              ></v-text-field>
+            </v-col>
+            <v-col cols="2">
+              <v-text-field
+                v-model="theConfig.LegendConfig.Width"
+                label="Width"
+                type="number"
+                hide-details
+              ></v-text-field>
+            </v-col>
+            <v-col cols="2">
+              <v-text-field
+                v-model="theConfig.LegendConfig.Height"
+                label="Height"
+                type="number"
+                hide-details
+              ></v-text-field>
+            </v-col>
+          </v-row>
+
           <!-- Tile Layers -->
           <v-subheader class="mt-4">
             Tile Layers

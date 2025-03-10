@@ -54,20 +54,6 @@ interface GeoTiffUrl {
 // Extend types to handle both direct layers and layer groups
 type GeoLayer = L.GeoJSON | L.LayerGroup
 
-const pixelValuesToColorFn = (values: number[]): string | null => {
-  const value = values[0];
-  if (value >= 0.000000001 && value < 0.1) return "transparent";
-  if (value >= 0.1 && value < 0.25) return "#caf0f6";
-  if (value >= 0.25 && value < 0.5) return "#a9c9dd";
-  if (value >= 0.5 && value < 0.75) return "#88a2c4";
-  if (value >= 0.75 && value < 1) return "#677bab";
-  if (value >= 1 && value < 1.5) return "#475492";
-  if (value >= 1.5 && value < 2) return "#262d79";
-  if (value >= 2 && value < 10) return "#03045e";
-  if (value >= 10 && value < 1000) return "#000000";
-  return null;
-}
-
 interface ColorMapRange {
   start: number; // inclusive
   end: number;   // exclusive
@@ -293,6 +279,29 @@ export default class GeoMap extends Vue {
 
     }
     await this.loadLayers()
+
+    if (this.config.LegendConfig && this.config.LegendConfig.File && this.config.LegendConfig.File.length > 0) {
+
+      const url = '/WebAssets/' + this.config.LegendConfig.File
+      const width = this.config.LegendConfig.Width
+      const height = this.config.LegendConfig.Height
+
+      // fetch the legend image:
+      const response = await fetch(url)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const img = document.createElement('img')
+        img.src = url
+        img.width = width
+        img.height = height
+        img.style.position = 'absolute'
+        img.style.bottom = '10px'
+        img.style.left = '10px'
+        img.style.zIndex = '6'
+        this.map.getContainer().appendChild(img)
+      }
+    }
   }
 
   createLayer(layer: NamedLayerType): GeoLayer {
