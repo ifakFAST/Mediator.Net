@@ -98,6 +98,9 @@
                 <v-list-item @click="onContextWidgetMove(i, j, k, true)" v-if="editPage && isEnabledWidgetMoveDown(i, j, k)">
                   <v-list-item-title>Widget Move Down</v-list-item-title>
                 </v-list-item>
+                <v-list-item @click="onContextWidgetMoveToPosition(i, j, k)" v-if="editPage">
+                  <v-list-item-title>Widget Move To Position...</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="onContextWidgetDelete(i, j, k)" v-if="editPage">
                   <v-list-item-title>Widget Remove</v-list-item-title>
                 </v-list-item>
@@ -136,6 +139,7 @@
     <dlg-set-col-width ref="setColWidth"></dlg-set-col-width>
     <dlg-widget-type ref="selectWidgetType"></dlg-widget-type>
     <dlg-text-input ref="textInput"></dlg-text-input>
+    <dlg-move-widget ref="moveWidget"></dlg-move-widget>
 
   </v-container>
 
@@ -148,6 +152,7 @@ import Confirm from '../components/Confirm.vue'
 import DlgSetColWidth from './DlgSetColWidth.vue'
 import DlgWidgetType from './DlgWidgetType.vue'
 import DlgTextInput from './DlgTextInput.vue'
+import DlgMoveWidget from './DlgMoveWidget.vue'
 import WidgetWrapper from './WidgetWrapper.vue'
 import * as model from './model'
 import * as utils from '../utils'
@@ -158,6 +163,7 @@ import * as utils from '../utils'
     DlgSetColWidth,
     DlgTextInput,
     DlgWidgetType,
+    DlgMoveWidget,
     WidgetWrapper,
   },
 })
@@ -261,6 +267,75 @@ export default class Page extends Vue {
     const page = this.page
     if (page === null) { return }
     window.parent['dashboardApp'].sendViewRequest('ConfigWidgetMove', { pageID: page.ID, row, col, widget, down }, this.onGotNewPage)
+  }
+
+  async onContextWidgetMoveToPosition(sourceRow: number, sourceCol: number, widgetIndex: number): Promise<void> {
+    const page = this.page
+    if (page === null) { return }
+    
+    // Get the current position information to display in the dialog
+    const column = page.Rows[sourceRow].Columns[sourceCol]
+    const widgetObj: model.Widget = column.Widgets[widgetIndex]
+    
+    // Get all available rows and columns
+    const rowColOptions = this.getRowColumnOptions()
+    
+    // Open dialog to select target row and column
+    const moveWidget = this.$refs.moveWidget as any
+    const result = await moveWidget.open(
+      `Move Widget in Row ${sourceRow+1} Column ${sourceCol+1} to...`,
+      rowColOptions,
+      sourceRow,
+      sourceCol
+    )
+    
+    if (result === null) { return }
+    
+    const { targetRow, targetCol } = result
+    
+    // Don't do anything if the position is the same
+    if (targetRow === sourceRow && targetCol === sourceCol) {
+      return
+    }
+    
+    // Send request to move the widget
+    const para = {
+      pageID: page.ID,
+      sourceRow,
+      sourceCol,
+      widgetIndex,
+      targetRow,
+      targetCol,
+      widgetID: widgetObj.ID
+    }
+    
+    window.parent['dashboardApp'].sendViewRequest('ConfigWidgetMoveToPosition', para, this.onGotNewPage)
+  }
+
+  getRowColumnOptions(): {rows: {id: number, text: string}[], columns: {[rowId: number]: {id: number, text: string}[]}} {
+    const page = this.page
+    if (page === null) { return { rows: [], columns: {} } }
+    
+    const result = {
+      rows: [] as {id: number, text: string}[],
+      columns: {} as {[rowId: number]: {id: number, text: string}[]}
+    }
+    
+    // Add all rows
+    page.Rows.forEach((row, rowIndex) => {
+      result.rows.push({
+        id: rowIndex,
+        text: `Row ${rowIndex + 1}`
+      })
+      
+      // Add all columns for this row, except the source column
+      result.columns[rowIndex] = row.Columns.map((col, colIndex) => ({
+        id: colIndex,
+        text: `Column ${colIndex + 1}`
+      }))
+    })
+    
+    return result
   }
 
   async onContextWidgetSetHeight(row: number, col: number, widget: number): Promise<void> {

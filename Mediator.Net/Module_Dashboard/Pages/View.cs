@@ -351,6 +351,22 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return ReqResult.OK(activePage.Page);
         }
 
+        public async Task<ReqResult> UiReq_ConfigWidgetMoveToPosition(
+                                        string pageID,
+                                        int sourceRow,
+                                        int sourceCol,
+                                        int widgetIndex,
+                                        int targetRow,
+                                        int targetCol,
+                                        string widgetID) {
+
+            CheckActivePage(pageID);
+            activePage!.ConfigWidgetMoveToPosition(sourceRow, sourceCol, widgetIndex, targetRow, targetCol);
+            DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
+            await Context.SaveViewConfiguration(newViewConfig);
+            return ReqResult.OK(activePage.Page);
+        }
+
         public enum ObjectFilter {
             WithVariables,
             WithMembers
@@ -776,6 +792,21 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public async Task OnAlarmOrEvents(List<AlarmOrEvent> alarmOrEvents) {
             await Task.WhenAll(listWidgets.Select(w => w.OnAlarmOrEvents(alarmOrEvents)));
+        }
+
+        public void ConfigWidgetMoveToPosition(int sourceRow, int sourceCol, int widgetIndex, int targetRow, int targetCol) {
+            // Get the widget to move
+            Widget theWidget = Page.Rows[sourceRow].Columns[sourceCol].Widgets[widgetIndex];
+
+            // Remove the widget from its source position
+            var sourceWidgets = Page.Rows[sourceRow].Columns[sourceCol].Widgets.ToList();
+            sourceWidgets.RemoveAt(widgetIndex);
+            Page.Rows[sourceRow].Columns[sourceCol].Widgets = sourceWidgets.ToArray();
+
+            // Add the widget to the target position
+            var targetWidgets = Page.Rows[targetRow].Columns[targetCol].Widgets.ToList();
+            targetWidgets.Add(theWidget);
+            Page.Rows[targetRow].Columns[targetCol].Widgets = targetWidgets.ToArray();
         }
 
         public class WidgetContextImpl : WidgetContext
