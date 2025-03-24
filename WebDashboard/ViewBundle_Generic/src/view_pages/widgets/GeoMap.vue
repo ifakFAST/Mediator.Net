@@ -190,7 +190,7 @@ export default class GeoMap extends Vue {
       center: this.getResolvedCenter(),
       zoom: config.MapConfig.ZoomDefault,
       zoomControl: true,
-      zoomSnap: 0.5,
+      zoomSnap: 0.1,
       zoomDelta: 0.5
     }
 

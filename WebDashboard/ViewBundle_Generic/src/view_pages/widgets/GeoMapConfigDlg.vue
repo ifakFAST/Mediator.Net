@@ -97,9 +97,14 @@
                   <td><v-text-field v-model.number="layer.MinZoom" type="number" dense style="max-width: 100px"></v-text-field></td>
                   <td><v-text-field v-model.number="layer.MaxZoom" type="number" dense style="max-width: 100px"></v-text-field></td>
                   <td>
-                    <v-btn icon small @click="DeleteItemFromArray(theConfig.TileLayers, idx)">
-                      <v-icon small>delete</v-icon>
-                    </v-btn>
+                    <div class="d-flex">
+                      <v-btn icon small @click="MoveUpItem(theConfig.TileLayers, idx)" :disabled="idx === 0" class="mr-1">
+                        <v-icon small>arrow_upward</v-icon>
+                      </v-btn>
+                      <v-btn icon small @click="DeleteItemFromArray(theConfig.TileLayers, idx)">
+                        <v-icon small>delete</v-icon>
+                      </v-btn>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -151,9 +156,14 @@
                     ></v-combobox>
                   </td>
                   <td>
-                    <v-btn icon small @click="DeleteItemFromArray(theConfig.MainLayers, idx)">
-                      <v-icon small>delete</v-icon>
-                    </v-btn>
+                    <div class="d-flex">
+                      <v-btn icon small @click="MoveUpItem(theConfig.MainLayers, idx)" :disabled="idx === 0" class="mr-1">
+                        <v-icon small>arrow_upward</v-icon>
+                      </v-btn>
+                      <v-btn icon small @click="DeleteItemFromArray(theConfig.MainLayers, idx)">
+                        <v-icon small>delete</v-icon>
+                      </v-btn>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -209,9 +219,14 @@
                     <v-switch v-model="layer.IsSelected" dense></v-switch>
                   </td>
                   <td>
-                    <v-btn icon small @click="DeleteItemFromArray(theConfig.OptionalLayers, idx)">
-                      <v-icon small>delete</v-icon>
-                    </v-btn>
+                    <div class="d-flex">
+                      <v-btn icon small @click="MoveUpItem(theConfig.OptionalLayers, idx)" :disabled="idx === 0" class="mr-1">
+                        <v-icon small>arrow_upward</v-icon>
+                      </v-btn>
+                      <v-btn icon small @click="DeleteItemFromArray(theConfig.OptionalLayers, idx)">
+                        <v-icon small>delete</v-icon>
+                      </v-btn>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -331,7 +346,7 @@ export default class GeoMapConfigDlg extends Vue {
     array.splice(idx, 1)
   }
 
-  MoveUpItem(array: ItemWithVariable[], idx: number): void {
+  MoveUpItem(array: object[], idx: number): void {
     if (idx > 0) {
       const item = array[idx]
       array.splice(idx, 1)
