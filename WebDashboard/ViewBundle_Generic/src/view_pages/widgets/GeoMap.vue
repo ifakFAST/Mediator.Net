@@ -16,8 +16,8 @@
       </v-list>
     </v-menu>
 
-    <GeoMapSettingsConfigDlg ref="dlgMapConfig" :configuration="config" :backendAsync="backendAsync" />
-    <GeoMapLayersConfigDlg ref="dlgLayersConfig" :configuration="config" :backendAsync="backendAsync" />
+    <GeoMapConfigDlgMap ref="dlgMapConfig" :configuration="config" :backendAsync="backendAsync" />
+    <GeoMapConfigDlgLayers ref="dlgLayersConfig" :configuration="config" :backendAsync="backendAsync" />
 
   </div>
 </template>
@@ -32,8 +32,8 @@ import 'leaflet-groupedlayercontrol'
 import type { Feature, GeoJsonObject } from 'geojson'
 import { GeoMapConfig, NamedLayerType, GeoLayerType } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
-import GeoMapSettingsConfigDlg from './GeoMapSettingsConfigDlg.vue'
-import GeoMapLayersConfigDlg from './GeoMapLayersConfigDlg.vue'
+import GeoMapConfigDlgMap from './GeoMapConfigDlgMap.vue'
+import GeoMapConfigDlgLayers from './GeoMapConfigDlgLayers.vue'
 import * as model from '../model'
 import parseGeoraster from 'georaster';
 import GeoRasterLayer, { GeoRasterLayerOptions } from 'georaster-layer-for-leaflet'
@@ -89,8 +89,8 @@ L.Icon.Default.prototype.options.shadowUrl = 'images/marker-shadow.png';
 
 @Component({
   components: {
-    GeoMapSettingsConfigDlg,
-    GeoMapLayersConfigDlg,
+    GeoMapConfigDlgMap,
+    GeoMapConfigDlgLayers,
   },
 })
 export default class GeoMap extends Vue {
@@ -654,7 +654,7 @@ export default class GeoMap extends Vue {
   }
 
   async onConfigureMap(): Promise<void> {
-    const dlg = this.$refs.dlgMapConfig as GeoMapSettingsConfigDlg
+    const dlg = this.$refs.dlgMapConfig as GeoMapConfigDlgMap
     const ok = await dlg.showDialog()
     if (ok) {
       await this.initMap()
@@ -662,7 +662,7 @@ export default class GeoMap extends Vue {
   }
 
   async onConfigureLayers(): Promise<void> {
-    const dlg = this.$refs.dlgLayersConfig as GeoMapLayersConfigDlg
+    const dlg = this.$refs.dlgLayersConfig as GeoMapConfigDlgLayers
     const ok = await dlg.showDialog()
     if (ok) {
       await this.initMap()

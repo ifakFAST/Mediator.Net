@@ -212,7 +212,7 @@ interface ItemWithName {
     DlgObjectSelect,
   },
 })
-export default class GeoMapLayersConfigDlg extends Vue {
+export default class GeoMapConfigDlgLayers extends Vue {
 
   @Prop({ default() { return {} } }) configuration: config.GeoMapConfig
   @Prop() backendAsync: (request: string, parameters: object) => Promise<any>

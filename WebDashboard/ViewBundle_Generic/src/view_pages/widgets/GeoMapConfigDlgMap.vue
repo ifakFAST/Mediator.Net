@@ -89,7 +89,7 @@ import * as config from './GeoMapConfigTypes'
 @Component({
   components: {},
 })
-export default class GeoMapSettingsConfigDlg extends Vue {
+export default class GeoMapConfigDlgMap extends Vue {
 
   @Prop({ default() { return {} } }) configuration: config.GeoMapConfig
   @Prop() backendAsync: (request: string, parameters: object) => Promise<any>
