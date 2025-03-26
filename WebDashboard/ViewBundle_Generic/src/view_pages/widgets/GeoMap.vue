@@ -7,13 +7,17 @@
 
     <v-menu v-model="contextMenu.show" :position-x="contextMenu.clientX" :position-y="contextMenu.clientY" absolute offset-y>
       <v-list>
-        <v-list-item @click="onConfigure" >
-          <v-list-item-title>Configure...</v-list-item-title>
+        <v-list-item @click="onConfigureMap" >
+          <v-list-item-title>Configure Map...</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="onConfigureLayers" >
+          <v-list-item-title>Configure Layers...</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
 
-    <GeoMapConfigDlg ref="dlgConfig" :configuration="config" :backendAsync="backendAsync" />
+    <GeoMapSettingsConfigDlg ref="dlgMapConfig" :configuration="config" :backendAsync="backendAsync" />
+    <GeoMapLayersConfigDlg ref="dlgLayersConfig" :configuration="config" :backendAsync="backendAsync" />
 
   </div>
 </template>
@@ -28,7 +32,8 @@ import 'leaflet-groupedlayercontrol'
 import type { Feature, GeoJsonObject } from 'geojson'
 import { GeoMapConfig, NamedLayerType, GeoLayerType } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
-import GeoMapConfigDlg from './GeoMapConfigDlg.vue'
+import GeoMapSettingsConfigDlg from './GeoMapSettingsConfigDlg.vue'
+import GeoMapLayersConfigDlg from './GeoMapLayersConfigDlg.vue'
 import * as model from '../model'
 import parseGeoraster from 'georaster';
 import GeoRasterLayer, { GeoRasterLayerOptions } from 'georaster-layer-for-leaflet'
@@ -84,7 +89,8 @@ L.Icon.Default.prototype.options.shadowUrl = 'images/marker-shadow.png';
 
 @Component({
   components: {
-    GeoMapConfigDlg,
+    GeoMapSettingsConfigDlg,
+    GeoMapLayersConfigDlg,
   },
 })
 export default class GeoMap extends Vue {
@@ -647,8 +653,16 @@ export default class GeoMap extends Vue {
     }
   }
 
-  async onConfigure(): Promise<void> {
-    const dlg = this.$refs.dlgConfig as GeoMapConfigDlg
+  async onConfigureMap(): Promise<void> {
+    const dlg = this.$refs.dlgMapConfig as GeoMapSettingsConfigDlg
+    const ok = await dlg.showDialog()
+    if (ok) {
+      await this.initMap()
+    }
+  }
+
+  async onConfigureLayers(): Promise<void> {
+    const dlg = this.$refs.dlgLayersConfig as GeoMapLayersConfigDlg
     const ok = await dlg.showDialog()
     if (ok) {
       await this.initMap()
