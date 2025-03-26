@@ -2,7 +2,7 @@
 
   <v-card elevation="1" class="pa-3" outlined >
 
-    <p v-if="resolvedTitle !== ''" class="pl-0 mb-2" style="font-weight: 500;">{{ resolvedTitle }}</p>
+    <p v-if="resolvedTitle !== ''" class="pl-0 mb-2" style="margin-top:-4px; font-weight: 500;">{{ resolvedTitle }}</p>
 
     <read-button v-if="type === 'ReadButton'"
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"

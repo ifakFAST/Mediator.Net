@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-dialog v-model="show" persistent max-width="700px" @keydown="(e) => { if (e.keyCode === 27) { closeDialog(); }}">
+    <v-dialog v-model="show" persistent max-width="600px" @keydown="(e) => { if (e.keyCode === 27) { closeDialog(); }}">
       <v-card>
         <v-card-title>
           <span class="headline">Configure Map Settings</span>
@@ -8,7 +8,7 @@
 
         <v-card-text>
           <!-- Map Configuration -->
-          <v-subheader>Map Settings</v-subheader>
+          <v-subheader class="pl-0">Map Settings</v-subheader>
           <v-row>
             <v-col cols="4">
               <v-text-field
@@ -16,36 +16,38 @@
                 label="Center"
               ></v-text-field>
             </v-col>
-            <v-col cols="2">
+            <v-col cols="4">
               <v-text-field
                 v-model="theConfig.MapConfig.ZoomDefault"
                 label="Default Zoom Level"
                 type="number"
               ></v-text-field>
             </v-col>
-            <v-col cols="2">
-              <v-text-field
-                v-model="theConfig.MapConfig.MainGroupLabel"
-                label="Main Group Label"
-              ></v-text-field>
-            </v-col>
-            <v-col cols="2">
-              <v-text-field
-                v-model="theConfig.MapConfig.OptionalGroupLabel"
-                label="Optional Group Label"
-              ></v-text-field>
-            </v-col>
-            <v-col cols="2">
+            <v-col cols="4">
               <v-text-field
                 v-model="theConfig.MapConfig.MouseOverOpacityDelta"
                 label="MouseOver Opacity Delta"
               ></v-text-field>
             </v-col>
           </v-row>
-
-          <v-subheader>Legend Settings</v-subheader>
           <v-row>
             <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.MainGroupLabel"
+                label="Main Group Label"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.OptionalGroupLabel"
+                label="Optional Group Label"
+              ></v-text-field>
+            </v-col>
+          </v-row>
+
+          <v-subheader class="pl-0">Legend Settings</v-subheader>
+          <v-row>
+            <v-col cols="8">
               <v-text-field
                 v-model="theConfig.LegendConfig.File"
                 label="File in WebAssets folder"
