@@ -288,6 +288,7 @@
       busy: Boolean,
       connectionState: Number,
       showTime: Boolean,
+      showEndTimeOnly: Boolean,
       timeRangeSelected: Object
     },
     data() {
@@ -555,13 +556,23 @@
     computed: {
       timeRangeString() {
          if (this.timeRangeSelected.type === 'Last') {
+            if (this.showEndTimeOnly) {
+               return "Now";
+            }
             return "Last " + this.timeRangeSelected.lastCount + " " + this.timeRangeSelected.lastUnit;
          }
          if (this.timeRangeSelected.type === 'Range') {
-
             const s = this.timeRangeSelected.rangeStart;
             const e = this.timeRangeSelected.rangeEnd;
             const dateSeparator = ' \u2013 ';
+
+            // If showEndTimeOnly is true, only show the end time for the Range type
+            if (this.showEndTimeOnly) {
+               const replaceTWithSpace = (str) => {
+                 return str.replace('T', ' ');
+               }
+               return replaceTWithSpace(e);
+            }
 
             const dateStartStr = getDatePartOfISOString(s, '');
             const dateEndStr = getDatePartOfISOString(e, '');

@@ -14,6 +14,7 @@ export default {
   eventListener: function(eventName, eventPayload) {},
   resizeListener: function() {},
   showTimeRangeSelector: false,
+  showTimeRangeEndTimeOnly: false,
   diffStepSizeMS: 0, // 0 means auto
   timeRange: {
     type: 'Last',

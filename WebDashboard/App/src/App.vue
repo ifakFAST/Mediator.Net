@@ -6,7 +6,7 @@
 
         <template v-else>
             <dashboard :user="user" :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
-                       :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector" :canUpdateViews="canUpdateViews"
+                       :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector" :showEndTimeOnly="showTimeRangeEndTimeOnly" :canUpdateViews="canUpdateViews"
                         @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
                         @duplicateView="duplicateView" @renameView="renameView"
                         @duplicateConvertView="duplicateConvertView"

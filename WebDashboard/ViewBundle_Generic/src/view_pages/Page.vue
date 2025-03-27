@@ -198,6 +198,14 @@ export default class Page extends Vue {
     const dashboard = window.parent['dashboardApp']
     const widgets = this.getAllWidgetIDs()
     dashboard.setEventBurstCount(Math.max(1, widgets.size))
+    const anyHistoryPlotWidget = this.page === null || this.page.Rows.some((row) => {
+      return row.Columns.some((col) => {
+        return col.Widgets.some((widget) => {
+          return widget.Type === 'HistoryPlot'
+        })
+      })
+    })
+    dashboard.showTimeRangeEndTimeOnly(!anyHistoryPlotWidget)
   }
 
   get pageID(): string {

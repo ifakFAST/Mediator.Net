@@ -115,6 +115,9 @@ window.dashboardApp = new Vue({
          globalState.showTimeRangeSelector = false;
        }
     },
+    showTimeRangeEndTimeOnly(endTimeOnly) {
+       globalState.showTimeRangeEndTimeOnly = endTimeOnly;
+    },
     getCurrentTimeRange() {
        return Object.assign({}, globalState.timeRange);
     },
