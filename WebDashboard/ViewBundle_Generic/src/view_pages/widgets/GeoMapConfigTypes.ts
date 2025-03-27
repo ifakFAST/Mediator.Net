@@ -14,7 +14,8 @@ export const DefaultGeoMapConfig: GeoMapConfig = {
     ZoomDefault: 2,
     MainGroupLabel: 'Main',
     OptionalGroupLabel: 'Optional',
-    MouseOverOpacityDelta: 0.3
+    MouseOverOpacityDelta: 0.3,
+    GeoTiffResolution: 128
   },
   LegendConfig: {
     File: '',
@@ -32,6 +33,7 @@ export interface MapConfig {
   MainGroupLabel: string
   OptionalGroupLabel: string
   MouseOverOpacityDelta: number
+  GeoTiffResolution: number
 }
 
 export interface LegendConfig {

@@ -149,6 +149,7 @@ public sealed class MapConfig {
     public string MainGroupLabel { get; set; } = "Main";
     public string OptionalGroupLabel { get; set; } = "Optional";
     public double MouseOverOpacityDelta { get; set; } = 0.3;
+    public double GeoTiffResolution { get; set; } = 128;
 }
 
 public sealed class LegendConfig {

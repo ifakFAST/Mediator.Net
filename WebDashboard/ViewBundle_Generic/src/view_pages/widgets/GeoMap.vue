@@ -592,7 +592,8 @@ export default class GeoMap extends Vue {
           georaster: georaster,
           opacity: geoTiffUrl.opacity || 0.9,
           zIndex: 4,
-          pixelValuesToColorFn: geoTiffUrl.colorMap ? createColorMapper(geoTiffUrl.colorMap) : undefined
+          pixelValuesToColorFn: geoTiffUrl.colorMap ? createColorMapper(geoTiffUrl.colorMap) : undefined,
+          resolution: this.config.MapConfig.GeoTiffResolution
         }
         const newRasterLayer = new GeoRasterLayer(options)        
         layer.clearLayers()

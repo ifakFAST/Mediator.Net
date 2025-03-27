@@ -43,6 +43,13 @@
                 label="Optional Group Label"
               ></v-text-field>
             </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.GeoTiffResolution"
+                label="GeoTiff Resolution"
+                type="number"
+              ></v-text-field>
+            </v-col>
           </v-row>
 
           <v-subheader class="pl-0">Legend Settings</v-subheader>
