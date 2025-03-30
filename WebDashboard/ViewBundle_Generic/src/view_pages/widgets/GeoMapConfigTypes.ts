@@ -58,15 +58,9 @@ export interface NamedLayerType {
   Variable: fast.VariableRef
 }
 
-export interface MainLayer extends NamedLayerType {
-  Name: string
-  Type: GeoLayerType
-  Variable: fast.VariableRef
+export interface MainLayer extends NamedLayerType {  
 }
 
 export interface OptionalLayer extends NamedLayerType{
-  Name: string
-  Type: GeoLayerType
-  Variable: fast.VariableRef
   IsSelected: boolean
 }

@@ -29,7 +29,7 @@ import { TimeRange } from '../../utils'
 
 import * as L from 'leaflet'
 import 'leaflet-groupedlayercontrol'
-import type { Feature, GeoJsonObject } from 'geojson'
+import type { Feature, GeoJsonObject, GeoJsonTypes, BBox } from 'geojson'
 import { GeoMapConfig, NamedLayerType, GeoLayerType } from './GeoMapConfigTypes'
 import * as fast from '../../fast_types'
 import GeoMapConfigDlgMap from './GeoMapConfigDlgMap.vue'
@@ -46,6 +46,12 @@ interface ColorMapRange {
   start: number // inclusive
   end: number   // exclusive
   color: string
+}
+
+interface GeoJsonObj {
+  type: GeoJsonTypes  // copied from GeoJsonObject
+  bbox?: BBox         // copied from GeoJsonObject
+  setVariableValues?: Record<string, string>
 }
 
 interface GeoTiffUrl {
@@ -532,7 +538,7 @@ export default class GeoMap extends Vue {
 
     try {
 
-      const data: GeoJsonObject | GeoTiffUrl = await this.backendAsync('GetGeoJson', { variable: variable, timeRange: this.timeRange, })
+      const data: GeoJsonObj | GeoTiffUrl = await this.backendAsync('GetGeoData', { variable: variable, timeRange: this.timeRange, })
       if (abortController.signal.aborted) {
         console.info(`Request for layer ${layerName} was aborted after backendAsync`)
         return
@@ -601,14 +607,15 @@ export default class GeoMap extends Vue {
 
         const totalEndTime = performance.now()
         console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
+      }
 
-        if (geoTiffUrl.setVariableValues) {
-          this.layersWithSetVariableValues.set(layerName, geoTiffUrl.setVariableValues)
-          if (this.map.hasLayer(layer)) {
-            this.setConfigVariableValues(geoTiffUrl.setVariableValues)
-          }
+      if (data.setVariableValues) {
+        this.layersWithSetVariableValues.set(layerName, data.setVariableValues)
+        if (this.map.hasLayer(layer)) {
+          this.setConfigVariableValues(data.setVariableValues)
         }
       }
+
     } 
     catch (err) {
       // Don't show errors for aborted requests

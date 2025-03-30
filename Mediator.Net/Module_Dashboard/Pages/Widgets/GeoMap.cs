@@ -64,7 +64,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return Common.GetVarItemsData(Connection, usedObjects, IsJson);
     }
 
-    public async Task<ReqResult> UiReq_GetGeoJson(VariableRefUnresolved variable, TimeRange timeRange) {
+    public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange) {
         showLatest = timeRange.Type == TimeType.Last;
         var variableResolved = Context.ResolveVariableRef(variable);
         if (timeRange.Type == TimeType.Last) {
