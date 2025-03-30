@@ -54,6 +54,12 @@ interface GeoJsonObj {
   setVariableValues?: Record<string, string>
 }
 
+interface GeoJsonUrl {
+  type: 'GeoJsonUrl'
+  url: string
+  setVariableValues?: Record<string, string>
+}
+
 interface GeoTiffUrl {
   type: 'GeoTiffUrl'
   url: string
@@ -538,26 +544,15 @@ export default class GeoMap extends Vue {
 
     try {
 
-      const data: GeoJsonObj | GeoTiffUrl = await this.backendAsync('GetGeoData', { variable: variable, timeRange: this.timeRange, })
+      const data: GeoJsonObj | GeoJsonUrl | GeoTiffUrl = await this.backendAsync('GetGeoData', { variable: variable, timeRange: this.timeRange, })
       if (abortController.signal.aborted) {
         console.info(`Request for layer ${layerName} was aborted after backendAsync`)
         return
       }
 
-      const isGeoJson = data.type !== 'GeoTiffUrl'
-      if (isGeoJson) { // Handle GeoJSON data
-
-        if (layerType === 'GeoTiff') {
-          throw new Error('Expected GeoTiff data, but got GeoJson data')
-        }
-
-        const geoJsonLayer = layer as L.GeoJSON
-        geoJsonLayer.clearLayers()
-        geoJsonLayer.addData(data as GeoJsonObject)
-
-      }
-      else { // Handle GeoTiff data
-
+      // Check data type to determine how to handle it
+      if (data.type === 'GeoTiffUrl') { // Handle GeoTiff URL data
+        
         if (layerType === 'GeoJson') {
           throw new Error('Expected GeoJson data, but got GeoTiff data')
         }
@@ -607,6 +602,55 @@ export default class GeoMap extends Vue {
 
         const totalEndTime = performance.now()
         console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
+      
+      }
+      else if (data.type === 'GeoJsonUrl') { // Handle GeoJSON URL data
+        
+        if (layerType === 'GeoTiff') {
+          throw new Error('Expected GeoTiff data, but got GeoJson data')
+        }
+        
+        const geoJsonUrl = data as GeoJsonUrl
+        
+        const fetchStartTime = performance.now()
+        const response = await fetch(geoJsonUrl.url, { 
+          signal: abortController.signal 
+        })
+        const fetchEndTime = performance.now()
+        if (abortController.signal.aborted) {
+          console.info(`Request for layer ${layerName} was aborted after fetch`)
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to load GeoJSON data: ${response.statusText}`)
+        }
+        
+        const jsonStartTime = performance.now()
+        const geoJsonData = await response.json()
+        const jsonEndTime = performance.now()
+        if (abortController.signal.aborted) {
+          console.info(`Request for layer ${layerName} was aborted after parsing JSON`)
+          return
+        }
+        
+        const geoJsonLayer = layer as L.GeoJSON
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(geoJsonData as GeoJsonObject)
+        
+        const totalEndTime = performance.now()
+        console.info(`Loaded GeoJSON for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${jsonEndTime - jsonStartTime}ms (json)`)
+
+      }
+      else { // Handle direct GeoJSON data
+        
+        if (layerType === 'GeoTiff') {
+          throw new Error('Expected GeoTiff data, but got GeoJson data')
+        }
+
+        const geoJsonLayer = layer as L.GeoJSON
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(data as GeoJsonObject)
       }
 
       if (data.setVariableValues) {
