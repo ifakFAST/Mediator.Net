@@ -71,17 +71,19 @@ interface GeoTiffUrl {
 // Extend types to handle both direct layers and layer groups
 type GeoLayer = L.GeoJSON | L.LayerGroup
 
-// Types for frame animation
-interface GeoJsonFrame {
-  data: GeoJsonObject
+interface GeoContentFrame {
   setVariableValues?: Record<string, string>
 }
 
-interface GeoTiffFrame {
+// Types for frame animation
+interface GeoJsonFrame extends GeoContentFrame {
+  data: GeoJsonObject
+}
+
+interface GeoTiffFrame extends GeoContentFrame {
   georaster: any // Type from parseGeoraster
-  setVariableValues?: Record<string, string>
   opacity?: number
-  colorMap?: ColorMapRange[]
+  colorMap?: (values: number[]) => string | null
 }
 
 interface ColorMapRange {
@@ -90,7 +92,10 @@ interface ColorMapRange {
   color: string;
 }
 
-function createColorMapper(colorRanges: ColorMapRange[]): (values: number[]) => string | null {  
+function createColorMapper(colorRanges?: ColorMapRange[]): (values: number[]) => string | null {
+  if (!colorRanges) {
+    return undefined
+  }
   const ranges = [...colorRanges]  
   return (values: number[]): string | null => {
     if (!values || values.length === 0) {
@@ -147,8 +152,7 @@ export default class GeoMap extends Vue {
   
   // Animation properties
   animationControllers: Map<string, { isRunning: boolean }> = new Map() // layerName -> animation controller
-  geoJsonFrames: Map<string, GeoJsonFrame[]> = new Map() // layerName -> frames
-  geoTiffFrames: Map<string, GeoTiffFrame[]> = new Map() // layerName -> frames
+  geoContentFrames: Map<string, GeoContentFrame[]> = new Map() // layerName -> frames
 
   contextMenu = {
     show: false,
@@ -189,8 +193,7 @@ export default class GeoMap extends Vue {
       this.map = null
     }
     this.layersWithSetVariableValues.clear()
-    this.geoJsonFrames.clear()
-    this.geoTiffFrames.clear()
+    this.geoContentFrames.clear()
   }
   
   stopAllAnimations(): void {
@@ -397,10 +400,8 @@ export default class GeoMap extends Vue {
       }
       
       // Start animation if this layer has multiple frames
-      const hasGeoJsonFrames = this.geoJsonFrames.has(layerName) && this.geoJsonFrames.get(layerName).length > 1
-      const hasGeoTiffFrames = this.geoTiffFrames.has(layerName) && this.geoTiffFrames.get(layerName).length > 1
-      
-      if (hasGeoJsonFrames || hasGeoTiffFrames) {
+      const hasGeoContentFrames = this.geoContentFrames.has(layerName) && this.geoContentFrames.get(layerName).length > 1      
+      if (hasGeoContentFrames) {
         this.startLayerAnimation(layerName)
       }
     }
@@ -588,33 +589,27 @@ export default class GeoMap extends Vue {
   }
 
   async loadLayerContent(layerObj: NamedLayerType): Promise<void> {
+
     const layerName = layerObj.Name
     const layer: GeoLayer = this.mainLayers[layerName] || this.optionalLayers[layerName]
     const variable: fast.VariableRef = layerObj.Variable
     const layerType: GeoLayerType = layerObj.Type
     const frameCount = layerObj.FrameCount || 1
     
-    // Stop any existing animation for this layer
     this.stopLayerAnimation(layerName)
-    
-    const totalStartTime = performance.now()
 
-    // Cancel any existing request for this layer
     if (this.activeRequests.has(layerName)) {
       this.activeRequests.get(layerName).abort()
       this.activeRequests.delete(layerName)
     }
 
-    // Create a new abort controller for this request
     const abortController = new AbortController()
     this.activeRequests.set(layerName, abortController)
 
     try {
-      // Clear existing frames for this layer
-      this.geoJsonFrames.delete(layerName)
-      this.geoTiffFrames.delete(layerName)
+
+      this.geoContentFrames.delete(layerName)
       
-      // Request data with frame count parameter
       const dataArray: GeoJsonObj[] | GeoJsonUrl[] | GeoTiffUrl[]  = await this.backendAsync('GetGeoData', { 
         variable: variable, 
         timeRange: this.timeRange,
@@ -627,8 +622,7 @@ export default class GeoMap extends Vue {
       }
       
       if (!Array.isArray(dataArray) || dataArray.length === 0) {
-        console.warn(`Received invalid data format for layer ${layerName}`)
-        return
+        throw new Error(`Received empty or invalid data for layer ${layerName}`)
       }
       
       // Process based on data type of first frame
@@ -643,6 +637,7 @@ export default class GeoMap extends Vue {
         const frames: GeoTiffFrame[] = []
         
         for (const geoTiffUrl of dataArray as GeoTiffUrl[]) {
+
           if (abortController.signal.aborted) {
             return
           }
@@ -681,48 +676,52 @@ export default class GeoMap extends Vue {
             frames.push({
               georaster,
               opacity: geoTiffUrl.opacity || 0.9,
-              colorMap: geoTiffUrl.colorMap,
+              colorMap: createColorMapper(geoTiffUrl.colorMap),
               setVariableValues: geoTiffUrl.setVariableValues
             })
             
-            console.info(`Loaded GeoTiff frame in ${parseEndTime - totalStartTime}ms`)
-          } catch (error) {
+            console.info(`Loaded GeoTiff frame: fetched in ${fetchEndTime - fetchStartTime}ms, arrayBuffer in ${arrayBufferEndTime - arrayBufferStartTime}ms, parsed in ${parseEndTime - parseStartTime}ms`)
+          }
+          catch (error) {
             console.error(`Failed to load GeoTiff frame: ${error.message}`)
           }
         }
         
-        if (frames.length > 0) {
-          // Store frames for animation
-          this.geoTiffFrames.set(layerName, frames)
-          
-          // Display the first frame
-          const layerGroup = layer as L.LayerGroup
-          layerGroup.clearLayers()
-          
-          const firstFrame = frames[0]
-          const options: GeoRasterLayerOptions = {
-            georaster: firstFrame.georaster,
-            opacity: firstFrame.opacity || 0.9,
-            zIndex: 4,
-            pixelValuesToColorFn: firstFrame.colorMap ? createColorMapper(firstFrame.colorMap) : undefined,
-            resolution: this.config.MapConfig.GeoTiffResolution
-          }
-          
-          const rasterLayer = new GeoRasterLayer(options)
-          layerGroup.addLayer(rasterLayer)
-          
-          if (firstFrame.setVariableValues) {
-            this.layersWithSetVariableValues.set(layerName, firstFrame.setVariableValues)
-            if (this.map.hasLayer(layerGroup)) {
-              this.setConfigVariableValues(firstFrame.setVariableValues)
-            }
-          }
-          
-          // Start animation if there are multiple frames
-          if (frames.length > 1 && this.map.hasLayer(layerGroup)) {
-            this.startLayerAnimation(layerName)
+        if (frames.length === 0) {
+          throw new Error(`No valid GeoTiff frames loaded for layer ${layerName}`)
+        }
+
+        // Store frames for animation
+        this.geoContentFrames.set(layerName, frames)
+        
+        // Display the first frame
+        const layerGroup = layer as L.LayerGroup
+        layerGroup.clearLayers()
+        
+        const firstFrame = frames[0]
+        const options: GeoRasterLayerOptions = {
+          georaster: firstFrame.georaster,
+          opacity: firstFrame.opacity || 0.9,
+          zIndex: 4,
+          pixelValuesToColorFn: firstFrame.colorMap,
+          resolution: this.config.MapConfig.GeoTiffResolution
+        }
+        
+        const rasterLayer = new GeoRasterLayer(options)
+        layerGroup.addLayer(rasterLayer)
+        
+        if (firstFrame.setVariableValues) {
+          this.layersWithSetVariableValues.set(layerName, firstFrame.setVariableValues)
+          if (this.map.hasLayer(layerGroup)) {
+            this.setConfigVariableValues(firstFrame.setVariableValues)
           }
         }
+        
+        // Start animation if there are multiple frames
+        if (frames.length > 1 && this.map.hasLayer(layerGroup)) {
+          this.startLayerAnimation(layerName)
+        }
+
       }
       else if (firstItem.type === 'GeoJsonUrl') {
         // Handle GeoJSON URL data
@@ -733,6 +732,7 @@ export default class GeoMap extends Vue {
         const frames: GeoJsonFrame[] = []
         
         for (const geoJsonUrl of dataArray as GeoJsonUrl[]) {
+
           if (abortController.signal.aborted) {
             return
           }
@@ -765,34 +765,37 @@ export default class GeoMap extends Vue {
               setVariableValues: geoJsonUrl.setVariableValues
             })
             
-            console.info(`Loaded GeoJSON frame in ${jsonEndTime - totalStartTime}ms`)
+            console.info(`Loaded GeoJSON frame: fetched in ${fetchEndTime - fetchStartTime}ms, parsed in ${jsonEndTime - jsonStartTime}ms`)
           }
           catch (error) {
             console.error(`Failed to load GeoJSON frame: ${error.message}`)
           }
         }
         
-        if (frames.length > 0) {
-          // Store frames for animation
-          this.geoJsonFrames.set(layerName, frames)
-          
-          // Display the first frame
-          const geoJsonLayer = layer as L.GeoJSON
-          geoJsonLayer.clearLayers()
-          geoJsonLayer.addData(frames[0].data)
-          
-          if (frames[0].setVariableValues) {
-            this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
-            if (this.map.hasLayer(geoJsonLayer)) {
-              this.setConfigVariableValues(frames[0].setVariableValues)
-            }
-          }
-          
-          // Start animation if there are multiple frames
-          if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
-            this.startLayerAnimation(layerName)
+        if (frames.length === 0) {
+          throw new Error(`No valid GeoJSON frames loaded for layer ${layerName}`)
+        }
+
+        // Store frames for animation
+        this.geoContentFrames.set(layerName, frames)
+        
+        // Display the first frame
+        const geoJsonLayer = layer as L.GeoJSON
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(frames[0].data)
+        
+        if (frames[0].setVariableValues) {
+          this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
+          if (this.map.hasLayer(geoJsonLayer)) {
+            this.setConfigVariableValues(frames[0].setVariableValues)
           }
         }
+        
+        // Start animation if there are multiple frames
+        if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
+          this.startLayerAnimation(layerName)
+        }
+        
       }
       else {
         // Handle direct GeoJSON data
@@ -805,27 +808,26 @@ export default class GeoMap extends Vue {
           setVariableValues: (data as any).setVariableValues
         }))
         
-        if (frames.length > 0) {
-          // Store frames for animation
-          this.geoJsonFrames.set(layerName, frames)
-          
-          // Display the first frame
-          const geoJsonLayer = layer as L.GeoJSON
-          geoJsonLayer.clearLayers()
-          geoJsonLayer.addData(frames[0].data)
-          
-          if (frames[0].setVariableValues) {
-            this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
-            if (this.map.hasLayer(geoJsonLayer)) {
-              this.setConfigVariableValues(frames[0].setVariableValues)
-            }
-          }
-          
-          // Start animation if there are multiple frames
-          if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
-            this.startLayerAnimation(layerName)
+        // Store frames for animation
+        this.geoContentFrames.set(layerName, frames)
+        
+        // Display the first frame
+        const geoJsonLayer = layer as L.GeoJSON
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(frames[0].data)
+        
+        if (frames[0].setVariableValues) {
+          this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
+          if (this.map.hasLayer(geoJsonLayer)) {
+            this.setConfigVariableValues(frames[0].setVariableValues)
           }
         }
+        
+        // Start animation if there are multiple frames
+        if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
+          this.startLayerAnimation(layerName)
+        }
+        
       }
     } 
     catch (err) {
@@ -854,9 +856,7 @@ export default class GeoMap extends Vue {
     if (!layer) return
     
     const isGeoJson = layer instanceof L.GeoJSON
-    const frames = isGeoJson ? 
-      this.geoJsonFrames.get(layerName) : 
-      this.geoTiffFrames.get(layerName)
+    const frames = this.geoContentFrames.get(layerName)
     
     if (!frames || frames.length <= 1) return
     
@@ -871,7 +871,7 @@ export default class GeoMap extends Vue {
   private async animateLayer(
     layerName: string, 
     layer: GeoLayer, 
-    frames: GeoJsonFrame[] | GeoTiffFrame[], 
+    frames: GeoContentFrame[], 
     isGeoJson: boolean,
     controller: { isRunning: boolean }
   ): Promise<void> {
@@ -896,7 +896,7 @@ export default class GeoMap extends Vue {
           georaster: frame.georaster,
           opacity: frame.opacity || 0.9,
           zIndex: 4,
-          pixelValuesToColorFn: frame.colorMap ? createColorMapper(frame.colorMap) : undefined,
+          pixelValuesToColorFn: frame.colorMap,
           resolution: this.config.MapConfig.GeoTiffResolution
         }
         const rasterLayer = new GeoRasterLayer(options)
