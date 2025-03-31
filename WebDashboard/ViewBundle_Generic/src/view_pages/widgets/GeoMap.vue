@@ -111,6 +111,13 @@ function createColorMapper(colorRanges?: ColorMapRange[]): (values: number[]) =>
   }
 }
 
+interface AnimationController {
+  isRunning: boolean
+  currentIndex: number
+  lastFrameTime: number
+  isPaused: boolean
+}
+
 let dgUUID = 0
 
 L.Icon.Default.prototype.options.iconRetinaUrl = 'images/marker-icon-2x.png';
@@ -151,7 +158,7 @@ export default class GeoMap extends Vue {
   layersWithSetVariableValues: Map<string, Record<string, string>> = new Map()
   
   // Animation properties
-  animationControllers: Map<string, { isRunning: boolean }> = new Map() // layerName -> animation controller
+  animationControllers: Map<string, AnimationController> = new Map() // layerName -> animation controller
   geoContentFrames: Map<string, GeoContentFrame[]> = new Map() // layerName -> frames
 
   contextMenu = {
@@ -825,48 +832,79 @@ export default class GeoMap extends Vue {
     if (!frames || frames.length <= 1) return
     
     // Create animation controller
-    const controller = { isRunning: true }
+    const controller: AnimationController = {
+      isRunning: true,
+      currentIndex: 0,
+      lastFrameTime: 0,
+      isPaused: false
+    }
     this.animationControllers.set(layerName, controller)
     
     // Start animation loop
     this.animateLayer(layerName, layer, frames, isGeoJson, controller)
   }
   
-  private async animateLayer(
+  private animateLayer(
     layerName: string, 
     layer: GeoLayer, 
     frames: GeoContentFrame[], 
     isGeoJson: boolean,
-    controller: { isRunning: boolean }
-  ): Promise<void> {
+    controller: AnimationController
+  ): void {
     
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    const frameInterval = this.config.MapConfig.FrameDelay
     
-    let currentIndex = 0
-    
-    // Animation loop
-    while (controller.isRunning) {
+    const animate = (timestamp: number) => {
 
-      const frame = frames[currentIndex]
-
-      if (isGeoJson) {
-        this.setGeoJsonLayerContent(layer as L.GeoJSON, frame as GeoJsonFrame)
-      } 
-      else {
-        this.setGeoTiffLayerContent(layer, frame as GeoTiffFrame)
-      }
-
-      this.setFrameVariables(frame, layerName, layer)
+      if (!controller.isRunning) return
       
-      currentIndex = (currentIndex + 1) % frames.length
+      // Request next frame first to ensure smooth animation
+      requestAnimationFrame(animate)
       
-      if (currentIndex === 0 && this.config.MapConfig.EndOfLoopPause > 0) {
-        await delay(this.config.MapConfig.EndOfLoopPause)        
-      }
-      else {
-        await delay(this.config.MapConfig.FrameDelay)
+      if (controller.isPaused) return
+      
+      // Calculate time since last frame
+      const elapsed = controller.lastFrameTime ? timestamp - controller.lastFrameTime : frameInterval
+      
+      // Check if it's time to show next frame
+      if (elapsed >= frameInterval) {
+        // Update last frame time, accounting for any "debt" time
+        controller.lastFrameTime = timestamp - (elapsed % frameInterval)
+        
+        const frame = frames[controller.currentIndex]
+        
+        try {
+          // Update the layer with new frame data
+          if (isGeoJson) {
+            this.setGeoJsonLayerContent(layer as L.GeoJSON, frame as GeoJsonFrame)
+          } 
+          else {
+            this.setGeoTiffLayerContent(layer, frame as GeoTiffFrame)
+          }
+          
+          this.setFrameVariables(frame, layerName, layer)
+        } 
+        catch (error) {
+          console.error(`Error updating frame ${controller.currentIndex} for layer ${layerName}:`, error)
+        }
+        
+        // Move to next frame
+        controller.currentIndex = (controller.currentIndex + 1) % frames.length
+        
+        // Handle end of loop pause if needed
+        if (controller.currentIndex === 0 && this.config.MapConfig.EndOfLoopPause > 0) {
+          controller.isPaused = true
+          setTimeout(() => {
+            if (controller.isRunning) {
+              controller.isPaused = false
+              controller.lastFrameTime = 0 // Reset timing
+            }
+          }, this.config.MapConfig.EndOfLoopPause)
+        }
       }
     }
+    
+    requestAnimationFrame(animate)
   }
   
   stopLayerAnimation(layerName: string): void {
