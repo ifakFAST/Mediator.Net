@@ -15,7 +15,10 @@ export const DefaultGeoMapConfig: GeoMapConfig = {
     MainGroupLabel: 'Main',
     OptionalGroupLabel: 'Optional',
     MouseOverOpacityDelta: 0.3,
-    GeoTiffResolution: 128
+    GeoTiffResolution: 128,
+    FrameDelay: 750,
+    EndOfLoopPause: 1500,
+    AutoPlayLoop: true
   },
   LegendConfig: {
     File: '',
@@ -34,6 +37,9 @@ export interface MapConfig {
   OptionalGroupLabel: string
   MouseOverOpacityDelta: number
   GeoTiffResolution: number
+  FrameDelay: number // in milliseconds
+  EndOfLoopPause: number // in milliseconds
+  AutoPlayLoop: boolean
 }
 
 export interface LegendConfig {
@@ -56,6 +62,7 @@ export interface NamedLayerType {
   Name: string
   Type: GeoLayerType
   Variable: fast.VariableRef
+  FrameCount?: number
 }
 
 export interface MainLayer extends NamedLayerType {  

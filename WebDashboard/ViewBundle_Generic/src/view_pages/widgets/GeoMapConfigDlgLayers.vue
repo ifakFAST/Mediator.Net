@@ -63,6 +63,7 @@
                   <th>Name</th>
                   <th>Object</th>
                   <th>Variable</th>
+                  <th>Frame Count</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -91,6 +92,16 @@
                       :items="ObjectID2Variables(layer.Variable)"
                       dense
                     ></v-combobox>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-model.number="layer.FrameCount"
+                      type="number"
+                      min="1"
+                      dense
+                      style="max-width: 100px"
+                      persistent-hint
+                    ></v-text-field>
                   </td>
                   <td>
                     <div class="d-flex">
@@ -122,6 +133,7 @@
                   <th>Name</th>
                   <th>Object</th>
                   <th>Variable</th>
+                  <th>Frame Count</th>
                   <th>Selected by Default</th>
                   <th>Actions</th>
                 </tr>
@@ -151,6 +163,16 @@
                       :items="ObjectID2Variables(layer.Variable)"
                       dense
                     ></v-combobox>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-model.number="layer.FrameCount"
+                      type="number"
+                      min="1"
+                      dense
+                      style="max-width: 100px"
+                      persistent-hint
+                    ></v-text-field>
                   </td>
                   <td>
                     <v-switch v-model="layer.IsSelected" dense></v-switch>
@@ -304,7 +326,8 @@ export default class GeoMapConfigDlgLayers extends Vue {
     const item: config.MainLayer = {
       Name: '',
       Type: 'GeoJson',
-      Variable: { Object: '', Name: '' }
+      Variable: { Object: '', Name: '' },
+      FrameCount: 1
     }
     this.theConfig.MainLayers.push(item)
   }
@@ -314,7 +337,8 @@ export default class GeoMapConfigDlgLayers extends Vue {
       Name: '',
       Type: 'GeoJson',
       Variable: { Object: '', Name: '' },
-      IsSelected: true
+      IsSelected: true,
+      FrameCount: 1
     }
     this.theConfig.OptionalLayers.push(item)
   }

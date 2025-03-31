@@ -52,6 +52,28 @@
             </v-col>
           </v-row>
 
+          <v-row>
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.FrameDelay"
+                label="Frame Delay (ms)"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model="theConfig.MapConfig.EndOfLoopPause"
+                label="End of Loop Pause (ms)"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="4">
+              <v-checkbox
+                v-model="theConfig.MapConfig.AutoPlayLoop"
+                label="Auto Play"
+                hide-details
+              ></v-checkbox>
+            </v-col>
+          </v-row>
+
           <v-subheader class="pl-0">Legend Settings</v-subheader>
           <v-row>
             <v-col cols="8">

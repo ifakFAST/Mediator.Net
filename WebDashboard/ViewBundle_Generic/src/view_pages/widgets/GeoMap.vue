@@ -71,6 +71,19 @@ interface GeoTiffUrl {
 // Extend types to handle both direct layers and layer groups
 type GeoLayer = L.GeoJSON | L.LayerGroup
 
+// Types for frame animation
+interface GeoJsonFrame {
+  data: GeoJsonObject
+  setVariableValues?: Record<string, string>
+}
+
+interface GeoTiffFrame {
+  georaster: any // Type from parseGeoraster
+  setVariableValues?: Record<string, string>
+  opacity?: number
+  colorMap?: ColorMapRange[]
+}
+
 interface ColorMapRange {
   start: number; // inclusive
   end: number;   // exclusive
@@ -131,6 +144,11 @@ export default class GeoMap extends Vue {
   variableResolvedMap: Record<string, string> = { }
   activeRequests: Map<string, AbortController> = new Map()
   layersWithSetVariableValues: Map<string, Record<string, string>> = new Map()
+  
+  // Animation properties
+  animationControllers: Map<string, { isRunning: boolean }> = new Map() // layerName -> animation controller
+  geoJsonFrames: Map<string, GeoJsonFrame[]> = new Map() // layerName -> frames
+  geoTiffFrames: Map<string, GeoTiffFrame[]> = new Map() // layerName -> frames
 
   contextMenu = {
     show: false,
@@ -153,21 +171,34 @@ export default class GeoMap extends Vue {
   }
 
   beforeDestroy() {
-
     this.activeRequests.forEach((controller) => {
       controller.abort()
     })    
     this.activeRequests.clear()
 
+    this.stopAllAnimations()
     this.clearMap()
   }
 
   clearMap(): void {
+    // Stop all animations
+    this.stopAllAnimations()
+    
     if (this.map) {
       this.map.remove()
       this.map = null
     }
     this.layersWithSetVariableValues.clear()
+    this.geoJsonFrames.clear()
+    this.geoTiffFrames.clear()
+  }
+  
+  stopAllAnimations(): void {
+    // Mark all animations as stopped
+    this.animationControllers.forEach((controller) => {
+      controller.isRunning = false
+    })
+    this.animationControllers.clear()
   }
 
   @Watch('configVariables.VarValues', { deep: true })
@@ -214,6 +245,7 @@ export default class GeoMap extends Vue {
 
     this.map = L.map(this.theID, mapOptions)
     this.map.on('layeradd', (e) => this.onLayerAdd(e))
+    this.map.on('layerremove', (e) => this.onLayerRemove(e))
 
     this.baseMaps = { }
     let isFirstBaseLayer = true
@@ -358,10 +390,43 @@ export default class GeoMap extends Vue {
     }
 
     if (layerName) {
+      // Set any variable values from the layer
       if (this.layersWithSetVariableValues.has(layerName)) {
         const variableValues = this.layersWithSetVariableValues.get(layerName)
         this.setConfigVariableValues(variableValues)
       }
+      
+      // Start animation if this layer has multiple frames
+      const hasGeoJsonFrames = this.geoJsonFrames.has(layerName) && this.geoJsonFrames.get(layerName).length > 1
+      const hasGeoTiffFrames = this.geoTiffFrames.has(layerName) && this.geoTiffFrames.get(layerName).length > 1
+      
+      if (hasGeoJsonFrames || hasGeoTiffFrames) {
+        this.startLayerAnimation(layerName)
+      }
+    }
+  }
+  
+  onLayerRemove(e: L.LayerEvent): void {
+    // Find the layer name
+    let layerName: string | null = null
+    for (const [name, layer] of Object.entries(this.mainLayers)) {
+      if (layer === e.layer) {
+        layerName = name
+        break
+      }
+    }
+    if (!layerName) {
+      for (const [name, layer] of Object.entries(this.optionalLayers)) {
+        if (layer === e.layer) {
+          layerName = name
+          break
+        }
+      }
+    }
+
+    if (layerName) {
+      // Stop animation for this layer
+      this.stopLayerAnimation(layerName)
     }
   }
 
@@ -483,11 +548,8 @@ export default class GeoMap extends Vue {
 
     if (feature?.properties?.setVariableValues) {
       const setVariableValues: Record<string, string> = feature.properties.setVariableValues
-      layer.on('click', (e: L.LeafletMouseEvent) => {        
-        const para = {
-          variableValues: setVariableValues
-        }
-        window.parent['dashboardApp'].sendViewRequest('SetConfigVariableValues', para, (strResponse) => {})
+      layer.on('click', (e: L.LeafletMouseEvent) => {   
+        this.setConfigVariableValues(setVariableValues)
       })
     }
 
@@ -520,16 +582,21 @@ export default class GeoMap extends Vue {
 
   @Watch('timeRange')
   watch_timeRange(newVal: object, old: object): void {
+    // Stop all animations before reloading layers
+    this.stopAllAnimations()
     this.loadLayers()
   }
 
   async loadLayerContent(layerObj: NamedLayerType): Promise<void> {
-
     const layerName = layerObj.Name
     const layer: GeoLayer = this.mainLayers[layerName] || this.optionalLayers[layerName]
     const variable: fast.VariableRef = layerObj.Variable
     const layerType: GeoLayerType = layerObj.Type
-
+    const frameCount = layerObj.FrameCount || 1
+    
+    // Stop any existing animation for this layer
+    this.stopLayerAnimation(layerName)
+    
     const totalStartTime = performance.now()
 
     // Cancel any existing request for this layer
@@ -543,123 +610,223 @@ export default class GeoMap extends Vue {
     this.activeRequests.set(layerName, abortController)
 
     try {
-
-      const data: GeoJsonObj | GeoJsonUrl | GeoTiffUrl = await this.backendAsync('GetGeoData', { variable: variable, timeRange: this.timeRange, })
+      // Clear existing frames for this layer
+      this.geoJsonFrames.delete(layerName)
+      this.geoTiffFrames.delete(layerName)
+      
+      // Request data with frame count parameter
+      const dataArray: GeoJsonObj[] | GeoJsonUrl[] | GeoTiffUrl[]  = await this.backendAsync('GetGeoData', { 
+        variable: variable, 
+        timeRange: this.timeRange,
+        frameCount: frameCount 
+      })
+      
       if (abortController.signal.aborted) {
         console.info(`Request for layer ${layerName} was aborted after backendAsync`)
         return
       }
-
-      // Check data type to determine how to handle it
-      if (data.type === 'GeoTiffUrl') { // Handle GeoTiff URL data
-        
+      
+      if (!Array.isArray(dataArray) || dataArray.length === 0) {
+        console.warn(`Received invalid data format for layer ${layerName}`)
+        return
+      }
+      
+      // Process based on data type of first frame
+      const firstItem = dataArray[0]
+      
+      if (firstItem.type === 'GeoTiffUrl') {
+        // Handle GeoTiff URL data
         if (layerType === 'GeoJson') {
           throw new Error('Expected GeoJson data, but got GeoTiff data')
         }
         
-        const geoTiffUrl = data as GeoTiffUrl
-
-        const fetchStartTime = performance.now()
-        const response = await fetch(geoTiffUrl.url, { 
-          signal: abortController.signal 
-        })
-        const fetchEndTime = performance.now()
-        if (abortController.signal.aborted) {
-          console.info(`Request for layer ${layerName} was aborted after fetch`)
-          return
-        }
-
-        if (!response.ok) {
-          throw new Error(`Failed to load GeoTiff data: ${response.statusText}`)
+        const frames: GeoTiffFrame[] = []
+        
+        for (const geoTiffUrl of dataArray as GeoTiffUrl[]) {
+          if (abortController.signal.aborted) {
+            return
+          }
+          
+          try {
+            const fetchStartTime = performance.now()
+            const response = await fetch(geoTiffUrl.url, { 
+              signal: abortController.signal 
+            })
+            const fetchEndTime = performance.now()
+            
+            if (abortController.signal.aborted) {
+              return
+            }
+            
+            if (!response.ok) {
+              throw new Error(`Failed to load GeoTiff data: ${response.statusText}`)
+            }
+            
+            const arrayBufferStartTime = performance.now()
+            const arrayBuffer = await response.arrayBuffer()
+            const arrayBufferEndTime = performance.now()
+            
+            if (abortController.signal.aborted) {
+              return
+            }
+            
+            const parseStartTime = performance.now()
+            const georaster = await parseGeoraster(arrayBuffer)
+            const parseEndTime = performance.now()
+            
+            if (abortController.signal.aborted) {
+              return
+            }
+            
+            frames.push({
+              georaster,
+              opacity: geoTiffUrl.opacity || 0.9,
+              colorMap: geoTiffUrl.colorMap,
+              setVariableValues: geoTiffUrl.setVariableValues
+            })
+            
+            console.info(`Loaded GeoTiff frame in ${parseEndTime - totalStartTime}ms`)
+          } catch (error) {
+            console.error(`Failed to load GeoTiff frame: ${error.message}`)
+          }
         }
         
-        const arrayBufferStartTime = performance.now()
-        const arrayBuffer = await response.arrayBuffer()
-        const arrayBufferEndTime = performance.now()
-        if (abortController.signal.aborted) {
-          console.info(`Request for layer ${layerName} was aborted after arrayBuffer`)
-          return
+        if (frames.length > 0) {
+          // Store frames for animation
+          this.geoTiffFrames.set(layerName, frames)
+          
+          // Display the first frame
+          const layerGroup = layer as L.LayerGroup
+          layerGroup.clearLayers()
+          
+          const firstFrame = frames[0]
+          const options: GeoRasterLayerOptions = {
+            georaster: firstFrame.georaster,
+            opacity: firstFrame.opacity || 0.9,
+            zIndex: 4,
+            pixelValuesToColorFn: firstFrame.colorMap ? createColorMapper(firstFrame.colorMap) : undefined,
+            resolution: this.config.MapConfig.GeoTiffResolution
+          }
+          
+          const rasterLayer = new GeoRasterLayer(options)
+          layerGroup.addLayer(rasterLayer)
+          
+          if (firstFrame.setVariableValues) {
+            this.layersWithSetVariableValues.set(layerName, firstFrame.setVariableValues)
+            if (this.map.hasLayer(layerGroup)) {
+              this.setConfigVariableValues(firstFrame.setVariableValues)
+            }
+          }
+          
+          // Start animation if there are multiple frames
+          if (frames.length > 1 && this.map.hasLayer(layerGroup)) {
+            this.startLayerAnimation(layerName)
+          }
         }
-        
-        const parseStartTime = performance.now()
-        const georaster = await parseGeoraster(arrayBuffer)
-        const parseEndTime = performance.now()
-        if (abortController.signal.aborted) {
-          console.info(`Request for layer ${layerName} was aborted after parsing GeoTiff`)
-          return
-        }
-        
-        const options: GeoRasterLayerOptions = {
-          georaster: georaster,
-          opacity: geoTiffUrl.opacity || 0.9,
-          zIndex: 4,
-          pixelValuesToColorFn: geoTiffUrl.colorMap ? createColorMapper(geoTiffUrl.colorMap) : undefined,
-          resolution: this.config.MapConfig.GeoTiffResolution
-        }
-        const newRasterLayer = new GeoRasterLayer(options)        
-        layer.clearLayers()
-        layer.addLayer(newRasterLayer)
-
-        const totalEndTime = performance.now()
-        console.info(`Loaded GeoTiff for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${arrayBufferEndTime - arrayBufferStartTime}ms (arrayBuffer), ${parseEndTime - parseStartTime}ms (parse)`)
-      
       }
-      else if (data.type === 'GeoJsonUrl') { // Handle GeoJSON URL data
-        
+      else if (firstItem.type === 'GeoJsonUrl') {
+        // Handle GeoJSON URL data
         if (layerType === 'GeoTiff') {
           throw new Error('Expected GeoTiff data, but got GeoJson data')
         }
         
-        const geoJsonUrl = data as GeoJsonUrl
+        const frames: GeoJsonFrame[] = []
         
-        const fetchStartTime = performance.now()
-        const response = await fetch(geoJsonUrl.url, { 
-          signal: abortController.signal 
-        })
-        const fetchEndTime = performance.now()
-        if (abortController.signal.aborted) {
-          console.info(`Request for layer ${layerName} was aborted after fetch`)
-          return
+        for (const geoJsonUrl of dataArray as GeoJsonUrl[]) {
+          if (abortController.signal.aborted) {
+            return
+          }
+          
+          try {
+            const fetchStartTime = performance.now()
+            const response = await fetch(geoJsonUrl.url, { 
+              signal: abortController.signal 
+            })
+            const fetchEndTime = performance.now()
+            
+            if (abortController.signal.aborted) {
+              return
+            }
+            
+            if (!response.ok) {
+              throw new Error(`Failed to load GeoJSON data: ${response.statusText}`)
+            }
+            
+            const jsonStartTime = performance.now()
+            const geoJsonData = await response.json()
+            const jsonEndTime = performance.now()
+            
+            if (abortController.signal.aborted) {
+              return
+            }
+            
+            frames.push({
+              data: geoJsonData as GeoJsonObject,
+              setVariableValues: geoJsonUrl.setVariableValues
+            })
+            
+            console.info(`Loaded GeoJSON frame in ${jsonEndTime - totalStartTime}ms`)
+          }
+          catch (error) {
+            console.error(`Failed to load GeoJSON frame: ${error.message}`)
+          }
         }
-
-        if (!response.ok) {
-          throw new Error(`Failed to load GeoJSON data: ${response.statusText}`)
+        
+        if (frames.length > 0) {
+          // Store frames for animation
+          this.geoJsonFrames.set(layerName, frames)
+          
+          // Display the first frame
+          const geoJsonLayer = layer as L.GeoJSON
+          geoJsonLayer.clearLayers()
+          geoJsonLayer.addData(frames[0].data)
+          
+          if (frames[0].setVariableValues) {
+            this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
+            if (this.map.hasLayer(geoJsonLayer)) {
+              this.setConfigVariableValues(frames[0].setVariableValues)
+            }
+          }
+          
+          // Start animation if there are multiple frames
+          if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
+            this.startLayerAnimation(layerName)
+          }
         }
-        
-        const jsonStartTime = performance.now()
-        const geoJsonData = await response.json()
-        const jsonEndTime = performance.now()
-        if (abortController.signal.aborted) {
-          console.info(`Request for layer ${layerName} was aborted after parsing JSON`)
-          return
-        }
-        
-        const geoJsonLayer = layer as L.GeoJSON
-        geoJsonLayer.clearLayers()
-        geoJsonLayer.addData(geoJsonData as GeoJsonObject)
-        
-        const totalEndTime = performance.now()
-        console.info(`Loaded GeoJSON for layer ${layerName} in ${totalEndTime - totalStartTime}ms (total), ${fetchEndTime - fetchStartTime}ms (fetch), ${jsonEndTime - jsonStartTime}ms (json)`)
-
       }
-      else { // Handle direct GeoJSON data
-        
+      else {
+        // Handle direct GeoJSON data
         if (layerType === 'GeoTiff') {
           throw new Error('Expected GeoTiff data, but got GeoJson data')
         }
-
-        const geoJsonLayer = layer as L.GeoJSON
-        geoJsonLayer.clearLayers()
-        geoJsonLayer.addData(data as GeoJsonObject)
-      }
-
-      if (data.setVariableValues) {
-        this.layersWithSetVariableValues.set(layerName, data.setVariableValues)
-        if (this.map.hasLayer(layer)) {
-          this.setConfigVariableValues(data.setVariableValues)
+        
+        const frames: GeoJsonFrame[] = dataArray.map(data => ({
+          data: data as GeoJsonObject,
+          setVariableValues: (data as any).setVariableValues
+        }))
+        
+        if (frames.length > 0) {
+          // Store frames for animation
+          this.geoJsonFrames.set(layerName, frames)
+          
+          // Display the first frame
+          const geoJsonLayer = layer as L.GeoJSON
+          geoJsonLayer.clearLayers()
+          geoJsonLayer.addData(frames[0].data)
+          
+          if (frames[0].setVariableValues) {
+            this.layersWithSetVariableValues.set(layerName, frames[0].setVariableValues)
+            if (this.map.hasLayer(geoJsonLayer)) {
+              this.setConfigVariableValues(frames[0].setVariableValues)
+            }
+          }
+          
+          // Start animation if there are multiple frames
+          if (frames.length > 1 && this.map.hasLayer(geoJsonLayer)) {
+            this.startLayerAnimation(layerName)
+          }
         }
       }
-
     } 
     catch (err) {
       // Don't show errors for aborted requests
@@ -676,6 +843,90 @@ export default class GeoMap extends Vue {
       if (this.activeRequests.get(layerName) === abortController) {
         this.activeRequests.delete(layerName)
       }
+    }
+  }
+  
+  startLayerAnimation(layerName: string): void {
+    // Clear any existing animation
+    this.stopLayerAnimation(layerName)
+    
+    const layer = this.mainLayers[layerName] || this.optionalLayers[layerName]
+    if (!layer) return
+    
+    const isGeoJson = layer instanceof L.GeoJSON
+    const frames = isGeoJson ? 
+      this.geoJsonFrames.get(layerName) : 
+      this.geoTiffFrames.get(layerName)
+    
+    if (!frames || frames.length <= 1) return
+    
+    // Create animation controller
+    const controller = { isRunning: true }
+    this.animationControllers.set(layerName, controller)
+    
+    // Start animation loop
+    this.animateLayer(layerName, layer, frames, isGeoJson, controller)
+  }
+  
+  private async animateLayer(
+    layerName: string, 
+    layer: GeoLayer, 
+    frames: GeoJsonFrame[] | GeoTiffFrame[], 
+    isGeoJson: boolean,
+    controller: { isRunning: boolean }
+  ): Promise<void> {
+    
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    
+    let currentIndex = 0
+    
+    // Animation loop
+    while (controller.isRunning) {
+
+      if (isGeoJson) {
+        const geoJsonLayer = layer as L.GeoJSON
+        const frame = frames[currentIndex] as GeoJsonFrame        
+        geoJsonLayer.clearLayers()
+        geoJsonLayer.addData(frame.data)
+      } 
+      else {
+        const layerGroup = layer as L.LayerGroup
+        const frame = frames[currentIndex] as GeoTiffFrame
+        const options: GeoRasterLayerOptions = {
+          georaster: frame.georaster,
+          opacity: frame.opacity || 0.9,
+          zIndex: 4,
+          pixelValuesToColorFn: frame.colorMap ? createColorMapper(frame.colorMap) : undefined,
+          resolution: this.config.MapConfig.GeoTiffResolution
+        }
+        const rasterLayer = new GeoRasterLayer(options)
+        layerGroup.clearLayers()
+        layerGroup.addLayer(rasterLayer)
+      }
+
+      const frame = frames[currentIndex]
+      if (frame.setVariableValues) {
+        this.layersWithSetVariableValues.set(layerName, frame.setVariableValues)
+        if (this.map.hasLayer(layer)) {
+          this.setConfigVariableValues(frame.setVariableValues)
+        }
+      }
+      
+      currentIndex = (currentIndex + 1) % frames.length
+      
+      if (currentIndex === 0 && this.config.MapConfig.EndOfLoopPause > 0) {
+        await delay(this.config.MapConfig.EndOfLoopPause)        
+      }
+      else {
+        await delay(this.config.MapConfig.FrameDelay)
+      }
+    }
+  }
+  
+  stopLayerAnimation(layerName: string): void {
+    if (this.animationControllers.has(layerName)) {
+      this.animationControllers.get(layerName).isRunning = false
+      this.animationControllers.delete(layerName)
     }
   }
 

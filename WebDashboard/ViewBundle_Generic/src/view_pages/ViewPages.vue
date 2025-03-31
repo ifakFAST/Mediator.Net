@@ -116,8 +116,21 @@ export default class ViewPages extends Vue {
         }
       }
       else if (eventName === 'ConfigVariableValuesChanged') {
+        
         const newValues: { [key: string]: string } = eventPayload.ChangedVarValues
-        Object.keys(newValues).forEach(key => {
+        
+        const updatedKeys = Object.keys(newValues).filter(key => {
+          const oldValue: string = context.configVariableValues.VarValues[key]
+          return oldValue !== undefined && oldValue !== newValues[key]
+        })
+
+        if (updatedKeys.length === 0) { 
+          console.info('No config variable values changed')
+          return 
+        }
+
+        updatedKeys.forEach(key => {
+          console.info(`Config variable value changed: ${key} = ${newValues[key]}`)
           context.$set(context.configVariableValues.VarValues, key, newValues[key])
         })
         context.configVariableValues = { 

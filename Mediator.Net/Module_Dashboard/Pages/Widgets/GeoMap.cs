@@ -64,28 +64,25 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return Common.GetVarItemsData(Connection, usedObjects, IsJson);
     }
 
-    public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange) {
+    public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange, int frameCount) {
         showLatest = timeRange.Type == TimeType.Last;
         var variableResolved = Context.ResolveVariableRef(variable);
-        if (timeRange.Type == TimeType.Last) {
+        if (timeRange.Type == TimeType.Last && frameCount == 1) {
             
             VTQ vtq = await Connection.ReadVariable(variableResolved);
             return ReqResult.OK(vtq.V);
         }
         else {
             Timestamp end = timeRange.GetEnd();
-            DataValue? v = await ReadLatestOlderOrEqualT(variableResolved, end);
-            if (v == null) return ReqResult.Bad($"No data found for t = {end}");
-            return ReqResult.OK(v.Value);
+            DataValue[] v = await ReadLatestOlderOrEqualT(variableResolved, end, frameCount);
+            if (v.Length == 0) return ReqResult.Bad($"No data found for t = {end}");
+            return ReqResult.OK(v);
         }
     }
 
-    async Task<DataValue?> ReadLatestOlderOrEqualT(VariableRef vref, Timestamp t) {
-        Timestamp tMaxLoockback = t - Duration.FromSeconds(59); // TODO: make configurable?
-        VTTQs vttqs = await Connection.HistorianReadRaw(vref, tMaxLoockback, t, 1, BoundingMethod.TakeLastN);
-        if (vttqs.Count == 0) return null;
-        VTTQ vtq = vttqs[0];
-        return vtq.V;
+    async Task<DataValue[]> ReadLatestOlderOrEqualT(VariableRef vref, Timestamp t, int frameCount) {
+        VTTQs vttqs = await Connection.HistorianReadRaw(vref, Timestamp.Empty, t, maxValues: frameCount, BoundingMethod.TakeLastN);
+        return vttqs.Select(vttq => vttq.V).ToArray();
     }
 
     public async Task<ReqResult> UiReq_SaveConfig(GeoMapConfig config) {
@@ -150,6 +147,9 @@ public sealed class MapConfig {
     public string OptionalGroupLabel { get; set; } = "Optional";
     public double MouseOverOpacityDelta { get; set; } = 0.3;
     public double GeoTiffResolution { get; set; } = 128;
+    public int FrameDelay { get; set; } = 750; // in milliseconds
+    public int EndOfLoopPause { get; set; } = 1500; // in milliseconds
+    public bool AutoPlayLoop { get; set; } = true;
 }
 
 public sealed class LegendConfig {
@@ -170,6 +170,7 @@ public sealed class MainLayer {
     public string Name { get; set; } = "";
     public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRefUnresolved Variable { get; set; }
+    public int FrameCount { get; set; } = 1;
 }
 
 public sealed class OptionalLayer {
@@ -177,6 +178,7 @@ public sealed class OptionalLayer {
     public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRefUnresolved Variable { get; set; }
     public bool IsSelected { get; set; } = true;
+    public int FrameCount { get; set; } = 1;
 }
 
 public enum LayerType {

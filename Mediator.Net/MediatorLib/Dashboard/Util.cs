@@ -4,6 +4,7 @@
 
 using Ifak.Fast.Mediator.Util;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -64,6 +65,26 @@ namespace Ifak.Fast.Mediator.Dashboard
                 string json = obj.JSON;
                 using (var writer = new StreamWriter(res, UTF8_NoBOM, 1024, leaveOpen: true)) {
                     writer.Write(json);
+                }
+                res.Seek(0, SeekOrigin.Begin);
+            }
+            catch (Exception) {
+                res.Dispose();
+                throw;
+            }
+            return new ReqResult(200, res, "application/json");
+        }
+
+        public static ReqResult OK(IReadOnlyList<DataValue> obj) {
+            var res = MemoryManager.GetMemoryStream("ReqResult.OK");
+            try {
+                using (var writer = new StreamWriter(res, UTF8_NoBOM, 1024, leaveOpen: true)) {
+                    writer.Write('[');
+                    for (int i = 0; i < obj.Count; ++i) {
+                        if (i > 0) writer.Write([',', '\n']);
+                        writer.Write(obj[i].JSON);
+                    }
+                    writer.Write(']');
                 }
                 res.Seek(0, SeekOrigin.Begin);
             }
