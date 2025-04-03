@@ -162,6 +162,7 @@ export default class GeoMap extends Vue {
   // Animation properties
   animationControllers: Map<string, AnimationController> = new Map() // layerName -> animation controller
   geoContentFrames: Map<string, GeoContentFrame[]> = new Map() // layerName -> frames
+  globalPaused = false
 
   contextMenu = {
     show: false,
@@ -169,6 +170,7 @@ export default class GeoMap extends Vue {
     clientY: 0,
   }
   canUpdateConfig = false
+  playPauseControl: L.Control = null
 
   beforeCreate() {
     dgUUID += 1
@@ -192,10 +194,91 @@ export default class GeoMap extends Vue {
     this.stopAllAnimations()
     this.clearMap()
   }
+  
+  initPlayPauseControl(): void {
+
+    // Remove any existing control
+    if (this.playPauseControl) {
+      this.playPauseControl.remove()
+      this.playPauseControl = null
+    }
+    
+    // Create a custom control for play/pause
+    const PlayPauseControl = L.Control.extend({
+      options: {
+        position: 'bottomright',
+      },
+      
+      onAdd: (map: L.Map) => {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom')
+        const button = L.DomUtil.create('a', '', container)
+        
+        button.href = '#'
+        button.title = this.globalPaused ? 'Play animation' : 'Pause animation'
+        button.innerHTML = this.globalPaused ? '▶' : '⏸'
+        button.style.fontSize = '16px'
+        button.style.textAlign = 'center'
+        button.style.lineHeight = '26px'
+        button.style.fontWeight = 'bold'
+        button.style.width = '30px'
+        button.style.height = '30px'
+        button.style.display = 'flex'
+        button.style.alignItems = 'center'
+        button.style.justifyContent = 'center'
+        
+        L.DomEvent.on(button, 'click', L.DomEvent.stop)
+        L.DomEvent.on(button, 'click', () => {
+          this.toggleGlobalPlayPause()
+          button.innerHTML = this.globalPaused ? '▶' : '⏸'
+          button.title = this.globalPaused ? 'Play animation' : 'Pause animation'
+        })
+        
+        // Prevent propagation of mousedown/up events to map
+        L.DomEvent.disableClickPropagation(container)
+        
+        return container
+      }
+    })
+    
+    // Only add the control if we have any animatable layers
+    const hasAnimatableLayers = this.hasAnimatableLayers()    
+    if (hasAnimatableLayers) {
+      this.playPauseControl = new PlayPauseControl()
+      this.playPauseControl.addTo(this.map)
+      // Set initial state based on config
+      if (!this.config.MapConfig.AutoPlayLoop) {
+        this.toggleGlobalPlayPause() // Start paused if AutoPlayLoop is false
+      }
+    }
+  }
+  
+  hasAnimatableLayers(): boolean {
+    // Check if we have any layers with multiple frames
+    for (const frames of Array.from(this.geoContentFrames.values())) {
+      if (frames.length > 1) {
+        return true
+      }
+    }
+    return false
+  }
+  
+  toggleGlobalPlayPause(): void {
+    this.globalPaused = !this.globalPaused    
+    // Apply to all active animations
+    this.animationControllers.forEach(controller => {
+      controller.isPaused = this.globalPaused
+    })
+  }
 
   clearMap(): void {
     // Stop all animations
     this.stopAllAnimations()
+    
+    // Remove play/pause control
+    if (this.playPauseControl) {
+      this.playPauseControl.remove()
+      this.playPauseControl = null
+    }
     
     if (this.map) {
       this.map.remove()
@@ -263,7 +346,7 @@ export default class GeoMap extends Vue {
     this.map = L.map(this.theID, mapOptions)
     this.map.on('layeradd', (e) => this.onLayerAdd(e))
     this.map.on('layerremove', (e) => this.onLayerRemove(e))
-
+    
     this.baseMaps = { }
     let isFirstBaseLayer = true
     for (const tileLayer of config.TileLayers) {
@@ -369,6 +452,9 @@ export default class GeoMap extends Vue {
         this.map.getContainer().appendChild(img)
       }
     }
+
+    // Add play/pause control
+    this.initPlayPauseControl()
   }
 
   createLayer(layer: NamedLayerType): GeoLayer {
@@ -844,12 +930,15 @@ export default class GeoMap extends Vue {
       isRunning: true,
       currentIndex: 0,
       lastFrameTime: 0,
-      isPaused: false
+      isPaused: this.globalPaused
     }
     this.animationControllers.set(layerName, controller)
     
-    // Start animation loop
     this.animateLayer(layerName, layer, frames, isGeoJson, controller)
+    
+    if (!this.playPauseControl && this.hasAnimatableLayers) {
+      this.initPlayPauseControl()
+    }
   }
   
   private animateLayer(
@@ -904,7 +993,8 @@ export default class GeoMap extends Vue {
           controller.isPaused = true
           setTimeout(() => {
             if (controller.isRunning) {
-              controller.isPaused = false
+              // Only resume if we're not globally paused
+              controller.isPaused = this.globalPaused
               controller.lastFrameTime = 0 // Reset timing
             }
           }, this.config.MapConfig.EndOfLoopPause)
@@ -1022,5 +1112,15 @@ export default class GeoMap extends Vue {
 	user-select: none;
 	pointer-events: none;
 	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.leaflet-control-custom a {
+  background-color: #fff;
+  color: #444;
+  cursor: pointer;
+}
+
+.leaflet-control-custom a:hover {
+  background-color: #f4f4f4;
 }
 </style>
