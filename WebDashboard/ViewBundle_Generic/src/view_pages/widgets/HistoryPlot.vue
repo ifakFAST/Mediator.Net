@@ -445,6 +445,8 @@ export default class HistoryPlot extends Vue {
 
   dataRevision = 0
 
+  stringWithVarResolvedMap: Map<string, string> = new Map()
+
   get variables(): Variable[] {
     return this.items.map((it) => it.Variable)
   }
@@ -580,11 +582,24 @@ export default class HistoryPlot extends Vue {
 
   @Watch('configVariables.VarValues', { deep: true })
   watch_configVariablesVarValues(newVal: object, oldVal: object): void {
-    const anyVars = this.items.some((it) => {
-      return it.Variable.Object.includes('${') || it.Variable.Name.includes('${') || it.Name.includes('${')
+
+    const resolveMap = this.stringWithVarResolvedMap
+
+    const anyChanges = this.items.some((it) => {
+
+      const obj = it.Variable.Object
+      const objResolved = model.VariableReplacer.replaceVariables(obj, this.configVariables.VarValues)
+      const objChanged = !resolveMap.has(obj) || resolveMap.get(obj) !== objResolved
+
+      const name = it.Name
+      const nameResolved = model.VariableReplacer.replaceVariables(name, this.configVariables.VarValues)
+      const nameChanged = !resolveMap.has(name) || resolveMap.get(name) !== nameResolved
+
+      return objChanged || nameChanged
     })
-    if (anyVars) {
-      this.onLoadDataForNextTab(true)
+
+    if (anyChanges) {
+      this.onLoadData(true)
     }
   }
 
@@ -621,7 +636,7 @@ export default class HistoryPlot extends Vue {
       context.dyGraph.setVisibility(index, checkBox.checked)
     }
 
-    this.onLoadDataForNextTab(false)
+    this.onLoadData(false)
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
   }
 
@@ -721,7 +736,7 @@ export default class HistoryPlot extends Vue {
 
   @Watch('timeRange')
   watch_timeRange(newVal: object, old: object): void {
-    this.onLoadDataForNextTab(true)
+    this.onLoadData(true)
   }
 
   @Watch('eventPayload')
@@ -815,10 +830,11 @@ export default class HistoryPlot extends Vue {
     })
   }
 
-  async onLoadDataForNextTab(resetZoom: boolean): Promise<void> {
+  async onLoadData(resetZoom: boolean): Promise<void> {
 
     const para = {
       timeRange: this.timeRange,
+      configVars: this.configVariables.VarValues,
     }
 
     const response: {
@@ -827,6 +843,14 @@ export default class HistoryPlot extends Vue {
         Data: any[][],
         DataRevision: number,
       } = await this.backendAsync('LoadData', para)
+
+    const resolveMap = this.stringWithVarResolvedMap
+    for (const it of this.items) {      
+      const obj = it.Variable.Object
+      resolveMap.set(obj, model.VariableReplacer.replaceVariables(obj, this.configVariables.VarValues))
+      const name = it.Name
+      resolveMap.set(name, model.VariableReplacer.replaceVariables(name, this.configVariables.VarValues))
+    }
 
     this.dataRevision = response.DataRevision
     const data: any[][] = response.Data
@@ -838,7 +862,7 @@ export default class HistoryPlot extends Vue {
     this.enforceYAxisLimits()
 
     if (resetZoom) {
-      // console.info('onLoadDataForNextTab: resetZoom...')
+      // console.info('onLoadData: resetZoom...')
       this.zoomResetTime = new Date().getTime()
     }
     else {
@@ -928,7 +952,7 @@ export default class HistoryPlot extends Vue {
         } = await this.backendAsync('SaveItems', para)
 
       if (response.ReloadData) {
-        this.onLoadDataForNextTab(true)
+        this.onLoadData(true)
       }
     }
     catch (err) {
@@ -1061,7 +1085,7 @@ export default class HistoryPlot extends Vue {
         } = await this.backendAsync('SavePlot', para)
 
       if (response.ReloadData) {
-        this.onLoadDataForNextTab(true)
+        this.onLoadData(true)
       }
     } 
     catch (err) {

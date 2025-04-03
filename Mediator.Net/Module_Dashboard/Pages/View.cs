@@ -119,30 +119,6 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return ReqResult.OK();
         }
 
-        public async Task<ReqResult> UiReq_SetConfigVariableValues(Dictionary<string, string> variableValues) {
-
-            //foreach (var variableID in variableValues.Keys) {
-            //    if (!configVarValues.ContainsKey(variableID)) {
-            //        Console.Out.WriteLine($"Unknown config variable id: {variableID}");
-            //    }
-            //}
-
-            foreach (var pair in variableValues) {
-                string variableID = pair.Key;
-                string value = pair.Value;
-                if (configVarValues.ContainsKey(variableID)) {
-                    configVarValues[variableID] = value;
-                }
-            }
-
-            var payload = new {
-                ChangedVarValues = variableValues
-            };
-            await Context.SendEventToUI("ConfigVariableValuesChanged", payload);
-
-            return ReqResult.OK();
-        }
-
         public async Task<ReqResult> UiReq_ConfigPageAdd(string pageID, string title) {
 
             var page = new Page() {
@@ -584,6 +560,16 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             ObjectRef newObject = ObjectRef.Make(v.Object.ModuleID, newObjID);
             return VariableRef.Make(newObject, v.Name);
         }
+
+        internal void SetConfigVariableValues(Dictionary<string, string> variableValues) {
+            foreach (var pair in variableValues) {
+                string variableID = pair.Key;
+                string value = pair.Value;
+                if (configVarValues.ContainsKey(variableID)) {
+                    configVarValues[variableID] = value;
+                }
+            }
+        }
     }
 
     internal static partial class VariableReplacer {
@@ -847,6 +833,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             public VariableRef ResolveVariableRef(VariableRefUnresolved v) {
                 return view.ResolveVariableRef(v);
+            }
+
+            public void SetConfigVariables(Dictionary<string, string> configVars) {
+                view.SetConfigVariableValues(configVars);
             }
         }
     }

@@ -54,7 +54,7 @@
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"
-      :configVariables="configVariables"></geo-map>
+      :configVariables="configVariables" :setConfigVariableValues="setConfigVariableValues" ></geo-map>
 
   </v-card>
 
@@ -106,6 +106,7 @@ export default class WidgetWrapper extends Vue {
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
   @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
+  @Prop() setConfigVariableValues: (variableValues: Record<string, string>) => void
 
   onDateWindowChanged(window: number[]): void {
     this.$emit('date-window-changed', window)

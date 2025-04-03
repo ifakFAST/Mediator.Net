@@ -73,7 +73,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             return variableType;
         }
 
-        public async Task<ReqResult> UiReq_LoadData(TimeRange timeRange) {
+        public async Task<ReqResult> UiReq_LoadData(TimeRange timeRange, Dictionary<string, string> configVars) {
+
+            Context.SetConfigVariables(configVars);
 
             IsLoaded = false;
 

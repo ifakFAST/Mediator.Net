@@ -28,6 +28,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         Task<LogAction[]> GetLoggedPageActions(int limit);
         Task<string> SaveWebAsset(string fileExtension, byte[] data);
         VariableRef ResolveVariableRef(VariableRefUnresolved v);
+        void SetConfigVariables(Dictionary<string, string> configVars);
     }
 
     public class EmptyWidgetContext : WidgetContext
@@ -58,6 +59,10 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
         public VariableRef ResolveVariableRef(VariableRefUnresolved v) {
             throw new InvalidOperationException("ResolveVariableRef on empty WidgetContext");
+        }
+
+        public void SetConfigVariables(Dictionary<string, string> configVars) {
+            throw new InvalidOperationException("SetConfigVariables on empty WidgetContext");
         }
     }
 

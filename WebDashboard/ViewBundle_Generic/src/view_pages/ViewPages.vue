@@ -48,7 +48,7 @@
 
       <page :page="currentPage" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged" 
             :widgetTypes="widgetTypes" :editPage="editPage" @configchanged="onPageConfigChanged"
-            :configVariables="configVariableValues"></page>
+            :configVariables="configVariableValues" :setConfigVariableValues="setConfigVariableValues"></page>
 
       <confirm ref="confirm"></confirm>
       <dlg-text-input ref="textInput"></dlg-text-input>
@@ -115,32 +115,31 @@ export default class ViewPages extends Vue {
           }
         }
       }
-      else if (eventName === 'ConfigVariableValuesChanged') {
-        
-        const newValues: { [key: string]: string } = eventPayload.ChangedVarValues
-        
-        const updatedKeys = Object.keys(newValues).filter(key => {
-          const oldValue: string = context.configVariableValues.VarValues[key]
-          return oldValue !== undefined && oldValue !== newValues[key]
-        })
-
-        if (updatedKeys.length === 0) { 
-          console.info('No config variable values changed')
-          return 
-        }
-
-        updatedKeys.forEach(key => {
-          console.info(`Config variable value changed: ${key} = ${newValues[key]}`)
-          context.$set(context.configVariableValues.VarValues, key, newValues[key])
-        })
-        context.configVariableValues = { 
-          VarDefs: context.configVariableValues.VarDefs, 
-          VarValues: context.configVariableValues.VarValues 
-        } // reassignment to trigger Vue reactivity
-      }
     })
     this.canUpdateConfig = window.parent['dashboardApp'].canUpdateViewConfig()
     this.loadAllPages()
+  }
+
+  setConfigVariableValues(newValues: Record<string, string>): void {
+
+    const updatedKeys = Object.keys(newValues).filter(key => {
+      const oldValue: string = this.configVariableValues.VarValues[key]
+      return oldValue !== undefined && oldValue !== newValues[key]
+    })
+
+    if (updatedKeys.length === 0) { 
+      console.info('No config variable values changed')
+      return 
+    }
+
+    updatedKeys.forEach(key => {
+      console.info(`Config variable value changed: ${key} = ${newValues[key]}`)
+      this.$set(this.configVariableValues.VarValues, key, newValues[key])
+    })
+    this.configVariableValues = { 
+      VarDefs: this.configVariableValues.VarDefs, 
+      VarValues: this.configVariableValues.VarValues 
+    } // reassignment to trigger Vue reactivity
   }
 
   loadAllPages(): void {

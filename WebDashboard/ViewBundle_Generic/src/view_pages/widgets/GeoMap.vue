@@ -143,6 +143,7 @@ export default class GeoMap extends Vue {
   @Prop({ default() { return 0 } }) resize: number
   @Prop({ default() { return null } }) dateWindow: number[]
   @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
+  @Prop() setConfigVariableValues: (variableValues: Record<string, string>) => void
 
   uid = dgUUID.toString()
   map: L.Map = null
@@ -152,8 +153,9 @@ export default class GeoMap extends Vue {
   baseMaps: {[key: string]: L.Layer} = { }
   mainLayers: {[key: string]: GeoLayer} = { }
   optionalLayers: {[key: string]: GeoLayer} = { }
-    
-  variableResolvedMap: Record<string, string> = { }
+  
+  stringWithVarResolvedMap: Map<string, string> = new Map()
+  resolvedCenter: string = ''
   activeRequests: Map<string, AbortController> = new Map()
   layersWithSetVariableValues: Map<string, Record<string, string>> = new Map()
   
@@ -213,29 +215,34 @@ export default class GeoMap extends Vue {
 
   @Watch('configVariables.VarValues', { deep: true })
   watch_configVariablesVarValues(newVal: object, oldVal: object): void {
-    const centerOrig = this.config.MapConfig.Center
-    const resolvedCenter = model.VariableReplacer.replaceVariables(centerOrig, this.configVariables.VarValues)
-    if (resolvedCenter !== centerOrig) {
+
+    const resolvedCenter = model.VariableReplacer.replaceVariables(this.config.MapConfig.Center, this.configVariables.VarValues)
+    if (this.resolvedCenter !== resolvedCenter) {
       this.map.panTo(this.getResolvedCenter())
     }
+    
+    const resolveMap = this.stringWithVarResolvedMap
+
     const mainLayersWithVariables = this.config.MainLayers.filter((mainLayer) => {
-      const objOrig = mainLayer.Variable.Object
-      const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
-      return objResolved !== objOrig && this.variableResolvedMap[objOrig] !== objResolved
+      const obj = mainLayer.Variable.Object
+      const objResolved = model.VariableReplacer.replaceVariables(obj, this.configVariables.VarValues)
+      return !resolveMap.has(obj) || resolveMap.get(obj) !== objResolved
     })
+
     const optionalLayersWithVariables = this.config.OptionalLayers.filter((optionalLayer) => {
-      const objOrig = optionalLayer.Variable.Object
-      const objResolved = model.VariableReplacer.replaceVariables(objOrig, this.configVariables.VarValues)
-      return objResolved !== objOrig && this.variableResolvedMap[objOrig] !== objResolved
+      const obj = optionalLayer.Variable.Object
+      const objResolved = model.VariableReplacer.replaceVariables(obj, this.configVariables.VarValues)
+      return !resolveMap.has(obj) || resolveMap.get(obj) !== objResolved
     })
+
     if (mainLayersWithVariables.length > 0 || optionalLayersWithVariables.length > 0) {
       this.loadLayers(mainLayersWithVariables.concat(optionalLayersWithVariables))
     }
   }
 
   getResolvedCenter(): [number, number] {
-    const center = model.VariableReplacer.replaceVariables(this.config.MapConfig.Center, this.configVariables.VarValues)
-    const parts = center.split(',')
+    this.resolvedCenter = model.VariableReplacer.replaceVariables(this.config.MapConfig.Center, this.configVariables.VarValues)
+    const parts = this.resolvedCenter.split(',')
     return [parseFloat(parts[0]), parseFloat(parts[1])]
   }
 
@@ -446,8 +453,8 @@ export default class GeoMap extends Vue {
 
     for (const layer of layers) {
       await this.loadLayerContent(layer)
-      const strObject = layer.Variable.Object
-      this.variableResolvedMap[strObject] = model.VariableReplacer.replaceVariables(strObject, this.configVariables.VarValues)
+      const obj = layer.Variable.Object
+      this.stringWithVarResolvedMap.set(obj, model.VariableReplacer.replaceVariables(obj, this.configVariables.VarValues))
     }
   }
 
@@ -620,7 +627,8 @@ export default class GeoMap extends Vue {
       const dataArray: GeoJsonObj[] | GeoJsonUrl[] | GeoTiffUrl[]  = await this.backendAsync('GetGeoData', { 
         variable: variable, 
         timeRange: this.timeRange,
-        frameCount: frameCount 
+        frameCount: frameCount,
+        configVars: this.configVariables.VarValues
       })
       
       if (abortController.signal.aborted) {
@@ -937,13 +945,6 @@ export default class GeoMap extends Vue {
   setGeoJsonLayerContent(layer: L.GeoJSON, frame: GeoJsonFrame): void {
     layer.clearLayers()
     layer.addData(frame.data)
-  }
-
-  setConfigVariableValues(variableValues: Record<string, string>): void {
-    const para = {
-      variableValues: variableValues
-    }
-    window.parent['dashboardApp'].sendViewRequest('SetConfigVariableValues', para, (strResponse) => {})
   }
 
   get theHeight(): string {
