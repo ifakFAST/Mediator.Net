@@ -29,10 +29,13 @@ public sealed class DerivedSignal : Identifiable
     private bool parametersAsArray = false;
     private int? idxParameterLast = null;
     private int? idxParameter_dt = null;
+    private int? idxParameter_t = null;
     private readonly object?[] calcParameterValues;
     private readonly MethodInfo calcMethod;
 
     private VariableRef? VarRefSelf = null;
+
+    public VariableRef VariableRef => VarRefSelf ?? throw new Exception($"DerivedSignal {ID} not initialized yet.");
 
     public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "", Timestamp? startTime = null) {
         FullID = fullID;
@@ -45,7 +48,13 @@ public sealed class DerivedSignal : Identifiable
         StartTime = startTime;
 
         InitTest();
-        int countParameterValues = (parametersAsArray ? 1 : Inputs.Length) + ParamStates.Count + (idxParameterLast.HasValue ? 1 : 0) + (idxParameter_dt.HasValue ? 1 : 0);
+        int countParameterValues = 
+            (parametersAsArray ? 1 : Inputs.Length) + 
+            ParamStates.Count + 
+            (idxParameterLast.HasValue ? 1 : 0) + 
+            (idxParameter_dt.HasValue ? 1 : 0) +
+            (idxParameter_t.HasValue ? 1 : 0);
+
         calcParameterValues = new object?[countParameterValues];
         calcMethod = Calculation.Method;
     }
@@ -104,6 +113,9 @@ public sealed class DerivedSignal : Identifiable
             else if (type == typeof(Duration) && name == "dt") {
                 idxParameter_dt = i;
             }
+            else if (type == typeof(Timestamp) && name == "t") {
+                idxParameter_t = i;
+            }
             else {
                 throw new ArgumentException($"Unexpected parameter {name}.");
             }
@@ -133,7 +145,7 @@ public sealed class DerivedSignal : Identifiable
         }
     }
 
-    public double Calculate(IReadOnlyList<double> values, double? last, Duration dt) {
+    public double Calculate(IReadOnlyList<double> values, double? last, Duration dt, Timestamp t) {
 
         int numberOfInputParameters;
 
@@ -158,6 +170,10 @@ public sealed class DerivedSignal : Identifiable
 
         if (idxParameter_dt.HasValue) {
             calcParameterValues[idxParameter_dt.Value] = dt;
+        }
+
+        if (idxParameter_t.HasValue) {
+            calcParameterValues[idxParameter_t.Value] = t;
         }
 
         double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
@@ -242,7 +258,7 @@ public sealed class DerivedSignal : Identifiable
             return;
         }
 
-        const int ChunckSize = 5000;
+        const int ChunkSize = 5000;
 
         string signalID   = string.IsNullOrWhiteSpace(FullID)   ? ID   : FullID;
         string signalName = string.IsNullOrWhiteSpace(FullName) ? Name : FullName;
@@ -299,7 +315,7 @@ public sealed class DerivedSignal : Identifiable
         }
 
         var values = new List<double>();
-        var buffer = new List<VTQ>(ChunckSize);
+        var buffer = new List<VTQ>(ChunkSize);
 
         void DrainBuffer() {
             if (buffer.Count > 0) {
@@ -354,12 +370,12 @@ public sealed class DerivedSignal : Identifiable
             }
 
             Duration dt_calc = time - tPreviousCalculation;
-            double valueRes = Calculate(values, resultPreviousCalculation, dt_calc);
+            double valueRes = Calculate(values, resultPreviousCalculation, dt_calc, time);
             buffer.Add(VTQ.Make(valueRes, time, Quality.Good));
             tPreviousCalculation = time;
             resultPreviousCalculation = valueRes;
 
-            if (buffer.Count >= ChunckSize) {
+            if (buffer.Count >= ChunkSize) {
                 DrainBuffer();
                 if (api.abortStep) {
                     Console.WriteLine($"Calculation aborted for {ID} after DrainBuffer()");
@@ -376,9 +392,9 @@ public record SiblingSignal(string Id);
 
 public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? SiblingRef = null)
 {
-    const int ChunckSize = 5000;
+    const int ChunkSize = 5000;
 
-    private readonly List<VTQ> buffer = new(ChunckSize);
+    private readonly List<VTQ> buffer = new(ChunkSize);
     private int bufferStartIdx = 0;
 
     public VariableRef Var { get; private set; }
@@ -402,7 +418,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
 
             bufferStartIdx = 0;
             buffer.Clear();
-            buffer.AddRange(api.HistorianReadRaw(Var, startInclusive: t, Timestamp.Max, ChunckSize, BoundingMethod.TakeFirstN));
+            buffer.AddRange(api.HistorianReadRaw(Var, startInclusive: t, Timestamp.Max, ChunkSize, BoundingMethod.TakeFirstN));
 
             if (buffer.Count == 0) {
                 canAbort = true;
