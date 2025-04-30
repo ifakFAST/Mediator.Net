@@ -19,6 +19,7 @@ public sealed class DerivedSignal : Identifiable
     public string Name { get; set; } = "";
     public string Unit { get; } = "";
     public string ParentFolderID { get; } = "";
+    public Timestamp? StartTime { get; } = null;
     public Duration Resolution { get; } = Duration.FromMinutes(1);
     public InputDef[] Inputs { get; }
     public readonly List<StateFloat64> ParamStates = [];
@@ -33,7 +34,7 @@ public sealed class DerivedSignal : Identifiable
 
     private VariableRef? VarRefSelf = null;
 
-    public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "") {
+    public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "", Timestamp? startTime = null) {
         FullID = fullID;
         FullName = string.IsNullOrWhiteSpace(fullName) ? fullID : fullName;
         Unit = unit;
@@ -41,6 +42,7 @@ public sealed class DerivedSignal : Identifiable
         Resolution = resolution;
         Inputs = inputs;
         Calculation = calculation;
+        StartTime = startTime;
 
         InitTest();
         int countParameterValues = (parametersAsArray ? 1 : Inputs.Length) + ParamStates.Count + (idxParameterLast.HasValue ? 1 : 0) + (idxParameter_dt.HasValue ? 1 : 0);
@@ -274,7 +276,11 @@ public sealed class DerivedSignal : Identifiable
                 return;
             }
 
-            time = firstVTQ[0].T - Resolution;
+            time = firstVTQ[0].T.Truncate(Resolution) - Resolution;
+
+            if (StartTime.HasValue && StartTime.Value > time) {
+                time = StartTime.Value.Truncate(Resolution) - Resolution;
+            }
 
             foreach (InputDef input in Inputs) {
                 // reset state values:

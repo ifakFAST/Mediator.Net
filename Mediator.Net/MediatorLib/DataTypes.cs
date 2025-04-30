@@ -424,6 +424,8 @@ namespace Ifak.Fast.Mediator
 
         public readonly Timestamp Truncate30Seconds() => new Timestamp((ticks / 30000) * 30000);
 
+        public readonly Timestamp Truncate(Duration interval) => new Timestamp((ticks / interval.TotalMilliseconds) * interval.TotalMilliseconds);
+
         public readonly long JavaTicks
         {
             get { return ticks; }
