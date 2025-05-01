@@ -30,6 +30,8 @@ public sealed class DerivedSignal : Identifiable
     private int? idxParameterLast = null;
     private int? idxParameter_dt = null;
     private int? idxParameter_t = null;
+    private int? idxParameter_Inputs = null;
+
     private readonly object?[] calcParameterValues;
     private readonly MethodInfo calcMethod;
 
@@ -53,7 +55,8 @@ public sealed class DerivedSignal : Identifiable
             ParamStates.Count + 
             (idxParameterLast.HasValue ? 1 : 0) + 
             (idxParameter_dt.HasValue ? 1 : 0) +
-            (idxParameter_t.HasValue ? 1 : 0);
+            (idxParameter_t.HasValue ? 1 : 0) +
+            (idxParameter_Inputs.HasValue ? 1 : 0);
 
         calcParameterValues = new object?[countParameterValues];
         calcMethod = Calculation.Method;
@@ -116,6 +119,9 @@ public sealed class DerivedSignal : Identifiable
             else if (type == typeof(Timestamp) && name == "t") {
                 idxParameter_t = i;
             }
+            else if (type == typeof(InputDef[]) && name == "inputs") {
+                idxParameter_Inputs = i;
+            }
             else {
                 throw new ArgumentException($"Unexpected parameter {name}.");
             }
@@ -174,6 +180,10 @@ public sealed class DerivedSignal : Identifiable
 
         if (idxParameter_t.HasValue) {
             calcParameterValues[idxParameter_t.Value] = t;
+        }
+
+        if (idxParameter_Inputs.HasValue) {
+            calcParameterValues[idxParameter_Inputs.Value] = Inputs;
         }
 
         double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
@@ -274,6 +284,7 @@ public sealed class DerivedSignal : Identifiable
 
         foreach (InputDef inputDef in Inputs) {
             inputDef.ResolveVarRef(siblingResolver);
+            inputDef.SetApi(api);
         }
 
         List<VTQ> oldVTQ = api.HistorianReadRaw(varRef, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeLastN);
@@ -334,7 +345,7 @@ public sealed class DerivedSignal : Identifiable
             values.Clear();
 
             foreach (InputDef input in Inputs) {
-                double? v = input.GetValueFor(api, time, Resolution, out bool canAbort);
+                double? v = input.GetValueFor(time, Resolution, out bool canAbort);
                 if (canAbort) {
                     DrainBuffer();
                     return;
@@ -408,7 +419,20 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
         }
     }
 
-    public double? GetValueFor(Api api, Timestamp tt, Duration interval, out bool canAbort) {
+    private Api? api = null;
+
+    internal void SetApi(Api api) {
+        this.api = api;
+    }
+
+    public List<VTQ> HistorianReadRaw(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+        if (api == null) {
+            throw new Exception("Api not set.");
+        }
+        return api.HistorianReadRaw(Var, startInclusive, endInclusive, maxValues, bounding, filter);
+    }
+
+    public double? GetValueFor(Timestamp tt, Duration interval, out bool canAbort) {
 
         canAbort = false;
 
@@ -418,7 +442,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
 
             bufferStartIdx = 0;
             buffer.Clear();
-            buffer.AddRange(api.HistorianReadRaw(Var, startInclusive: t, Timestamp.Max, ChunkSize, BoundingMethod.TakeFirstN));
+            buffer.AddRange(HistorianReadRaw(startInclusive: t, Timestamp.Max, ChunkSize, BoundingMethod.TakeFirstN));
 
             if (buffer.Count == 0) {
                 canAbort = true;
@@ -431,7 +455,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
             }
 
             Timestamp afterStartLastInterval = t - interval + Duration.FromMilliseconds(1);
-            List<VTQ> last = api.HistorianReadRaw(Var, startInclusive: afterStartLastInterval, t, 1, BoundingMethod.TakeLastN);
+            List<VTQ> last = HistorianReadRaw(startInclusive: afterStartLastInterval, t, 1, BoundingMethod.TakeLastN);
 
             if (last.Count == 0) {
                 return null;
