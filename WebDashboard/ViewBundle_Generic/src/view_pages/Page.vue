@@ -101,6 +101,9 @@
                 <v-list-item @click="onContextWidgetMoveToPosition(i, j, k)" v-if="editPage">
                   <v-list-item-title>Widget Move To Position...</v-list-item-title>
                 </v-list-item>
+                <v-list-item @click="onContextWidgetCopyToPosition(i, j, k)" v-if="editPage">
+                  <v-list-item-title>Widget Copy To Position...</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="onContextWidgetDelete(i, j, k)" v-if="editPage">
                   <v-list-item-title>Widget Remove</v-list-item-title>
                 </v-list-item>
@@ -316,10 +319,52 @@ export default class Page extends Vue {
       widgetIndex,
       targetRow,
       targetCol,
-      widgetID: widgetObj.ID
     }
     
     window.parent['dashboardApp'].sendViewRequest('ConfigWidgetMoveToPosition', para, this.onGotNewPage)
+  }
+
+  async onContextWidgetCopyToPosition(sourceRow: number, sourceCol: number, widgetIndex: number): Promise<void> {
+    const page = this.page
+    if (page === null) { return }
+    
+    // Get the current position information to display in the dialog
+    const column = page.Rows[sourceRow].Columns[sourceCol]
+    const widgetObj: model.Widget = column.Widgets[widgetIndex]
+    
+    // Get all available rows and columns
+    const rowColOptions = this.getRowColumnOptions()
+    
+    // Open dialog to select target row and column
+    const moveWidget = this.$refs.moveWidget as any
+    const result = await moveWidget.open(
+      `Copy Widget in Row ${sourceRow+1} Column ${sourceCol+1} to...`,
+      rowColOptions,
+      sourceRow,
+      sourceCol
+    )
+    
+    if (result === null) { return }
+    
+    const { targetRow, targetCol } = result
+    
+    // Don't do anything if the position is the same
+    if (targetRow === sourceRow && targetCol === sourceCol) {
+      return
+    }
+    
+    // Send request to move the widget
+    const para = {
+      pageID: page.ID,
+      sourceRow,
+      sourceCol,
+      widgetIndex,
+      targetRow,
+      targetCol,
+      newWidgetID: utils.findUniqueID('W', 4, this.getAllWidgetIDs())
+    }
+    
+    window.parent['dashboardApp'].sendViewRequest('ConfigWidgetCopyToPosition', para, this.onGotNewPage)
   }
 
   getRowColumnOptions(): {rows: {id: number, text: string}[], columns: {[rowId: number]: {id: number, text: string}[]}} {

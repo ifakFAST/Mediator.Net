@@ -333,11 +333,26 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                                         int sourceCol,
                                         int widgetIndex,
                                         int targetRow,
-                                        int targetCol,
-                                        string widgetID) {
+                                        int targetCol) {
 
             CheckActivePage(pageID);
             activePage!.ConfigWidgetMoveToPosition(sourceRow, sourceCol, widgetIndex, targetRow, targetCol);
+            DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
+            await Context.SaveViewConfiguration(newViewConfig);
+            return ReqResult.OK(activePage.Page);
+        }
+
+        public async Task<ReqResult> UiReq_ConfigWidgetCopyToPosition(
+                                        string pageID,
+                                        int sourceRow,
+                                        int sourceCol,
+                                        int widgetIndex,
+                                        int targetRow,
+                                        int targetCol,
+                                        string newWidgetID) {
+
+            CheckActivePage(pageID);
+            activePage!.ConfigWidgetCopyToPosition(sourceRow, sourceCol, widgetIndex, targetRow, targetCol, newWidgetID);
             DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
             await Context.SaveViewConfiguration(newViewConfig);
             return ReqResult.OK(activePage.Page);
@@ -792,6 +807,26 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             // Add the widget to the target position
             var targetWidgets = Page.Rows[targetRow].Columns[targetCol].Widgets.ToList();
             targetWidgets.Add(theWidget);
+            Page.Rows[targetRow].Columns[targetCol].Widgets = targetWidgets.ToArray();
+        }
+
+        public void ConfigWidgetCopyToPosition(int sourceRow, int sourceCol, int widgetIndex, int targetRow, int targetCol, string newWidgetID) {
+
+            Widget theWidget = Page.Rows[sourceRow].Columns[sourceCol].Widgets[widgetIndex];
+
+            Widget copyWidget = new() {
+                ID = newWidgetID,
+                Type = theWidget.Type,
+                Title = theWidget.Title,
+                Height = theWidget.Height,
+                Width = theWidget.Width,
+                Config = theWidget.Config
+            };
+
+            WidgetInit(copyWidget);
+
+            var targetWidgets = Page.Rows[targetRow].Columns[targetCol].Widgets.ToList();
+            targetWidgets.Add(copyWidget);
             Page.Rows[targetRow].Columns[targetCol].Widgets = targetWidgets.ToArray();
         }
 
