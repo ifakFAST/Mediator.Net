@@ -1,6 +1,9 @@
 <template>
 
-  <v-card elevation="1" class="pa-3" outlined >
+  <v-card 
+    	elevation="1" 
+      :class="{ 'pa-3': paddingOverride === '' }" 
+      :style="paddingStyle" outlined>
 
     <p v-if="resolvedTitle !== ''" class="pl-0 mb-2" style="margin-top:-4px; font-weight: 500;">{{ resolvedTitle }}</p>
 
@@ -98,6 +101,7 @@ export default class WidgetWrapper extends Vue {
   @Prop({ default() { return '' } }) title: string
   @Prop({ default() { return '' } }) width: string
   @Prop({ default() { return '' } }) height: string
+  @Prop({ default() { return '' } }) paddingOverride: string
   @Prop({ default() { return {} } }) config: object
   @Prop() backendAsync: (request: string, parameters: object, responseType?: 'text' | 'blob') => Promise<any>
   @Prop({ default() { return '' } }) eventName: string
@@ -114,6 +118,12 @@ export default class WidgetWrapper extends Vue {
 
   get resolvedTitle(): string {
     return model.VariableReplacer.replaceVariables(this.title, this.configVariables.VarValues)
+  }
+
+  get paddingStyle(): { padding?: string } {
+    return this.paddingOverride !== '' 
+      ? { padding: this.paddingOverride } 
+      : {}
   }
 
 }

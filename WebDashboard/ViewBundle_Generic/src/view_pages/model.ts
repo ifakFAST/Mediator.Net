@@ -24,6 +24,7 @@ export interface Widget {
   Title: string
   Height?: string
   Width?: string
+  PaddingOverride?: string
   Config?: object
   EventName?: string
   EventPayload?: object

@@ -84,10 +84,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         public string Title { get; set; } = "";
         public string Width { get; set; } = "";
         public string Height { get; set; } = "";
+        public string PaddingOverride { get; set; } = "";
 
         public JObject Config { get; set; } = new JObject();
 
         public bool ShouldSerializeTitle() => Title != "";
+        public bool ShouldSerializePaddingOverride() => PaddingOverride != "";
 
         public Widget() { }
 

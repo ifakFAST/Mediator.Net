@@ -92,6 +92,9 @@
                 <v-list-item @click="onContextWidgetSetHeight(i, j, k)" v-if="editPage">
                   <v-list-item-title>Widget Set Height</v-list-item-title>
                 </v-list-item>
+                <v-list-item @click="onContextWidgetSetPadding(i, j, k)" v-if="editPage">
+                  <v-list-item-title>Widget Set Padding</v-list-item-title>
+                </v-list-item>
                 <v-list-item @click="onContextWidgetMove(i, j, k, false)" v-if="editPage && isEnabledWidgetMoveUp(i, j, k)">
                   <v-list-item-title>Widget Move Up</v-list-item-title>
                 </v-list-item>
@@ -121,6 +124,7 @@
             :title="widget.Title || ''"
             :width="widget.Width || ''"
             :height="widget.Height || ''"
+            :paddingOverride="widget.PaddingOverride || ''"
             :config="widget.Config || {}"
             :eventName="widget.EventName"
             :eventPayload="widget.EventPayload"
@@ -410,6 +414,25 @@ export default class Page extends Vue {
       newHeight,
     }
     window.parent['dashboardApp'].sendViewRequest('ConfigWidgetSetHeight', para, this.onGotNewPage)
+  }
+
+  async onContextWidgetSetPadding(row: number, col: number, widget: number): Promise<void> {
+    const page = this.page
+    if (page === null) { return }
+    const column = page.Rows[row].Columns[col]
+    const widgetObj: model.Widget = column.Widgets[widget]
+
+    const msg = 'Define the new padding of the widget, e.g. "auto", "100px".'
+    const newPadding = await this.textInputDlg('Set Widget Padding', msg, widgetObj.PaddingOverride || '')
+    if (newPadding === null) { return }
+    const para = {
+      pageID: page.ID,
+      row,
+      col,
+      widget,
+      newPadding,
+    }
+    window.parent['dashboardApp'].sendViewRequest('ConfigWidgetSetPadding', para, this.onGotNewPage)
   }
 
   async onContextWidgetSetTitle(row: number, col: number, widget: number): Promise<void> {

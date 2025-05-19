@@ -319,6 +319,14 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             return ReqResult.OK(activePage.Page);
         }
 
+        public async Task<ReqResult> UiReq_ConfigWidgetSetPadding(string pageID, int row, int col, int widget, string newPadding) {
+            CheckActivePage(pageID);
+            activePage!.ConfigWidgetSetPadding(row, col, widget, newPadding);
+            DataValue newViewConfig = DataValue.FromObject(configuration, indented: true);
+            await Context.SaveViewConfiguration(newViewConfig);
+            return ReqResult.OK(activePage.Page);
+        }
+
         public async Task<ReqResult> UiReq_ConfigWidgetSetTitle(string pageID, int row, int col, int widget, string newTitle) {
             CheckActivePage(pageID);
             activePage!.ConfigWidgetSetTitle(row, col, widget, newTitle);
@@ -756,6 +764,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         public void ConfigWidgetSetWidth(int row, int col, int widget, string width) {
             var theWidget = Page.Rows[row].Columns[col].Widgets[widget];
             theWidget.Width = width;
+        }
+
+        public void ConfigWidgetSetPadding(int row, int col, int widget, string padding) {
+            var theWidget = Page.Rows[row].Columns[col].Widgets[widget];
+            theWidget.PaddingOverride = padding;
         }
 
         public void ConfigWidgetSetTitle(int row, int col, int widget, string title) {
