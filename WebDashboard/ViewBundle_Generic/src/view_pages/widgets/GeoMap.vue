@@ -245,10 +245,6 @@ export default class GeoMap extends Vue {
     if (hasAnimatableLayers) {
       this.playPauseControl = new PlayPauseControl()
       this.playPauseControl.addTo(this.map)
-      // Set initial state based on config
-      if (!this.config.MapConfig.AutoPlayLoop) {
-        this.toggleGlobalPlayPause() // Start paused if AutoPlayLoop is false
-      }
     }
   }
   
@@ -334,6 +330,8 @@ export default class GeoMap extends Vue {
     this.clearMap()
 
     const config: GeoMapConfig = this.config
+    
+    this.globalPaused = !config.MapConfig.AutoPlayLoop
    
     const mapOptions: L.MapOptions = {
       center: this.getResolvedCenter(),
@@ -936,7 +934,7 @@ export default class GeoMap extends Vue {
     
     this.animateLayer(layerName, layer, frames, isGeoJson, controller)
     
-    if (!this.playPauseControl && this.hasAnimatableLayers) {
+    if (!this.playPauseControl && this.hasAnimatableLayers()) {
       this.initPlayPauseControl()
     }
   }
