@@ -1032,7 +1032,8 @@ export default class GeoMap extends Vue {
     }
   }
 
-  setGeoTiffLayerContent(layer: L.LayerGroup, frame: GeoTiffFrame): void {
+  setGeoTiffLayerContent(layerGroup: L.LayerGroup, frame: GeoTiffFrame): void {
+
     const options: GeoRasterLayerOptions = {
       georaster: frame.georaster,
       opacity: frame.opacity || 0.9,
@@ -1040,15 +1041,14 @@ export default class GeoMap extends Vue {
       pixelValuesToColorFn: frame.colorMap,
       resolution: this.config.MapConfig.GeoTiffResolution
     }
-    const rasterLayer = new GeoRasterLayer(options)
+    const newLayer = new GeoRasterLayer(options)
 
-    const oldLayers = layer.getLayers()
+    const oldLayers = layerGroup.getLayers()
 
-    //layer.clearLayers()
-    layer.addLayer(rasterLayer)
+    layerGroup.addLayer(newLayer)
 
     for (const oldLayer of oldLayers) {
-      layer.removeLayer(oldLayer)      
+      layerGroup.removeLayer(oldLayer)      
     }
   }
 
