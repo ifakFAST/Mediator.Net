@@ -42,21 +42,30 @@ export interface ConfigVariable {
 
 export class VariableReplacer {
 
-  // Pattern matches ${varID.key} where varID and key are non-empty strings not containing closing braces
+  // Pattern matches ${varID} where varID ia a non-empty string not containing closing braces
   private static readonly variablePattern = /\$\{([^\}]+)\}/g;
 
-  public static replaceVariables(input: string, variables: Record<string, string>): string {
-    
-      if (!input || !variables) {
-          return input;
-      }
+  public static replaceVariables(input: string, variables: Record<string, string>, notFoundReplacement?: string): string {
+    return this.replaceVariablesBase(input, variables, this.variablePattern, notFoundReplacement);
+  }  
 
-      return input.replace(this.variablePattern, (match: string, varId: string) => {
-          const value = variables[varId];
-          if (value === undefined) {
-              return match; // Keep original if varId not found
-          }
-          return value;
-      });
+  private static replaceVariablesBase(
+    input: string,
+    variables: Record<string, string>,
+    pattern: RegExp,
+    notFoundReplacement?: string
+  ): string {
+
+    if (!input || !variables) {
+      return input;
+    }
+
+    return input.replace(pattern, (match: string, varId: string) => {
+      const value = variables[varId];
+      if (value === undefined) {
+        return notFoundReplacement ?? match;
+      }
+      return value;
+    });
   }
 }

@@ -57,7 +57,9 @@
       :id="id" :width="width" :height="height" :config="config" :backendAsync="backendAsync"
       :eventName="eventName" :eventPayload="eventPayload" :timeRange="timeRange"
       :resize="resize" :dateWindow="dateWindow" @date-window-changed="onDateWindowChanged"
-      :configVariables="configVariables" :setConfigVariableValues="setConfigVariableValues" ></geo-map>
+      :configVariables="configVariables" :setConfigVariableValues="setConfigVariableValues" 
+      :setWidgetTitleVarValues="setWidgetTitleVarValues"
+      ></geo-map>
 
   </v-card>
 
@@ -112,12 +114,26 @@ export default class WidgetWrapper extends Vue {
   @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
   @Prop() setConfigVariableValues: (variableValues: Record<string, string>) => void
 
+  widgetTitleVarValues: Record<string, string> = {}
+
+  setWidgetTitleVarValues(newValues: Record<string, string>): void {
+    const newWidgetTitleVarValues = { ...this.widgetTitleVarValues }
+    for (const key in newValues) {
+      const value = newValues[key]
+      newWidgetTitleVarValues[key] = value
+    }
+    this.widgetTitleVarValues = newWidgetTitleVarValues
+  }
+
   onDateWindowChanged(window: number[]): void {
     this.$emit('date-window-changed', window)
   }
 
   get resolvedTitle(): string {
-    return model.VariableReplacer.replaceVariables(this.title, this.configVariables.VarValues)
+    let title = this.title
+    title = model.VariableReplacer.replaceVariables(title, this.widgetTitleVarValues)
+    title = model.VariableReplacer.replaceVariables(title, this.configVariables.VarValues, "?")
+    return title
   }
 
   get paddingStyle(): { padding?: string } {

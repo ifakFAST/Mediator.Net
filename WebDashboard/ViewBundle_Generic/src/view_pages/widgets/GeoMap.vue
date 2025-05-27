@@ -52,18 +52,21 @@ interface GeoJsonObj {
   type: GeoJsonTypes  // copied from GeoJsonObject
   bbox?: BBox         // copied from GeoJsonObject
   setVariableValues?: Record<string, string>
+  setWidgetTitleVarValues?: Record<string, string>
 }
 
 interface GeoJsonUrl {
   type: 'GeoJsonUrl'
   url: string
   setVariableValues?: Record<string, string>
+  setWidgetTitleVarValues?: Record<string, string>
 }
 
 interface GeoTiffUrl {
   type: 'GeoTiffUrl'
   url: string
   setVariableValues?: Record<string, string>
+  setWidgetTitleVarValues?: Record<string, string>
   opacity?: number
   colorMap?: ColorMapRange[]
 }
@@ -73,6 +76,7 @@ type GeoLayer = L.GeoJSON | L.LayerGroup
 
 interface GeoContentFrame {
   setVariableValues?: Record<string, string>
+  setWidgetTitleVarValues?: Record<string, string>
 }
 
 // Types for frame animation
@@ -144,6 +148,7 @@ export default class GeoMap extends Vue {
   @Prop({ default() { return null } }) dateWindow: number[]
   @Prop({ default() { return {} } }) configVariables: model.ConfigVariableValues
   @Prop() setConfigVariableValues: (variableValues: Record<string, string>) => void
+  @Prop() setWidgetTitleVarValues: (variableValues: Record<string, string>) => void
 
   uid = dgUUID.toString()
   map: L.Map = null
@@ -158,7 +163,8 @@ export default class GeoMap extends Vue {
   resolvedCenter: string = ''
   activeRequests: Map<string, AbortController> = new Map()
   layersWithSetVariableValues: Map<string, Record<string, string>> = new Map()
-  
+  layersWithSetWidgetTitleVarValues: Map<string, Record<string, string>> = new Map()
+
   // Animation properties
   animationControllers: Map<string, AnimationController> = new Map() // layerName -> animation controller
   geoContentFrames: Map<string, GeoContentFrame[]> = new Map() // layerName -> frames
@@ -281,6 +287,7 @@ export default class GeoMap extends Vue {
       this.map = null
     }
     this.layersWithSetVariableValues.clear()
+    this.layersWithSetWidgetTitleVarValues.clear()
     this.geoContentFrames.clear()
   }
   
@@ -495,6 +502,11 @@ export default class GeoMap extends Vue {
       if (this.layersWithSetVariableValues.has(layerName)) {
         const variableValues = this.layersWithSetVariableValues.get(layerName)
         this.setConfigVariableValues(variableValues)
+      }
+
+      if (this.layersWithSetWidgetTitleVarValues.has(layerName)) {
+        const variableValues = this.layersWithSetWidgetTitleVarValues.get(layerName)
+        this.setWidgetTitleVarValues(variableValues)
       }
       
       // Start animation if this layer has multiple frames
@@ -776,7 +788,8 @@ export default class GeoMap extends Vue {
               georaster,
               opacity: geoTiffUrl.opacity || 0.9,
               colorMap: createColorMapper(geoTiffUrl.colorMap),
-              setVariableValues: geoTiffUrl.setVariableValues
+              setVariableValues: geoTiffUrl.setVariableValues,
+              setWidgetTitleVarValues: geoTiffUrl.setWidgetTitleVarValues
             })
             
             console.info(`Loaded GeoTiff frame: fetched in ${fetchEndTime - fetchStartTime}ms, arrayBuffer in ${arrayBufferEndTime - arrayBufferStartTime}ms, parsed in ${parseEndTime - parseStartTime}ms`)
@@ -838,7 +851,8 @@ export default class GeoMap extends Vue {
             
             frames.push({
               data: geoJsonData as GeoJsonObject,
-              setVariableValues: geoJsonUrl.setVariableValues
+              setVariableValues: geoJsonUrl.setVariableValues,
+              setWidgetTitleVarValues: geoJsonUrl.setWidgetTitleVarValues
             })
             
             console.info(`Loaded GeoJSON frame: fetched in ${fetchEndTime - fetchStartTime}ms, parsed in ${jsonEndTime - jsonStartTime}ms`)
@@ -870,7 +884,8 @@ export default class GeoMap extends Vue {
         
         const frames: GeoJsonFrame[] = dataArray.map(data => ({
           data: data as GeoJsonObject,
-          setVariableValues: (data as any).setVariableValues
+          setVariableValues: (data as any).setVariableValues,
+          setWidgetTitleVarValues: (data as any).setWidgetTitleVarValues
         }))
         
         this.geoContentFrames.set(layerName, frames)
@@ -907,6 +922,13 @@ export default class GeoMap extends Vue {
       this.layersWithSetVariableValues.set(layerName, frame.setVariableValues)
       if (this.map.hasLayer(layer)) {
         this.setConfigVariableValues(frame.setVariableValues)
+      }
+    }
+
+    if (frame.setWidgetTitleVarValues) {
+      this.layersWithSetWidgetTitleVarValues.set(layerName, frame.setWidgetTitleVarValues)
+      if (this.map.hasLayer(layer)) {
+        this.setWidgetTitleVarValues(frame.setWidgetTitleVarValues)
       }
     }
   }
