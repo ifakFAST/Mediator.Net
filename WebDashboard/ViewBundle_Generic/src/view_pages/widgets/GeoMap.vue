@@ -332,6 +332,12 @@ export default class GeoMap extends Vue {
     return [parseFloat(parts[0]), parseFloat(parts[1])]
   }
 
+  async fetchUrl(url: string, opts?: RequestInit): Promise<Response> {
+    // const theUrl = `http://localhost:9999${url}`
+    const theUrl = url
+    return await fetch(theUrl, opts)
+  }
+
   async initMap(): Promise<void> {
     
     this.clearMap()
@@ -442,7 +448,7 @@ export default class GeoMap extends Vue {
       const height = this.config.LegendConfig.Height
 
       // fetch the legend image:
-      const response = await fetch(url)
+      const response = await this.fetchUrl(url)
       if (response.ok) {
         const blob = await response.blob()
         const url = URL.createObjectURL(blob)
@@ -755,7 +761,7 @@ export default class GeoMap extends Vue {
           
           try {
             const fetchStartTime = performance.now()
-            const response = await fetch(geoTiffUrl.url, { 
+            const response = await this.fetchUrl(geoTiffUrl.url, { 
               signal: abortController.signal 
             })
             const fetchEndTime = performance.now()
@@ -828,7 +834,7 @@ export default class GeoMap extends Vue {
           
           try {
             const fetchStartTime = performance.now()
-            const response = await fetch(geoJsonUrl.url, { 
+            const response = await this.fetchUrl(geoJsonUrl.url, { 
               signal: abortController.signal 
             })
             const fetchEndTime = performance.now()
@@ -1036,20 +1042,65 @@ export default class GeoMap extends Vue {
 
     const options: GeoRasterLayerOptions = {
       georaster: frame.georaster,
-      opacity: frame.opacity || 0.9,
+      opacity: frame.opacity ?? 0.9,
       zIndex: 4,
       pixelValuesToColorFn: frame.colorMap,
       resolution: this.config.MapConfig.GeoTiffResolution
     }
-    const newLayer = new GeoRasterLayer(options)
 
-    const oldLayers = layerGroup.getLayers()
+    const nextLayer: L.GridLayer = new GeoRasterLayer(options)
+       
+    layerGroup.addLayer(nextLayer)
 
-    layerGroup.addLayer(newLayer)
+    const currentLayers: L.GridLayer[] = layerGroup.getLayers().filter(l => l !== nextLayer) as L.GridLayer[]
 
-    for (const oldLayer of oldLayers) {
-      layerGroup.removeLayer(oldLayer)      
+    if (currentLayers.length > 0) {
+      
+      if (currentLayers.length > 1) { // Clean up all old layers except the most recent one
+        for (let i = 0; i < currentLayers.length - 1; i++) {
+          layerGroup.removeLayer(currentLayers[i])
+        }
+      }
+      
+      const currentLayer = currentLayers[currentLayers.length - 1]
+
+      // GeoRasterLayer emits 'load' after the internal canvas is drawn
+      nextLayer.once('load', () => {      
+      
+        this.crossFade(layerGroup, currentLayer, 0, 200, () => {
+          layerGroup.removeLayer(currentLayer)
+        })
+      
+      })
     }
+  }
+
+  crossFade(
+    layerGroup: L.LayerGroup,
+    layer: L.GridLayer,
+    targetOpacity: number,
+    duration: number,
+    done?: () => void
+  ): void {
+
+    const options = layer.options as L.GridLayerOptions
+   
+    const start = performance.now()
+    const initial = options?.opacity ?? 1.0
+    const delta = targetOpacity - initial
+
+    const tick = (now: DOMHighResTimeStamp) => {
+      const p = Math.min(1, (now - start) / duration)
+      layer.setOpacity(initial + delta * p)
+      if (p < 1) {
+        requestAnimationFrame(tick)
+      } 
+      else if (done) {
+        done()
+      }
+    }
+
+    requestAnimationFrame(tick)
   }
 
   setGeoJsonLayerContent(layer: L.GeoJSON, frame: GeoJsonFrame): void {

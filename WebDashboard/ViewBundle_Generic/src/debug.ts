@@ -152,6 +152,9 @@ export function setupDashboardEnv(theViewID: string, isRelogin?: boolean): void 
     registerTimeRangeListener(listener) {
       // console.log('registerTimeRangeListener')
     },
+    showTimeRangeEndTimeOnly(show: boolean) {
+      // console.log('showTimeRangeEndTimeOnly: ' + show)
+    },
     setEventBurstCount(count) {
 
     },
