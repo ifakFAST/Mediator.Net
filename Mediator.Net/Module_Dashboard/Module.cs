@@ -140,6 +140,7 @@ public class Module : ModelObjectModule<DashboardModel>
         });
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
         builder.Services.AddCors();
+        builder.Services.AddHttpContextAccessor();
         builder.Services.Configure<HtmlModificationOptions>(opt => {
             opt.PageTitle = config.GetOptionalString("page-title", "Dashboard");
             opt.LoginTitle = config.GetOptionalString("login-title", "Dashboard Login");
@@ -212,10 +213,21 @@ public class Module : ModelObjectModule<DashboardModel>
         string webAssetsDir = Path.Combine(configPath, Session.WebAssets);
 
         try {
-
+            IHttpContextAccessor httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+            
             app.UseStaticFiles(new StaticFileOptions {
-                FileProvider = new MyPhysicalFileProvider(webAssetsDir),
-                RequestPath = $"/{Session.WebAssets}"
+                FileProvider = new MyPhysicalFileProvider(webAssetsDir, httpContextAccessor),
+                RequestPath = $"/{Session.WebAssets}",
+                OnPrepareResponse = ctx => {
+                    if (ctx.File is CompressedFileInfo compressedFile) {
+                        ctx.Context.Response.Headers.ContentEncoding = compressedFile.CompressionType;
+                        ctx.Context.Response.Headers.Vary = "Accept-Encoding";
+                        ctx.Context.Response.Headers.CacheControl = "public, max-age=172800"; // 48 hour caching
+                        // Add ETag for cache validation
+                        var etag = $"\"{compressedFile.LastModified.Ticks:x}-{compressedFile.Length:x}\"";
+                        ctx.Context.Response.Headers.ETag = etag;
+                    }
+                }
             });
         }
         catch (Exception exp) {
@@ -784,13 +796,37 @@ public class ModifyHtmlMiddleware(RequestDelegate next, IOptions<HtmlModificatio
 
 
 
+public sealed class CompressedFileInfo : IFileInfo {
+    private readonly IFileInfo _originalFileInfo;
+    private readonly IFileInfo _compressedFileInfo;
+    private readonly string _compressionType;
+
+    public CompressedFileInfo(IFileInfo originalFileInfo, IFileInfo compressedFileInfo, string compressionType) {
+        _originalFileInfo = originalFileInfo;
+        _compressedFileInfo = compressedFileInfo;
+        _compressionType = compressionType;
+    }
+
+    public bool Exists => _compressedFileInfo.Exists;
+    public long Length => _compressedFileInfo.Length;
+    public string? PhysicalPath => _compressedFileInfo.PhysicalPath;
+    public string Name => _originalFileInfo.Name;
+    public DateTimeOffset LastModified => _compressedFileInfo.LastModified;
+    public bool IsDirectory => false;
+    public string CompressionType => _compressionType;
+
+    public Stream CreateReadStream() => _compressedFileInfo.CreateReadStream();
+}
+
 public sealed class MyPhysicalFileProvider : IFileProvider {
 
     private readonly string _root;
     private PhysicalFileProvider? _physicalFileProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public MyPhysicalFileProvider(string root) {
+    public MyPhysicalFileProvider(string root, IHttpContextAccessor httpContextAccessor) {
         _root = root;
+        _httpContextAccessor = httpContextAccessor;
         EnsurePhysicalFileProvider();
     }
 
@@ -809,7 +845,39 @@ public sealed class MyPhysicalFileProvider : IFileProvider {
     public IFileInfo GetFileInfo(string subpath) {
         EnsurePhysicalFileProvider();
         PhysicalFileProvider? pfp = _physicalFileProvider;
-        return pfp != null ? pfp.GetFileInfo(subpath) : new NotFoundFileInfo(subpath);
+        if (pfp == null) {
+            return new NotFoundFileInfo(subpath);
+        }
+
+        IFileInfo originalFile = pfp.GetFileInfo(subpath);
+        if (!originalFile.Exists) {
+            return originalFile;
+        }
+
+        // Check if client supports compression
+        var httpContext = _httpContextAccessor.HttpContext;
+        
+        if (httpContext != null) {
+            var acceptEncoding = httpContext.Request.Headers.AcceptEncoding.ToString();
+            
+            // Try Brotli first (better compression)
+            if (acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase)) {
+                var brotliFile = pfp.GetFileInfo(subpath + ".br");
+                if (brotliFile.Exists) {
+                    return new CompressedFileInfo(originalFile, brotliFile, "br");
+                }
+            }
+
+            // Try Gzip
+            if (acceptEncoding.Contains("gzip", StringComparison.OrdinalIgnoreCase)) {
+                var gzipFile = pfp.GetFileInfo(subpath + ".gz");
+                if (gzipFile.Exists) {
+                    return new CompressedFileInfo(originalFile, gzipFile, "gzip");
+                }
+            }
+        }
+
+        return originalFile;
     }
 
     public IChangeToken Watch(string filter) {
