@@ -230,15 +230,19 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
 
         try {
             shutdownAction();
-        } catch (Exception exp) {
+        } 
+        catch (Exception exp) {
             Console.Error.WriteLine("shutdownAction: " + exp.Message);
         }
 
         try {
+            AppContext.SetSwitch("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", true);
             PythonEngine.Shutdown();
+            AppContext.SetSwitch("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", false);
         }
         catch (Exception exp) {
             Console.Error.WriteLine("PythonEngine.Shutdown: " + exp.Message);
+            PrintExceptionRecursive(exp);
         }
 
         return Task.FromResult(true);
