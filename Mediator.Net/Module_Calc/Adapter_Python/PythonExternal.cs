@@ -53,6 +53,14 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         this.retriever = retriever;
     }
 
+    private static void PrintExceptionRecursive(Exception exp) {
+        Console.Error.WriteLine($"{exp.GetType().FullName}: {exp.Message}");
+        Console.Error.WriteLine(exp.StackTrace);
+        if (exp.InnerException != null) {
+            PrintExceptionRecursive(exp.InnerException);
+        }
+    }
+
     private async Task<InitResult> DoInit(InitParameter parameter, string code) {
 
         await Task.CompletedTask;
@@ -81,9 +89,17 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         }
 
         if (!PythonEngine.IsInitialized) {
+            Console.WriteLine($"Initializing Python engine with python-dll: {pythonDLL}");
             PythonEngine.DebugGIL = true;
             Runtime.PythonDLL = pythonDLL;
-            PythonEngine.Initialize();
+            try {
+                PythonEngine.Initialize();
+            }
+            catch (Exception ex) {
+                PrintExceptionRecursive(ex);
+                throw;
+            }
+            Console.WriteLine("Python engine initialized successfully.");
         }
 
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
