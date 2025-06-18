@@ -66,8 +66,11 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         await Task.CompletedTask;
 
         var config = new Mediator.Config(parameter.ModuleConfig);
-        string pythonDLL = config.GetString("python-dll");
-        string libDirs = config.GetOptionalString("python-library-directories", "");
+        string pythonDLL        = config.GetString("python-dll");
+        string libDirs          = config.GetOptionalString("python-library-directories", "");
+        string appendPath       = config.GetOptionalString("python-append-PATH", "");
+        string appendPythonPath = config.GetOptionalString("python-append-PYTHONPATH", "");
+        string pythonHome       = config.GetOptionalString("python-set-PYTHONHOME", "");
 
         if (string.IsNullOrWhiteSpace(pythonDLL)) {
             throw new Exception("python-dll not configured");
@@ -78,7 +81,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         if (!File.Exists(pythonDLL)) throw new Exception($"python-dll does not exist: {pythonDLL}");
 
         string[] libraryDirs = libDirs
-            .Split(new char[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split([';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
             .Where(s => s.Length > 0)
             .ToArray();
@@ -92,6 +95,27 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             Console.WriteLine($"Initializing Python engine with python-dll: {pythonDLL}");
             PythonEngine.DebugGIL = true;
             Runtime.PythonDLL = pythonDLL;
+
+            if (!string.IsNullOrWhiteSpace(appendPath)) {
+                string path = (Environment.GetEnvironmentVariable("PATH") ?? "");
+                string newPath = AppendToPath(path, appendPath);
+                Environment.SetEnvironmentVariable("PATH", newPath, EnvironmentVariableTarget.Process);
+                Console.WriteLine($"Set PATH to: {newPath}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(pythonHome)) {
+                Environment.SetEnvironmentVariable("PYTHONHOME", pythonHome, EnvironmentVariableTarget.Process);
+                PythonEngine.PythonHome = pythonHome;
+                Console.WriteLine($"Set PYTHONHOME to: {pythonHome}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(appendPythonPath)) {
+                Environment.SetEnvironmentVariable("PYTHONPATH", appendPythonPath, EnvironmentVariableTarget.Process);
+                string pythonPath = AppendToPath(PythonEngine.PythonPath, appendPythonPath);
+                PythonEngine.PythonPath = pythonPath;
+                Console.WriteLine($"Set PYTHONPATH to: {pythonPath}");
+            }
+
             try {
                 PythonEngine.Initialize();
             }
@@ -195,6 +219,17 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             States = states.Select(MakeStateDef).ToArray(),
             ExternalStatePersistence = true
         };
+    }
+
+    
+    private static string AppendToPath(string path, string appendPath) {
+        path = path.TrimEnd(Path.PathSeparator);
+        if (string.IsNullOrWhiteSpace(path)) {
+            return appendPath;
+        }
+        else {
+            return path + Path.PathSeparator + appendPath;
+        }
     }
 
     private static PyObject? GetAttrOrNull(PyObject obj, string name) {

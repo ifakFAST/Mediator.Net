@@ -91,6 +91,9 @@
                 <NamedValue name="csharp-cache-scripts" value="true"/>
                 <NamedValue name="python-dll" value="C:\Users\UserName\AppData\Local\Programs\Python\Python312\python312.dll"/>
                 <NamedValue name="python-library-directories" value=""/> <!-- Separated by ';', will be appended to sys.path -->
+                <NamedValue name="python-append-PATH" value=""/>         <!-- for anaconda you have to add the full path to anaconda sub folder Library\bin --> 
+                <NamedValue name="python-append-PYTHONPATH" value=""/>   <!-- Might be necessary to set for virtual envs -->
+                <NamedValue name="python-set-PYTHONHOME" value=""/>      <!-- Might be necessary to set for virtual envs -->
             </Config>
             <HistoryDBs>
                 <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
