@@ -39,6 +39,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
         private Duration timeout = Duration.FromSeconds(15);
         private Duration maxAge = Duration.FromSeconds(0); // 0 means always read from down stream device (no caching)
+        private bool validateRemoteCertificates = false;
 
         private LoggerFactory loggerFactory = new LoggerFactory("UA:", LogLevel.Debug);
         private Logger logger = new Logger("UA:", LogLevel.Debug);
@@ -103,6 +104,9 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
                 PrintErrorLine($"Invalid value for config parameter 'MaxAge': '{strMaxAge}'");
             }
 
+            string strValidateRemoteCertificates = config.GetConfigByName("ValidateRemoteCertificates", defaultValue: "false").ToLowerInvariant();
+            this.validateRemoteCertificates = strValidateRemoteCertificates == "true";
+
             const string appName = "Mediator.IO.OPC_UA";
             appDescription = new ApplicationDescription {
                 ApplicationName = appName,
@@ -151,7 +155,7 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA
 
                     Console.WriteLine($"Location of OPC UA certificate store: {pkiPath}");
 
-                    certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: true, createLocalCertificateIfNotExist: true);
+                    certificateStore = new DirectoryStore(pkiPath, acceptAllRemoteCertificates: !validateRemoteCertificates, createLocalCertificateIfNotExist: true);
                     certificateLocation = Path.Combine(pkiPath, "own", "certs");
                 }
 
