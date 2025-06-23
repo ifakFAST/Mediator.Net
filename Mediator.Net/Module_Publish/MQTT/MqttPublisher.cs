@@ -102,31 +102,76 @@ public partial class MqttPublisher
 
     private static readonly string TheGuid = Guid.NewGuid().ToString().Replace("-", "");
 
+    private static (string host, int? port) ParseEndpoint(string endpoint) {
+
+        string strUri = endpoint.Contains("://") ? endpoint : "mqtt://" + endpoint;
+
+        Uri uri = new(strUri);
+        string host = uri.Host;
+        int? port = uri.Port < 0 ? null : uri.Port;
+
+        return (host, port);
+    }
+
     public static MqttClientOptions MakeMqttOptions(string certDir, MqttConfig config, string suffix) {
 
         string clientID = $"{config.ClientIDPrefix}_{suffix}_{TheGuid}";
 
+        var (host, port) = ParseEndpoint(config.Endpoint);
+
         var builder = new MqttClientOptionsBuilder()
             .WithClientId(clientID)
-            .WithTcpServer(config.Endpoint);
+            .WithTimeout(TimeSpan.FromSeconds(10))
+            .WithTcpServer(host, port);
+
+        bool hasUser = !string.IsNullOrEmpty(config.User);
+
+        if (hasUser) {
+            builder = builder.WithCredentials(config.User, config.Pass);
+        }
 
         if (config.CertFileCA != "") {
 
-            var caCert     = new X509Certificate2(Path.Combine(certDir, config.CertFileCA));
+            var caCert = new X509Certificate2(Path.Combine(certDir, config.CertFileCA));
             var clientCert = new X509Certificate2(Path.Combine(certDir, config.CertFileClient), "");
 
             builder = builder
              .WithTlsOptions(o => {
                  o
                  .UseTls(true)
-                 .WithClientCertificates(new X509Certificate2[] { 
-                     clientCert, 
-                     caCert 
+                 .WithClientCertificates(new X509Certificate2[] {
+                     clientCert,
+                     caCert
                  })
                  .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
                  .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
                  .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+
+                 if (config.NoCertificateValidation) {
+                     // Will accept any certificate, even if hostname/IP does not match
+                     o.WithCertificateValidationHandler(_ => true);
+                 }
+
              });
+        }
+        else {
+
+            bool useTLS = port != 1883;
+            if (useTLS) {
+                builder = builder
+                 .WithTlsOptions(o => {
+                     o
+                      .UseTls(true)
+                      .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
+                      .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
+                      .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+
+                     if (config.NoCertificateValidation) {
+                         // Will accept any certificate, even if hostname/IP does not match
+                         o.WithCertificateValidationHandler(_ => true);
+                     }
+                 });
+            }
         }
 
         return builder

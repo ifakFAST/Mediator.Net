@@ -369,7 +369,10 @@ public record VarInfo(
     ClassInfo   ClassInfo, 
     ObjectInfo  Object, 
     ObjectValue ObjectValue, 
-    MemInfo[]   Parents);
+    MemInfo[]   Parents) {
+
+    public string Name => VarRef.Name == "Value" ? Object.Name : $"{Object.Name}.{VarRef.Name}";
+}
 
 public record MemInfo(
     ClassInfo ClassInfo, 

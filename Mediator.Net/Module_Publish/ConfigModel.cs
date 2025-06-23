@@ -51,6 +51,10 @@ public class MqttConfig : ModelObject {
     public string CertFileCA { get; set; } = "";
     public string CertFileClient { get; set; } = "";
 
+    public string User { get; set; } = "";
+    public string Pass { get; set; } = "";
+
+    public bool NoCertificateValidation { get; set; } = false;
     public bool IgnoreCertificateRevocationErrors { get; set; } = false;
     public bool IgnoreCertificateChainErrors { get; set; } = false;
     public bool AllowUntrustedCertificates { get; set; } = false;
@@ -126,6 +130,9 @@ public class MqttVarPub : ModelObject, VarPubCommon {
     public PubVarFormat PubFormat { get; set; } = PubVarFormat.Array;
     public PubVarFormat PubFormatReg { get; set; } = PubVarFormat.Array;
 
+    public PublishMode Mode { get; set; } = PublishMode.Bulk;
+    public string TopicTemplate { get; set; } = "{ID}";
+
     public bool BufferIfOffline { get; set; } = false;
 
     public bool SimpleTagsOnly { get; set; } = true;
@@ -143,6 +150,7 @@ public class MqttVarPub : ModelObject, VarPubCommon {
         foreach (var entry in vars) {
             Topic = Topic.Replace(entry.Key, entry.Value);
             TopicRegistration = TopicRegistration.Replace(entry.Key, entry.Value);
+            TopicTemplate = TopicTemplate.Replace(entry.Key, entry.Value);
         }
 
         if (RootObjects.Count == 0 && ModuleID != "" && RootObject != "") {
@@ -156,6 +164,11 @@ public class MqttVarPub : ModelObject, VarPubCommon {
 public enum PubVarFormat {
     Array,
     Object
+}
+
+public enum PublishMode {
+    Bulk,            // All variables in one topic
+    TopicPerVariable // One topic per variable
 }
 
 public class MqttConfigPub : ModelObject {

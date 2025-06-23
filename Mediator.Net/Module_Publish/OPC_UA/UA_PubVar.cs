@@ -209,7 +209,7 @@ internal class UA_PubVar : BufferedVarPub {
 
             var uaVar = new UA_Var() {
                 NodeId = nodeID,
-                Name =  variable.Name == "Value" ? varInfo.Object.Name : $"{varInfo.Object.Name}.{variable.Name}",
+                Name = varInfo.Name,
                 Writable = writable,
                 Type = varInfo.Variable.Type,
                 IsArray = varInfo.Variable.Dimension != 1,
