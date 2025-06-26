@@ -20,14 +20,14 @@ namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA;
 [Identify("OPC UA")]
 public class OPC_UA : AdapterBase
 {
-    private ApplicationDescription appDescription = new ApplicationDescription();
+    private ApplicationDescription appDescription = new();
     private ICertificateStore? certificateStore;
     private string certificateLocation = "";
     internal ClientSessionChannel? connection;
 
     private Adapter config = new();
     private AdapterCallback? callback;
-    internal Dictionary<string, ItemInfo> mapId2Info = new Dictionary<string, ItemInfo>();
+    internal Dictionary<string, ItemInfo> mapId2Info = [];
 
     public override bool SupportsScheduledReading => true;
 
@@ -46,13 +46,16 @@ public class OPC_UA : AdapterBase
     private int autoCreateDataItems_MaxDepth = 20;
     private string autoCreateDataItems_ExcludeNamespaces = "0";
     private Duration autoCreateDataItems_BrowseInterval = Duration.FromMinutes(5);
-    private HashSet<int> excludedNamespaces = new HashSet<int>();
+    private HashSet<int> excludedNamespaces = [];
+
+    private string browse_RootId = "";
+    private string browse_RootName = "";
 
     // Auto-discovery components
     private AutoDiscoveryManager? discoveryManager;
     
-    private LoggerFactory loggerFactory = new LoggerFactory("UA:", LogLevel.Debug);
-    private Logger logger = new Logger("UA:", LogLevel.Debug);
+    private LoggerFactory loggerFactory = new("UA:", LogLevel.Debug);
+    private Logger logger = new("UA:", LogLevel.Debug);
 
     private static readonly Dictionary<string, string> mapSecurityPolicies = new() {
         { "",                                         "" },
@@ -66,7 +69,7 @@ public class OPC_UA : AdapterBase
         { "Aes256_Sha256_RsaPss".ToLowerInvariant(),  SecurityPolicyUris.Aes256_Sha256_RsaPss },
     };
 
-    private static readonly string[] securityPolicies = new string[] {
+    private static readonly string[] securityPolicies = [
         "Any",
         "None",
         "Basic128Rsa15",
@@ -75,7 +78,7 @@ public class OPC_UA : AdapterBase
         "Basic256Sha256",
         "Aes128_Sha256_RsaOaep",
         "Aes256_Sha256_RsaPss",
-    };
+    ];
 
     public override async Task<Group[]> Initialize(Adapter config, AdapterCallback callback, DataItemInfo[] itemInfos) {
 
@@ -100,6 +103,9 @@ public class OPC_UA : AdapterBase
 
         loggerFactory = new LoggerFactory($"{config.Name}:", logLevel);
         logger = loggerFactory.CreateLogger();
+
+        browse_RootId = config.GetConfigByName("BrowseRoot_ID", ObjectIds.ObjectsFolder);
+        browse_RootName = config.GetConfigByName("BrowseRoot_Name", "Objects");
 
         string strExcludeUnderscore = config.GetConfigByName("ExcludeUnderscoreNodes", defaultValue: "true").ToLowerInvariant();
         excludeUnderscore = strExcludeUnderscore == "true";
@@ -140,7 +146,7 @@ public class OPC_UA : AdapterBase
         this.autoCreateDataItems_BrowseInterval = browseInterval;
 
         // Parse excluded namespaces
-        this.excludedNamespaces = new HashSet<int>();
+        this.excludedNamespaces = [];
         string[] nsStrings = this.autoCreateDataItems_ExcludeNamespaces.Split(',');
         foreach (string nsStr in nsStrings) {
             if (int.TryParse(nsStr.Trim(), out int ns)) {
@@ -585,12 +591,12 @@ public class OPC_UA : AdapterBase
                     usedDataItemIDs.Add(id);
                 }
                 catch (Exception exp) {
-                    listFailed ??= new List<FailedDataItemWrite>();
+                    listFailed ??= [];
                     listFailed.Add(new FailedDataItemWrite(id, exp.Message));
                 }
             }
             else {
-                listFailed ??= new List<FailedDataItemWrite>();
+                listFailed ??= [];
                 listFailed.Add(new FailedDataItemWrite(id, $"No writeable data item with id '{id}' found."));
             }
         }
@@ -598,7 +604,7 @@ public class OPC_UA : AdapterBase
         try {
 
             if (dataItemsToWrite.Count > 0) {
-                WriteRequest req = new WriteRequest() {
+                WriteRequest req = new() {
                     NodesToWrite = dataItemsToWrite.ToArray()
                 };
 
@@ -732,8 +738,8 @@ public class OPC_UA : AdapterBase
 
         var result = new List<BrowseNode>();
 
-        NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ObjectsFolder), connection.NamespaceUris);
-        var objects = new BrowseNode(objectsID, new QualifiedName("Objects"));
+        NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(browse_RootId), connection.NamespaceUris);
+        var objects = new BrowseNode(objectsID, new QualifiedName(browse_RootName));
 
         //NodeId viewsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ViewsFolder), connection.NamespaceUris);
         //var views = new BrowseNode(viewsID, new QualifiedName("Views"));
@@ -772,12 +778,12 @@ public class OPC_UA : AdapterBase
             return new BrowseDataItemsResult(
                 supportsBrowsing: true,
                 browsingError: msg,
-                items: new DataItemBrowseInfo[0],
+                items: [],
                 clientCertificate: clientCertificate);
         }
 
-        NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ObjectsFolder), connection.NamespaceUris);
-        BrowseNode objects = new BrowseNode(objectsID, new QualifiedName("Objects"));
+        NodeId objectsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(browse_RootId), connection.NamespaceUris);
+        BrowseNode objects = new BrowseNode(objectsID, new QualifiedName(browse_RootName));
 
         var result = new List<BrowseNode>();
         var set = new HashSet<BrowseNode>();
@@ -907,7 +913,7 @@ public class OPC_UA : AdapterBase
             Type = type,
             Message = msg,
             Details = details ?? "",
-            AffectedDataItems = string.IsNullOrEmpty(dataItem) ? new string[0] : new string[] { dataItem }
+            AffectedDataItems = string.IsNullOrEmpty(dataItem) ? [] : [dataItem]
         };
 
         callback?.Notify_AlarmOrEvent(ae);
@@ -990,22 +996,15 @@ public class ItemInfo
         int idx = s.IndexOf(':');
         if (idx <= 0) return false;
         string ns = s.Substring(0, idx);
-        int x;
-        return int.TryParse(ns, out x);
+        return int.TryParse(ns, out _);
     }
 }
 
-class BrowseNode : IEquatable<BrowseNode>
+sealed class BrowseNode(NodeId id, QualifiedName browseName, BrowseNode? parent = null) : IEquatable<BrowseNode>
 {
-    public NodeId ID { get; set; }
-    public QualifiedName BrowseName { get; set; }
-    public BrowseNode? Parent { get; set; }
-
-    public BrowseNode(NodeId id, QualifiedName browseName, BrowseNode? parent = null) {
-        ID = id;
-        BrowseName = browseName;
-        Parent = parent;
-    }
+    public NodeId ID { get; set; } = id;
+    public QualifiedName BrowseName { get; set; } = browseName;
+    public BrowseNode? Parent { get; set; } = parent;
 
     public override string ToString() {
 
@@ -1046,9 +1045,6 @@ class BrowseNode : IEquatable<BrowseNode>
     public bool Equals([AllowNull] BrowseNode other) => other != null && ID == other.ID;
 
     public override bool Equals(object? obj) {
-        if (obj is BrowseNode) {
-            return Equals((BrowseNode)obj);
-        }
-        return false;
+        return obj is BrowseNode bn && Equals(bn);
     }
 }
