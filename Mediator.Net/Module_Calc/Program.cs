@@ -5,65 +5,64 @@
 using System;
 using System.Linq;
 
-namespace Ifak.Fast.Mediator.Calc
+namespace Ifak.Fast.Mediator.Calc;
+
+class Program
 {
-    class Program
-    {
-        static void Main(string[] args) {
+    static void Main(string[] args) {
 
-            if (args.Length < 1) {
-                Console.Error.WriteLine("Missing argument: port");
-                return;
-            }
-
-            int port = int.Parse(args[0]);
-
-            // Required to suppress premature shutdown when
-            // pressing CTRL+C in parent Mediator console window:
-            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
-                e.Cancel = true;
-            };
-
-            if (args.Length == 2 && args[1] == "AdapterPython") {
-                StartAdapterPython(port);
-            }
-            else {
-                StartModuleCalc(port);
-            }
+        if (args.Length < 1) {
+            Console.Error.WriteLine("Missing argument: port");
+            return;
         }
 
-        private static void StartAdapterPython(int port) {
-            var adapter = new Adapter_Python.PythonExternal();
-            ExternalAdapterHost.ConnectAndRunAdapter("localhost", port, adapter);
+        int port = int.Parse(args[0]);
+
+        // Required to suppress premature shutdown when
+        // pressing CTRL+C in parent Mediator console window:
+        Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+            e.Cancel = true;
+        };
+
+        if (args.Length == 2 && args[1] == "AdapterPython") {
+            StartAdapterPython(port);
         }
-
-        private static void StartModuleCalc(int port) {
-
-            var module = new Module();
-            module.fLoadCalcTypesFromAssembly = LoadTypesFromAssemblyFile;
-
-            ExternalModuleHost.ConnectAndRunModule(port, module);
-            Console.WriteLine("Terminated.");
+        else {
+            StartModuleCalc(port);
         }
+    }
 
-        private static Type[] LoadTypesFromAssemblyFile(string fileName) {
-            try {
-                Type baseClass = typeof(CalculationBase);
+    private static void StartAdapterPython(int port) {
+        var adapter = new Adapter_Python.PythonExternal();
+        ExternalAdapterHost.ConnectAndRunAdapter("localhost", port, adapter);
+    }
 
-                var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
-                        fileName,
-                        sharedTypes: new Type[] { baseClass });
+    private static void StartModuleCalc(int port) {
 
-                return loader.LoadDefaultAssembly()
-                    .GetExportedTypes()
-                    .Where(t => t.IsSubclassOf(baseClass) && !t.IsAbstract)
-                    .ToArray();
-            }
-            catch (Exception exp) {
-                Console.Error.WriteLine($"Failed to load calculation types from assembly '{fileName}': {exp.Message}");
-                Console.Error.Flush();
-                return new Type[0];
-            }
+        var module = new Module();
+        module.fLoadCalcTypesFromAssembly = LoadTypesFromAssemblyFile;
+
+        ExternalModuleHost.ConnectAndRunModule(port, module);
+        Console.WriteLine("Terminated.");
+    }
+
+    private static Type[] LoadTypesFromAssemblyFile(string fileName) {
+        try {
+            Type baseClass = typeof(CalculationBase);
+
+            var loader = McMaster.NETCore.Plugins.PluginLoader.CreateFromAssemblyFile(
+                    fileName,
+                    sharedTypes: new Type[] { baseClass });
+
+            return loader.LoadDefaultAssembly()
+                .GetExportedTypes()
+                .Where(t => t.IsSubclassOf(baseClass) && !t.IsAbstract)
+                .ToArray();
+        }
+        catch (Exception exp) {
+            Console.Error.WriteLine($"Failed to load calculation types from assembly '{fileName}': {exp.Message}");
+            Console.Error.Flush();
+            return new Type[0];
         }
     }
 }

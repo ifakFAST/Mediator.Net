@@ -4,207 +4,206 @@
 
 using System;
 
-namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp
+namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp;
+
+public class Output : OutputFloat64
 {
-    public class Output : OutputFloat64
-    {
-        public Output(string name, string unit = "", int? roundDigits = 6) :
-            base(name: name, unit: unit, roundDigits: roundDigits) {
-        }
+    public Output(string name, string unit = "", int? roundDigits = 6) :
+        base(name: name, unit: unit, roundDigits: roundDigits) {
+    }
+}
+
+public class OutputFloat64 : OutputBase {
+
+    public int? RoundDigits { get; set; }
+
+    public OutputFloat64(string name, string unit = "", int? roundDigits = 6) :
+        base(name: name, unit: unit, type: DataType.Float64, dimension: 1) {
+        RoundDigits = roundDigits;
     }
 
-    public class OutputFloat64 : OutputBase {
-
-        public int? RoundDigits { get; set; }
-
-        public OutputFloat64(string name, string unit = "", int? roundDigits = 6) :
-            base(name: name, unit: unit, type: DataType.Float64, dimension: 1) {
-            RoundDigits = roundDigits;
-        }
-
-        public double? Value {
-            set {
-                if (!value.HasValue) {
-                    VTQ = VTQ.WithValue(DataValue.Empty);
-                }
-                else {
-                    double v = value.Value;
-                    if (RoundDigits.HasValue) {
-                        try {
-                            v = Math.Round(v, RoundDigits.Value);
-                        }
-                        catch (Exception) { }
+    public double? Value {
+        set {
+            if (!value.HasValue) {
+                VTQ = VTQ.WithValue(DataValue.Empty);
+            }
+            else {
+                double v = value.Value;
+                if (RoundDigits.HasValue) {
+                    try {
+                        v = Math.Round(v, RoundDigits.Value);
                     }
-                    VTQ = VTQ.WithValue(DataValue.FromDouble(v));
+                    catch (Exception) { }
                 }
+                VTQ = VTQ.WithValue(DataValue.FromDouble(v));
             }
         }
     }
+}
 
-    public class OutputInt32 : OutputBase {
+public class OutputInt32 : OutputBase {
 
-        public OutputInt32(string name, string unit = "") :
-            base(name: name, unit: unit, type: DataType.Int32, dimension: 1) {
-        }
+    public OutputInt32(string name, string unit = "") :
+        base(name: name, unit: unit, type: DataType.Int32, dimension: 1) {
+    }
 
-        public int? Value {
-            set {
-                if (!value.HasValue) {
-                    VTQ = VTQ.WithValue(DataValue.Empty);
-                }
-                else {
-                    int v = value.Value;
-                    VTQ = VTQ.WithValue(DataValue.FromInt(v));
-                }
+    public int? Value {
+        set {
+            if (!value.HasValue) {
+                VTQ = VTQ.WithValue(DataValue.Empty);
+            }
+            else {
+                int v = value.Value;
+                VTQ = VTQ.WithValue(DataValue.FromInt(v));
             }
         }
     }
+}
 
-    public class OutputFloat64Array : OutputBase {
+public class OutputFloat64Array : OutputBase {
 
-        public OutputFloat64Array(string name, int dimension = 0) :
-            base(name: name, unit: "", type: DataType.Float64, dimension: dimension) {
-            if (dimension < 0) throw new ArgumentException("OutputFloat64Array: dimension must be >= 0");
-        }
-
-        public double[]? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromDoubleArray(value));
-            }
-        }
+    public OutputFloat64Array(string name, int dimension = 0) :
+        base(name: name, unit: "", type: DataType.Float64, dimension: dimension) {
+        if (dimension < 0) throw new ArgumentException("OutputFloat64Array: dimension must be >= 0");
     }
 
-    public class OutputFloat32Array : OutputBase {
-
-        public OutputFloat32Array(string name, int dimension = 0) :
-            base(name: name, unit: "", type: DataType.Float32, dimension: dimension) {
-            if (dimension < 0) throw new ArgumentException("OutputFloat32Array: dimension must be >= 0");
-        }
-
-        public float[]? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromFloatArray(value));
-            }
+    public double[]? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromDoubleArray(value));
         }
     }
+}
 
-    public class OutputStruct<T>: OutputBase where T: struct {
+public class OutputFloat32Array : OutputBase {
 
-        public OutputStruct(string name) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
-        }
-
-        public T? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
-        }
+    public OutputFloat32Array(string name, int dimension = 0) :
+        base(name: name, unit: "", type: DataType.Float32, dimension: dimension) {
+        if (dimension < 0) throw new ArgumentException("OutputFloat32Array: dimension must be >= 0");
     }
 
-    public class OutputClass<T> : OutputBase where T : class {
-
-        public OutputClass(string name) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
-        }
-
-        public T? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
+    public float[]? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromFloatArray(value));
         }
     }
+}
 
-    public class OutputString : OutputBase
-    {
-        public OutputString(string name) :
-            base(name: name, unit: "", type: DataType.String, dimension: 1) {
-        }
+public class OutputStruct<T>: OutputBase where T: struct {
 
-        public string? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromString(value));
-            }
-        }
+    public OutputStruct(string name) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
     }
 
-    public class OutputJson : OutputBase
-    {
-        public OutputJson(string name) :
-            base(name: name, unit: "", type: DataType.JSON, dimension: 1) {
-        }
-
-        public DataValue Value {
-            set {
-                VTQ = VTQ.WithValue(value);
-            }
+    public T? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
         }
     }
+}
 
-    public class OutputStruct : OutputBase {
+public class OutputClass<T> : OutputBase where T : class {
 
-        public OutputStruct(string name) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
-        }
-
-        public object? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
-        }
+    public OutputClass(string name) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
     }
 
-    public class OutputStructArray<T> : OutputBase where T : struct {
-
-        public OutputStructArray(string name, int dimension = 0) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
-            if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
-        }
-
-        public T[]? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
+    public T? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
         }
     }
+}
 
-    public class OutputTimeseries : OutputBase {
-
-        public OutputTimeseries(string name) :
-            base(name: name, unit: "", type: DataType.Timeseries, dimension: 1) {
-        }
-
-        public TimeseriesEntry[]? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
-        }
+public class OutputString : OutputBase
+{
+    public OutputString(string name) :
+        base(name: name, unit: "", type: DataType.String, dimension: 1) {
     }
 
-    public class OutputClassArray<T> : OutputBase where T : class {
-
-        public OutputClassArray(string name, int dimension = 0) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
-            if (dimension < 0) throw new ArgumentException("OutputClassArray: dimension must be >= 0");
-        }
-
-        public T[]? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
+    public string? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromString(value));
         }
     }
+}
 
-    public class OutputStructArray : OutputBase {
+public class OutputJson : OutputBase
+{
+    public OutputJson(string name) :
+        base(name: name, unit: "", type: DataType.JSON, dimension: 1) {
+    }
 
-        public OutputStructArray(string name, int dimension = 0) :
-            base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
-            if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
+    public DataValue Value {
+        set {
+            VTQ = VTQ.WithValue(value);
         }
+    }
+}
 
-        public Array? Value {
-            set {
-                VTQ = VTQ.WithValue(DataValue.FromObject(value));
-            }
+public class OutputStruct : OutputBase {
+
+    public OutputStruct(string name) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: 1) {
+    }
+
+    public object? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
+        }
+    }
+}
+
+public class OutputStructArray<T> : OutputBase where T : struct {
+
+    public OutputStructArray(string name, int dimension = 0) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
+        if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
+    }
+
+    public T[]? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
+        }
+    }
+}
+
+public class OutputTimeseries : OutputBase {
+
+    public OutputTimeseries(string name) :
+        base(name: name, unit: "", type: DataType.Timeseries, dimension: 1) {
+    }
+
+    public TimeseriesEntry[]? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
+        }
+    }
+}
+
+public class OutputClassArray<T> : OutputBase where T : class {
+
+    public OutputClassArray(string name, int dimension = 0) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
+        if (dimension < 0) throw new ArgumentException("OutputClassArray: dimension must be >= 0");
+    }
+
+    public T[]? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
+        }
+    }
+}
+
+public class OutputStructArray : OutputBase {
+
+    public OutputStructArray(string name, int dimension = 0) :
+        base(name: name, unit: "", type: DataType.Struct, dimension: dimension) {
+        if (dimension < 0) throw new ArgumentException("OutputStructArray: dimension must be >= 0");
+    }
+
+    public Array? Value {
+        set {
+            VTQ = VTQ.WithValue(DataValue.FromObject(value));
         }
     }
 }

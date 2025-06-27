@@ -3,35 +3,33 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 
-namespace Ifak.Fast.Mediator.Calc.Adapter_Simba
+namespace Ifak.Fast.Mediator.Calc.Adapter_Simba;
+
+[Identify(id: "Simba", showWindowVisible: true, showDefinition: true, definitionLabel: "Simu Model", definitionIsCode: false, subtypes: new string[] { "Control", "OnlineSimulation" })]
+public class Simba : ExternalAdapter
 {
-    [Identify(id: "Simba", showWindowVisible: true, showDefinition: true, definitionLabel: "Simu Model", definitionIsCode: false, subtypes: new string[] { "Control", "OnlineSimulation" })]
-    public class Simba : ExternalAdapter
-    {
-        protected override string GetCommand(Mediator.Config config) {
+    protected override string GetCommand(Mediator.Config config) {
 
-            const string SIMBA_LOCATION = "simba-location";
+        const string SIMBA_LOCATION = "simba-location";
 
-            string simbaLoc = config.GetString(SIMBA_LOCATION).Trim();
+        string simbaLoc = config.GetString(SIMBA_LOCATION).Trim();
 
-            if (simbaLoc == "") {
-                throw new Exception($"No SIMBA executable specified (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
-            }
-
-            string fullLoc = Path.GetFullPath(simbaLoc);
-
-            if (!File.Exists(fullLoc)) {
-                throw new Exception($"SIMBA executable not found at {fullLoc} (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
-            }
-
-            return fullLoc;
+        if (simbaLoc == "") {
+            throw new Exception($"No SIMBA executable specified (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
         }
 
-        protected override string GetArgs(Mediator.Config config) {
-            return "StartInProcSimbaController MediatorSim.dll MediatorSim.ControlAdapter.InProcSimbaControllerImpl {PORT}";
+        string fullLoc = Path.GetFullPath(simbaLoc);
+
+        if (!File.Exists(fullLoc)) {
+            throw new Exception($"SIMBA executable not found at {fullLoc} (setting '{SIMBA_LOCATION}' in AppConfig.xml)");
         }
+
+        return fullLoc;
+    }
+
+    protected override string GetArgs(Mediator.Config config) {
+        return "StartInProcSimbaController MediatorSim.dll MediatorSim.ControlAdapter.InProcSimbaControllerImpl {PORT}";
     }
 }
