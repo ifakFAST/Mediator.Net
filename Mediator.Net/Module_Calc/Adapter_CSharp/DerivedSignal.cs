@@ -237,7 +237,8 @@ public sealed class DerivedSignal : Identifiable
 
             VariableRef GetSiblingWithLocalID(string siblingLocalID) {
                 var (path, _) = signal.SplitId();
-                string siblingID = path + "." + siblingLocalID;
+                bool emptyPath = string.IsNullOrEmpty(path);
+                string siblingID = emptyPath ? siblingLocalID : path + "." + siblingLocalID;
                 DerivedSignal? sibling = derivedSignals.FirstOrDefault(s => s.ID == siblingID);
                 if (sibling == null) {
                     throw new ArgumentException($"Sibling signal {siblingID} not found.");
