@@ -153,7 +153,7 @@ public class MQTT : AdapterBase {
             List<string> topics = mapTopicsToReadableDataItemIDs.Keys.ToList();
 
             if (autoCreateDataItems) {
-                topics.Add("/" + autoCreateDataItems_RootTopic + "/#");
+                topics.Add(autoCreateDataItems_RootTopic + "/#");
             }
 
             foreach (string top in topics) {
