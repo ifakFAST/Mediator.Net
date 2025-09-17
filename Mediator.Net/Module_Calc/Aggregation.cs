@@ -126,13 +126,11 @@ public static class AggregationUtils
 
         // Second pass: fill the matrix directly using pre-built timestamps
         int rowCount = timestamps.Count;
-        var dateTimes = new DateTime[rowCount];
         var matrix = new double[rowCount, readers.Length];
 
         for (int row = 0; row < rowCount; row++) {
 
             Timestamp time = timestamps[row];
-            dateTimes[row] = time.ToDateTime();
 
             // Fill values for each variable at this timestamp
             for (int i = 0; i < readers.Length; i++) {
@@ -149,8 +147,8 @@ public static class AggregationUtils
         }
 
         return new TimeAlignedMatrix {
-            Timestamps = dateTimes,
-            TimestampsUnix = timestamps.Select(t => t.JavaTicks).ToArray(),
+            Timestamps = timestamps.ToArray(),
+            TimestampsPosixSeconds = timestamps.Select(t => t.PosixSeconds).ToArray(),
             Values = matrix
         };
     }
@@ -178,8 +176,8 @@ public static class AggregationUtils
 
 public class TimeAlignedMatrix
 {
-    public DateTime[] Timestamps { get; set; } = [];
-    public long[] TimestampsUnix { get; set; } = [];
+    public Timestamp[] Timestamps { get; set; } = [];
+    public double[] TimestampsPosixSeconds { get; set; } = [];
     public double[,] Values { get; set; } = new double[0, 0];
 
     public void Print(int numDigits = 3) {

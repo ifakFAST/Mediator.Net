@@ -103,10 +103,11 @@ class Script {
           </Output>
         </Outputs>
       </Calculation>
-      <Calculation id="Python" name="Python" type="Python" enabled="false">
+      <Calculation id="Python" name="Python" type="Python" enabled="true">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>10 s</Cycle>
-        <Definition>
+        <Definition>import numpy as np
+
 x1 = Input(name="X1", unit="mg/L", defaultValue=0.0)
 x2 = Input(name="X2", unit="mg/L", defaultValue=0.0)
 x3 = Input(name="X3", unit="mg/L", defaultValue=0.0)
@@ -126,17 +127,27 @@ def step(t, dt):
     tStart = tEnd.AddMinutes(-5);
     dataTime = api.ReadVariablesHistory(variables, tStart, tEnd)
     matrixTime = AggregationUtils.ExportToMatrix(dataTime)
-    matrixTime.Print(numDigits=2)
+    matrixTime.Print(numDigits=3)
+    # matrixTime.TimestampsPosixSeconds may be used to convert to Python datetime
+    numpy_array = np.array(matrixTime.Values)
+    print(numpy_array[0])
     
     count = 20
     dataRaw = api.ReadVariablesHistoryLastN(variables, count)
     matrixRaw = AggregationUtils.ExportToMatrix(dataRaw)
-    matrixRaw.Print(numDigits=2)
+    #matrixRaw.Print(numDigits=2)
     
     dataAggregated = AggregationUtils.Aggregate(dataRaw, Aggregation.First, Duration.FromMinutes(1), False)
     matrixAggregated = AggregationUtils.ExportToMatrix(dataAggregated)
-    matrixAggregated.Print(numDigits=2)
-</Definition>
+    #matrixAggregated.Print(numDigits=2)
+
+def initialize(initParams):
+    name = initParams.Calculation.Name
+    print("initialize " + name)
+    
+def shutdown():
+    print("shutdown")
+    </Definition>
         <Inputs>
           <Input id="x1" name="X1" unit="mg/L">
             <Variable object="IO:Data_001" name="Value" />
