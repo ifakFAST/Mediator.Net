@@ -1,7 +1,9 @@
-﻿from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase
-from Ifak.Fast.Mediator import Quality
+from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase
+from Ifak.Fast.Mediator import Quality, Duration, Timestamp, QualityFilter
+from Ifak.Fast.Mediator.Calc import Aggregation
 import Ifak.Fast.Mediator
 import json
+from System.Collections.Generic import List
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 
@@ -25,6 +27,16 @@ def _DataValue2OptionalDatetime(value: Ifak.Fast.Mediator.DataValue) -> Optional
         return None
     timestamp = ts.JavaTicks / 1000.0
     return datetime.fromtimestamp(timestamp, timezone.utc)
+
+def _convertDotNetListOfList(dotnet_list: List) -> list[list]:
+    """Convert .NET List<List<T>> to Python list[list[T]]"""
+    python_result = []
+    for dotnet_sub_list in dotnet_list:
+        python_list = []
+        for x in dotnet_sub_list:
+            python_list.append(x)
+        python_result.append(python_list)
+    return python_result
 
 class TimeseriesEntry:
     
@@ -587,3 +599,59 @@ class OutputObjectArray(MyOutputBase):
         _verifyOptionalListOfDict(f"Output {self.ID}: Value", value)
         newValue = Ifak.Fast.Mediator.DataValue.FromJSON(json.dumps(value))
         self.SetValue(newValue)
+
+class Api(Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi):
+
+    def ReadVariablesHistory(self, variables: list[Ifak.Fast.Mediator.VariableRef], startTime: Timestamp, endTime: Timestamp, emptyResultOnError: bool = True, filter: QualityFilter = QualityFilter.ExcludeNone) -> list[list[Ifak.Fast.Mediator.VTQ]]:
+        dotnet_variables = List[Ifak.Fast.Mediator.VariableRef]()
+        for var in variables:
+            dotnet_variables.Add(var)
+        result = super().ReadVariablesHistory(dotnet_variables, startTime, endTime, emptyResultOnError, filter)
+        return _convertDotNetListOfList(result)
+
+    def ReadVariablesHistoryLastN(self, inputs: list[Ifak.Fast.Mediator.VariableRef], n: int, emptyResultOnError: bool = True) -> list[list[Ifak.Fast.Mediator.VTQ]]:
+        dotnet_inputs = List[Ifak.Fast.Mediator.VariableRef]()
+        for obj in inputs:
+            dotnet_inputs.Add(obj)
+        result = super().ReadVariablesHistoryLastN(dotnet_inputs, n, emptyResultOnError)
+        return _convertDotNetListOfList(result)
+
+    @classmethod
+    def MakeVariableRefs(cls, inputs: list[PyInputBase]) -> list[Ifak.Fast.Mediator.VariableRef]:
+        dotnet_inputs = List[PyInputBase]()
+        for obj in inputs:
+            dotnet_inputs.Add(obj)
+        result = Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi.MakeVariableRefs(dotnet_inputs)
+        return [var_ref for var_ref in result]
+
+    @classmethod
+    def MakeVariableRefsFromObjectIDs(cls, objectIDs: list[str]) -> list[Ifak.Fast.Mediator.VariableRef]:
+        dotnet_strings = List[str]()
+        for obj_id in objectIDs:
+            dotnet_strings.Add(obj_id)
+        result = Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi.MakeVariableRefsFromObjectIDs(dotnet_strings)
+        return [var_ref for var_ref in result]
+    
+class AggregationUtils(Ifak.Fast.Mediator.Calc.AggregationUtils):
+    
+    @classmethod
+    def Aggregate(cls, listHistories: list[list[Ifak.Fast.Mediator.VTQ]], aggregation: Aggregation, resolution: Duration, skipEmptyIntervals: bool) -> list[list[Ifak.Fast.Mediator.VTQ]]:
+        dotnet_listHistories = List[List[Ifak.Fast.Mediator.VTQ]]()
+        for history in listHistories:
+            dotnet_history = List[Ifak.Fast.Mediator.VTQ]()
+            for vtq in history:
+                dotnet_history.Add(vtq)
+            dotnet_listHistories.Add(dotnet_history)
+        result = Ifak.Fast.Mediator.Calc.AggregationUtils.Aggregate(dotnet_listHistories, aggregation, resolution, skipEmptyIntervals)
+        return _convertDotNetListOfList(result)
+
+    @classmethod
+    def ExportToMatrix(cls, listHistories: list[list[Ifak.Fast.Mediator.VTQ]]) -> Ifak.Fast.Mediator.Calc.TimeAlignedMatrix:
+        dotnet_listHistories = List[List[Ifak.Fast.Mediator.VTQ]]()
+        for history in listHistories:
+            dotnet_history = List[Ifak.Fast.Mediator.VTQ]()
+            for vtq in history:
+                dotnet_history.Add(vtq)
+            dotnet_listHistories.Add(dotnet_history)
+        result = Ifak.Fast.Mediator.Calc.AggregationUtils.ExportToMatrix(dotnet_listHistories)
+        return result

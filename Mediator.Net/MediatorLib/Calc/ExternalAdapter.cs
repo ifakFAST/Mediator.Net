@@ -18,9 +18,11 @@ namespace Ifak.Fast.Mediator.Calc
         protected abstract string GetCommand(Config config);
         protected abstract string GetArgs(Config config);
         private string adapterName = "";
+        private ModuleInitInfo? moduleInitInfo = null;
 
         public override async Task<InitResult> Initialize(InitParameter parameter, AdapterCallback callback) {
 
+            this.moduleInitInfo = parameter.ModuleInitInfo;
             this.callback = callback;
             this.adapterName = parameter.Calculation.Name;
 
@@ -62,6 +64,7 @@ namespace Ifak.Fast.Mediator.Calc
 
                 var initMsg = new InititializeMsg() {
                     Parameter = parameter,
+                    Info = this.moduleInitInfo,
                 };
 
                 Task<InitResult> tInit = SendRequest<InitResult>(initMsg);
@@ -265,6 +268,7 @@ namespace Ifak.Fast.Mediator.Calc
     internal class InititializeMsg : AdapterMsg
     {
         public InitParameter Parameter { get; set; } = new InitParameter();
+        public ModuleInitInfo? Info { get; set; } = null;
 
         public override byte GetMessageCode() => ID_Initialize;
     }

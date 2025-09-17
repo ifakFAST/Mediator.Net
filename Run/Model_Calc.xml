@@ -21,7 +21,7 @@
       </Folder>
     </Folders>
     <Calculations>
-      <Calculation id="cs" name="CSharp" type="CSharp" enabled="true">
+      <Calculation id="cs" name="CSharp" type="CSharp" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>1 s</Cycle>
         <Definition>using Std;
@@ -101,6 +101,55 @@ class Script {
           <Output id="Output_2" name="Output_2" unit="mg/L">
             <Variable object="IO:Data_005" name="Value" />
           </Output>
+        </Outputs>
+      </Calculation>
+      <Calculation id="Python" name="Python" type="Python" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition>
+x1 = Input(name="X1", unit="mg/L", defaultValue=0.0)
+x2 = Input(name="X2", unit="mg/L", defaultValue=0.0)
+x3 = Input(name="X3", unit="mg/L", defaultValue=0.0)
+
+Y = Output("Y", "m³/d", roundDigits=3)
+
+api = Api()
+
+def step(t, dt):
+    
+    variables = Api.MakeVariableRefs([x1, x2, x3])
+    
+    # tEnd = Timestamp.FromComponents(2025, 9, 17, 17, 00, 00)
+    # tEnd = Timestamp.Now
+    # tEnd = Timestamp.FromISO8601("2025-09-17T17:25")
+    tEnd = Timestamp.FromPosixSeconds(t.timestamp())
+    tStart = tEnd.AddMinutes(-5);
+    dataTime = api.ReadVariablesHistory(variables, tStart, tEnd)
+    matrixTime = AggregationUtils.ExportToMatrix(dataTime)
+    matrixTime.Print(numDigits=2)
+    
+    count = 20
+    dataRaw = api.ReadVariablesHistoryLastN(variables, count)
+    matrixRaw = AggregationUtils.ExportToMatrix(dataRaw)
+    matrixRaw.Print(numDigits=2)
+    
+    dataAggregated = AggregationUtils.Aggregate(dataRaw, Aggregation.First, Duration.FromMinutes(1), False)
+    matrixAggregated = AggregationUtils.ExportToMatrix(dataAggregated)
+    matrixAggregated.Print(numDigits=2)
+</Definition>
+        <Inputs>
+          <Input id="x1" name="X1" unit="mg/L">
+            <Variable object="IO:Data_001" name="Value" />
+          </Input>
+          <Input id="x2" name="X2" unit="mg/L">
+            <Variable object="IO:Data_002" name="Value" />
+          </Input>
+          <Input id="x3" name="X3" unit="mg/L">
+            <Variable object="IO:Data_003" name="Value" />
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="Y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
     </Calculations>

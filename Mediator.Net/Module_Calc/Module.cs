@@ -206,7 +206,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 ConfigFolder = Path.GetDirectoryName(base.modelFileName) ?? "",
                 DataFolder = initInfo.DataFolder,
                 ModuleID = initInfo.ModuleID,
-                ModuleConfig = moduleConfig.ToNamedValues()
+                ModuleConfig = moduleConfig.ToNamedValues(),
+                ModuleInitInfo = initInfo
             };
             adapter.State = State.InitStarted;
             InitResult res = await adapter.Instance.Initialize(initParams, new Wrapper(this, info));

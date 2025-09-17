@@ -4,8 +4,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Calc.Config;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp;
@@ -368,7 +371,7 @@ public class Api
 
     internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
 
-    public List<VTQ> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+    public VTQs HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
 
         VTTQs vttqs = new();
         string? errMsg = null;
@@ -479,8 +482,131 @@ public class Api
 
         return newObjID;
     }
-}
 
+    public static VariableRef[] MakeVariableRefs(IEnumerable<InputBase> inputs) {
+        return inputs.Select(i => i.AttachedVariable ?? throw new Exception($"No variable connected to input {i.ID}")).ToArray();
+    }
+
+    public static VariableRef[] MakeVariableRefsFromObjectIDs(IEnumerable<string> objectIDs) {        
+        return objectIDs.Select(id => VariableRef.Make(ObjectRef.FromEncodedString(id), "Value")).ToArray();
+    }
+
+    public List<VTQs> ReadVariablesHistory(         IEnumerable<VariableRef> variables, 
+                                                    Timestamp startTime, 
+                                                    Timestamp endTime,
+                                                    bool emptyResultOnError = true,
+                                                    QualityFilter filter = QualityFilter.ExcludeNone) {
+
+        var listHistories = new List<VTQs>();
+
+        foreach (var variable in variables) {
+            var historyData = ReadVariableHistory(variable, startTime, endTime, emptyResultOnError, filter);
+            listHistories.Add(historyData);
+        }
+
+        return listHistories;
+    }
+
+    public VTQs ReadVariableHistory(                VariableRef variable, 
+                                                    Timestamp startTime, 
+                                                    Timestamp endTime, 
+                                                    bool emptyResultOnError = true,
+                                                    QualityFilter filter = QualityFilter.ExcludeNone) {
+
+        try {
+            //Console.WriteLine($"Reading data for {variable.Object.ModuleID}.{variable.Object.LocalObjectID}.{variable.Name}...");
+
+            // Read data in chunks to handle large datasets
+            const int ChunkSize = 5000;
+            VTQs data = HistorianReadRaw(
+                variable,
+                startTime,
+                endTime,
+                ChunkSize,
+                BoundingMethod.TakeFirstN,
+                filter);
+
+            if (data.Count < ChunkSize) {
+                //Console.WriteLine($"  Found {data.Count} data points");
+                return data;
+            }
+            else {
+                // Handle large datasets by reading in chunks
+                var buffer = new VTQs(data);
+                Timestamp nextStart = startTime;
+
+                do {
+                    nextStart = data[data.Count - 1].T.AddMillis(1);
+                    data = HistorianReadRaw(
+                        variable,
+                        nextStart,
+                        endTime,
+                        ChunkSize,
+                        BoundingMethod.TakeFirstN,
+                        filter);
+                    buffer.AddRange(data);
+                }
+                while (data.Count == ChunkSize);
+
+                //Console.WriteLine($"  Found {buffer.Count} data points (chunked)");
+                return buffer;
+            }
+        }
+        catch (Exception ex) {
+            Console.Error.WriteLine($"  Error reading {variable.Object.ModuleID}.{variable.Object.LocalObjectID}.{variable.Name}: {ex.Message}");
+            if (emptyResultOnError) {
+                return [];
+            }
+            else {
+                throw;
+            }
+        }
+    }
+
+
+    public List<VTQs> ReadVariablesHistoryLastN(    IEnumerable<VariableRef> variables,
+                                                    int n,
+                                                    bool emptyResultOnError = true,
+                                                    QualityFilter filter = QualityFilter.ExcludeNone) {
+
+        var listHistories = new List<VTQs>();
+
+        foreach (var variable in variables) {
+            var historyData = ReadVariableHistoryLastN(variable, n, emptyResultOnError, filter);
+            listHistories.Add(historyData);
+        }
+
+        return listHistories;
+    }
+
+    public VTQs ReadVariableHistoryLastN(           VariableRef variable, 
+                                                    int n,
+                                                    bool emptyResultOnError = true,
+                                                    QualityFilter filter = QualityFilter.ExcludeNone) {
+
+        try {
+            VTQs data = HistorianReadRaw(
+                   variable,
+                   Timestamp.Empty,
+                   Timestamp.Max,
+                   n,
+                   BoundingMethod.TakeLastN,
+                   filter);
+
+            //Console.WriteLine($"  Found {data.Count} data points (last {n})");
+            return data;
+        }
+        catch (Exception ex) {
+            Console.Error.WriteLine($"  Error reading {variable.Object.ModuleID}.{variable.Object.LocalObjectID}.{variable.Name}: {ex.Message}");
+            if (emptyResultOnError) {
+                return [];
+            }
+            else {
+                throw;
+            }
+        }
+    }
+}
 
 public interface ObjectWithID
 {

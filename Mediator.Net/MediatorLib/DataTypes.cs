@@ -354,6 +354,10 @@ namespace Ifak.Fast.Mediator
 
         public static Timestamp FromJavaTicks(long ticks) { return new Timestamp(ticks); }
 
+        public static Timestamp FromPosixSeconds(double seconds) {
+            return new Timestamp((long)(seconds * 1000.0));
+        }
+
         public static Timestamp FromDotNetTicks(long ticks) {
             return new Timestamp((ticks - TICKS_AT_EPOCH) / TICKS_PER_MILLISECOND);
         }
@@ -429,6 +433,11 @@ namespace Ifak.Fast.Mediator
         public readonly long JavaTicks
         {
             get { return ticks; }
+        }
+
+        public readonly double PosixSeconds
+        {
+            get { return ticks / 1000.0; }
         }
 
         public readonly long DotNetTicks

@@ -18,6 +18,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
     private InputBase[] inputs = Array.Empty<Input>();
     private OutputBase[] outputs = Array.Empty<Output>();
     private AbstractState[] states = Array.Empty<AbstractState>();
+    private List<Api> apis = new();
     private Action<Timestamp, Duration> stepAction = (t, dt) => { };
     private Action shutdownAction = () => { };
     private Duration cycle = Duration.FromSeconds(1);
@@ -164,7 +165,13 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             foreach (EventProvider provider in eventProviders) {
                 provider.EventSinkRef = this;
             }
-            
+
+            apis = GetApiMembers(module);
+            foreach (Api api in apis) {
+                api.moduleID = parameter.ModuleID;
+                api.connectionGetter = retriever;
+            }
+
             PyObject stepWrap = GetAttrOrNull(moduleOuter, "_wrapStepCall") ?? throw new Exception("Helper function _wrapStepCall not found");
             PyObject stepMethod = GetAttrOrNull(module, "step") ?? throw new Exception("Python script must contain 'def step(t, dt):'");
 
@@ -283,6 +290,12 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         return Task.FromResult(true);
     }
 
+    public override void SignalStepAbort() {
+        foreach (Api api in apis) {
+            api.abortStep = true;
+        }
+    }
+
     public override Task<StepResult> Step(Timestamp t, Duration dt, InputValue[] inputValues) {
 
         foreach (InputValue v in inputValues) {
@@ -367,6 +380,22 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             }
             else if (!isIdentifiable) {
                 result.AddRange(GetEventProviderMembers(f.Value));
+            }
+        }
+        return result;
+    }
+
+    private static List<Api> GetApiMembers(PyObject obj) {
+        List<Api> result = new();
+        MemberInfo[] fields = GetPyObjectMember(obj);
+        foreach (MemberInfo f in fields) {
+            bool isIdentifiable = f.TryConvertTo(out Identifiable? _);
+            bool isApi = f.TryConvertTo(out Api? api);
+            if (isApi && api != null) {
+                result.Add(api);
+            }
+            else if (!isIdentifiable) {
+                result.AddRange(GetApiMembers(f.Value));
             }
         }
         return result;

@@ -99,6 +99,8 @@ namespace Ifak.Fast.Mediator.Calc
         {
             private readonly CalculationBase adapter;
             private readonly TcpConnectorSlave connector;
+            private ModuleInitInfo? moduleInitInfo = null;
+            private Connection? connection = null;
 
             public AdapterHelper(CalculationBase module, TcpConnectorSlave connector) {
                 this.adapter = module;
@@ -113,6 +115,8 @@ namespace Ifak.Fast.Mediator.Calc
 
                     case AdapterMsg.ID_Initialize: {
                             var msg = Deserialize<InititializeMsg>(request.Payload);
+                            this.moduleInitInfo = msg.Info;
+                            SetupConnectionConsumerIfApplicable();
                             WrapCall(() => adapter.Initialize(msg.Parameter, this), SerializeObject, reqID);
                             break;
                         }
@@ -187,6 +191,31 @@ namespace Ifak.Fast.Mediator.Calc
 
             private void SerializeObject<T>(T obj, Stream output) where T: notnull {
                 StdJson.ObjectToStream(obj, output);
+            }
+
+            private void SetupConnectionConsumerIfApplicable() {
+                if (adapter is ConnectionConsumer cons && moduleInitInfo != null) {
+                    cons.SetConnectionRetriever(ConnectionRetrieverAsync);
+                }
+            }
+
+            private async Task<Connection> ConnectionRetrieverAsync() {
+                if (connection != null && !connection.IsClosed) {
+                    try {
+                        await connection.Ping();
+                        return connection;
+                    }
+                    catch (Exception) {
+                        connection = null;
+                    }
+                }
+
+                if (moduleInitInfo == null) {
+                    throw new InvalidOperationException("ModuleInitInfo not available for connection creation");
+                }
+
+                connection = await HttpConnection.ConnectWithModuleLogin(moduleInitInfo.Value);
+                return connection;
             }
 
             public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {

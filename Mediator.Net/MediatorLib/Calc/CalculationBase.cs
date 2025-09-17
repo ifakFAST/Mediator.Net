@@ -30,6 +30,7 @@ namespace Ifak.Fast.Mediator.Calc
         public string DataFolder { get; set; } = "";
         public string ModuleID { get; set; } = "";
         public NamedValue[] ModuleConfig { get; set; } = new NamedValue[0];
+        public ModuleInitInfo ModuleInitInfo { get; set; }
     }
 
     public class InitResult
