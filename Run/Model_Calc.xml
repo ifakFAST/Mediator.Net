@@ -118,6 +118,7 @@ api = Api()
 
 def step(t, dt):
     
+    #variables = MakeSignalRefs(["signal_001", "signal_002"])
     variables = Api.MakeVariableRefs([x1, x2, x3])
     
     # tEnd = Timestamp.FromComponents(2025, 9, 17, 17, 00, 00)
@@ -130,7 +131,7 @@ def step(t, dt):
     matrixTime.Print(numDigits=3)
     # matrixTime.TimestampsPosixSeconds may be used to convert to Python datetime
     numpy_array = np.array(matrixTime.Values)
-    print(numpy_array[0])
+    #print(numpy_array[0])
     
     count = 20
     dataRaw = api.ReadVariablesHistoryLastN(variables, count)
@@ -147,7 +148,12 @@ def initialize(initParams):
     
 def shutdown():
     print("shutdown")
-    </Definition>
+    
+def MakeSignalRefs(ids):
+    objRefs = ["CALC:" + id for id in ids]
+    # print(objRefs)
+    return Api.MakeVariableRefsFromObjectIDs(objRefs)
+</Definition>
         <Inputs>
           <Input id="x1" name="X1" unit="mg/L">
             <Variable object="IO:Data_001" name="Value" />
