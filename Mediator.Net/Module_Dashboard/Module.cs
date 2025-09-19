@@ -227,6 +227,10 @@ public class Module : ModelObjectModule<DashboardModel>
                         var etag = $"\"{compressedFile.LastModified.Ticks:x}-{compressedFile.Length:x}\"";
                         ctx.Context.Response.Headers.ETag = etag;
                     }
+                    // Add CORS headers
+                    ctx.Context.Response.Headers.AccessControlAllowOrigin = "*";
+                    ctx.Context.Response.Headers.AccessControlAllowMethods = "*";
+                    ctx.Context.Response.Headers.AccessControlAllowHeaders = "*";
                 }
             });
         }
