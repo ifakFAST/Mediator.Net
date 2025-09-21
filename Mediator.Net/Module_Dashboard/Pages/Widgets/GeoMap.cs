@@ -93,6 +93,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         configuration.MapConfig = config.MapConfig;
         configuration.LegendConfig = config.LegendConfig;
         configuration.TileLayers = config.TileLayers;
+        configuration.StaticLayers = config.StaticLayers;
         configuration.MainLayers = config.MainLayers;
         configuration.OptionalLayers = config.OptionalLayers;
         await Context.SaveWidgetConfiguration(configuration);
@@ -139,6 +140,7 @@ public sealed class GeoMapConfig {
                 MaxZoom = 18
             }
         ];
+    public StaticLayer[] StaticLayers { get; set; } = [];     // Checked
     public MainLayer[] MainLayers { get; set; } = [];         // Exclusive
     public OptionalLayer[] OptionalLayers { get; set; } = []; // Checked
 }
@@ -167,6 +169,13 @@ public sealed class TileLayer {
     public string Attribution { get; set; } = "";
     public double MinZoom { get; set; } = 10;
     public double MaxZoom { get; set; } = 19;
+}
+
+public sealed class StaticLayer
+{
+    public string Name { get; set; } = "";
+    public string FileName { get; set; } = ""; // Must be located in WebAssets folder
+    public bool IsSelected { get; set; } = true;
 }
 
 public sealed class MainLayer {

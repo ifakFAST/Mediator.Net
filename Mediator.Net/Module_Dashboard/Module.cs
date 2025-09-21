@@ -218,6 +218,11 @@ public class Module : ModelObjectModule<DashboardModel>
             app.UseStaticFiles(new StaticFileOptions {
                 FileProvider = new MyPhysicalFileProvider(webAssetsDir, httpContextAccessor),
                 RequestPath = $"/{Session.WebAssets}",
+                ContentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider {
+                    Mappings = {
+                        [".geojson"] = "application/json",
+                    }
+                },
                 OnPrepareResponse = ctx => {
                     if (ctx.File is CompressedFileInfo compressedFile) {
                         ctx.Context.Response.Headers.ContentEncoding = compressedFile.CompressionType;
