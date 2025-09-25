@@ -1,0 +1,717 @@
+﻿{
+  "id": "Root",
+  "name": "TagMetaData",
+  "diagram": {
+    "blocks": [
+      {
+        "moduleType": "const",
+        "parameters": {
+          "Dimension": "1",
+          "Constant_0": "1"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "const",
+        "x": 125,
+        "y": 37,
+        "w": 61,
+        "h": 22,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#c0c0c0",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "influent",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "influent",
+        "x": 124,
+        "y": 89,
+        "w": 60,
+        "h": 22,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#ffff00",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "divider",
+        "parameters": {
+          "Dist": "1; 1; 1"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "divider",
+        "x": 130,
+        "y": 160,
+        "w": 57,
+        "h": 80,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0"
+      },
+      {
+        "moduleType": "mix",
+        "parameters": {
+          "nin": "3"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "mix",
+        "x": 127,
+        "y": 273,
+        "w": 60,
+        "h": 81,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0"
+      },
+      {
+        "moduleType": "pump",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "pump",
+        "x": 136,
+        "y": 413,
+        "w": 20,
+        "h": 35,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": true,
+        "rotation": "0",
+        "icon": {
+          "name": "wwtp_pump2.svg",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rotate": false
+        }
+      },
+      {
+        "diagram": {
+          "blocks": [
+            {
+              "io": "In",
+              "index": 1,
+              "lineType": "Signal",
+              "dimension": 1,
+              "type": "Port",
+              "name": "Port_In_Signal",
+              "x": 50,
+              "y": 150,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            },
+            {
+              "io": "Out",
+              "index": 1,
+              "lineType": "Signal",
+              "dimension": 1,
+              "type": "Port",
+              "name": "Port_Out_Signal",
+              "x": 500,
+              "y": 150,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            },
+            {
+              "io": "In",
+              "index": 2,
+              "lineType": "Water",
+              "dimension": 1,
+              "type": "Port",
+              "name": "Port_In_Water",
+              "x": 50,
+              "y": 252,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            },
+            {
+              "io": "Out",
+              "index": 2,
+              "lineType": "Water",
+              "dimension": 1,
+              "type": "Port",
+              "name": "Port_Out_Water",
+              "x": 498,
+              "y": 269,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            },
+            {
+              "io": "In",
+              "index": 3,
+              "lineType": "Air",
+              "dimension": 4,
+              "type": "Port",
+              "name": "Port_In_Air",
+              "x": 49,
+              "y": 346,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            },
+            {
+              "io": "Out",
+              "index": 3,
+              "lineType": "Air",
+              "dimension": 4,
+              "type": "Port",
+              "name": "Port_Out_Air",
+              "x": 492,
+              "y": 372,
+              "w": 60,
+              "h": 30,
+              "drawFrame": true,
+              "drawName": true,
+              "drawPortLabel": false,
+              "flipName": false,
+              "rotation": "0",
+              "frame": {
+                "shape": "RoundedRectangle",
+                "strokeWidth": 1,
+                "strokeColor": "#000000",
+                "fillColor": "#dddddd",
+                "shadow": false,
+                "var1": 0.3,
+                "var2": 0
+              },
+              "font": {
+                "family": "Arial",
+                "size": 16,
+                "style": "Normal",
+                "weight": "Bold"
+              }
+            }
+          ],
+          "lines": []
+        },
+        "type": "Macro",
+        "name": "macro",
+        "x": 399,
+        "y": 177,
+        "w": 200,
+        "h": 100,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#dddddd",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        },
+        "font": {
+          "family": "Arial",
+          "size": 16,
+          "style": "Normal",
+          "weight": "Bold"
+        }
+      },
+      {
+        "moduleType": "tank",
+        "parameters": {
+          "length": "50",
+          "width": "10",
+          "passes": "3",
+          "measurement-tags": "[]"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "tank",
+        "x": 400,
+        "y": 35,
+        "w": 199,
+        "h": 78,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#e8e8e8",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "storage",
+        "parameters": {
+          "V": "1000",
+          "h": "4"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "storage",
+        "x": 120,
+        "y": 504,
+        "w": 54,
+        "h": 37,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0"
+      },
+      {
+        "moduleType": "separation",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "separation",
+        "x": 430,
+        "y": 375,
+        "w": 61,
+        "h": 45,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": true,
+        "rotation": "0",
+        "icon": {
+          "name": "wwtp_sc_pump_i.svg",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rotate": false
+        }
+      },
+      {
+        "moduleType": "sink",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "sink",
+        "x": 434,
+        "y": 455,
+        "w": 52,
+        "h": 20,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "colorBackground": "#a0c9de",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 2,
+          "strokeColor": "#1003ad",
+          "fillColor": "#a0c9de",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "sampling_point",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "sampling point",
+        "x": 446,
+        "y": 530,
+        "w": 27,
+        "h": 27,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": true,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#67b3e0",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "blower_pd",
+        "parameters": {
+          "q_max": "1000",
+          "eta_mech": "0.96",
+          "q_v_100": "10",
+          "eta_04": "0.6",
+          "eta_08": "0.96",
+          "T1": "2/(24*60)"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "blower PD",
+        "x": 118,
+        "y": 628,
+        "w": 39,
+        "h": 38,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "icon": {
+          "name": "wwtp_d_pd_blower.svg",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rotate": false
+        }
+      },
+      {
+        "moduleType": "pipe_simple",
+        "parameters": {
+          "zeta_e": "0.1",
+          "k": "0.02",
+          "l": "2",
+          "d": "0.1"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "pipe",
+        "x": 102,
+        "y": 751,
+        "w": 72,
+        "h": 20,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 2,
+          "strokeColor": "#0020b8",
+          "fillColor": "#FFFFFF",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "valve",
+        "parameters": {
+          "KvCv": "Kv",
+          "kv100": "100",
+          "kv50": "30",
+          "kv0": "3",
+          "valvetype": "linear"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "valve",
+        "x": 249,
+        "y": 739,
+        "w": 48,
+        "h": 41,
+        "drawFrame": false,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "icon": {
+          "name": "hyd_valve.svg",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rotate": true
+        }
+      },
+      {
+        "moduleType": "tank_air",
+        "parameters": {
+          "nin_left": "1",
+          "nin_right": "1",
+          "nin_top": "0",
+          "nin_bottom": "0"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "tank air",
+        "x": 405,
+        "y": 634,
+        "w": 28,
+        "h": 29,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "RoundedRectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#FFFFFF",
+          "shadow": false,
+          "var1": 0.3,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "pressure_source",
+        "parameters": {
+          "P": "1013.25"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "pressure source",
+        "x": 415,
+        "y": 727,
+        "w": 15,
+        "h": 57,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#0d299b",
+          "fillColor": "#FFFFFF",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "blower_centrifugal_vx",
+        "parameters": {
+          "T1": "2/(24*60)",
+          "dP_shut": "800",
+          "q_opt": "1000",
+          "dP_opt": "500",
+          "q_max": "1400",
+          "dP_surge": "200",
+          "dP_surge_opt": "1000"
+        },
+        "tags": [],
+        "type": "Module",
+        "name": "blower centrifugal",
+        "x": 248,
+        "y": 623,
+        "w": 52,
+        "h": 53,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "Rectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#FFFFFF",
+          "shadow": false,
+          "var1": 0,
+          "var2": 0
+        },
+        "icon": {
+          "name": "wwtp_d_turbo.svg",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rotate": false
+        }
+      },
+      {
+        "moduleType": "tag_trash",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "tag trash",
+        "x": 116,
+        "y": 844,
+        "w": 35,
+        "h": 61,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0",
+        "frame": {
+          "shape": "RoundedRectangle",
+          "strokeWidth": 1,
+          "strokeColor": "#000000",
+          "fillColor": "#c0c0c0",
+          "shadow": false,
+          "var1": 0.1,
+          "var2": 0
+        }
+      },
+      {
+        "moduleType": "custom_mixer",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "custom_mixer",
+        "x": 102,
+        "y": 955,
+        "w": 120,
+        "h": 60,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0"
+      },
+      {
+        "moduleType": "smart_valve",
+        "parameters": {},
+        "tags": [],
+        "type": "Module",
+        "name": "smart_valve",
+        "x": 102,
+        "y": 1070,
+        "w": 120,
+        "h": 60,
+        "drawFrame": true,
+        "drawName": true,
+        "drawPortLabel": false,
+        "flipName": false,
+        "rotation": "0"
+      }
+    ],
+    "lines": []
+  }
+}

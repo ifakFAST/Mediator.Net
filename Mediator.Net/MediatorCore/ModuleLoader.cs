@@ -16,13 +16,14 @@ namespace Ifak.Fast.Mediator
             }
 
             // Load known module types, so that they can be found by GetNonAbstractSubclassInDomainBaseDirectory
-            Type[] preload = new Type[] {
+            Type[] preload = [
                 typeof(Ifak.Fast.Mediator.Calc.Module),
                 typeof(Ifak.Fast.Mediator.IO.Module),
                 typeof(Ifak.Fast.Mediator.Dashboard.Module),
                 typeof(Ifak.Fast.Mediator.EventLog.Module),
                 typeof(Ifak.Fast.Mediator.Publish.Module),
-            };
+                typeof(Ifak.Fast.Mediator.TagMetaData.Module),
+            ];
             
             Type? t = Reflect.GetNonAbstractSubclassInDomainBaseDirectory(typeof(ModuleBase), typeName);
 

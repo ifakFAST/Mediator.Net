@@ -253,7 +253,10 @@ namespace Ifak.Fast.Mediator.Util
                 res.BaseClassName = super.FullName;
             }
 
-            object defaultObject = Activator.CreateInstance(typeClass);
+            object? defaultObject = null;
+            if (!typeClass.IsAbstract) {
+                defaultObject = Activator.CreateInstance(typeClass);
+            }
 
             Type tIModelObject = typeof(IModelObject);
             Type tIModelObjectEnum = typeof(IEnumerable<IModelObject>);
@@ -295,7 +298,8 @@ namespace Ifak.Fast.Mediator.Util
                     Dimension dim = GetDimensionFromPropertyType(t);
                     if (t.IsGenericType) { // Nullable or List
                         t = t.GetGenericArguments()[0];
-                    } else if (t.IsArray) {
+                    }
+                    else if (t.IsArray) {
                         t = t.GetElementType();
                     }
                     DataType type = DataValue.TypeToDataType(t);
@@ -316,7 +320,12 @@ namespace Ifak.Fast.Mediator.Util
                         }
                     }
 
-                    object value = p.GetValue(defaultObject, null);
+                    object? value = null;
+
+                    if (defaultObject is not null) {
+                        value = p.GetValue(defaultObject, null);
+                    }
+
                     DataValue? defaultValue = null;
                     if (value != null) {
                         defaultValue = DataValue.FromObject(value);

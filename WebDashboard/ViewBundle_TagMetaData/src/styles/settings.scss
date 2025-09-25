@@ -1,0 +1,10 @@
+// Currently not used directly, see comment in global.css !
+
+@use 'vuetify/settings' with (
+  $field-control-padding-start: 6px,
+  $field-control-padding-end: 4px,
+  $text-field-details-padding-inline: 4px,
+  $field-input-row-gap: 0px,
+  $field-control-affixed-padding: 0px,
+  $field-control-affixed-inner-padding: 0px
+);

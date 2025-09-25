@@ -33,7 +33,9 @@
                 <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
+                    ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net8.0/Module_EventLog.dll
                     ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Calc.dll
+                    ../Mediator.Net/Module_TagMetaData/bin/{RELEASE_OR_DEBUG}/net8.0/Module_TagMetaData.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
@@ -119,6 +121,31 @@
                 </HistoryDB>
             </HistoryDBs>
         </Module>
+        
+        <Module id="TAG" name="TagMetaData" enabled="true" concurrentInit="false">
+            <VariablesFileName>Var_TagMeta.xml</VariablesFileName>
+            <ImplAssembly>Module_TagMetaData.dll</ImplAssembly>
+            <ImplClass>Ifak.Fast.Mediator.TagMetaData.Module</ImplClass>
+            <Config>
+                <NamedValue name="model-file"             value="Model_TagMetaData.xml"/>
+                <NamedValue name="meta-model-file"        value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\meta_model.xml"/>
+                <NamedValue name="block-library-file"     value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\block_lib.json"/>
+                <NamedValue name="images-path"            value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\images"/>
+                <NamedValue name="module-types-path"      value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\module_types"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
+                
+            </Config>
+            <HistoryDBs>
+                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=DB_Module_TagMetaData.db</ConnectionString>
+                    <Settings>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
+        
         
     </Modules>
     

@@ -617,7 +617,7 @@ namespace Ifak.Fast.Mediator
             configPermission.InitUserRoles(allObjects, GetObjectParent, core.userManagement.Roles, meta);
         }
 
-        public Action<MemberRef, string> GetChecker(Origin origin) {
+        public Action<MemberRef?, string> GetChecker(Origin origin) {
             return configPermission.GetChecker(origin);
         }
 

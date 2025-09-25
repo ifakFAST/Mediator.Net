@@ -47,6 +47,9 @@ window.dashboardApp = new Vue({
             }
         });
     },
+    getBackendUrl() {
+      return ""
+    },
     sendViewRequestAsync(request, payload, responseType) {
       const rspType = responseType || 'text'
       const config = { // suppress auto conversion of string to JSON, otherwise strange behavior

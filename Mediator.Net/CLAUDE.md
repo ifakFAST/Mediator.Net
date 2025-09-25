@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ifak*FAST* Mediator.Net is a modular platform for process monitoring and supervisory control (SCADA-like system). It uses a multi-process architecture where:
 - **MediatorCore** orchestrates all modules and provides central supervision
-- **Modules** run as separate processes for fault isolation (IO, Dashboard, EventLog, Calc, Publish)
+- **Modules** run as separate processes for fault isolation (IO, Dashboard, EventLog, Calc, Publish, TagMetaData)
 - **MediatorLib** provides shared base classes and utilities
 
 ## Common Commands
@@ -120,7 +120,7 @@ All modules follow this structure:
 - `MediatorLib/`: Shared library and base classes
 - `Module_*/`: Individual modules (IO, Dashboard, EventLog, Calc, Publish)
 - `../Run/`: Runtime directory with configurations and executables  
-- `../WebDashboard/`: Vue.js web applications (App + ViewBundle_Generic)
+- `../WebDashboard/`: Vue.js web applications (App + ViewBundle_Generic + ViewBundle_TagMetaData)
 - `../Doc/`: Development documentation and guides
 
 ## Dependencies

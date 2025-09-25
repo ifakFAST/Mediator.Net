@@ -23,7 +23,7 @@ public sealed class ModuleConfigPermission {
         this.moduleID = moduleID;
     }
 
-    public Action<MemberRef, string> GetChecker(Origin origin) {
+    public Action<MemberRef?, string> GetChecker(Origin origin) {
 
         var role = new RoleInfo() { AllowAllConfigChanges = true };
 
@@ -33,9 +33,17 @@ public sealed class ModuleConfigPermission {
             }
         }
 
-        return (MemberRef m, string err) => {
-            if (!role.AllowAllConfigChanges && !role.ChangeableMembers.Contains(m)) {
-                throw new Exception(err);
+        return (MemberRef? m, string err) => {
+
+            if (m is null) { // the entire root object is to be changed
+                if (!role.AllowAllConfigChanges) {
+                    throw new Exception(err);
+                }
+            }
+            else {
+                if (!role.AllowAllConfigChanges && !role.ChangeableMembers.Contains(m.Value)) {
+                    throw new Exception(err);
+                }
             }
         };
     }

@@ -34,6 +34,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private ViewType[] viewTypes = [];
 
     private readonly Dictionary<string, Session> sessions = [];
+    private readonly Dictionary<string, string> getRequestMappings = [];
 
     private static SynchronizationContext? theSyncContext = null;
     private readonly WebApplication? webHost = null;
@@ -393,6 +394,59 @@ public class Module : ModelObjectModule<DashboardModel>
                     }
                     return;
 
+                case "GET":
+                    string path = request.Path;
+                    if (path.StartsWith(Path_ViewReq)) {
+                        string viewRequest = path.Substring(Path_ViewReq.Length);
+                        string file = "";
+                        int slashIndex = viewRequest.IndexOf('/');
+                        if (slashIndex >= 0 && slashIndex < viewRequest.Length - 1) {
+                            file = viewRequest.Substring(slashIndex + 1);
+                            viewRequest = viewRequest.Substring(0, slashIndex);
+                        }
+                        var parameters = new {
+                            file
+                        };
+                        (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                        using ReqResult result = await session.OnViewCommand(viewID, viewRequest, DataValue.FromObject(parameters));
+                        await Respond(result);
+                        return;
+                    }
+                    else if (getRequestMappings.Keys.Any(k => path.StartsWith(k))) {
+
+                        string mappedPath = getRequestMappings.Keys.First(k => path.StartsWith(k));
+                        string mappedDirectory = getRequestMappings[mappedPath];
+
+                        string relativePath = path.Substring(mappedPath.Length);
+                        string fullPath = Path.Combine(mappedDirectory, relativePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                        string contentType = Path.GetExtension(fullPath).ToLowerInvariant() switch {
+                            ".svg" => "image/svg+xml",
+                            ".js" => "application/javascript",
+                            ".png" => "image/png",
+                            ".jpg" => "image/jpeg",
+                            ".jpeg" => "image/jpeg",
+                            ".gif" => "image/gif",
+                            ".css" => "text/css",
+                            ".html" => "text/html",
+                            ".json" => "application/json",
+                            ".woff" => "font/woff",
+                            ".woff2" => "font/woff2",
+                            ".ttf" => "font/ttf",
+                            ".eot" => "application/vnd.ms-fontobject",
+                            ".otf" => "font/otf",
+                            ".mp4" => "video/mp4",
+                            _ => "application/octet-stream"
+                        };
+                        using ReqResult result = await ReqResult.OK_FromFileAsync(fullPath, contentType);
+                        await Respond(result);
+
+                        return;
+                    }
+                    else {
+                        response.StatusCode = 400;
+                        return;
+                    }
+
                 default:
 
                     response.StatusCode = 400;
@@ -436,6 +490,9 @@ public class Module : ModelObjectModule<DashboardModel>
                 }
 
                 var session = new Session(configPath);
+                session.OnUpdateGetRequestMapping += (path, directory) => {
+                    getRequestMappings[path] = directory;
+                };
                 Connection connection;
                 try {
                     const int timeoutSeconds = 15 * 60;

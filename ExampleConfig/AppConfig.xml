@@ -34,6 +34,7 @@
                 <NamedValue name="view-assemblies">
                     ./Bin/Mediator/Module_EventLog.dll
                     ./Bin/Mediator/Module_Calc.dll
+                    ./Bin/Mediator/Module_TagMetaData.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
@@ -118,6 +119,30 @@
             <HistoryDBs>
                 <HistoryDB name="PUB" type="SQLite" prioritizeReadRequests="true">
                     <ConnectionString>Filename=./Data/DB_Pub.db</ConnectionString>
+                    <Settings>
+                        <string>journal_mode=WAL</string>
+                        <string>page_size=4096</string>
+                        <string>cache_size=5000</string>
+                    </Settings>
+                </HistoryDB>
+            </HistoryDBs>
+        </Module>
+        
+        <Module id="TAG" name="TagMetaData" enabled="false" concurrentInit="false">
+            <VariablesFileName>./Data/Var_TagMeta.xml</VariablesFileName>
+            <ExternalCommand>dotnet</ExternalCommand>
+            <ExternalArgs>./Bin/Mediator/Module_TagMetaData.dll {PORT}</ExternalArgs>
+            <Config>
+                <NamedValue name="model-file" value="./Config/Model_TagMetaData.xml"/>
+                <NamedValue name="meta-model-file" value="./Config/TagMetaData/meta_model.xml"/>
+                <NamedValue name="block-library-file" value="./Config/TagMetaData/block_lib.json"/>
+                <NamedValue name="images-path" value="./Config/TagMetaData/images"/>
+                <NamedValue name="module-types-path" value="./Config/TagMetaData/module_types"/>
+                <NamedValue name="model-file-auto-reload" value="true"/>
+            </Config>
+            <HistoryDBs>
+                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
+                    <ConnectionString>Filename=./Data/DB_Module_TagMetaData.db</ConnectionString>
                     <Settings>
                         <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>

@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Dashboard_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Dashboard">
   <Views>
+    <View id="tagmetadata" name="TagMetaData" type="TagMetaData" group="">
+      <Config>
+        { 
+        }
+      </Config>
+    </View>    
     <View id="variables" name="Variables" type="ModuleVariables" group="">
       <Config>
         { 

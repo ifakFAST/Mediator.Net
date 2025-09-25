@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Fast/Mediator.Net/Mediator.Net/**)",
+      "Bash(cat:*)",
+      "Read(//d/Fast/Mediator.Net/**)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

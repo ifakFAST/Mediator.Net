@@ -1,0 +1,38 @@
+{
+  "name": "generic",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build --force",
+    "format": "prettier --write src/"
+  },
+  "dependencies": {
+    "@fontsource/roboto": "5.2.6",
+    "@mdi/font": "7.4.47",
+    "@types/dygraphs": "^2.1.10",
+    "dygraphs": "^2.2.1",
+    "vue": "^3.5.17",
+    "vuetify": "^3.9.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^24.0.12",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "npm-run-all2": "^8.0.4",
+    "prettier": "^3.3.3",
+    "sass-embedded": "^1.86.3",
+    "typescript": "~5.8.3",
+    "unplugin-vue-components": "^28.4.1",
+    "vite": "^7.0.4",
+    "vite-plugin-static-copy": "^3.1.1",
+    "vite-plugin-vuetify": "^2.1.1",
+    "vite-plugin-webfont-dl": "^3.11.0",
+    "vue-tsc": "^3.0.1"
+  }
+}

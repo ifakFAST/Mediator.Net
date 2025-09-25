@@ -888,6 +888,15 @@ namespace Ifak.Fast.Mediator
             return new ObjectRef(m, o);
         }
 
+        public static ObjectRef? TryFromEncodedString(string encodedObjectRef) {
+            try {
+                return FromEncodedString(encodedObjectRef);
+            } 
+            catch {
+                return null;
+            }
+        }
+
         private ObjectRef(string moduleID, string localObjectID) {
             this.moduleID = moduleID ?? throw new ArgumentNullException(nameof(moduleID), nameof(moduleID) + " may not be null!");
             this.localObjectID = localObjectID ?? throw new ArgumentNullException(nameof(localObjectID), nameof(localObjectID) + " may not be null!");

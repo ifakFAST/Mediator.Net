@@ -33,6 +33,8 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         private readonly string configPath;
 
+        public event Action<string, string>? OnUpdateGetRequestMapping;
+
         public Session(string configPath) {
             ID = Guid.NewGuid().ToString().Replace("-", "");
             this.configPath = configPath;
@@ -538,6 +540,11 @@ namespace Ifak.Fast.Mediator.Dashboard
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             byte[] hash = sha256.ComputeHash(input);
             return BitConverter.ToString(hash).Replace("-", "");
+        }
+
+        public void SetGetRequestMapping(string path, string directory) {
+            // Raise event OnUpdateGetRequestMapping:
+            OnUpdateGetRequestMapping?.Invoke(path, directory);
         }
     }
 }

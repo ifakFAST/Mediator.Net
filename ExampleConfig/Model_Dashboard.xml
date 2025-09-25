@@ -441,5 +441,11 @@
   ]
 }</Config>
     </View>
+    <!--
+    <View id="tag" name="Tag Meta Data" type="TagMetaData" group="">
+      <Config>
+      </Config>
+    </View>
+    -->
   </Views>
 </Dashboard_Model>

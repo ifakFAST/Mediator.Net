@@ -624,8 +624,8 @@ namespace Ifak.Fast.Mediator
                                 foreach (ObjectValue ov in updateOrDeleteObjects) {
                                     ObjectInfo objInfo = module.GetObjectInfo(ov.Object) ?? throw new Exception($"Failed to find object {ov.Object}");
                                     MemberRefIdx? parent = objInfo.Parent;
-                                    if (!parent.HasValue) throw new Exception("Failed to modify object " + ov.Object + " because there is no parent object.");
-                                    checkPermission(parent.Value.ToMemberRef(), "No permission to modify object!");
+                                    MemberRef? mem = parent?.ToMemberRef();
+                                    checkPermission(mem, "No permission to modify object!");
                                 }
 
                                 foreach (MemberValue m in updateOrDeleteMembers) {

@@ -103,7 +103,7 @@ class Script {
           </Output>
         </Outputs>
       </Calculation>
-      <Calculation id="Python" name="Python" type="Python" enabled="true">
+      <Calculation id="Python" name="Python" type="Python" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>10 s</Cycle>
         <Definition>import numpy as np

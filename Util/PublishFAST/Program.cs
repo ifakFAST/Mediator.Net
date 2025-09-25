@@ -156,13 +156,18 @@ internal class Program {
         string configOutDir = EnsureDirectory(outDirMode, "Config");
         string appConfigFile = selfContained ? "AppConfig_SelfContained.xml" : "AppConfig.xml";
         CopyFileToDir(Path.Combine(configSrcDir, appConfigFile),         configOutDir, "AppConfig.xml");
-        CopyFileToDir(Path.Combine(configSrcDir, "Model_Calc.xml"),      configOutDir);
-        CopyFileToDir(Path.Combine(configSrcDir, "Model_Dashboard.xml"), configOutDir);
-        CopyFileToDir(Path.Combine(configSrcDir, "Model_EventLog.xml"),  configOutDir);
-        CopyFileToDir(Path.Combine(configSrcDir, "Model_IO.xml"),        configOutDir);
-        CopyFileToDir(Path.Combine(configSrcDir, "Model_Publish.xml"),   configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_Calc.xml"),       configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_Dashboard.xml"),  configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_EventLog.xml"),   configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_IO.xml"),         configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_Publish.xml"),    configOutDir);
+        CopyFileToDir(Path.Combine(configSrcDir, "Model_TagMetaData.xml"), configOutDir);
         CopyFileToDir(Path.Combine(configSrcDir, "CSharpLib.cs"),        configOutDir);
         CopyFileToDir(Path.Combine(configSrcDir, "config_vars.json"),    configOutDir);
+
+        string tagMetaDataSrcDir = Path.Combine(configSrcDir, "TagMetaData");
+        string tagMetaDataOutDir = EnsureDirectory(configOutDir, "TagMetaData");
+        CopyDir(tagMetaDataSrcDir, tagMetaDataOutDir);
 
         string dataOutDir = EnsureDirectory(outDirMode, "Data");
         WriteToFile(Path.Combine(dataOutDir, "Var_IO.xml"), "<Module name=\"IO\" id=\"IO\" />");
@@ -227,7 +232,8 @@ internal class Program {
                     file.EndsWith("Module_Dashboard") ||
                     file.EndsWith("Module_EventLog") ||
                     file.EndsWith("Module_IO") ||
-                    file.EndsWith("Module_Publish")) {
+                    file.EndsWith("Module_Publish") ||
+                    file.EndsWith("Module_TagMetaData")) {
 
                     return UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
                            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |

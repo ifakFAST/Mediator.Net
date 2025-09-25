@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Module_EventLog\Module_EventLog.csproj" />
     <ProjectReference Include="..\Module_IO\Module_IO.csproj" />
     <ProjectReference Include="..\Module_Publish\Module_Publish.csproj" />
+    <ProjectReference Include="..\Module_TagMetaData\Module_TagMetaData.csproj" />
   </ItemGroup>
 
   <ItemGroup>

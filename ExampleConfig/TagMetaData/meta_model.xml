@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MetaModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="TAG">
+  <Whats>
+    <What id="Q_Water" name="Water" short="Flow" unitGroup="Flow" category="Liquid" unit="m³/d" />
+    <What id="Q_Sludge" name="Sludge" short="Flow" unitGroup="Flow" category="Liquid" unit="m³/d" />
+    <What id="Q_AirStd" name="Air (standard conditions)" short="Airflow" unitGroup="Flow" category="Gas" unit="m³/d" />
+    <What id="Q_Biogas" name="Biogas" short="Gasflow" unitGroup="Flow" category="Gas" unit="m³/d" />
+    <What id="C_TN" name="Total Nitrogen" short="TN" unitGroup="Concentration" category="Nitrogen" unit="mg/L" />
+    <What id="L_TN" name="Total Nitrogen" short="TN" unitGroup="Load" category="Nitrogen" unit="t/d" />
+    <What id="C_NHx_N" name="Total Ammonia as Nitrogen" short="NHx-N" unitGroup="Concentration" category="Nitrogen" unit="mg/L" />
+    <What id="L_NHx_N" name="Total Ammonia as Nitrogen" short="NHx-N" unitGroup="Load" category="Nitrogen" unit="t/d" />
+    <What id="C_TP" name="Total Phosphorus" short="TP" unitGroup="Concentration" category="Phosphorus" unit="mg/L" />
+    <What id="L_TP" name="Total Phosphorus" short="TP" unitGroup="Load" category="Phosphorus" unit="t/d" />
+    <What id="C_PO4_P" name="Orthophosphorus as Phosphorus " short="PO4-P" unitGroup="Concentration" category="Phosphorus" unit="mg/L" />
+    <What id="L_PO4_P" name="Orthophosphorus as Phosphorus " short="PO4-P" unitGroup="Load" category="Phosphorus" unit="t/d" />
+    <What id="W_E" name="Electric Energy" short="E" unitGroup="Work" category="Energy" unit="kWh" />
+    <What id="P_E" name="Electric Energy" short="E" unitGroup="Power" category="Energy" unit="kW" />
+    <What id="W_Heat" name="Heat Energy" short="Heat" unitGroup="Work" category="Energy" unit="MJ" />
+    <What id="P_Heat" name="Heat Energy" short="Heat" unitGroup="Power" category="Energy" unit="kW" />
+  </Whats>
+  <UnitGroups>
+    <UnitGroup id="Concentration" />
+    <UnitGroup id="Flow" />
+    <UnitGroup id="Load" />
+    <UnitGroup id="Power" />
+    <UnitGroup id="Work" />
+    <UnitGroup id="Temperature" />
+    <UnitGroup id="Pressure" />
+    <UnitGroup id="Voltage" />
+    <UnitGroup id="Current" />
+    <UnitGroup id="Frequency" />
+    <UnitGroup id="Level" />
+    <UnitGroup id="Time duration" />
+    <UnitGroup id="Mass" />
+    <UnitGroup id="Volume" />
+    <UnitGroup id="Length" />
+    <UnitGroup id="TimeOfDay" />
+    <UnitGroup id="Date" />
+    <UnitGroup id="Area" />
+    <UnitGroup id="Density" />
+    <UnitGroup id="Humidity" />
+  </UnitGroups>
+  <Units>
+    <Unit id="mg/L" unitGroup="Concentration" si="true" factor="1" offset="0" />
+    <Unit id="g/L" unitGroup="Concentration" si="true" factor="1000" offset="0" />
+    <Unit id="kg/L" unitGroup="Concentration" si="true" factor="1000000" offset="0" />
+    <Unit id="mg/m³" unitGroup="Concentration" si="true" factor="0.001" offset="0" />
+    <Unit id="g/m³" unitGroup="Concentration" si="true" factor="1" offset="0" />
+    <Unit id="kg/m³" unitGroup="Concentration" si="true" factor="1000" offset="0" />
+    <Unit id="t/d" unitGroup="Load" si="true" factor="1" offset="0" />
+    <Unit id="kg/d" unitGroup="Load" si="true" factor="0.001" offset="0" />
+    <Unit id="g/d" unitGroup="Load" si="true" factor="1E-06" offset="0" />
+    <Unit id="mg/d" unitGroup="Load" si="true" factor="1E-09" offset="0" />
+    <Unit id="m³/d" unitGroup="Flow" si="true" factor="1" offset="0" />
+    <Unit id="kW" unitGroup="Power" si="true" factor="1" offset="0" />
+    <Unit id="kWh" unitGroup="Work" si="true" factor="1" offset="0" />
+    <Unit id="MJ" unitGroup="Work" si="true" factor="0.27778" offset="0" />
+  </Units>
+  <Categories>
+    <Category id="Liquid" />
+    <Category id="Gas" />
+    <Category id="Nitrogen" />
+    <Category id="Phosphorus" />
+    <Category id="Dissolved Oxygen" />
+    <Category id="COD" />
+    <Category id="cBOD5" />
+    <Category id="TSS" />
+    <Category id="Temperature" />
+    <Category id="Capacity (SST, EQT)" />
+    <Category id="SRT" />
+    <Category id="Energy" />
+    <Category id="Geometry" />
+  </Categories>
+</MetaModel>

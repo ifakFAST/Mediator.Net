@@ -1,0 +1,55 @@
+/*
+  For customizing vuetify styles without performance penalty, we include raw CSS definitions in this file.
+  
+  The normal way to achive this is to use the Vuetify plugin in vite.config.mts like this:
+
+    Vuetify({
+      styles: {
+        configFile: resolve(__dirname, 'src/styles/settings.scss'),
+      },
+    }),
+
+*/
+
+.v-text-field .v-input__details {
+  padding-inline: 4px;
+}
+.v-field {
+  --v-field-padding-start: 6px;
+  --v-field-padding-end: 4px;
+}
+.v-field--prepended {
+  padding-inline-start: 0px;
+}
+.v-field--appended {
+  padding-inline-end: 0px;
+}
+.v-field.v-field--prepended {
+  --v-field-padding-start: 0px;
+}
+.v-field.v-field--appended {
+  --v-field-padding-end: 0px;
+}
+.v-input--density-default .v-field__input {
+  row-gap: 0px;
+}
+.v-input--density-comfortable .v-field__input {
+  row-gap: -2px;
+}
+.v-input--density-compact .v-field__input {
+  row-gap: -4px;
+}
+.v-field--variant-outlined .v-field__outline__start {
+  flex: 0 0 0px;
+}
+.v-field--variant-outlined .v-field__outline__notch {
+  max-width: 100%;
+}
+
+.v-card-text {
+  padding: 8px 12px 8px !important;
+}
+
+.v-card-title {
+  padding: 8px 12px 8px !important;
+}

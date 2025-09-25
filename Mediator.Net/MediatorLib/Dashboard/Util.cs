@@ -95,6 +95,24 @@ namespace Ifak.Fast.Mediator.Dashboard
             return new ReqResult(200, res, "application/json");
         }
 
+        public static async Task<ReqResult> OK_FromFileAsync(string filePath, string? contentType = null) {
+            if (!File.Exists(filePath)) {
+                throw new FileNotFoundException("File not found: " + filePath);
+            }
+            var res = MemoryManager.GetMemoryStream("ReqResult.OK_fromFile");
+            try {
+                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read)) {
+                    await fileStream.CopyToAsync(res);
+                }
+                res.Seek(0, SeekOrigin.Begin);
+            }
+            catch (Exception) {
+                res.Dispose();
+                throw;
+            }
+            return new ReqResult(200, res, contentType: contentType ?? "application/octet-stream");
+        }
+
         private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
     }
 
