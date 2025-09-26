@@ -78,6 +78,10 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("GetChildrenOfObjects on closed connection");
         }
 
+        public override Task<List<ObjectInfo>> GetChildrenOfObjectsRecursive(ObjectRef[] objectIDs, string[] classNames) {
+            throw new InvalidOperationException("GetChildrenOfObjectsRecursive on closed connection");
+        }
+
         public override Task<List<LocationInfo>> GetLocations() {
             throw new InvalidOperationException("GetLocations on closed connection");
         }

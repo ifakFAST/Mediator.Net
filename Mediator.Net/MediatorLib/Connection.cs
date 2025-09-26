@@ -118,6 +118,12 @@ namespace Ifak.Fast.Mediator
         public abstract Task<ObjectInfos> GetChildrenOfObjects(params ObjectRef[] objectIDs);
 
         /// <summary>
+        /// Returns all objects that are children (at any depth) of specific objects
+        /// and that have one of the specified class names, e.g. "DataItem" or "Signal"
+        /// </summary>
+        public abstract Task<ObjectInfos> GetChildrenOfObjectsRecursive(ObjectRef[] objectIDs, string[] classNames);
+
+        /// <summary>
         /// Returns all objects of a module that have at least one variable of a given type
         /// </summary>
         /// <param name="moduleID">The id of the module</param>

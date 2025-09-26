@@ -302,6 +302,15 @@ namespace Ifak.Fast.Mediator
             return await Post<ObjectInfos>(request);
         }
 
+        public override async Task<ObjectInfos> GetChildrenOfObjectsRecursive(ObjectRef[] objectIDs, string[] classNames) {
+            if (objectIDs == null) throw new ArgumentNullException(nameof(objectIDs));
+            if (classNames == null) throw new ArgumentNullException(nameof(classNames));
+            var request = MakeSessionRequest<GetChildrenOfObjectsRecursiveReq>();
+            request.ObjectIDs = objectIDs;
+            request.ClassNames = classNames;
+            return await Post<ObjectInfos>(request);
+        }
+
         public override async Task<MemberValues> GetMemberValues(MemberRef[] member, bool ignoreMissing) {
             if (member == null) throw new ArgumentNullException(nameof(member));
             var request = MakeSessionRequest<GetMemberValuesReq>();

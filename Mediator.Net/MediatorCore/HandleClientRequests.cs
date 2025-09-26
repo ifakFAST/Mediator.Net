@@ -461,6 +461,25 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(result);
                         }
 
+                    case GetChildrenOfObjectsRecursiveReq.ID: {
+                            var req = (GetChildrenOfObjectsRecursiveReq)request;
+                            ObjectRef[] objectIDs = req.ObjectIDs ?? [];
+                            string[] classNames = req.ClassNames ?? [];
+
+                            var result = new ObjectInfos();
+                            var visited = new HashSet<ObjectRef>();
+
+                            foreach (ObjectRef rootID in objectIDs) {
+                                ModuleState module = ModuleFromIdOrThrow(rootID.ModuleID);
+                                if (module.AllObjects.All(x => x.ID != rootID)) throw new Exception("No object found with id " + rootID.ToString());
+
+                                var objsWithChildren = module.ObjectsWithChildren;
+                                GetChildrenRecursive(module.AllObjects, rootID, classNames, objsWithChildren, visited, result);
+                            }
+
+                            return Result_OK(result);
+                        }
+
                     case GetAllObjectsWithVariablesOfTypeReq.ID: {
                             var req = (GetAllObjectsWithVariablesOfTypeReq)request;
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");
@@ -1453,6 +1472,25 @@ namespace Ifak.Fast.Mediator
             }
             else {
                 return false;
+            }
+        }
+
+        private void GetChildrenRecursive(ObjectInfos all, ObjectRef parentID, string[] classNames, HashSet<ObjectRef> objsWithChildren, HashSet<ObjectRef> visited, ObjectInfos result) {
+
+            if (objsWithChildren.Contains(parentID)) {
+                foreach (ObjectInfo child in all) {
+                    if (child.Parent.HasValue && child.Parent.Value.Object == parentID && !visited.Contains(child.ID)) {
+                        visited.Add(child.ID);
+
+                        // Check if this child matches any of the specified class names
+                        if (classNames.Length == 0 || classNames.Contains(child.ClassNameFull) || classNames.Contains(child.ClassNameShort)) {
+                            result.Add(child);
+                        }
+
+                        // Recursively search this child's descendants
+                        GetChildrenRecursive(all, child.ID, classNames, objsWithChildren, visited, result);
+                    }
+                }
             }
         }
 

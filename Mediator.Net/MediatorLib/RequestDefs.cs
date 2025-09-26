@@ -63,6 +63,7 @@ namespace Ifak.Fast.Mediator
         public static readonly ReqDef GetAllObjectsOfType = ReqDef.Make<GetAllObjectsOfTypeReq>();
         public static readonly ReqDef GetObjectsByID = ReqDef.Make<GetObjectsByIDReq>();
         public static readonly ReqDef GetChildrenOfObjects = ReqDef.Make<GetChildrenOfObjectsReq>();
+        public static readonly ReqDef GetChildrenOfObjectsRecursive = ReqDef.Make<GetChildrenOfObjectsRecursiveReq>();
         public static readonly ReqDef GetAllObjectsWithVariablesOfType = ReqDef.Make<GetAllObjectsWithVariablesOfTypeReq>();
         public static readonly ReqDef GetObjectValuesByID = ReqDef.Make<GetObjectValuesByIDReq>();
         public static readonly ReqDef GetMemberValues = ReqDef.Make<GetMemberValuesReq>();
@@ -95,7 +96,7 @@ namespace Ifak.Fast.Mediator
             ReadVariables, ReadVariablesIgnoreMissing, ReadVariablesSync, ReadVariablesSyncIgnoreMissing,
             WriteVariables, WriteVariablesIgnorMissing, WriteVariablesSync, WriteVariablesSyncIgnoreMissing,
             ReadAllVariablesOfObjectTree, GetModules, GetLocations, GetLoginUser, GetRootObject, GetAllObjects,
-            GetAllObjectsOfType, GetObjectsByID, GetChildrenOfObjects, GetAllObjectsWithVariablesOfType,
+            GetAllObjectsOfType, GetObjectsByID, GetChildrenOfObjects, GetChildrenOfObjectsRecursive, GetAllObjectsWithVariablesOfType,
             GetObjectValuesByID, GetMemberValues, GetParentOfObject, UpdateConfig,
             EnableVariableValueChangedEvents, EnableVariableHistoryChangedEvents, EnableConfigChangedEvents,
             DisableChangeEvents, EnableAlarmsAndEvents, DisableAlarmsAndEvents,
@@ -939,6 +940,20 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("objectID")]
         public ObjectRef ObjectID { get; set; }
+    }
+
+    public class GetChildrenOfObjectsRecursiveReq : RequestBase
+    {
+        public const int ID = 46;
+
+        public override int GetID() => ID;
+        public override string GetPath() => "GetChildrenOfObjectsRecursive";
+
+        [JsonProperty("objectIDs")]
+        public ObjectRef[] ObjectIDs { get; set; } = Array.Empty<ObjectRef>();
+
+        [JsonProperty("classNames")]
+        public string[] ClassNames { get; set; } = Array.Empty<string>();
     }
 
     //////////////////////////////////////////////////////////////
