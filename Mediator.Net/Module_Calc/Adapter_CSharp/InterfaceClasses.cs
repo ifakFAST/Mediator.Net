@@ -437,6 +437,40 @@ public class Api
         }
     }
 
+    public VariableRef[] GetVariableRefsBelow(IEnumerable<string> objectIDs, IEnumerable<string> ofType, IEnumerable<string> varNames) {
+
+        ObjectRef[] objs = objectIDs.Select(id => ObjectRef.FromEncodedString(id)).ToArray();
+
+        string? errMsg = null;
+        List<ObjectInfo> objectInfos = [];
+
+        SingleThreadedAsync.Run(async () => {
+            try {
+                Connection con = await connectionGetter();
+                objectInfos = await con.GetChildrenOfObjectsRecursive(objs, ofType.ToArray());
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                errMsg = e.Message;
+            }
+        });
+
+        if (errMsg != null) {
+            throw new Exception(errMsg);
+        }
+
+        HashSet<string> varNameSet = [.. varNames];
+        bool allVars = varNameSet.Count == 0;
+
+        VariableRef[] vv = objectInfos
+            .SelectMany(obj => obj.Variables
+                                    .Where(v => allVars || varNameSet.Contains(v.Name))
+                                    .Select(v => VariableRef.Make(obj.ID, v.Name)))
+            .ToArray();
+
+        return vv;
+    }
+
     public VariableRef CreateSignalIfNotExists(string parentFolderID, SignalInfo signal) {
         signal = string.IsNullOrWhiteSpace(signal.Name) ? signal with { Name = signal.ID } : signal;
         ObjectRef objRef = CreateObjectIfNotExists(parentFolderID, signal);

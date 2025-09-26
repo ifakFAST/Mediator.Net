@@ -631,7 +631,21 @@ class Api(Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi):
             dotnet_strings.Add(obj_id)
         result = Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi.MakeVariableRefsFromObjectIDs(dotnet_strings)
         return [var_ref for var_ref in result]
-    
+
+    def GetVariableRefsBelow(self, objectIDs: list[str], types: list[str], varNames: list[str]) -> list[Ifak.Fast.Mediator.VariableRef]:
+        dotnet_objectIDs = List[str]()
+        for obj_id in objectIDs:
+            dotnet_objectIDs.Add(obj_id)
+        dotnet_types = List[str]()
+        for t in types:
+            dotnet_types.Add(t)
+        dotnet_varNames = List[str]()
+        for var_name in varNames:
+            dotnet_varNames.Add(var_name)
+        result = super().GetVariableRefsBelow(dotnet_objectIDs, dotnet_types, dotnet_varNames)
+        return [var_ref for var_ref in result]
+
+
 class AggregationUtils(Ifak.Fast.Mediator.Calc.AggregationUtils):
     
     @classmethod

@@ -120,7 +120,10 @@ def step(t, dt):
     
     #variables = MakeSignalRefs(["signal_001", "signal_002"])
     variables = Api.MakeVariableRefs([x1, x2, x3])
-    
+    variables = GetSignalRefsBelowFolder(["root"])
+    for itt in variables:
+        print(itt)
+        
     # tEnd = Timestamp.FromComponents(2025, 9, 17, 17, 00, 00)
     # tEnd = Timestamp.Now
     # tEnd = Timestamp.FromISO8601("2025-09-17T17:25")
@@ -153,6 +156,11 @@ def MakeSignalRefs(ids):
     objRefs = ["CALC:" + id for id in ids]
     # print(objRefs)
     return Api.MakeVariableRefsFromObjectIDs(objRefs)
+    
+def GetSignalRefsBelowFolder(folderIDs):
+    objRefs = ["CALC:" + id for id in folderIDs]
+    print(objRefs)
+    return api.GetVariableRefsBelow(objRefs, ["Signal"], ["Value"])
 </Definition>
         <Inputs>
           <Input id="x1" name="X1" unit="mg/L">
