@@ -84,7 +84,7 @@
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "CALC:Signal_d50db4",
+                          "Object": "CALC:SO_Smooth",
                           "Name": "Value"
                         }
                       },
@@ -96,7 +96,7 @@
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "CALC:Signal_a91175",
+                          "Object": "CALC:NH_Smooth",
                           "Name": "Value"
                         }
                       }
@@ -210,7 +210,7 @@
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "CALC:Signal_d50db4",
+                          "Object": "CALC:SO_Smooth",
                           "Name": "Value"
                         }
                       },
@@ -222,7 +222,7 @@
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "CALC:Signal_a91175",
+                          "Object": "CALC:NH_Smooth",
                           "Name": "Value"
                         }
                       }
@@ -278,7 +278,7 @@
                         "Unit": "",
                         "TrendFrame": "5 min",
                         "Variable": {
-                          "Object": "CALC:Signal_d50db4",
+                          "Object": "CALC:SO_Smooth",
                           "Name": "Value"
                         },
                         "WarnBelow": null,
@@ -304,7 +304,7 @@
                         "Unit": "",
                         "TrendFrame": "5 min",
                         "Variable": {
-                          "Object": "CALC:Signal_a91175",
+                          "Object": "CALC:NH_Smooth",
                           "Name": "Value"
                         },
                         "WarnBelow": null,

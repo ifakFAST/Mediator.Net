@@ -3,15 +3,104 @@
   <RootFolder id="root" name="Calc_Model">
     <History mode="Interval" interval="1 s" />
     <Folders>
-      <Folder id="subF" name="Signals">
+      <Folder id="Signals" name="Signals">
         <Signals>
-          <Signal id="Signal_d50db4" name="SO_Smooth" unit="mg/L" />
-          <Signal id="Signal_a91175" name="NH_Smooth" unit="mg/L" />
+          <Signal id="SO_Smooth" name="SO_Smooth" unit="mg/L" />
+          <Signal id="NH_Smooth" name="NH_Smooth" unit="mg/L" />
         </Signals>
+      </Folder>
+      <Folder id="Python" name="Python">
+        <Calculations>
+          <Calculation id="Simple" name="Simple" type="Python" enabled="false">
+            <EnableOutputVarWrite>true</EnableOutputVarWrite>
+            <Cycle>10 s</Cycle>
+            <Definition>
+# To make Python scripts work, you first have to set the "python-dll" 
+# property in Config\AppConfig.xml
+
+# For details on what Input, State and Output types are available, 
+# look at file Bin\Mediator\Adapter_Python\FastISO.py
+
+x = Input("X", unit = "mg/L", defaultValue = 21.0)
+y = Output("Y") 
+
+def initialize(initParams):
+    name = initParams.Calculation.Name
+    print("initialize " + name)
+
+def step(t: datetime, dt: timedelta):
+    print(x.Value)
+    y.Value = 2 * x.Value
+
+def shutdown():
+    print("shutdown")</Definition>
+            <Inputs>
+              <Input id="x" name="X" unit="mg/L">
+                <Variable object="IO:Measurement_SO" name="Value" />
+              </Input>
+            </Inputs>
+            <Outputs>
+              <Output id="y" name="Y" />
+            </Outputs>
+          </Calculation>
+          <Calculation id="ReadHistory" name="ReadHistory" type="Python" enabled="false">
+            <EnableOutputVarWrite>true</EnableOutputVarWrite>
+            <Cycle>10 s</Cycle>
+            <Definition># import numpy as np
+
+# x1 = Input(name="X1", unit="mg/L", defaultValue=0.0)
+# x2 = Input(name="X2", unit="mg/L", defaultValue=0.0)
+# x3 = Input(name="X3", unit="mg/L", defaultValue=0.0)
+
+# Y = Output("Y", "m³/d", roundDigits=3)
+
+api = Api()
+
+def step(t, dt):
+    
+    #variables = MakeSignalRefs(["signal_001", "signal_002"])
+    #variables = Api.MakeVariableRefs([x1, x2, x3])
+    variables = GetSignalRefsBelowFolder(["Signals"])
+    for itt in variables:
+        print(itt)
+        
+    # tEnd = Timestamp.FromComponents(2025, 9, 17, 17, 00, 00)
+    # tEnd = Timestamp.Now
+    # tEnd = Timestamp.FromISO8601("2025-09-17T17:25")
+    tEnd = Timestamp.FromPosixSeconds(t.timestamp())
+    tStart = tEnd.AddMinutes(-2);
+    dataTime = api.ReadVariablesHistory(variables, tStart, tEnd)
+    matrixTime = AggregationUtils.ExportToMatrix(dataTime)
+    matrixTime.Print(numDigits=3)
+    # matrixTime.TimestampsPosixSeconds may be used to convert to Python datetime
+    # numpy_array = np.array(matrixTime.Values)
+    #print(numpy_array[0])
+    
+    count = 20
+    dataRaw = api.ReadVariablesHistoryLastN(variables, count)
+    matrixRaw = AggregationUtils.ExportToMatrix(dataRaw)
+    #matrixRaw.Print(numDigits=2)
+    
+    dataAggregated = AggregationUtils.Aggregate(dataRaw, Aggregation.First, Duration.FromMinutes(1), False)
+    matrixAggregated = AggregationUtils.ExportToMatrix(dataAggregated)
+    #matrixAggregated.Print(numDigits=2)
+
+def MakeSignalRefs(ids):
+    objRefs = ["CALC:" + id for id in ids]
+    return Api.MakeVariableRefsFromObjectIDs(objRefs)
+    
+def GetSignalRefsBelowFolder(folderIDs):
+    objRefs = ["CALC:" + id for id in folderIDs]
+    return api.GetVariableRefsBelow(objRefs, ["Signal"], ["Value"])
+</Definition>
+            <Inputs />
+            <Outputs />
+          </Calculation>
+        </Calculations>
       </Folder>
     </Folders>
     <Calculations>
-      <Calculation id="cs" name="Script_Smooth" type="CSharp" enabled="true">
+      <Calculation id="Script_Smooth" name="Script_Smooth" type="CSharp" enabled="true">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>2 s</Cycle>
         <Definition>using Std;
@@ -43,10 +132,10 @@ class Script {
         </Inputs>
         <Outputs>
           <Output id="Y1" name="Y1" unit="mg/L">
-            <Variable object="CALC:Signal_d50db4" name="Value" />
+            <Variable object="CALC:SO_Smooth" name="Value" />
           </Output>
           <Output id="Y2" name="Y2" unit="mg/L">
-            <Variable object="CALC:Signal_a91175" name="Value" />
+            <Variable object="CALC:NH_Smooth" name="Value" />
           </Output>
         </Outputs>
         <States>
@@ -54,7 +143,7 @@ class Script {
           <State id="pt_2.yLast" name="pt_2.yLast" />
         </States>
       </Calculation>
-      <Calculation id="Calc_Alarms" name="Script_Alarms" type="CSharp" enabled="false">
+      <Calculation id="Script_Alarms" name="Script_Alarms" type="CSharp" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>5 s</Cycle>
         <Definition>using Std;
@@ -86,7 +175,7 @@ class Script {
           <State id="alarm1" name="My Alarm" type="Byte" />
         </States>
       </Calculation>
-      <Calculation id="Calc_EventLog" name="Script_EventLog" type="CSharp" enabled="false">
+      <Calculation id="Script_EventLog" name="Script_EventLog" type="CSharp" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>5 s</Cycle>
         <Definition>using Std;
@@ -120,38 +209,6 @@ class Script {
           </Input>
         </Inputs>
         <Outputs />
-      </Calculation>
-      <Calculation id="Script_Python" name="Script_Python" type="Python" enabled="false">
-        <EnableOutputVarWrite>true</EnableOutputVarWrite>
-        <Cycle>10 s</Cycle>
-        <Definition>
-# To make Python scripts work, you first have to set the "python-dll" 
-# property in Config\AppConfig.xml
-
-# For details on what Input, State and Output types are available, 
-# look at file Bin\Mediator\Adapter_Python\FastISO.py
-
-x = Input("X", unit = "mg/L", defaultValue = 21.0)
-y = Output("Y") 
-
-def initialize(initParams):
-    name = initParams.Calculation.Name
-    print("initialize " + name)
-
-def step(t: datetime, dt: timedelta):
-    print(x.Value)
-    y.Value = 2 * x.Value
-
-def shutdown():
-    print("shutdown")</Definition>
-        <Inputs>
-          <Input id="x" name="X" unit="mg/L">
-            <Constant>21.0</Constant>
-          </Input>
-        </Inputs>
-        <Outputs>
-          <Output id="y" name="Y" />
-        </Outputs>
       </Calculation>
     </Calculations>
   </RootFolder>
