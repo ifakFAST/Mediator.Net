@@ -11,7 +11,7 @@ using System.Collections.Generic;
 
 namespace Ifak.Fast.Mediator.EventLog
 {
-    [Identify(id: "EventLog", bundle: "Generic", path: "eventlog.html", configType: null, icon:"mdi-alert-circle-outline")]
+    [Identify(id: "EventLog", configType: null, icon:"mdi-alert-circle-outline")]
     public class View_EventLog : ViewBase
     {
         const string Module = "EventLog";

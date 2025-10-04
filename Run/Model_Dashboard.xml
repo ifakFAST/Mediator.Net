@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Dashboard_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Dashboard">
   <Views>
-    <View id="tagmetadata" name="TagMetaData" type="TagMetaData" group="">
-      <Config>
-        { 
-        }
-      </Config>
-    </View>    
     <View id="variables" name="Variables" type="ModuleVariables" group="">
       <Config>
         { 
           "ExcludeModules": [ "EventLog", "Dashboard" ] 
+        }
+      </Config>
+    </View>
+    <View id="tagmetadata" name="TagMetaData" type="TagMetaData" group="">
+      <Config>
+        { 
         }
       </Config>
     </View>
@@ -541,6 +541,8 @@
     </View>
     <View id="LlTtC3" name="History Pages" type="Pages" group="">
       <Config>{
+  "HideHeader": false,
+  "ConfigVariables": [],
   "Pages": [
     {
       "ID": "Control",
@@ -555,15 +557,17 @@
                   "ID": "w1",
                   "Type": "HistoryPlot",
                   "Width": "100%",
-                  "Height": "600px",
+                  "Height": "300px",
                   "Config": {
                     "PlotConfig": {
                       "MaxDataPoints": 9000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "Measurements",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "Control Output",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -640,8 +644,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": false,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": false
+                      "RightAxisStartFromZero": false,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {

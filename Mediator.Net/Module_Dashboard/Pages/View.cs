@@ -15,7 +15,7 @@ using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInf
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages
 {
-    [Identify(id: "Pages", bundle: "Generic", path: "pages.html", configType: typeof(Config), icon: "mdi-chart-line-variant")]
+    [Identify(id: "Pages", configType: typeof(Config), icon: "mdi-chart-line-variant")]
     public class View : ViewBase
     {
         private Config configuration = new();

@@ -1,143 +1,137 @@
 <template>
-  <v-app light>
+  <v-app>
+    <v-app-bar app>
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
+      <v-btn
+        icon
+        @click.stop="miniVariant = !miniVariant"
+      >
+        <v-icon>{{ miniVariant ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
+      </v-btn>
 
-    <v-navigation-drawer app fixed clipped :mini-variant="miniVariant" v-model="drawer" width="220" hide-overlay disable-resize-watcher>
+      <div class="my-toolbar-title">{{ title }}</div>
 
-      <v-list nav dense class="mt-4">
-        <v-list-item-group :value="currViewID" >
-          <v-list-item v-for="(view, i) in views" :value="view.viewID" :key="view.viewID"
-            @click="activateView(view.viewID)"
-            @contextmenu="(e) => onContextMenuViewEntry(e, view, i)">
-            <v-list-item-icon>
-              <v-icon :color="iconColorFromView(view)" light>{{iconFromView(view)}}</v-icon>
-            </v-list-item-icon>
-            <v-list-item-content>
-              <v-list-item-title style="font-size: 15px" v-text="view.viewName"></v-list-item-title>
-            </v-list-item-content>
-          </v-list-item>
-        </v-list-item-group>
-      </v-list>
+      <v-progress-circular
+        v-if="showSpinner"
+        class="mx-5"
+        indeterminate
+        color="primary"
+      ></v-progress-circular>
 
-      <v-menu v-if="canUpdateViews" v-model="contextMenuViewEntry.show" :position-x="contextMenuViewEntry.clientX" :position-y="contextMenuViewEntry.clientY" absolute offset-y>
+      <v-spacer></v-spacer>
+
+      <v-alert
+        v-if="connectionState > 0"
+        class="mx-4 my-0"
+        variant="outlined"
+        icon="mdi-cloud-off"
+        style="max-width: 225px"
+        :color="connectionColor"
+        density="compact"
+      >
+        {{ connectionText }}
+      </v-alert>
+
+      <v-menu
+        v-if="showTime"
+        offset-y
+        :close-on-content-click="false"
+        v-model="showTimeEdit"
+      >
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            variant="text"
+            color="primary"
+            class="pl-1 pr-1"
+            @click="timeRangePrepare"
+            >{{ timeRangeString }}</v-btn
+          >
+        </template>
         <v-list>
-          <v-list-item @click="onContextViewRename">
-            <v-list-item-title>Rename</v-list-item-title>
+          <v-list-item
+            v-for="item in predefinedTimeRanges"
+            :key="item.title"
+            @click="predefinedTimeRangeSelected(item)"
+          >
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
-          <v-list-item @click="onContextViewDuplicate">
-            <v-list-item-title>Duplicate</v-list-item-title>
+          <v-list-item>
+            <table>
+              <tbody>
+                <tr>
+                  <td>
+                    <v-text-field
+                      style="width: 60px; margin-right: 12px"
+                      type="number"
+                      v-model.number="timeRangeEdit.lastCount"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <v-select
+                      style="width: 110px"
+                      v-model="timeRangeEdit.lastUnit"
+                      :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-btn
+                      style="min-width: 40px; width: 40px; margin-right: 0px"
+                      color="primary"
+                      :disabled="!isValidTimeLast"
+                      variant="text"
+                      @click="timeRangeApply"
+                    >
+                      <v-icon>mdi-check</v-icon>
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </v-list-item>
-          <v-list-item @click="onContextViewDuplicateConvert" v-if="contextMenuViewEntry.view.viewType === 'HistoryPlots'">
-            <v-list-item-title>Duplicate Convert</v-list-item-title>
-          </v-list-item>
-          <v-list-item @click="onContextViewToggleHeader" v-if="contextMenuViewEntry.view.viewType === 'Pages'">
-            <v-list-item-title>Toggle Header</v-list-item-title>
-          </v-list-item>
-          <v-list-item v-if="contextMenuViewEntry.canMoveUp" @click="onContextViewMoveUp">
-            <v-list-item-title>Move Up</v-list-item-title>
-          </v-list-item>
-          <v-list-item v-if="contextMenuViewEntry.canMoveDown" @click="onContextViewMoveDown">
-            <v-list-item-title>Move Down</v-list-item-title>
-          </v-list-item>
-           <v-list-item @click="onContextViewDelete">
-            <v-list-item-title>Delete</v-list-item-title>
+          <v-list-item @click="customTimeRangeSelected">
+            <v-list-item-title>Custom range...</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
 
-      <v-dialog v-model="renameDlg.show" max-width="350" @keydown.esc="renameDlgCancel">
-        <v-card>
-          <v-card-title>
-            <span class="headline">Rename View</span>
-          </v-card-title>
-          <v-card-text>
-            Enter the new name for the view.
-            <v-text-field v-model="renameDlg.text" ref="editText"></v-text-field>
-          </v-card-text>
-          <v-card-actions class="pt-0">
-            <v-spacer></v-spacer>
-            <v-btn color="grey darken-1" text @click.native="renameDlgCancel">Cancel</v-btn>
-            <v-btn color="primary darken-1" :disabled="renameDlg.text.length === 0" text @click.native="renameDlgOK">OK</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-      <v-dialog v-model="confirmDlg.show" :max-width="250" @keydown.esc="() => { confirmDlg.show = false }">
-        <v-card>
-          <v-toolbar dark color="red" dense flat>
-            <v-toolbar-title class="white--text">{{ confirmDlg.title }}</v-toolbar-title>
-          </v-toolbar>
-          <v-card-text class="mt-3">{{ confirmDlg.message }}</v-card-text>
-          <v-card-actions class="pt-0">
-            <v-spacer></v-spacer>
-            <v-btn color="grey darken-1" text @click.native="() => { confirmDlg.show = false }">Cancel</v-btn>
-            <v-btn color="primary darken-1" text @click.native="confirmDlg.onOK">OK</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-    </v-navigation-drawer>
-
-    <v-app-bar app fixed clipped-left>
-      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
-      <v-btn icon @click.stop="miniVariant = !miniVariant">
-        <v-icon v-html="miniVariant ? 'chevron_right' : 'chevron_left'"></v-icon>
-      </v-btn>
-      <v-toolbar-title v-text="title"></v-toolbar-title>
-
-      <v-progress-circular v-if="busy" class="mx-5" indeterminate color="primary"></v-progress-circular>
-
-      <v-spacer></v-spacer>
-
-      <v-alert class="mx-4 my-0" outlined :value="connectionState > 0" icon="cloud_off" :color="connectionColor" transition="scale-transition">
-        {{ connectionText }}
-      </v-alert>
-
-      <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showTimeEdit">
-         <template v-slot:activator="{ on }">
-          <div v-on="on">
-            <v-btn text color="primary" class="pl-1 pr-1" @click="timeRangePrepare">{{timeRangeString}}</v-btn>
-          </div>
-         </template>
-         <v-list>
-            <v-list-item v-for="item in predefinedTimeRanges" :key="item.title" @click="predefinedTimeRangeSelected(item)">
-               <v-list-item-title>{{ item.title }}</v-list-item-title>
-            </v-list-item>
-            <v-list-item>
-               <table>
-                  <tr>
-                     <td>
-                        <v-text-field hide-details style="width: 60px; margin-right: 12px; padding-top: 0px;" type="Number" v-model.number="timeRangeEdit.lastCount"></v-text-field>
-                     </td>
-                     <td>
-                        <v-select hide-details style="width: 110px; padding-top: 0px;" v-model="timeRangeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days', 'Weeks', 'Months', 'Years']"></v-select>
-                     </td>
-                     <td>
-                        <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidTimeLast" text @click="timeRangeApply">
-                          <v-icon>check</v-icon>
-                        </v-btn>
-                     </td>
-                  </tr>
-               </table>
-            </v-list-item>
-            <v-list-item @click="customTimeRangeSelected">
-               <v-list-item-title>Custom range...</v-list-item-title>
-            </v-list-item>
-         </v-list>
-      </v-menu>
-
-      <v-btn text icon v-show="showRangeStepButtonLeft" @mousedown="onRangeStep(-1)" class="mr-n2">
-        <v-icon>chevron_left</v-icon>
-      </v-btn>
-      
-      <v-btn text icon v-show="showRangeStepButtonRight" @mousedown="onRangeStep(+1)" class="ml-n2">
-        <v-icon>chevron_right</v-icon>
+      <v-btn
+        variant="text"
+        icon
+        v-show="showRangeStepButtonLeft"
+        @mousedown="onRangeStep(-1)"
+        class="mr-n2"
+      >
+        <v-icon>mdi-chevron-left</v-icon>
       </v-btn>
 
-      <v-menu v-if="showTime" offset-y :close-on-content-click="false" v-model="showStepSizeMenu">
-        <template v-slot:activator="{ on: menu }">
-          <v-tooltip bottom :open-delay="1000">
-            <template v-slot:activator="{ on: tooltip }">
-              <v-btn text icon v-bind="attrs" v-on="{ ...tooltip, ...menu }">
+      <v-btn
+        variant="text"
+        icon
+        v-show="showRangeStepButtonRight"
+        @mousedown="onRangeStep(+1)"
+        class="ml-n2"
+      >
+        <v-icon>mdi-chevron-right</v-icon>
+      </v-btn>
+
+      <v-menu
+        v-if="showTime"
+        offset-y
+        :close-on-content-click="false"
+        v-model="showStepSizeMenu"
+      >
+        <template v-slot:activator="{ props }">
+          <v-tooltip
+            location="bottom"
+            :open-delay="1000"
+          >
+            <template v-slot:activator="{ props: tooltipProps }">
+              <v-btn
+                variant="text"
+                icon
+                v-bind="{ ...tooltipProps, ...props }"
+              >
                 <v-icon>mdi-tune</v-icon>
               </v-btn>
             </template>
@@ -145,502 +139,813 @@
           </v-tooltip>
         </template>
         <v-list>
-          <v-list-item @click="autoStepSizeSelected" :class="stepSize === 0 ? 'primary--text' : ''">
+          <v-list-item
+            @click="autoStepSizeSelected"
+            :class="stepSize === 0 ? 'text-primary' : ''"
+          >
             <v-list-item-title>Auto</v-list-item-title>
           </v-list-item>
-          <v-list-item v-for="item in predefinedStepSizes" :key="item.title" @click="predefinedStepSizeSelected(item)" :class="stepSize === millisecondsFromCountAndUnit(item.count, item.unit) ? 'primary--text' : ''">
+          <v-list-item
+            v-for="item in predefinedStepSizes"
+            :key="item.title"
+            @click="predefinedStepSizeSelected(item)"
+            :class="stepSize === millisecondsFromCountAndUnit(item.count, item.unit) ? 'text-primary' : ''"
+          >
             <v-list-item-title>{{ item.title }}</v-list-item-title>
           </v-list-item>
           <v-list-item>
             <table>
-              <tr>
-                <td>
-                  <v-text-field hide-details style="width: 50px; margin-right: 12px; padding-top: 0px;" type="Number" v-model.number="stepSizeEdit.lastCount"></v-text-field>
-                </td>
-                <td>
-                  <v-select hide-details style="width: 95px; padding-top: 0px;" v-model="stepSizeEdit.lastUnit" :items="['Minutes', 'Hours', 'Days']"></v-select>
-                </td>
-                <td>
-                  <v-btn style="min-width: 40px; width: 40px; margin-right: 0px;" color="primary" :disabled="!isValidStepSizeCount" text @click="stepSizeApply">
-                    <v-icon>check</v-icon>
-                  </v-btn>
-                </td>
-              </tr>
+              <tbody>
+                <tr>
+                  <td>
+                    <v-text-field
+                      style="width: 50px; margin-right: 12px"
+                      type="number"
+                      v-model.number="stepSizeEdit.lastCount"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <v-select
+                      style="width: 95px"
+                      v-model="stepSizeEdit.lastUnit"
+                      :items="['Minutes', 'Hours', 'Days']"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-btn
+                      style="min-width: 40px; width: 40px; margin-right: 0px"
+                      color="primary"
+                      :disabled="!isValidStepSizeCount"
+                      variant="text"
+                      @click="stepSizeApply"
+                    >
+                      <v-icon>mdi-check</v-icon>
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
             </table>
-            </v-list-item>
+          </v-list-item>
         </v-list>
       </v-menu>
 
-      <v-dialog v-model="showCustomTimeRangeSelector" max-width="670px" @keydown="editKeydown">
-         <v-card>
-            <v-card-text>
-               <table style="border-collapse: separate; border-spacing: 16px;">
-                  <tr>
-                     <td><v-text-field label="From" v-model="customRangeStartDate"></v-text-field></td>
-                     <td><v-text-field label=""     v-model="customRangeStartTime"></v-text-field></td>
-                     <td><v-text-field label="To"   v-model="customRangeEndDate"></v-text-field></td>
-                     <td><v-text-field label=""     v-model="customRangeEndTime"></v-text-field></td>
-                  </tr>
-                  <tr>
-                     <td colspan="2"><v-date-picker no-title v-model="customRangeStartDate" class="elevation-4"></v-date-picker></td>
-                     <td colspan="2"><v-date-picker no-title v-model="customRangeEndDate"   class="elevation-4"></v-date-picker></td>
-                  </tr>
-               </table>
-            </v-card-text>
-            <v-card-actions>
-               <v-spacer></v-spacer>
-               <v-btn color="primary" :disabled="!isValidTimeRange" text @click="timeRangeApply2">Apply</v-btn>
-            </v-card-actions>
-         </v-card>
+      <v-dialog
+        v-model="showCustomTimeRangeSelector"
+        max-width="640px"
+        @keydown="editKeydown"
+      >
+        <v-card>
+          <v-card-text>
+            <div style="display: flex; gap: 16px; flex-direction: column">
+              <div style="display: flex; gap: 16px">
+                <v-text-field
+                  label="From Date"
+                  v-model="customRangeStartDate"
+                  style="width: 120px"
+                ></v-text-field>
+                <v-text-field
+                  label="From Time"
+                  v-model="customRangeStartTime"
+                  style="width: 80px"
+                ></v-text-field>
+                <v-text-field
+                  label="To Date"
+                  v-model="customRangeEndDate"
+                  style="width: 120px"
+                ></v-text-field>
+                <v-text-field
+                  label="To Time"
+                  v-model="customRangeEndTime"
+                  style="width: 80px"
+                ></v-text-field>
+              </div>
+              <div style="display: flex; gap: 16px">
+                <v-date-picker
+                  width="300"
+                  v-model="customRangeStartDatePicker"
+                  elevation="4"
+                  hide-header
+                ></v-date-picker>
+                <v-date-picker
+                  width="300"
+                  v-model="customRangeEndDatePicker"
+                  elevation="4"
+                  hide-header
+                ></v-date-picker>
+              </div>
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn
+              color="primary"
+              :disabled="!isValidTimeRange"
+              variant="text"
+              @click="timeRangeApply2"
+              >Apply</v-btn
+            >
+          </v-card-actions>
+        </v-card>
       </v-dialog>
 
-      <v-tooltip bottom :open-delay="1000">
-        <template v-slot:activator="{ on, attrs }">
-          <v-chip class="ma-1 ml-4" outlined @click.stop="logout" v-bind="attrs" v-on="on">        
-            <v-icon left>mdi-account-outline</v-icon>
+      <v-tooltip
+        location="bottom"
+        :open-delay="1000"
+      >
+        <template v-slot:activator="{ props }">
+          <v-chip
+            class="mt-1 mb-1 ml-4 mr-4"
+            variant="outlined"
+            @click.stop="logout"
+            v-bind="props"
+          >
+            <v-icon start>mdi-account-outline</v-icon>
             {{ user }}
           </v-chip>
         </template>
         <span>Logout...</span>
       </v-tooltip>
-
     </v-app-bar>
 
-    <v-main>
-      <v-container fluid fill-height>
-        <iframe :src="currViewSrc" style="border: 0; width: 100%; height: 100%;"></iframe>
-      </v-container>
-    </v-main>
+    <v-navigation-drawer
+      v-model="drawer"
+      app
+      :rail="miniVariant"
+      width="220"
+    >
+      <v-list
+        nav
+        density="compact"
+        class="mt-4"
+      >
+        <v-list-item
+          v-for="(view, i) in views"
+          :key="view.viewID"
+          :value="view.viewID"
+          :active="currViewID === view.viewID"
+          @click="activateView(view.viewID)"
+          @contextmenu="(e: MouseEvent) => onContextMenuViewEntry(e, view, i)"
+        >
+          <template v-slot:prepend>
+            <v-icon :color="iconColorFromView(view)">{{ iconFromView(view) }}</v-icon>
+          </template>
+          <v-list-item-title style="font-size: 15px">{{ view.viewName }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
 
+      <v-menu
+        v-if="canUpdateViews"
+        v-model="contextMenuViewEntry.show"
+        :location="'bottom'"
+        :style="{
+          position: 'absolute',
+          left: contextMenuViewEntry.clientX + 'px',
+          top: contextMenuViewEntry.clientY + 'px',
+        }"
+      >
+        <v-list>
+          <v-list-item @click="onContextViewRename">
+            <v-list-item-title>Rename</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="onContextViewDuplicate">
+            <v-list-item-title>Duplicate</v-list-item-title>
+          </v-list-item>
+          <v-list-item
+            @click="onContextViewDuplicateConvert"
+            v-if="contextMenuViewEntry.view.viewType === 'HistoryPlots'"
+          >
+            <v-list-item-title>Duplicate Convert</v-list-item-title>
+          </v-list-item>
+          <v-list-item
+            @click="onContextViewToggleHeader"
+            v-if="contextMenuViewEntry.view.viewType === 'Pages'"
+          >
+            <v-list-item-title>Toggle Header</v-list-item-title>
+          </v-list-item>
+          <v-list-item
+            v-if="contextMenuViewEntry.canMoveUp"
+            @click="onContextViewMoveUp"
+          >
+            <v-list-item-title>Move Up</v-list-item-title>
+          </v-list-item>
+          <v-list-item
+            v-if="contextMenuViewEntry.canMoveDown"
+            @click="onContextViewMoveDown"
+          >
+            <v-list-item-title>Move Down</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="onContextViewDelete">
+            <v-list-item-title>Delete</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+
+      <v-dialog
+        v-model="renameDlg.show"
+        max-width="350"
+        @keydown.esc="renameDlgCancel"
+      >
+        <v-card>
+          <v-card-title>
+            <span class="text-h6">Rename View</span>
+          </v-card-title>
+          <v-card-text>
+            Enter the new name for the view.
+            <v-text-field
+              v-model="renameDlg.text"
+              ref="editText"
+            ></v-text-field>
+          </v-card-text>
+          <v-card-actions class="pt-0">
+            <v-spacer></v-spacer>
+            <v-btn
+              color="grey-darken-1"
+              variant="text"
+              @click="renameDlgCancel"
+              >Cancel</v-btn
+            >
+            <v-btn
+              color="primary-darken-1"
+              :disabled="renameDlg.text.length === 0"
+              variant="text"
+              @click="renameDlgOK"
+              >OK</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog
+        v-model="confirmDlg.show"
+        max-width="250"
+        @keydown.esc="() => (confirmDlg.show = false)"
+      >
+        <v-card>
+          <v-toolbar
+            color="red"
+            density="compact"
+          >
+            <v-toolbar-title class="text-white">{{ confirmDlg.title }}</v-toolbar-title>
+          </v-toolbar>
+          <v-card-text class="mt-3">{{ confirmDlg.message }}</v-card-text>
+          <v-card-actions class="pt-0">
+            <v-spacer></v-spacer>
+            <v-btn
+              color="grey-darken-1"
+              variant="text"
+              @click="() => (confirmDlg.show = false)"
+              >Cancel</v-btn
+            >
+            <v-btn
+              color="primary-darken-1"
+              variant="text"
+              @click="confirmDlg.onOK"
+              >OK</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-navigation-drawer>
+
+    <v-main>
+      <component
+        v-if="currentViewComponent !== null"
+        :is="currentViewComponent"
+        :key="currViewID"
+      />
+      <iframe
+        v-else
+        :src="currViewSrc"
+        style="border: 0; width: 100%; height: 100%"
+      ></iframe>
+    </v-main>
   </v-app>
 </template>
 
-<script>
-  import globalState from "./Global.js";
-  import Vue from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import type { View, TimeRange } from './global'
+import globalState from './global'
+import ViewVariables from './view_variables/ViewVariables.vue'
+import ViewEventLog from './view_eventlog/ViewEventLog.vue'
+import ViewGeneric from './view_generic/ViewGeneric.vue'
+import ViewCalc from './view_calc/ViewCalc.vue'
+import ViewPages from './view_pages/ViewPages.vue'
+import ViewTagMetaData from './view_tagmetadata/ViewTagMetaData.vue'
 
-  const OneSecond = 1000;
-  const OneMinute = 60 * OneSecond;
-  const OneHour = 60 * OneMinute;
-  const OneDay = 24 * OneHour;
+interface Props {
+  currViewID: string
+  currViewSrc: string
+  user: string
+  views: View[]
+  canUpdateViews: boolean
+  busy: boolean
+  connectionState: number
+  showTime: boolean
+  showEndTimeOnly: boolean
+  timeRangeSelected: TimeRange
+}
 
-  function time2Minutes(time) {
-    // e.g. '01:30' -> 90
-    const bits = time.split(':');
-    return parseInt(bits[0]) * 60 + parseInt(bits[1]);
-  };
+const props = defineProps<Props>()
 
-  function isMidnight(dateString) {
-    try {
-      const time = getTimePartOfISOString(dateString, '');
-      return time === '00:00' || time === '00:00:00';
-    } catch (e) {
-      return false;
-    }
-  };
+const emit = defineEmits<{
+  (e: 'logout'): void
+  (e: 'activateView', viewID: string): void
+  (e: 'timechange', range: TimeRange): void
+  (e: 'duplicateView', viewID: string): void
+  (e: 'renameView', viewID: string, newName: string): void
+  (e: 'duplicateConvertView', viewID: string): void
+  (e: 'toggleHeader', viewID: string): void
+  (e: 'moveUp', viewID: string): void
+  (e: 'moveDown', viewID: string): void
+  (e: 'delete', viewID: string): void
+}>()
 
-  function getDatePartOfISOString(s, defaultDate) {
-      if (s.length < 10) {
-        return defaultDate;
+const OneSecond = 1000
+const OneMinute = 60 * OneSecond
+const OneHour = 60 * OneMinute
+const OneDay = 24 * OneHour
+
+const drawer = ref(true)
+const miniVariant = ref(false)
+const title = ref('Dashboard')
+const showTimeEdit = ref(false)
+const showStepSizeMenu = ref(false)
+const customRangeStartDate = ref('')
+const customRangeStartTime = ref('00:00')
+const customRangeEndDate = ref('')
+const customRangeEndTime = ref('00:00')
+const customRangeStartDatePicker = ref<Date | null>(null)
+const customRangeEndDatePicker = ref<Date | null>(null)
+const timeRangeEdit = ref<TimeRange>({
+  type: 'Last',
+  lastCount: 7,
+  lastUnit: 'Days',
+  rangeStart: '',
+  rangeEnd: '',
+})
+const stepSizeEdit = ref({
+  lastCount: 7,
+  lastUnit: 'Days',
+})
+const predefinedTimeRanges = [
+  { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
+  { title: 'Last 6 hours', count: 6, unit: 'Hours' },
+  { title: 'Last 24 hours', count: 24, unit: 'Hours' },
+  { title: 'Last 7 days', count: 7, unit: 'Days' },
+  { title: 'Last 30 days', count: 30, unit: 'Days' },
+  { title: 'Last 12 months', count: 12, unit: 'Months' },
+]
+const predefinedStepSizes = [
+  { title: '5 minutes', count: 5, unit: 'Minutes' },
+  { title: '15 minutes', count: 15, unit: 'Minutes' },
+  { title: '1 hour', count: 1, unit: 'Hours' },
+  { title: '1 day', count: 1, unit: 'Days' },
+]
+const showCustomTimeRangeSelector = ref(false)
+const contextMenuViewEntry = ref({
+  show: false,
+  clientX: 0,
+  clientY: 0,
+  view: {} as View,
+  canMoveUp: false,
+  canMoveDown: false,
+})
+const renameDlg = ref({
+  show: false,
+  text: '',
+})
+const confirmDlg = ref({
+  show: false,
+  title: '',
+  message: '',
+  onOK: () => {},
+})
+
+const showSpinner = ref(false)
+let busyTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  () => props.busy,
+  (newBusy) => {
+    if (newBusy) {
+      // Start timer to show spinner after 500ms
+      busyTimer = setTimeout(() => {
+        showSpinner.value = true
+      }, 500)
+    } else {
+      // Hide immediately when busy becomes false
+      if (busyTimer) {
+        clearTimeout(busyTimer)
+        busyTimer = null
       }
-      return s.substring(0, 10);
-  };
-      
-  function getTimePartOfISOString(s, defaultTime) {
-    if (s.length < 16) {
-      return defaultTime;
+      showSpinner.value = false
     }
-    return s.substring(11);
-  };
+  },
+)
 
-  function date2LocalStr(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0'); // Local time hours
-    const minutes = String(date.getMinutes()).padStart(2, '0'); // Local time minutes
-    const seconds = String(date.getSeconds()).padStart(2, '0'); // Local time seconds
-    if (seconds !== '00') {
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;          
-    }
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
+onMounted(() => {
+  title.value = (window as any).TheDashboardHeader || 'Dashboard'
+})
 
-  function millisecondsFromCountAndUnit(count, unit) {
-    switch (unit) {
-      case 'Minutes': return count * OneMinute;
-      case 'Hours': return count * OneHour;
-      case 'Days': return count * OneDay;
-      case 'Weeks': return count * 7 * OneDay;
-      case 'Months': return count * 30 * OneDay;
-      case 'Years': return count * 365 * OneDay;
-    }
-    return 0;
-  };
+watch([miniVariant, drawer], () => {
+  nextTick(() => {
+    globalState.resizeListener()
+  })
+})
 
-  export default {
-    props: {
-      currViewID: String,
-      currViewSrc: String,
-      user: String,
-      views: Array,
-      canUpdateViews: Boolean,
-      busy: Boolean,
-      connectionState: Number,
-      showTime: Boolean,
-      showEndTimeOnly: Boolean,
-      timeRangeSelected: Object
-    },
-    data() {
-      return {
-        drawer: true,
-        miniVariant: false,
-        title: 'Dashboard',
-        showTimeEdit: false,
-        showStepSizeMenu: false,
-        customRangeStartDate: '',
-        customRangeStartTime: '00:00',
-        customRangeEndDate: '',
-        customRangeEndTime: '00:00',
-        timeRangeEdit: {
-          type: 'Last',
-          lastCount: 7,
-          lastUnit: 'Days',
-          rangeStart: '',
-          rangeEnd: ''
-        },
-        stepSizeEdit: {
-          lastCount: 7,
-          lastUnit: 'Days'
-        },
-        predefinedTimeRanges: [
-          { title: 'Last 60 minutes', count: 60, unit: 'Minutes' },
-          { title: 'Last 6 hours',    count:  6, unit: 'Hours'   },
-          { title: 'Last 24 hours',   count: 24, unit: 'Hours'   },
-          { title: 'Last 7 days',     count:  7, unit: 'Days'    },
-          { title: 'Last 30 days',    count: 30, unit: 'Days'    },
-          { title: 'Last 12 months',  count: 12, unit: 'Months'  },
-        ],
-        predefinedStepSizes: [
-          { title: '5 minutes',  count:  5, unit: 'Minutes' },
-          { title: '15 minutes', count: 15, unit: 'Minutes' },
-          { title: '1 hour',     count:  1, unit: 'Hours'   },
-          { title: '1 day',      count:  1, unit: 'Days'    },
-        ],
-        showCustomTimeRangeSelector: false,
-        contextMenuViewEntry: {
-          show: false,
-          clientX: 0,
-          clientY: 0,
-          view: {},
-          canMoveUp: false,
-          canMoveDown: false,
-        },
-        renameDlg: {
-          show: false,
-          text: ''
-        },
-        confirmDlg: {
-          show: false,
-          title: '',
-          message: '',
-          onOK: () => {}
-        }
-      }
-    },
-    mounted() {
-      this.title = TheDashboardHeader || 'Dashboard';
-    },
-    methods: {
-      logout() {
-        this.$emit('logout');
-      },
-      activateView(viewID) {
-        this.$emit('activateView', viewID);
-      },
-      timeRangePrepare() {
-         Object.assign(this.timeRangeEdit, this.timeRangeSelected);
-      },
-      timeRangeApply() {
-         this.showTimeEdit = false;
-         this.timeRangeEdit.type = 'Last';
-         const range = Object.assign({}, this.timeRangeEdit);
-         this.$emit("timechange", range);
-      },
-      timeRangeApply2() {
-         this.showCustomTimeRangeSelector = false;
-         this.timeRangeEdit.type = 'Range';
-         this.timeRangeEdit.rangeStart = this.customRangeStartDate + 'T' + this.customRangeStartTime;
-         this.timeRangeEdit.rangeEnd   = this.customRangeEndDate + 'T' + this.customRangeEndTime;
-         const range = Object.assign({}, this.timeRangeEdit);
-         this.$emit("timechange", range);
-      },
-      predefinedTimeRangeSelected(timeRange) {
-         this.showTimeEdit = false;
-         this.timeRangeEdit.type = 'Last';
-         this.timeRangeEdit.lastCount = timeRange.count;
-         this.timeRangeEdit.lastUnit = timeRange.unit;
-         const range = Object.assign({}, this.timeRangeEdit);
-         this.$emit("timechange", range);
-      },
-      customTimeRangeSelected() {
-         this.showTimeEdit = false;
-         this.showCustomTimeRangeSelector = true;
-         const now = new Date();
-         const tomorrow = new Date(now.getTime() + OneDay);
-         const todayAsStringWithoutTime    = getDatePartOfISOString(date2LocalStr(now), '');
-         const tomorrowAsStringWithoutTime = getDatePartOfISOString(date2LocalStr(tomorrow), '');
-         this.customRangeStartDate = getDatePartOfISOString(this.timeRangeEdit.rangeStart, todayAsStringWithoutTime);
-         this.customRangeStartTime = getTimePartOfISOString(this.timeRangeEdit.rangeStart, '00:00');
-         this.customRangeEndDate = getDatePartOfISOString(this.timeRangeEdit.rangeEnd, tomorrowAsStringWithoutTime);
-         this.customRangeEndTime = getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00');
-      },
-      stepSizeApply() {
-         this.showStepSizeMenu = false;
-         globalState.diffStepSizeMS = millisecondsFromCountAndUnit(this.stepSizeEdit.lastCount, this.stepSizeEdit.lastUnit);
-      },
-      predefinedStepSizeSelected(stepSize) {
-         this.showStepSizeMenu = false;
-         globalState.diffStepSizeMS = millisecondsFromCountAndUnit(stepSize.count, stepSize.unit);
-      },
-      autoStepSizeSelected() {
-         this.showStepSizeMenu = false;
-         globalState.diffStepSizeMS = 0;
-      },
-      millisecondsFromCountAndUnit(count, unit) {
-         return millisecondsFromCountAndUnit(count, unit);
-      },
-      editKeydown(e) {
-         if (e.keyCode === 27) {
-            this.showCustomTimeRangeSelector = false;
-         }
-      },
-      onRangeStep(count) {
-
-        this.timeRangePrepare();
-
-        if (this.timeRangeEdit.type === 'Last') {
-
-          const dateNow = new Date();
-          dateNow.setMilliseconds(0);
-          dateNow.setSeconds(0);
-
-          let addMilliseconds;
-          switch (this.timeRangeEdit.lastUnit) {
-            case 'Minutes': 
-              addMilliseconds = OneMinute; 
-              break;
-            default:
-              dateNow.setUTCMinutes(0);
-              addMilliseconds = OneHour; 
-              break;
-          }
-
-          const dateEnd = new Date(dateNow.getTime() + addMilliseconds);
-          const dateStart = new Date(dateEnd.getTime() - millisecondsFromCountAndUnit(this.timeRangeEdit.lastCount, this.timeRangeEdit.lastUnit));
-          this.timeRangeEdit.type = 'Range';
-          this.timeRangeEdit.rangeStart = date2LocalStr(dateStart);
-          this.timeRangeEdit.rangeEnd = date2LocalStr(dateEnd);
-        }
-        
-        const dateStart = new Date(this.timeRangeEdit.rangeStart); // will interpret as local time
-        const dateEnd   = new Date(this.timeRangeEdit.rangeEnd);   // will interpret as local time
-        const diff = globalState.diffStepSizeMS === 0 ? (dateEnd - dateStart) : globalState.diffStepSizeMS; // milliseconds
-
-        const bothMidnightBeforeShift = isMidnight(this.timeRangeEdit.rangeStart) && isMidnight(this.timeRangeEdit.rangeEnd);
-
-        if (diff !== diff) { // check for NaN
-          return;
-        }
-        
-        const newDateStart = new Date(dateStart.getTime() + count * diff);
-        const newDateEnd   = new Date(dateEnd.getTime()   + count * diff);
-
-        this.timeRangeEdit.rangeStart = date2LocalStr(newDateStart);
-        this.timeRangeEdit.rangeEnd   = date2LocalStr(newDateEnd);
-       
-        if (bothMidnightBeforeShift && !isMidnight(this.timeRangeEdit.rangeStart)) {
-          // correct for daylight saving time shift, so that the range is still a full day (either add or substract 60 minutes usually):
-          const minutes = time2Minutes(getTimePartOfISOString(this.timeRangeEdit.rangeStart, '00:00'))
-          const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : (24*60)-minutes) * OneMinute;
-          this.timeRangeEdit.rangeStart = date2LocalStr(new Date(newDateStart.getTime() + offsetMilliseconds));
-        }
-
-        if (bothMidnightBeforeShift && !isMidnight(this.timeRangeEdit.rangeEnd)) {
-          // correct for daylight saving time shift, so that the range is still a full day (either add or substract 60 minutes usually):
-          const minutes = time2Minutes(getTimePartOfISOString(this.timeRangeEdit.rangeEnd, '00:00'))
-          const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : (24*60)-minutes) * OneMinute;
-          this.timeRangeEdit.rangeEnd = date2LocalStr(new Date(newDateEnd.getTime() + offsetMilliseconds));
-        }
-
-        const range = Object.assign({}, this.timeRangeEdit);
-        this.$emit("timechange", range);
-      },
-      isValidDate(s) {
-         const bits = s.split(new RegExp('\\-', 'g'));
-         const year = bits[0];
-         const month = bits[1];
-         const day = bits[2];
-         const d = new Date(year, month - 1, day);
-         return d.getFullYear() == year && d.getMonth() + 1 == month && year > 1900 && year < 3000;
-      },
-      iconFromView(view) {
-        const icon = view.viewIcon;
-        if (icon === undefined || icon === '') return 'bubble_chart'
-        return icon
-      },
-      iconColorFromView(view) {
-        const color = view.viewIconColor;
-        if (color === undefined || color === '') return ''
-        return color
-      },
-      onContextMenuViewEntry(e, view, viewIdx) {
-        e.preventDefault()
-        e.stopPropagation()
-        this.contextMenuViewEntry.show = true
-        this.contextMenuViewEntry.clientX = e.clientX
-        this.contextMenuViewEntry.clientY = e.clientY
-        this.contextMenuViewEntry.view = view
-        this.contextMenuViewEntry.canMoveUp = viewIdx > 0
-        this.contextMenuViewEntry.canMoveDown = viewIdx < this.views.length - 1
-      },
-      onContextViewRename() {
-        this.renameDlg.show = true
-        this.renameDlg.text = this.contextMenuViewEntry.view.viewName
-      },
-      renameDlgOK() {
-        this.renameDlg.show = false
-        this.$emit('renameView', this.contextMenuViewEntry.view.viewID, this.renameDlg.text);
-      },
-      renameDlgCancel() {
-        this.renameDlg.show = false
-      },
-      onContextViewDuplicate() {
-        this.$emit('duplicateView', this.contextMenuViewEntry.view.viewID)
-      },
-      onContextViewDuplicateConvert() {
-        this.$emit('duplicateConvertView', this.contextMenuViewEntry.view.viewID)
-      },
-      onContextViewToggleHeader() {
-        this.$emit('toggleHeader', this.contextMenuViewEntry.view.viewID)
-      },
-      onContextViewMoveUp() {
-        this.$emit('moveUp', this.contextMenuViewEntry.view.viewID)
-      },
-      onContextViewMoveDown() {
-        this.$emit('moveDown', this.contextMenuViewEntry.view.viewID)
-      },
-      onContextViewDelete() {
-        this.confirmDlg.show = true
-        this.confirmDlg.title = 'Delete view?'
-        this.confirmDlg.message = `Do you really want to delete view '${this.contextMenuViewEntry.view.viewName}'?`
-        this.confirmDlg.onOK = this.onViewDeleteOK
-      },
-      onViewDeleteOK() {
-        this.confirmDlg.show = false
-        this.$emit('delete', this.contextMenuViewEntry.view.viewID)
-      }
-    },
-    watch: {       
-       miniVariant(v) {
-         Vue.nextTick(() => {
-           globalState.resizeListener();
-         });
-       },
-       drawer(v) {
-         Vue.nextTick(() => {
-           globalState.resizeListener();
-         });
-       }
-    },
-    computed: {
-      timeRangeString() {
-         if (this.timeRangeSelected.type === 'Last') {
-            if (this.showEndTimeOnly) {
-               return "Now";
-            }
-            return "Last " + this.timeRangeSelected.lastCount + " " + this.timeRangeSelected.lastUnit;
-         }
-         if (this.timeRangeSelected.type === 'Range') {
-            const s = this.timeRangeSelected.rangeStart;
-            const e = this.timeRangeSelected.rangeEnd;
-            const dateSeparator = ' \u2013 ';
-
-            // If showEndTimeOnly is true, only show the end time for the Range type
-            if (this.showEndTimeOnly) {
-               const replaceTWithSpace = (str) => {
-                 return str.replace('T', ' ');
-               }
-               return replaceTWithSpace(e);
-            }
-
-            const dateStartStr = getDatePartOfISOString(s, '');
-            const dateEndStr = getDatePartOfISOString(e, '');
-
-            if (isMidnight(s) && isMidnight(e)) {
-              // substract one day from e:
-              const dateEnd = new Date(e);
-              const dateEndMinus1Day = new Date(dateEnd.getTime() - OneDay);
-              const dateEndMinusOneDayStr = getDatePartOfISOString(date2LocalStr(dateEndMinus1Day));
-
-              if (dateStartStr === dateEndMinusOneDayStr) {
-                return dateStartStr;
-              }
-
-              return dateStartStr + dateSeparator + dateEndMinusOneDayStr;
-            }
-
-            const replaceTWithSpace = (str) => {
-              return str.replace('T', ' ');
-            }
-
-            if (dateStartStr === dateEndStr) {
-              const timeEndStr = getTimePartOfISOString(e, '');
-              if (timeEndStr !== '') {
-                return replaceTWithSpace(s) + dateSeparator + timeEndStr;
-              }
-            }
-
-            return replaceTWithSpace(s) + dateSeparator + replaceTWithSpace(e);
-         }
-         return "";
-      },
-      stepSize() {
-        return globalState.diffStepSizeMS;
-      },
-      showRangeStepButtonLeft() {
-        return this.showTime;
-      },
-      showRangeStepButtonRight() {
-        return this.showTime;
-      },
-      isValidTimeRange() {
-        const s = this.customRangeStartDate + 'T' + this.customRangeStartTime;
-        const e = this.customRangeEndDate + 'T' + this.customRangeEndTime;
-        try {
-          const sDate = new Date(s);
-          const eDate = new Date(e);
-          return sDate < eDate;
-        } catch (e) {
-          return false;
-        }
-      },
-      isValidTimeLast() {
-         const num = this.timeRangeEdit.lastCount;
-         return Number.isInteger(num) && num > 0;
-      },
-      isValidStepSizeCount() {
-         const num = this.stepSizeEdit.lastCount;
-         return Number.isInteger(num) && num > 0;
-      },
-      connectionColor() {
-        if (this.connectionState === 1) { return 'warning' }
-        return 'error'
-      },
-      connectionText() {
-        if (this.connectionState === 1) { return 'Trying to reconnect...' }
-        return 'No Connection!'
-      }
-    }
+watch(customRangeStartDatePicker, (newDate) => {
+  if (newDate) {
+    const year = newDate.getFullYear()
+    const month = String(newDate.getMonth() + 1).padStart(2, '0')
+    const day = String(newDate.getDate()).padStart(2, '0')
+    customRangeStartDate.value = `${year}-${month}-${day}`
   }
+})
+
+watch(customRangeEndDatePicker, (newDate) => {
+  if (newDate) {
+    const year = newDate.getFullYear()
+    const month = String(newDate.getMonth() + 1).padStart(2, '0')
+    const day = String(newDate.getDate()).padStart(2, '0')
+    customRangeEndDate.value = `${year}-${month}-${day}`
+  }
+})
+
+function logout() {
+  emit('logout')
+}
+
+function activateView(viewID: string) {
+  emit('activateView', viewID)
+}
+
+function timeRangePrepare() {
+  Object.assign(timeRangeEdit.value, props.timeRangeSelected)
+}
+
+function timeRangeApply() {
+  showTimeEdit.value = false
+  timeRangeEdit.value.type = 'Last'
+  const range = Object.assign({}, timeRangeEdit.value)
+  emit('timechange', range)
+}
+
+function timeRangeApply2() {
+  showCustomTimeRangeSelector.value = false
+  timeRangeEdit.value.type = 'Range'
+  timeRangeEdit.value.rangeStart = customRangeStartDate.value + 'T' + customRangeStartTime.value
+  timeRangeEdit.value.rangeEnd = customRangeEndDate.value + 'T' + customRangeEndTime.value
+  const range = Object.assign({}, timeRangeEdit.value)
+  emit('timechange', range)
+}
+
+function predefinedTimeRangeSelected(timeRange: { title: string; count: number; unit: string }) {
+  showTimeEdit.value = false
+  timeRangeEdit.value.type = 'Last'
+  timeRangeEdit.value.lastCount = timeRange.count
+  timeRangeEdit.value.lastUnit = timeRange.unit
+  const range = Object.assign({}, timeRangeEdit.value)
+  emit('timechange', range)
+}
+
+function customTimeRangeSelected() {
+  showTimeEdit.value = false
+  showCustomTimeRangeSelector.value = true
+  const now = new Date()
+  const tomorrow = new Date(now.getTime() + OneDay)
+  const todayAsStringWithoutTime = getDatePartOfISOString(date2LocalStr(now), '')
+  const tomorrowAsStringWithoutTime = getDatePartOfISOString(date2LocalStr(tomorrow), '')
+  customRangeStartDate.value = getDatePartOfISOString(timeRangeEdit.value.rangeStart, todayAsStringWithoutTime)
+  customRangeStartTime.value = getTimePartOfISOString(timeRangeEdit.value.rangeStart, '00:00')
+  customRangeEndDate.value = getDatePartOfISOString(timeRangeEdit.value.rangeEnd, tomorrowAsStringWithoutTime)
+  customRangeEndTime.value = getTimePartOfISOString(timeRangeEdit.value.rangeEnd, '00:00')
+
+  // Initialize date pickers
+  customRangeStartDatePicker.value = new Date(customRangeStartDate.value)
+  customRangeEndDatePicker.value = new Date(customRangeEndDate.value)
+}
+
+function stepSizeApply() {
+  showStepSizeMenu.value = false
+  globalState.diffStepSizeMS = millisecondsFromCountAndUnit(stepSizeEdit.value.lastCount, stepSizeEdit.value.lastUnit)
+}
+
+function predefinedStepSizeSelected(stepSize: { title: string; count: number; unit: string }) {
+  showStepSizeMenu.value = false
+  globalState.diffStepSizeMS = millisecondsFromCountAndUnit(stepSize.count, stepSize.unit)
+}
+
+function autoStepSizeSelected() {
+  showStepSizeMenu.value = false
+  globalState.diffStepSizeMS = 0
+}
+
+function millisecondsFromCountAndUnit(count: number, unit: string): number {
+  switch (unit) {
+    case 'Minutes':
+      return count * OneMinute
+    case 'Hours':
+      return count * OneHour
+    case 'Days':
+      return count * OneDay
+    case 'Weeks':
+      return count * 7 * OneDay
+    case 'Months':
+      return count * 30 * OneDay
+    case 'Years':
+      return count * 365 * OneDay
+  }
+  return 0
+}
+
+function editKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    showCustomTimeRangeSelector.value = false
+  }
+}
+
+function onRangeStep(count: number) {
+  timeRangePrepare()
+
+  if (timeRangeEdit.value.type === 'Last') {
+    const dateNow = new Date()
+    dateNow.setMilliseconds(0)
+    dateNow.setSeconds(0)
+
+    let addMilliseconds: number
+    switch (timeRangeEdit.value.lastUnit) {
+      case 'Minutes':
+        addMilliseconds = OneMinute
+        break
+      default:
+        dateNow.setUTCMinutes(0)
+        addMilliseconds = OneHour
+        break
+    }
+
+    const dateEnd = new Date(dateNow.getTime() + addMilliseconds)
+    const dateStart = new Date(dateEnd.getTime() - millisecondsFromCountAndUnit(timeRangeEdit.value.lastCount, timeRangeEdit.value.lastUnit))
+    timeRangeEdit.value.type = 'Range'
+    timeRangeEdit.value.rangeStart = date2LocalStr(dateStart)
+    timeRangeEdit.value.rangeEnd = date2LocalStr(dateEnd)
+  }
+
+  const dateStart = new Date(timeRangeEdit.value.rangeStart)
+  const dateEnd = new Date(timeRangeEdit.value.rangeEnd)
+  const diff = globalState.diffStepSizeMS === 0 ? dateEnd.getTime() - dateStart.getTime() : globalState.diffStepSizeMS
+
+  const bothMidnightBeforeShift = isMidnight(timeRangeEdit.value.rangeStart) && isMidnight(timeRangeEdit.value.rangeEnd)
+
+  if (isNaN(diff)) {
+    return
+  }
+
+  const newDateStart = new Date(dateStart.getTime() + count * diff)
+  const newDateEnd = new Date(dateEnd.getTime() + count * diff)
+
+  timeRangeEdit.value.rangeStart = date2LocalStr(newDateStart)
+  timeRangeEdit.value.rangeEnd = date2LocalStr(newDateEnd)
+
+  if (bothMidnightBeforeShift && !isMidnight(timeRangeEdit.value.rangeStart)) {
+    const minutes = time2Minutes(getTimePartOfISOString(timeRangeEdit.value.rangeStart, '00:00'))
+    const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : 24 * 60 - minutes) * OneMinute
+    timeRangeEdit.value.rangeStart = date2LocalStr(new Date(newDateStart.getTime() + offsetMilliseconds))
+  }
+
+  if (bothMidnightBeforeShift && !isMidnight(timeRangeEdit.value.rangeEnd)) {
+    const minutes = time2Minutes(getTimePartOfISOString(timeRangeEdit.value.rangeEnd, '00:00'))
+    const offsetMilliseconds = (minutes < 12 * 60 ? -minutes : 24 * 60 - minutes) * OneMinute
+    timeRangeEdit.value.rangeEnd = date2LocalStr(new Date(newDateEnd.getTime() + offsetMilliseconds))
+  }
+
+  const range = Object.assign({}, timeRangeEdit.value)
+  emit('timechange', range)
+}
+
+function iconFromView(view: View): string {
+  const icon = view.viewIcon
+  if (icon === undefined || icon === '') return 'mdi-chart-bubble'
+  return icon
+}
+
+function iconColorFromView(view: View): string {
+  const color = view.viewIconColor
+  if (color === undefined || color === '') return ''
+  return color
+}
+
+function onContextMenuViewEntry(e: MouseEvent, view: View, viewIdx: number) {
+  e.preventDefault()
+  e.stopPropagation()
+  contextMenuViewEntry.value.show = true
+  contextMenuViewEntry.value.clientX = e.clientX
+  contextMenuViewEntry.value.clientY = e.clientY
+  contextMenuViewEntry.value.view = view
+  contextMenuViewEntry.value.canMoveUp = viewIdx > 0
+  contextMenuViewEntry.value.canMoveDown = viewIdx < props.views.length - 1
+}
+
+function onContextViewRename() {
+  renameDlg.value.show = true
+  renameDlg.value.text = contextMenuViewEntry.value.view.viewName
+}
+
+function renameDlgOK() {
+  renameDlg.value.show = false
+  emit('renameView', contextMenuViewEntry.value.view.viewID, renameDlg.value.text)
+}
+
+function renameDlgCancel() {
+  renameDlg.value.show = false
+}
+
+function onContextViewDuplicate() {
+  emit('duplicateView', contextMenuViewEntry.value.view.viewID)
+}
+
+function onContextViewDuplicateConvert() {
+  emit('duplicateConvertView', contextMenuViewEntry.value.view.viewID)
+}
+
+function onContextViewToggleHeader() {
+  emit('toggleHeader', contextMenuViewEntry.value.view.viewID)
+}
+
+function onContextViewMoveUp() {
+  emit('moveUp', contextMenuViewEntry.value.view.viewID)
+}
+
+function onContextViewMoveDown() {
+  emit('moveDown', contextMenuViewEntry.value.view.viewID)
+}
+
+function onContextViewDelete() {
+  confirmDlg.value.show = true
+  confirmDlg.value.title = 'Delete view?'
+  confirmDlg.value.message = `Do you really want to delete view '${contextMenuViewEntry.value.view.viewName}'?`
+  confirmDlg.value.onOK = onViewDeleteOK
+}
+
+function onViewDeleteOK() {
+  confirmDlg.value.show = false
+  emit('delete', contextMenuViewEntry.value.view.viewID)
+}
+
+// Helper functions
+function time2Minutes(time: string): number {
+  const bits = time.split(':')
+  return parseInt(bits[0]) * 60 + parseInt(bits[1])
+}
+
+function isMidnight(dateString: string): boolean {
+  try {
+    const time = getTimePartOfISOString(dateString, '')
+    return time === '00:00' || time === '00:00:00'
+  } catch (e) {
+    return false
+  }
+}
+
+function getDatePartOfISOString(s: string, defaultDate: string): string {
+  if (s.length < 10) {
+    return defaultDate
+  }
+  return s.substring(0, 10)
+}
+
+function getTimePartOfISOString(s: string, defaultTime: string): string {
+  if (s.length < 16) {
+    return defaultTime
+  }
+  return s.substring(11)
+}
+
+function date2LocalStr(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  if (seconds !== '00') {
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  }
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+const timeRangeString = computed(() => {
+  if (props.timeRangeSelected.type === 'Last') {
+    if (props.showEndTimeOnly) {
+      return 'Now'
+    }
+    return `Last ${props.timeRangeSelected.lastCount} ${props.timeRangeSelected.lastUnit}`
+  }
+  if (props.timeRangeSelected.type === 'Range') {
+    const s = props.timeRangeSelected.rangeStart
+    const e = props.timeRangeSelected.rangeEnd
+    const dateSeparator = ' – '
+
+    if (props.showEndTimeOnly) {
+      return e.replace('T', ' ')
+    }
+
+    const dateStartStr = getDatePartOfISOString(s, '')
+    const dateEndStr = getDatePartOfISOString(e, '')
+
+    if (isMidnight(s) && isMidnight(e)) {
+      const dateEnd = new Date(e)
+      const dateEndMinus1Day = new Date(dateEnd.getTime() - OneDay)
+      const dateEndMinusOneDayStr = getDatePartOfISOString(date2LocalStr(dateEndMinus1Day), '')
+
+      if (dateStartStr === dateEndMinusOneDayStr) {
+        return dateStartStr
+      }
+
+      return dateStartStr + dateSeparator + dateEndMinusOneDayStr
+    }
+
+    if (dateStartStr === dateEndStr) {
+      const timeEndStr = getTimePartOfISOString(e, '')
+      if (timeEndStr !== '') {
+        return s.replace('T', ' ') + dateSeparator + timeEndStr
+      }
+    }
+
+    return s.replace('T', ' ') + dateSeparator + e.replace('T', ' ')
+  }
+  return ''
+})
+
+const stepSize = computed(() => globalState.diffStepSizeMS)
+
+const showRangeStepButtonLeft = computed(() => props.showTime)
+const showRangeStepButtonRight = computed(() => props.showTime)
+
+const isValidTimeRange = computed(() => {
+  const s = customRangeStartDate.value + 'T' + customRangeStartTime.value
+  const e = customRangeEndDate.value + 'T' + customRangeEndTime.value
+  try {
+    const sDate = new Date(s)
+    const eDate = new Date(e)
+    return sDate < eDate
+  } catch (e) {
+    return false
+  }
+})
+
+const isValidTimeLast = computed(() => {
+  const num = timeRangeEdit.value.lastCount
+  return Number.isInteger(num) && num > 0
+})
+
+const isValidStepSizeCount = computed(() => {
+  const num = stepSizeEdit.value.lastCount
+  return Number.isInteger(num) && num > 0
+})
+
+const connectionColor = computed(() => {
+  if (props.connectionState === 1) {
+    return 'warning'
+  }
+  return 'error'
+})
+
+const connectionText = computed(() => {
+  if (props.connectionState === 1) {
+    return 'Trying to reconnect...'
+  }
+  return 'No Connection!'
+})
+
+const currentView = computed(() => {
+  return props.views.find((v) => v.viewID === props.currViewID)
+})
+
+const viewComponentMap: Record<string, any> = {
+  ModuleVariables: ViewVariables,
+  EventLog: ViewEventLog,
+  GenericModuleConfig: ViewGeneric,
+  Calc: ViewCalc,
+  Pages: ViewPages,
+  TagMetaData: ViewTagMetaData,
+}
+
+const currentViewComponent = computed(() => {
+  const view = currentView.value
+  if (!view) return null
+  return viewComponentMap[view.viewType] || null
+})
 </script>
+
+<style scoped>
+.my-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.75rem;
+  text-transform: none;
+  margin-left: 15px;
+  margin-right: 15px;
+}
+</style>

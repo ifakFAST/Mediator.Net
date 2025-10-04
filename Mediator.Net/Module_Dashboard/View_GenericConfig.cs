@@ -13,7 +13,7 @@ using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
-    [Identify(id: "GenericModuleConfig", bundle: "Generic", path: "generic.html", configType: typeof(ViewConfig), icon: "mdi-swap-vertical")]
+    [Identify(id: "GenericModuleConfig", configType: typeof(ViewConfig), icon: "mdi-swap-vertical")]
     public class View_GenericConfig : ViewBase
     {
         private ViewConfig configuration = new ViewConfig();

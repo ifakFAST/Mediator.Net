@@ -1,314 +1,330 @@
 <template>
-    <div>
-        <template v-if="loginRequired">
-            <login @loginSuccess="loginSuccess"></login>
-        </template>
+  <div>
+    <template v-if="loginRequired">
+      <Login @loginSuccess="loginSuccess"></Login>
+    </template>
 
-        <template v-else>
-            <dashboard :user="user" :views="model.views" :busy="busy" :connectionState="connectionState" :currViewID="currentViewID" :currViewSrc="currentViewSource"
-                       :timeRangeSelected="timeRange" :showTime="showTimeRangeSelector" :showEndTimeOnly="showTimeRangeEndTimeOnly" :canUpdateViews="canUpdateViews"
-                        @logout="logout" @activateView="activateView" @timechange="timeSelectChanged"
-                        @duplicateView="duplicateView" @renameView="renameView"
-                        @duplicateConvertView="duplicateConvertView"
-                        @toggleHeader="toggleHeader"
-                        @moveUp="moveUpView" @moveDown="moveDownView" @delete="deleteView"></dashboard>
-        </template>
-    </div>
+    <template v-else>
+      <Dashboard
+        :user="user"
+        :views="model.views"
+        :busy="busy"
+        :connectionState="connectionState"
+        :currViewID="currentViewID"
+        :currViewSrc="currentViewSource"
+        :timeRangeSelected="timeRange"
+        :showTime="showTimeRangeSelector"
+        :showEndTimeOnly="showTimeRangeEndTimeOnly"
+        :canUpdateViews="canUpdateViews"
+        @logout="logout"
+        @activateView="activateView"
+        @timechange="timeSelectChanged"
+        @duplicateView="duplicateView"
+        @renameView="renameView"
+        @duplicateConvertView="duplicateConvertView"
+        @toggleHeader="toggleHeader"
+        @moveUp="moveUpView"
+        @moveDown="moveDownView"
+        @delete="deleteView"
+      ></Dashboard>
+    </template>
+  </div>
 </template>
 
-<script>
-import axios from "axios";
-import Login from "./Login.vue";
-import Dashboard from "./Dashboard.vue";
-import globalState from "./Global.js";
+<script setup lang="ts">
+import { computed } from 'vue'
+import axios from 'axios'
+import Login from './Login.vue'
+import Dashboard from './Dashboard.vue'
+import globalState, { type TimeRange } from './global'
 
-export default {
-  data() {
-    return globalState;
-  },
-  components: {
-    login: Login,
-    dashboard: Dashboard
-  },
-  computed: {
-    loginRequired() {
-      return this.sessionID === "";
-    },
-    currentViewSource() {
-      if (this.currentViewID === "") return "";
-      const view = this.model.views.find(v => v.viewID === this.currentViewID);
-      return view.viewURL + "?viewID=" + this.currentViewID + "&counter=" + this.currentViewID_Counter;
+const loginRequired = computed(() => globalState.sessionID === '')
+
+const currentViewSource = computed(() => {
+  if (globalState.currentViewID === '') return ''
+  const view = globalState.model.views.find((v) => v.viewID === globalState.currentViewID)
+  if (!view) return ''
+  return view.viewURL + '?viewID=' + globalState.currentViewID + '&counter=' + globalState.currentViewID_Counter
+})
+
+const user = computed(() => globalState.user)
+const model = computed(() => globalState.model)
+const busy = computed(() => globalState.busy)
+const connectionState = computed(() => globalState.connectionState)
+const currentViewID = computed(() => globalState.currentViewID)
+const timeRange = computed(() => globalState.timeRange)
+const showTimeRangeSelector = computed(() => globalState.showTimeRangeSelector)
+const showTimeRangeEndTimeOnly = computed(() => globalState.showTimeRangeEndTimeOnly)
+const canUpdateViews = computed(() => globalState.canUpdateViews)
+
+function loginSuccess(event: {
+  session: string
+  user: string
+  pass: string
+  model: any
+  canUpdateViews: boolean
+  initialTimeRange: any
+  initialStepSizeMS: number
+  viewID: string
+}) {
+  console.info('Login success')
+  globalState.sessionID = event.session
+  globalState.user = event.user
+  globalState.model = event.model
+  globalState.canUpdateViews = event.canUpdateViews
+
+  globalState.timeRange.type = event.initialTimeRange.Type
+  globalState.timeRange.lastCount = event.initialTimeRange.LastCount
+  globalState.timeRange.lastUnit = event.initialTimeRange.LastUnit
+  globalState.timeRange.rangeStart = event.initialTimeRange.RangeStart
+  globalState.timeRange.rangeEnd = event.initialTimeRange.RangeEnd
+
+  globalState.diffStepSizeMS = event.initialStepSizeMS
+
+  openWebSocket(event.user, event.pass)
+  const viewIdx = globalState.model.views.findIndex((v) => v.viewID === event.viewID)
+  if (viewIdx >= 0) {
+    activateView(event.viewID)
+  } else if (globalState.model.views.length > 0) {
+    activateView(globalState.model.views[0].viewID)
+  }
+}
+
+function logout() {
+  if (globalState.intervalVar !== 0) {
+    clearInterval(globalState.intervalVar)
+    globalState.intervalVar = 0
+  }
+  axios.post('/logout', globalState.sessionID).catch(() => {})
+  globalState.sessionID = ''
+  globalState.user = ''
+  globalState.model = { views: [] }
+  globalState.currentViewID = ''
+  globalState.loggedOut = true
+  globalState.eventListener = () => {}
+  try {
+    globalState.eventSocket?.close()
+  } catch (error) {
+    console.log('Error closing websocket: ' + error)
+  }
+}
+
+function openWebSocket(user: string, pass: string) {
+  if (typeof WebSocket !== 'undefined') {
+    const isHTTPS = window.location.protocol === 'https:'
+    const websocketProtocol = isHTTPS ? 'wss://' : 'ws://'
+    const socket = new WebSocket(websocketProtocol + window.location.host + '/websocket/')
+    globalState.eventSocket = socket
+
+    socket.onopen = () => {
+      globalState.connectionState = 0
+      socket.send(globalState.sessionID)
+      const doKeepAlive = () => {
+        socket.send('KA')
+      }
+      globalState.intervalVar = window.setInterval(doKeepAlive, 5000)
     }
-  },
-  methods: {
-    loginSuccess(event) {
-      console.info('Login success')
-      this.sessionID = event.session;
-      this.user = event.user;
-      this.model = event.model;
-      this.canUpdateViews = event.canUpdateViews;      
-      
-      this.timeRange.type = event.initialTimeRange.Type;
-      this.timeRange.lastCount = event.initialTimeRange.LastCount;
-      this.timeRange.lastUnit = event.initialTimeRange.LastUnit;
-      this.timeRange.rangeStart = event.initialTimeRange.RangeStart;
-      this.timeRange.rangeEnd = event.initialTimeRange.RangeEnd;
-            
-      this.diffStepSizeMS = event.initialStepSizeMS;
 
-      this.openWebSocket(event.user, event.pass)
-      const viewIdx = this.model.views.findIndex((v) => v.viewID === event.viewID)
-      if (viewIdx >= 0) {
-        this.activateView(event.viewID)
+    socket.onmessage = (wsEvent) => {
+      const eventStartTime = new Date().getTime()
+      globalState.connectionState = 0
+      const parsedData = JSON.parse(wsEvent.data)
+      if (parsedData.event === 'NaviAugmentation') {
+        handleViewAugmentation(parsedData.payload)
+      } else {
+        globalState.eventListener(parsedData.event, parsedData.payload)
       }
-      else if (this.model.views.length > 0) {
-        this.activateView(this.model.views[0].viewID)
+      const doACK = () => {
+        globalState.eventACKTime = new Date().getTime()
+        socket.send('OK')
       }
-    },
-    logout() {
-      if (this.intervalVar !== 0) {
-        clearInterval(this.intervalVar);
-        this.intervalVar = 0;
-      }
-      axios.post("/logout", this.sessionID).catch(function (error) { } );
-      this.sessionID = "";
-      this.user = "";
-      this.model = {};
-      this.currentViewID = "";
-      this.loggedOut = true;
-      this.eventListener = function(eventName, eventPayload) {};
-      try {
-         this.eventSocket.close();
-      }
-      catch(error) {
-         console.log("Error closing websocket: " + error);
-      }
-    },
-    openWebSocket(user, pass) {
-      if (window.WebSocket) {
-        const context = this;
-        const isHTTPS = window.location.protocol === "https:";
-        const websocketProtocol = isHTTPS ? "wss://" : "ws://";
-        const socket = new WebSocket(websocketProtocol + window.location.host + "/websocket/");
-        context.eventSocket = socket;
 
-        socket.onopen = function(openEvent) {
-          context.connectionState = 0;
-          socket.send(context.sessionID);
-          const doKeepAlive = function() {
-            socket.send("KA");
-          };
-          context.intervalVar = setInterval(doKeepAlive, 5000);
-        };
-
-        socket.onmessage = function(wsEvent) {
-          const eventStartTime = new Date().getTime();
-          context.connectionState = 0;
-          const parsedData = JSON.parse(wsEvent.data);
-          if (parsedData.event === "NaviAugmentation") {
-            context.handleViewAugmentation(parsedData.payload);
-          }
-          else {
-            context.eventListener(parsedData.event, parsedData.payload);
-          }
-          const doACK = function() {
-            context.eventACKTime = new Date().getTime()
-            socket.send("OK");
-          };
-
-          context.eventACKCounter += 1
-          if (context.eventACKCounter < context.eventBurstCount) {
-            doACK();
-          }
-          else {
-            context.eventACKCounter = 0
-            const diff = eventStartTime - context.eventACKTime;
-            const minDist = 500;
-            const waitTime = minDist - diff;
-            if (waitTime <= 5) {
-              // console.info("ACK. Diff: " + diff);
-              doACK();
-            }
-            else {
-              // console.info("Delayed ACK! Diff: " + diff + " -> WaitTime: " + waitTime);
-              setTimeout(doACK, waitTime);
-            }
-          }
-        };
-
-        socket.onclose = function(ev) {
-          context.connectionState = (ev.wasClean ? 2 : 1);
-          if (context.intervalVar !== 0) {
-            clearInterval(context.intervalVar);
-            context.intervalVar = 0;
-          }
-          if (!ev.wasClean) {
-            const reconnect = function() {
-              context.openWebSocket(user, pass);
-            };
-            setTimeout(reconnect, 3000);
-          }
-          if (ev.wasClean && context.sessionID !== "") {
-            console.info('Will try to relogin in 3 seconds...')
-            const relogin = function() {
-              context.tryReLogin(user, pass);
-            };
-            setTimeout(relogin, 3000);
-          }
+      globalState.eventACKCounter += 1
+      if (globalState.eventACKCounter < globalState.eventBurstCount) {
+        doACK()
+      } else {
+        globalState.eventACKCounter = 0
+        const diff = eventStartTime - globalState.eventACKTime
+        const minDist = 500
+        const waitTime = minDist - diff
+        if (waitTime <= 5) {
+          doACK()
+        } else {
+          setTimeout(doACK, waitTime)
         }
       }
-    },
-    handleViewAugmentation(eventPayload) {
-      const viewID = eventPayload.viewID;
-      const view = this.model.views.find(v => v.viewID === viewID);
-      if (view) {
-        this.$set(view, 'viewIconColor', eventPayload.iconColor);
+    }
+
+    socket.onclose = (ev) => {
+      globalState.connectionState = ev.wasClean ? 2 : 1
+      if (globalState.intervalVar !== 0) {
+        clearInterval(globalState.intervalVar)
+        globalState.intervalVar = 0
       }
-    },
-    tryReLogin(user, pass) {
-      if (this.sessionID == '') {
-        console.info('Abort relogin because of logout.')
-        return
+      if (!ev.wasClean) {
+        const reconnect = () => {
+          openWebSocket(user, pass)
+        }
+        setTimeout(reconnect, 3000)
       }
-      console.info('Trying to relogin...')
-      const context = this;
-      axios
-        .post("/login", { user, pass })
-        .then(function(response) {
-          console.info('Relogin success.')
-          const viewID = context.currentViewID;
-          context.currentViewID = '';
-          context.sessionID = response.data.sessionID
-          context.model = response.data.model
-          context.openWebSocket(user, pass)
-          context.doActivateView(viewID)
-        })
-        .catch(function(error) {
-          console.info('Relogin failed! Will try again in 2 seconds...')
-          const relogin = function() {
-            context.tryReLogin(user, pass);
-          };
-          setTimeout(relogin, 2000);
-        });
-    },
-    activateView(viewID) {
-      if (this.currentViewID === viewID) return;
-      this.doActivateView(viewID);
-    },
-    doActivateView(viewID) {
-      const context = this;
-      const previousEventListener = context.eventListener;
-      context.eventListener = function(eventName, eventPayload) {};
-      axios
-        .post("/activateView?" + this.sessionID + "_" + viewID)
-        .then(function(response) {
-          context.eventBurstCount = 1;
-          context.currentViewID = viewID;
-          context.canUpdateViewConfig = response.data.canUpdateViewConfig;
-          context.showTimeRangeSelector = false;
-        })
-        .catch(function(error) {
-          context.eventListener = previousEventListener;
-          if (
-            error.response &&
-            error.response.data &&
-            error.response.data.error
-          ) {
-            alert(error.response.data.error);
-          } else {
-            alert("Failed to activate view.");
-          }
-        });
-    },
-    timeSelectChanged(timeRange) {
-       this.timeRange = Object.assign({}, timeRange);
-       this.timeRangeListener(Object.assign({}, timeRange));
-    },
-    duplicateView(viewID) {
-      const context = this;
-      axios
-        .post("/duplicateView?" + this.sessionID + "_" + viewID)
-        .then(function(response) {
-          console.info('duplicateView success.');
-          const viewID = response.data.newViewID;
-          context.model = response.data.model;
-          context.doActivateView(viewID);
-        })
-        .catch(this.handleError);
-    },
-    duplicateConvertView(viewID) {
-      const context = this;
-      axios
-        .post("/duplicateConvertView?" + this.sessionID + "_" + viewID)
-        .then(function(response) {
-          console.info('duplicateConvertView success.');
-          const viewID = response.data.newViewID;
-          context.model = response.data.model;
-          context.doActivateView(viewID);
-        })
-        .catch(this.handleError);
-    },
-    toggleHeader(viewID) {
-      const context = this;
-      axios
-        .post("/toggleHeader?" + this.sessionID + "_" + viewID)
-        .then(function(response) {
-          console.info('toggleHeader success.');
-          context.currentViewID_Counter = context.currentViewID_Counter + 1;
-        })
-        .catch(this.handleError);
-    },
-    renameView(viewID, newName) {
-      const context = this;
-      axios
-        .post("/renameView?" + this.sessionID + "_" + viewID, { newViewName: newName })
-        .then(function(response) {
-          console.info('renameView success.');
-          context.model = response.data.model;
-        })
-        .catch(this.handleError);
-    },
-    moveUpView(viewID) {
-      const context = this;
-      axios
-        .post("/moveView?" + this.sessionID + "_" + viewID, { up: true })
-        .then(function(response) {
-          console.info('moveUpView success.');
-          context.model = response.data.model;
-        })
-        .catch(this.handleError);
-    },
-    moveDownView(viewID) {
-      const context = this;
-      axios
-        .post("/moveView?" + this.sessionID + "_" + viewID, { up: false })
-        .then(function(response) {
-          console.info('moveDownView success.');
-          context.model = response.data.model;
-        })
-        .catch(this.handleError);
-    },
-    deleteView(viewID) {
-      const context = this;
-      axios
-        .post("/deleteView?" + this.sessionID + "_" + viewID)
-        .then(function(response) {
-          console.info('deleteView success.');
-          context.model = response.data.model;
-          if (context.currentViewID === viewID) {
-            context.currentViewID = '';
-          }
-        })
-        .catch(this.handleError);
-    }, 
-    handleError(error) {
-      if (error.response && error.response.data && error.response.data.error) {
-        alert(error.response.data.error)
-      }
-      else {
-        alert(error.message);
+      if (ev.wasClean && globalState.sessionID !== '') {
+        console.info('Will try to relogin in 3 seconds...')
+        const relogin = () => {
+          tryReLogin(user, pass)
+        }
+        setTimeout(relogin, 3000)
       }
     }
   }
-};
+}
+
+function handleViewAugmentation(eventPayload: { viewID: string; iconColor: string }) {
+  const viewID = eventPayload.viewID
+  const view = globalState.model.views.find((v) => v.viewID === viewID)
+  if (view) {
+    view.viewIconColor = eventPayload.iconColor
+  }
+}
+
+function tryReLogin(user: string, pass: string) {
+  if (globalState.sessionID === '') {
+    console.info('Abort relogin because of logout.')
+    return
+  }
+  console.info('Trying to relogin...')
+  axios
+    .post('/login', { user, pass })
+    .then((response) => {
+      console.info('Relogin success.')
+      const viewID = globalState.currentViewID
+      globalState.currentViewID = ''
+      globalState.sessionID = response.data.sessionID
+      globalState.model = response.data.model
+      openWebSocket(user, pass)
+      doActivateView(viewID)
+    })
+    .catch(() => {
+      console.info('Relogin failed! Will try again in 2 seconds...')
+      const relogin = () => {
+        tryReLogin(user, pass)
+      }
+      setTimeout(relogin, 2000)
+    })
+}
+
+function activateView(viewID: string) {
+  if (globalState.currentViewID === viewID) return
+  doActivateView(viewID)
+}
+
+function doActivateView(viewID: string) {
+  const previousEventListener = globalState.eventListener
+  globalState.eventListener = () => {}
+  axios
+    .post('/activateView?' + globalState.sessionID + '_' + viewID)
+    .then((response) => {
+      globalState.eventBurstCount = 1
+      globalState.currentViewID = viewID
+      globalState.canUpdateViewConfig = response.data.canUpdateViewConfig
+      globalState.showTimeRangeSelector = false
+    })
+    .catch((error) => {
+      globalState.eventListener = previousEventListener
+      if (error.response && error.response.data && error.response.data.error) {
+        alert(error.response.data.error)
+      } else {
+        alert('Failed to activate view.')
+      }
+    })
+}
+
+function timeSelectChanged(timeRange: TimeRange) {
+  globalState.timeRange = Object.assign({}, timeRange)
+  globalState.timeRangeListener(Object.assign({}, timeRange))
+}
+
+function duplicateView(viewID: string) {
+  axios
+    .post('/duplicateView?' + globalState.sessionID + '_' + viewID)
+    .then((response) => {
+      console.info('duplicateView success.')
+      const newViewID = response.data.newViewID
+      globalState.model = response.data.model
+      doActivateView(newViewID)
+    })
+    .catch(handleError)
+}
+
+function duplicateConvertView(viewID: string) {
+  axios
+    .post('/duplicateConvertView?' + globalState.sessionID + '_' + viewID)
+    .then((response) => {
+      console.info('duplicateConvertView success.')
+      const newViewID = response.data.newViewID
+      globalState.model = response.data.model
+      doActivateView(newViewID)
+    })
+    .catch(handleError)
+}
+
+function toggleHeader(viewID: string) {
+  axios
+    .post('/toggleHeader?' + globalState.sessionID + '_' + viewID)
+    .then(() => {
+      console.info('toggleHeader success.')
+      globalState.currentViewID_Counter = globalState.currentViewID_Counter + 1
+    })
+    .catch(handleError)
+}
+
+function renameView(viewID: string, newName: string) {
+  axios
+    .post('/renameView?' + globalState.sessionID + '_' + viewID, { newViewName: newName })
+    .then((response) => {
+      console.info('renameView success.')
+      globalState.model = response.data.model
+    })
+    .catch(handleError)
+}
+
+function moveUpView(viewID: string) {
+  axios
+    .post('/moveView?' + globalState.sessionID + '_' + viewID, { up: true })
+    .then((response) => {
+      console.info('moveUpView success.')
+      globalState.model = response.data.model
+    })
+    .catch(handleError)
+}
+
+function moveDownView(viewID: string) {
+  axios
+    .post('/moveView?' + globalState.sessionID + '_' + viewID, { up: false })
+    .then((response) => {
+      console.info('moveDownView success.')
+      globalState.model = response.data.model
+    })
+    .catch(handleError)
+}
+
+function deleteView(viewID: string) {
+  axios
+    .post('/deleteView?' + globalState.sessionID + '_' + viewID)
+    .then((response) => {
+      console.info('deleteView success.')
+      globalState.model = response.data.model
+      if (globalState.currentViewID === viewID) {
+        globalState.currentViewID = ''
+      }
+    })
+    .catch(handleError)
+}
+
+function handleError(error: any) {
+  if (error.response && error.response.data && error.response.data.error) {
+    alert(error.response.data.error)
+  } else {
+    alert(error.message)
+  }
+}
 </script>

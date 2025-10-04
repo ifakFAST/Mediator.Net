@@ -14,15 +14,11 @@ using Ifak.Fast.Mediator.Dashboard;
 using Ifak.Fast.Mediator.TagMetaData.Config;
 using ModuleInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ModuleInfo>;
 using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
-using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
-using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.TagMetaData;
 
 [Identify(
     id: "TagMetaData", 
-    bundle: "TagMetaData", 
-    path: "tagmetadata.html", 
     configType: null, 
     icon: "mdi-tag-multiple-outline")]
 public class View_TagMetaData : ViewBase

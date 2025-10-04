@@ -120,3 +120,5 @@ UpgradeLog*.htm
 /Mediator.Net/Module_Publish/OpcUaServerNative.dll
 /Mediator.Net/.claude/settings.local.json
 /WebDashboard/ViewBundle_TagMeta/Z_Delete_Nodes.bat
+/.claude/settings.local.json
+/WebDashboard/App/.claude/settings.local.json

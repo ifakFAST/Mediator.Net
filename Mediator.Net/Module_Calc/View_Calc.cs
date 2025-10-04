@@ -14,7 +14,7 @@ using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInf
 
 namespace Ifak.Fast.Mediator.Calc;
 
-[Dashboard.Identify(id: "Calc", bundle: "Generic", path: "calc.html", configType: typeof(ViewConfig), icon: "mdi-powershell")]
+[Dashboard.Identify(id: "Calc", configType: typeof(ViewConfig), icon: "mdi-powershell")]
 public class View_Calc : ViewBase
 {
     private ViewConfig configuration = new ViewConfig();

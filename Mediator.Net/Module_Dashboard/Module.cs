@@ -665,21 +665,34 @@ public class Module : ModelObjectModule<DashboardModel>
         foreach (Type type in viewTypes) {
             Identify? id = type.GetCustomAttribute<Identify>();
             if (id != null) {
-                string viewBundle = "ViewBundle_" + id.Bundle;
-                string viewBundlePath = Path.Combine(absoluteBaseDir, viewBundle);
-                bool url = type == typeof(View_ExtURL);
-                if (url || Directory.Exists(viewBundlePath)) {
-                    var vt = new ViewType() {
-                        Name = id.ID,
-                        HtmlPath = $"/{bundlesPrefx}/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
-                        Type = type,
-                        ConfigType = id.ConfigType,
-                        Icon = id.Icon ?? ""
-                    };
-                    result.Add(vt);
+                bool externalViewBundle = !string.IsNullOrEmpty(id.Bundle);
+                if (externalViewBundle) {
+                    string viewBundle = "ViewBundle_" + id.Bundle;
+                    string viewBundlePath = Path.Combine(absoluteBaseDir, viewBundle);
+                    bool url = type == typeof(View_ExtURL);
+                    if (url || Directory.Exists(viewBundlePath)) {
+                        var vt = new ViewType() {
+                            Name = id.ID,
+                            HtmlPath = $"/{bundlesPrefx}/" + viewBundle + "/" + id.Path, // "/" + dir.Name + "/" + indexFile,
+                            Type = type,
+                            ConfigType = id.ConfigType,
+                            Icon = id.Icon ?? "",
+                        };
+                        result.Add(vt);
+                    }
+                    else {
+                        LogWarn($"No ViewBundle folder found for View {id.ID} in {absoluteBaseDir}");
+                    }
                 }
                 else {
-                    LogWarn($"No ViewBundle folder found for View {id.ID} in {absoluteBaseDir}");
+                    var vt = new ViewType() {
+                        Name = id.ID,
+                        HtmlPath = "",
+                        Type = type,
+                        ConfigType = id.ConfigType,
+                        Icon = id.Icon ?? "",
+                    };
+                    result.Add(vt);
                 }
             }
         }
