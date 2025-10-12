@@ -27,6 +27,7 @@
 
           <v-spacer />
           <v-text-field
+            ref ="txtSearch"
             v-model="search"
             append-inner-icon="mdi-magnify"
             label="Search"
@@ -41,13 +42,15 @@
           density="compact"
           :headers="headers"
           v-model:items-per-page="perPage"
+          v-model:page="currentPage"
           :items-per-page-options="[10, 50, 100, 500, { value: -1, title: 'All' }]"
           item-value="ID"
+          return-object
           :items="items"
           no-data-text="No relevant objects in selected module"
           :search="search"
           show-select
-          single-select
+          select-strategy="single"
         >
           <template #item.Type="{ item }">
             {{ getShortTypeName(item.Type) }}
@@ -57,6 +60,7 @@
 
       <v-card-actions>
         <v-text-field
+          ref="txtObjIdWithVars"
           v-if="allowConfigVariables && selected.length === 0"
           v-model="objIdWithVars"
           class="mt-0 pt-0 ml-3"
@@ -84,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import type { DataTableHeader } from '@/utils'
 
 interface ModuleInfo {
@@ -121,6 +125,7 @@ const selected = ref<Obj[]>([])
 const search = ref('')
 const items = ref<Obj[]>([])
 const perPage = ref(10)
+const currentPage = ref(1)
 const headers: Array<DataTableHeader> = [
   { title: 'Type', align: 'start', sortable: true, key: 'Type' },
   { title: 'Name', align: 'start', sortable: true, key: 'Name' },
@@ -128,6 +133,8 @@ const headers: Array<DataTableHeader> = [
 ]
 
 const objIdWithVars = ref('')
+const txtObjIdWithVars = ref<HTMLInputElement | null>(null)
+const txtSearch = ref<HTMLInputElement | null>(null)
 
 const isOK = computed((): boolean => {
   return selected.value.length === 1 || (props.allowConfigVariables && objIdWithVars.value !== '' && objIdWithVars.value.trim().includes(':', 1))
@@ -152,20 +159,34 @@ watch(
 )
 
 watch(
-  () => value,
+  () => value.value,
   (val) => {
     if (val) {
       selected.value = []
       search.value = ''
       items.value = []
+      currentPage.value = 1
       refreshObjectsWithSelection(props.moduleId, props.objectId)
       objIdWithVars.value = ''
     }
   },
 )
 
+// Function to find and navigate to the page containing the selected item
+const navigateToSelectedItem = (): void => {
+  if (!props.objectId) return
+  const selectedIndex = items.value.findIndex(item => item.ID === props.objectId)
+  if (selectedIndex === -1) return
+  const itemsPerPage = perPage.value
+  if (itemsPerPage === -1) return // All items on one page
+  const targetPage = Math.floor(selectedIndex / itemsPerPage) + 1
+  // Update pagination to show the correct page
+  currentPage.value = targetPage
+}
+
 const refreshObjects = (modID: string): void => {
   currModuleID.value = modID
+  currentPage.value = 1
   refreshObjectsWithSelection(modID, '')
 }
 
@@ -180,26 +201,33 @@ const refreshObjectsWithSelection = (modID: string, selectID: string): void => {
     const response = JSON.parse(strResponse)
     items.value = response.Items
     selected.value = response.Items.filter((it: Obj) => it.ID === selectID)
+    
+    // Navigate to the page containing the selected item if there's a selection
+    if (selectID && selected.value.length > 0) {
+      nextTick().then(() => {
+        navigateToSelectedItem();
+      })
+    }
+    
     if (selected.value.length === 0 && props.allowConfigVariables && selectID !== '') {
       objIdWithVars.value = selectID
-      // setTimeout(() => {
-      //   const txtObjIdWithVars = document.getElementById('txtObjIdWithVars') as HTMLInputElement
-      //   if (txtObjIdWithVars) txtObjIdWithVars.focus()
-      // }, 0)
-    } else {
-      // setTimeout(() => {
-      //   const txtSearch = document.getElementById('txtSearch') as HTMLInputElement
-      //   if (txtSearch) txtSearch.focus()
-      // }, 0)
+      nextTick().then(() => {
+        const txt = txtObjIdWithVars.value
+        if (txt) txt.focus()
+      })
+    } 
+    else {
+      nextTick().then(() => {
+        const txt = txtSearch.value
+        if (txt) txt.focus()
+      })
     }
   })
 }
 
 const selectObject_OK = (): void => {
   close()
-  if (selected.value.length === 1) {
-    emit('onselected', selected.value[0])
-  } else if (props.allowConfigVariables && objIdWithVars.value !== '') {
+  if (props.allowConfigVariables && objIdWithVars.value !== '') {
     const obj: Obj = {
       Type: 'Object',
       ID: objIdWithVars.value,
@@ -208,7 +236,10 @@ const selectObject_OK = (): void => {
       Members: [],
     }
     emit('onselected', obj)
-  }
+  } 
+  else if (selected.value.length === 1) {
+    emit('onselected', selected.value[0])
+  } 
   objIdWithVars.value = ''
 }
 

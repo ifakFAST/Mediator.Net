@@ -16,6 +16,8 @@
     </View>
     <View id="pages" name="Pages" type="Pages" group="">
       <Config>{
+  "HideHeader": false,
+  "ConfigVariables": [],
   "Pages": [
     {
       "ID": "p1",
@@ -37,8 +39,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "Left",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -76,6 +80,18 @@
                           "Object": "IO:Data_003",
                           "Name": "Value"
                         }
+                      },
+                      {
+                        "Name": "SO PP",
+                        "Color": "#A2C139",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:3_002",
+                          "Name": "Value"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -84,8 +100,7 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
                   }
@@ -110,8 +125,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "Test",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -145,8 +162,7 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
                   }
@@ -177,8 +193,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -200,8 +218,7 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
                   }
@@ -222,8 +239,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -245,8 +264,7 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
                   }
@@ -330,6 +348,7 @@
                         "EnumValues": ""
                       }
                     ],
+                    "ShowHeader": true,
                     "ShowTrendColumn": true
                   }
                 }
@@ -345,6 +364,7 @@
                   "Height": "",
                   "Config": {
                     "Items": [],
+                    "ShowHeader": true,
                     "ShowTrendColumn": true
                   }
                 }
@@ -374,8 +394,10 @@
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
                     },
                     "Items": [
                       {
@@ -397,8 +419,7 @@
                         "ColumnSeparator": ","
                       },
                       "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@",
-                        "SimbaFormat": true
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
                   }

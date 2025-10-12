@@ -516,7 +516,7 @@
             :loading="browseValuesLoading"
             no-data-text="No values"
             show-select
-            single-select
+            select-strategy="single"
           >
           </v-data-table>
         </v-card-text>

@@ -9,10 +9,11 @@ export interface Variable {
 }
 
 export interface Obj {
+  Type: string
   ID: string
   Name: string
-  Variables: string[]
-  Members: string[]
+  Variables?: string[]
+  Members?: string[]
 }
 
 export interface ObjInfo {

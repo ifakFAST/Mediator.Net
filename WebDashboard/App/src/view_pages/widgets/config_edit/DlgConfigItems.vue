@@ -154,7 +154,7 @@
       :module-id="selectObject.selectedModuleID"
       :modules="selectObject.modules"
       :object-id="selectObject.selectedObjectID"
-      @on-selected="selectObject_OK"
+      @onselected="selectObject_OK"
     ></dlg-object-select>
   </div>
 </template>
@@ -313,14 +313,15 @@ const closeDialog = (): void => {
 }
 
 const selectObject_OK = (obj: Obj): void => {
+  const members = obj.Members ?? []
   objectMap.value[obj.ID] = {
     Name: obj.Name,
-    Members: obj.Members,
+    Members: members,
   }
   if (currentItem.value !== null) {
     currentItem.value.Object = obj.ID
-    if (obj.Members.length === 1) {
-      currentItem.value.Member = obj.Members[0]
+    if (members.length === 1) {
+      currentItem.value.Member = members[0]
     }
   }
 }

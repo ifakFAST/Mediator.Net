@@ -491,7 +491,7 @@
       :module-id="selectObject.selectedModuleID"
       :modules="selectObject.modules"
       :object-id="selectObject.selectedObjectID"
-      @on-selected="selectObject_OK"
+      @onselected="selectObject_OK"
     ></dlg-object-select>
   </div>
 </template>

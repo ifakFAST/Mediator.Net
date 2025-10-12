@@ -301,7 +301,7 @@
       :module-id="selectObject.selectedModuleID"
       :modules="selectObject.modules"
       :object-id="selectObject.selectedObjectID"
-      @on-selected="selectObject_OK"
+      @onselected="selectObject_OK"
     ></dlg-object-select>
   </div>
 </template>
@@ -567,13 +567,14 @@ const editorItems_SelectObj = (item: ItemConfig): void => {
 }
 
 const selectObject_OK = (obj: Obj): void => {
+  const variables = obj.Variables ?? []
   objectMap.value[obj.ID] = {
     Name: obj.Name,
-    Variables: obj.Variables,
+    Variables: variables,
   }
   currentVariable.value.Object = obj.ID
-  if (obj.Variables.length === 1) {
-    currentVariable.value.Name = obj.Variables[0]
+  if (variables.length === 1) {
+    currentVariable.value.Name = variables[0]
   }
 }
 
