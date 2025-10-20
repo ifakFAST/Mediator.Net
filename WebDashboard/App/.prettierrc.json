@@ -4,5 +4,6 @@
   "semi": false,
   "singleQuote": true,
   "printWidth": 150,
-  "singleAttributePerLine": true
+  "singleAttributePerLine": true,
+  "endOfLine": "crlf"
 }

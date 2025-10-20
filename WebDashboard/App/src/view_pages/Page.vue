@@ -288,7 +288,7 @@ watch(
       props.page.Rows.some((row) => {
         return row.Columns.some((col) => {
           return col.Widgets.some((widget) => {
-            return widget.Type === 'HistoryPlot'
+            return widget.Type === 'HistoryPlot' || widget.Type === 'xyPlot'
           })
         })
       })

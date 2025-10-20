@@ -27,7 +27,7 @@
 
           <v-spacer />
           <v-text-field
-            ref ="txtSearch"
+            ref="txtSearch"
             v-model="search"
             append-inner-icon="mdi-magnify"
             label="Search"
@@ -175,7 +175,7 @@ watch(
 // Function to find and navigate to the page containing the selected item
 const navigateToSelectedItem = (): void => {
   if (!props.objectId) return
-  const selectedIndex = items.value.findIndex(item => item.ID === props.objectId)
+  const selectedIndex = items.value.findIndex((item) => item.ID === props.objectId)
   if (selectedIndex === -1) return
   const itemsPerPage = perPage.value
   if (itemsPerPage === -1) return // All items on one page
@@ -201,22 +201,21 @@ const refreshObjectsWithSelection = (modID: string, selectID: string): void => {
     const response = JSON.parse(strResponse)
     items.value = response.Items
     selected.value = response.Items.filter((it: Obj) => it.ID === selectID)
-    
+
     // Navigate to the page containing the selected item if there's a selection
     if (selectID && selected.value.length > 0) {
       nextTick().then(() => {
-        navigateToSelectedItem();
+        navigateToSelectedItem()
       })
     }
-    
+
     if (selected.value.length === 0 && props.allowConfigVariables && selectID !== '') {
       objIdWithVars.value = selectID
       nextTick().then(() => {
         const txt = txtObjIdWithVars.value
         if (txt) txt.focus()
       })
-    } 
-    else {
+    } else {
       nextTick().then(() => {
         const txt = txtSearch.value
         if (txt) txt.focus()
@@ -236,10 +235,9 @@ const selectObject_OK = (): void => {
       Members: [],
     }
     emit('onselected', obj)
-  } 
-  else if (selected.value.length === 1) {
+  } else if (selected.value.length === 1) {
     emit('onselected', selected.value[0])
-  } 
+  }
   objIdWithVars.value = ''
 }
 

@@ -25,7 +25,7 @@
         class="mx-4 my-0"
         variant="outlined"
         icon="mdi-cloud-off"
-        style="max-width: 225px"
+        style="max-width: 250px"
         :color="connectionColor"
         density="compact"
       >

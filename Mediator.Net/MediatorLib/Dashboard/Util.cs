@@ -49,7 +49,14 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             var res = MemoryManager.GetMemoryStream("ReqResult.OK");
             try {
-                StdJson.ObjectToStream(obj, res, indented: true, ignoreShouldSerializeMembers: ignoreShouldSerializeMembers);
+
+#if DEBUG
+                const bool isDebug = true;
+#else
+                const bool isDebug = false;
+#endif
+
+                StdJson.ObjectToStream(obj, res, indented: isDebug, ignoreShouldSerializeMembers: ignoreShouldSerializeMembers);
                 res.Seek(0, SeekOrigin.Begin);
             }
             catch (Exception) {

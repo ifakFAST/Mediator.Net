@@ -96,6 +96,27 @@ namespace Ifak.Fast.Mediator.Dashboard
                 return range;
             }
         }
+
+        public override string ToString() {
+            if (Type == TimeType.Last) {
+                string unitString = LastUnit switch {
+                    TimeUnit.Minutes => LastCount == 1 ? "minute" : "minutes",
+                    TimeUnit.Hours => LastCount == 1 ? "hour" : "hours", 
+                    TimeUnit.Days => LastCount == 1 ? "day" : "days",
+                    TimeUnit.Weeks => "weeks",
+                    TimeUnit.Months => "months",
+                    TimeUnit.Years => LastCount == 1 ? "year" : "years",
+                    _ => LastUnit.ToString().ToLowerInvariant()
+                };
+                return $"Last {LastCount} {unitString}";
+            }
+            else if (Type == TimeType.Range) {
+                return $"Range {RangeStart} {RangeEnd}";
+            }
+            else {
+                return Type.ToString();
+            }
+        }
     }
 
     public enum TimeType

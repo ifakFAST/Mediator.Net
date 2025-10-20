@@ -28,6 +28,7 @@ const deepCopy = (obj: any) => {
   const copy = JSON.parse(str)
   copy.legendFormatter = obj.legendFormatter
   copy.zoomCallback = obj.zoomCallback
+  copy.underlayCallback = obj.underlayCallback
   return copy
 }
 

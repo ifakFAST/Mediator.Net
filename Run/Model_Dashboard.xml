@@ -20,6 +20,80 @@
   "ConfigVariables": [],
   "Pages": [
     {
+      "ID": "P_0c67",
+      "Name": "xy Plot",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "TwelveOfTwelve",
+              "Widgets": [
+                {
+                  "ID": "W_c691",
+                  "Type": "xyPlot",
+                  "Width": "400px",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 5000,
+                      "FilterByQuality": "ExcludeBad",
+                      "XAxisName": "X",
+                      "YAxisName": "Y",
+                      "XAxisStartFromZero": true,
+                      "YAxisStartFromZero": true,
+                      "XAxisLimitMin": -1.0,
+                      "XAxisLimitMax": 5.0,
+                      "YAxisLimitMin": 0.0,
+                      "YAxisLimitMax": 4.0,
+                      "ShowGrid": true,
+                      "ShowLegend": true,
+                      "Show45DegreeLine": true,
+                      "Color45DegreeLine": "green"
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "New Series",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "Checked": true,
+                        "VariableX": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "VariableY": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "First",
+                        "Resolution": "15 min",
+                        "TimeHighlighting": "None",
+                        "TimeHighlightingLastN": 1,
+                        "TimeHighlightingColor": "black",
+                        "ShowRegression": "Auto",
+                        "ColorRegression": "black"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": []
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        }
+      ]
+    },
+    {
       "ID": "p1",
       "Name": "Overview",
       "Rows": [
@@ -422,6 +496,49 @@
                         "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
                       }
                     }
+                  }
+                },
+                {
+                  "ID": "W_1fca",
+                  "Type": "xyPlot",
+                  "Width": "100%",
+                  "Height": "400px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 5000,
+                      "FilterByQuality": "ExcludeBad",
+                      "XAxisName": "Test X",
+                      "YAxisName": "Lauf",
+                      "XAxisStartFromZero": true,
+                      "YAxisStartFromZero": true,
+                      "ShowGrid": true,
+                      "ShowLegend": true,
+                      "Show45DegreeLine": true,
+                      "Color45DegreeLine": "black"
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "New Series 1",
+                        "Color": "#E51400",
+                        "Size": 3.0,
+                        "Checked": true,
+                        "VariableX": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "VariableY": {
+                          "Object": "IO:Data_003",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "First",
+                        "Resolution": "10 min",
+                        "TimeHighlighting": "None",
+                        "TimeHighlightingLastN": 1,
+                        "TimeHighlightingColor": "black",
+                        "ShowRegression": "None",
+                        "ColorRegression": "green"
+                      }
+                    ]
                   }
                 }
               ]
