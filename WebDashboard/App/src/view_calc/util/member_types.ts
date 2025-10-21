@@ -1,6 +1,6 @@
 import * as fast from '../../fast_types'
 
-export type MemberTypeEnum = 'History' | 'String' | 'Text' | 'DataType' | 'Number' | 'Duration' | 'Boolean' | 'Enum' | 'Code'
+export type MemberTypeEnum = 'History' | 'String' | 'Text' | 'DataType' | 'Number' | 'Duration' | 'Timestamp' | 'Boolean' | 'Enum' | 'Code'
 
 export function defaultValueFromMemberType(t: MemberTypeEnum): any {
   switch (t) {
@@ -20,6 +20,8 @@ export function defaultValueFromMemberType(t: MemberTypeEnum): any {
       return 'false'
     case 'Duration':
       return '10 s'
+    case 'Timestamp':
+      return new Date().toISOString()
     case 'DataType':
       return 'Float64'
     case 'Number':

@@ -8,12 +8,23 @@ namespace Ifak.Fast.Mediator.Util
     public static class Time
     {
         public static Timestamp GetNextNormalizedTimestamp(Duration cycle, Duration offset) {
+            return GetNextNormalizedTimestamp(Timestamp.Now, cycle, offset);
+        }
+
+        public static Timestamp GetNextNormalizedTimestamp(Timestamp tStartExcluding, Duration cycle, Duration offset) {
             long cycleTicks = cycle.TotalMilliseconds;
             long offsetTicks = offset.TotalMilliseconds;
-            long nowTicks = Timestamp.Now.JavaTicks - offsetTicks;
+            long nowTicks = tStartExcluding.JavaTicks - offsetTicks;
             long tLast = nowTicks - (nowTicks % cycleTicks);
             long tNext = tLast + cycleTicks + offsetTicks;
             return Timestamp.FromJavaTicks(tNext);
+        }
+
+        public static bool IsNormalizedTimestamp(Timestamp t, Duration cycle, Duration offset) {
+            long cycleTicks = cycle.TotalMilliseconds;
+            long offsetTicks = offset.TotalMilliseconds;
+            long tTicks = t.JavaTicks - offsetTicks;
+            return (tTicks % cycleTicks) == 0;
         }
 
         public static async Task WaitUntil(Timestamp t, Func<bool> abort) {

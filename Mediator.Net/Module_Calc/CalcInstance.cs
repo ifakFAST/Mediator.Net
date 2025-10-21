@@ -81,6 +81,10 @@ public class CalcInstance
 
     public Config.Calculation CalcConfig { get; private set; } = new Config.Calculation();
 
+    private Timestamp? lastRunTimestamp = null;
+
+    public Timestamp? LastRunTimestamp => lastRunTimestamp;
+
     public Duration ScaledCycle() {
         long cycleTimeScaledMS = (long)(CalcConfig.Cycle.TotalMilliseconds / CalcConfig.RealTimeScale);
         return Duration.FromMilliseconds(cycleTimeScaledMS);
@@ -112,6 +116,22 @@ public class CalcInstance
         CalcConfig = newConfig;
         originalConfigWithoutIO = newOriginalConfigWithoutIO;
         return changed;
+    }
+
+    public void SetInitialLastRunTimestamp(Dictionary<VariableRef, VTQ> mapVarValues) {
+        VariableRef varRef = GetLastRunTimestampVarRef();
+        if (mapVarValues.TryGetValue(varRef, out VTQ vtq) && vtq.Q == Quality.Good) {
+            Timestamp? ts = vtq.V.GetTimestampOrNull();
+            if (ts.HasValue) {
+                lastRunTimestamp = ts.Value;
+                return;
+            }
+        }
+        lastRunTimestamp = null;
+    }
+
+    public void SetLastRunTimestamp(Timestamp timestamp) {
+        lastRunTimestamp = timestamp;
     }
 
     public InputValue[] CurrentInputValues(Timestamp now) {
@@ -162,6 +182,11 @@ public class CalcInstance
                 }
             }
         }
+    }
+
+    public async Task Wait(Duration dt) {
+        Timestamp tEnd = Timestamp.Now.AddDuration(dt);
+        await WaitUntil(tEnd);
     }
 
     public async Task WaitUntil(Timestamp t) {

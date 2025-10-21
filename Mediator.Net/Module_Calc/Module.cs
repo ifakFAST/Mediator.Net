@@ -2,16 +2,17 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Ifak.Fast.Mediator.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using Ifak.Fast.Mediator.Util;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
+using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Calc;
 
@@ -78,6 +79,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         foreach (CalcInstance adapter in adapters) {
             adapter.SetInitialOutputValues(varMap);
             adapter.SetInitialStateValues(varMap);
+            adapter.SetInitialLastRunTimestamp(varMap);
         }
 
         try {
@@ -167,10 +169,12 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     var variables = new VariableRefs();
                     variables.AddRange(adapter.CalcConfig.States.Select(s => adapter.GetStateVarRef(s.ID)));
                     variables.AddRange(adapter.CalcConfig.Outputs.Select(o => adapter.GetOutputVarRef(o.ID)));
+                    variables.Add(adapter.GetLastRunTimestampVarRef());
                     VariableValues varValues = await connection.ReadVariablesIgnoreMissing(variables);
                     Dictionary<VariableRef, VTQ> varMap = varValues.ToDictionary(v => v.Variable, v => v.Value);
                     adapter.SetInitialStateValues(varMap);
                     adapter.SetInitialOutputValues(varMap);
+                    adapter.SetInitialLastRunTimestamp(varMap);
                 }
 
                 Task[] initTasks = newAdapters.Select(a => InitAdapter(a, InitContext.ConfigChanged)).ToArray();
@@ -486,6 +490,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     interface ICalcRunCondition {
         Task<(Timestamp, Duration)> WaitForFirstRun();
         Task<(Timestamp, Duration)> WaitForNextRun();
+        bool ProvidesInputValues { get; }
+        Task<VTQs> GetInputValues() { return Task.FromResult(new VTQs()); }
     }
 
     sealed class ContinousRunCondition : ICalcRunCondition {
@@ -509,6 +515,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             this.ignoreOffsetForTimestamps = adapter.CalcConfig.IgnoreOffsetForTimestamps;
             this.t0 = ignoreOffsetForTimestamps ? t - offset : t;
         }
+
+        public bool ProvidesInputValues => false;
 
         public async Task<(Timestamp, Duration)> WaitForFirstRun() {
             await adapter.WaitUntil(t);
@@ -536,6 +544,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             this.module = module;
             this.adapter = adapter;
         }
+
+        public bool ProvidesInputValues => false;
 
         public async Task<(Timestamp, Duration)> WaitForFirstRun() {
             var (t, dt) = await adapter.WaitUntilTriggered();
@@ -571,18 +581,199 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         }
     }
 
+    sealed class InputDrivenRunCondition : ICalcRunCondition {
+
+        private readonly Module module;
+        private readonly CalcInstance adapter;
+        private readonly List<Config.Input> variableInputs;
+        private readonly Duration cycle;
+        private readonly Duration offset;
+        private readonly ObjectRef[] affectedObjects;
+        private Timestamp nextCursor;
+        private VTQs preparedValues = [];
+
+        public InputDrivenRunCondition(CalcInstance adapter, Module module) {
+            this.module = module;
+            this.adapter = adapter;
+            variableInputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToList();
+            cycle = adapter.CalcConfig.Cycle;
+            offset = adapter.CalcConfig.Offset;
+            affectedObjects = [adapter.ID];
+            nextCursor = GetInitialCursorOrThrow();
+        }
+
+        public bool ProvidesInputValues => true;
+
+        public Task<VTQs> GetInputValues() {
+            VTQs res = preparedValues;
+            preparedValues = [];
+            return Task.FromResult(res);
+        }
+
+        public async Task<(Timestamp, Duration)> WaitForFirstRun() {
+            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+            await adapter.WaitUntil(t);
+            return await WaitForCompleteInputSet();
+        }
+
+        public async Task<(Timestamp, Duration)> WaitForNextRun() {
+            return await WaitForCompleteInputSet();
+        }
+
+        private Timestamp GetInitialCursorOrThrow() {
+
+            Timestamp EnsureCycleAligned(Timestamp t) {
+                return Time.IsNormalizedTimestamp(t, cycle, offset) ? t : Time.GetNextNormalizedTimestamp(t, cycle, offset);
+            }
+
+            if (adapter.LastRunTimestamp.HasValue) {
+                Timestamp t = EnsureCycleAligned(adapter.LastRunTimestamp.Value + cycle);
+                Console.WriteLine($"InputDrivenRunCondition: Using last run timestamp {t} as initial cursor for calculation {adapter.Name}");
+                return t;
+            }
+
+            if (adapter.CalcConfig.InitialStartTime.HasValue) {
+                Timestamp t = EnsureCycleAligned(adapter.CalcConfig.InitialStartTime.Value);
+                Console.WriteLine($"InputDrivenRunCondition: Using configured InitialStartTime {t} as initial cursor for calculation {adapter.Name}");
+                return t;
+            }
+
+            throw new Exception("InitialStartTime is not configured.");
+        }
+
+        private async Task<(Timestamp, Duration)> WaitForCompleteInputSet() {
+
+            while (adapter.State == State.Running) {
+
+                if (variableInputs.Count > 0) {
+
+                    (Timestamp runTime, VTQs values)? result = await FindAlignedData(nextCursor);
+
+                    if (result.HasValue) {
+                        (Timestamp runTime, VTQs values) = result.Value;
+                        preparedValues = values;
+                        nextCursor = runTime + cycle;
+                        return (runTime, cycle);
+                    }
+                }
+                else {
+                    module.Log_Warn("InputDrivenConfig", $"Calculation {adapter.Name} has no variable inputs configured.", affectedObjects: affectedObjects);
+                }
+
+                Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+                Console.WriteLine($"InputDrivenRunCondition: Waiting until {t} to continue search for aligned data for calculation {adapter.Name}");
+                await adapter.WaitUntil(t);
+            }
+
+            return (Timestamp.Empty, Duration.Zero);
+        }
+
+        private async Task<(Timestamp runTime, VTQs values)?> FindAlignedData(Timestamp start) {
+
+            Timestamp searchCursor = start;
+
+            while (adapter.State == State.Running) {
+
+                var vtqs = new VTTQ[variableInputs.Count];
+                Timestamp maxTimestamp = searchCursor;
+
+                for (int i = 0; i < variableInputs.Count; ++i) {
+                    Config.Input input = variableInputs[i];
+                    VTTQ? data = await ReadFirstUseableValue(input, searchCursor);
+                    Console.WriteLine($"InputDrivenRunCondition: ReadFirstUseableValue for input '{input.Name}' returned: {data?.ToString() ?? "null"} (searchCursor: {searchCursor}) for calculation {adapter.Name}");
+                    if (!data.HasValue) {
+                        return null;
+                    }
+                    vtqs[i] = data.Value;
+                    if (data.Value.T > maxTimestamp) {
+                        maxTimestamp = data.Value.T;
+                    }
+                }
+
+                bool allSame = true;
+                for (int i = 0; i < vtqs.Length; ++i) {
+                    if (vtqs[i].T != maxTimestamp) {
+                        allSame = false;
+                        break;
+                    }
+                }
+
+                if (allSame) {
+
+                    if (Time.IsNormalizedTimestamp(maxTimestamp, cycle, offset)) {
+                        var values = new VTQs(variableInputs.Count);
+                        for (int i = 0; i < vtqs.Length; ++i) {
+                            values.Add(vtqs[i].ToVTQ());
+                        }
+                        Console.WriteLine($"InputDrivenRunCondition: Found aligned data at {maxTimestamp} for calculation {adapter.Name}");
+                        return (maxTimestamp, values);
+                    }
+                    else {
+                        Console.WriteLine($"InputDrivenRunCondition: Aligned data at {maxTimestamp} is not aligned to cycle for calculation {adapter.Name}, continuing search...");
+                        maxTimestamp = Time.GetNextNormalizedTimestamp(maxTimestamp, cycle, offset);
+                    }
+                }
+                else {
+                    Console.WriteLine($"InputDrivenRunCondition: Not all inputs aligned at {maxTimestamp} for calculation {adapter.Name}, continuing search...");
+                }
+
+                searchCursor = maxTimestamp;
+            }
+
+            return null;
+        }
+
+        private async Task<VTTQ?> ReadFirstUseableValue(Config.Input input, Timestamp start) {
+
+            VariableRef variable = input.Variable!.Value;
+
+            while (adapter.State == State.Running) {
+                try {
+                    VTTQs data = await module.connection.HistorianReadRaw(
+                        variable,
+                        start,
+                        Timestamp.Max,
+                        1,
+                        BoundingMethod.TakeFirstN,
+                        QualityFilter.ExcludeBad);
+
+                    return data.Count == 0 ? null : data[0];
+                }
+                catch (ConnectivityException) {
+                    await module.RestartConnectionOrFail();
+                }
+                catch (RequestException exp) {
+                    module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
+                    return null;
+                }
+                catch (Exception exp) {
+                    Exception baseExp = exp.GetBaseException() ?? exp;
+                    module.Log_Error("InputDrivenConfig", $"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}");
+                    return null;
+                }
+            }
+
+            return null;
+        }
+    }
+
     private async Task AdapterRunLoopTask(CalcInstance adapter) {
 
         adapter.State = State.Running;
         string moduleID = base.moduleID;
 
         ICalcRunCondition runCondition = adapter.CalcConfig.RunMode switch {
-            Config.RunMode.Continuous => new ContinousRunCondition(adapter, this),
-            Config.RunMode.Triggered  => new TriggeredRunCondition(adapter, this),
+            Config.RunMode.Continuous   => new ContinousRunCondition(adapter, this),
+            Config.RunMode.Triggered    => new TriggeredRunCondition(adapter, this),
+            Config.RunMode.InputDriven  => new InputDrivenRunCondition(adapter, this),
             _ => throw new Exception("Invalid run mode: " + adapter.CalcConfig.RunMode)
         };
 
         var (t, dt) = await runCondition.WaitForFirstRun();
+
+        if (t == Timestamp.Empty) {
+            return;
+        }
 
         var inputs = new List<Config.Input>();
         var inputVars = new VariableRefs();
@@ -608,7 +799,16 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             // Config.Input[] inputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToArray();
             // VariableRef[] inputVars = inputs.Select(inp => inp.Variable.Value).ToArray();
 
-            VTQs values = await ReadInputVars(adapter, inputs, inputVars, t);
+            VTQs values;
+            if (runCondition.ProvidesInputValues) {
+                values = await runCondition.GetInputValues();
+                if (values.Count != inputVars.Count) {
+                    throw new Exception($"Expected {inputVars.Count} input values but received {values.Count}.");
+                }
+            }
+            else {
+                values = await ReadInputVars(adapter, inputs, inputVars, t);
+            }
 
             // sw.Stop();
             // double dd = sw.ElapsedTicks;
@@ -669,6 +869,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
             adapter.SetLastOutputValues(outValues);
             adapter.SetLastStateValues(stateValues);
+            adapter.SetLastRunTimestamp(t);
 
             TriggerCalculation[] triggerCalcs = result.TriggeredCalculations ?? Array.Empty<TriggerCalculation>();
             foreach (TriggerCalculation tc in triggerCalcs) {
@@ -686,6 +887,9 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             //notifier.Notify_VariableValuesChanged(listVarValueTimer);
 
             (t, dt) = await runCondition.WaitForNextRun();
+            if (t == Timestamp.Empty) {
+                break;
+            }
         }
     }
 

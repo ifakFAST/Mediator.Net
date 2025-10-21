@@ -50,6 +50,13 @@
           type="Enum"
         />
         <member-row
+          v-if="showInitialStartTime"
+          v-model="model.InitialStartTime"
+          name="Initial Start Time"
+          :optional="false"
+          type="Timestamp"
+        />
+        <member-row
           v-model="model.InitErrorResponse"
           :enum-values="initErrorResponses"
           name="Init Error Response"
@@ -422,7 +429,7 @@ const showOutputTypeColumn = computed((): boolean => {
 
 const adapterTypes = computed((): string[] => props.adapterTypesInfo.map((info) => info.Type))
 
-const runModes = computed((): string[] => ['Continuous', 'Triggered'])
+const runModes = computed((): string[] => ['Continuous', 'Triggered', 'InputDriven'])
 
 const initErrorResponses = computed((): string[] => ['Fail', 'Retry', 'Stop'])
 
@@ -433,6 +440,13 @@ const adapterSubtypes = computed((): string[] => {
   const info = props.adapterTypesInfo.find((inf) => inf.Type === type)
   return info?.Subtypes || []
 })
+
+const nowTruncatedToHourISO = (): string => {
+  const current = new Date()
+  current.setMinutes(0, 0, 0)
+  const iso = current.toISOString()
+  return iso.slice(0, 16) + 'Z'
+}
 
 watch(
   () => model.value.Type,
@@ -445,6 +459,17 @@ watch(
     }
   },
 )
+
+watch(
+  () => model.value.RunMode,
+  (newMode, oldMode) => {
+    if (newMode === 'InputDriven' && oldMode !== 'InputDriven') {
+      model.value.InitialStartTime = nowTruncatedToHourISO()
+    }
+  },
+)
+
+const showInitialStartTime = computed((): boolean => model.value.RunMode === 'InputDriven')
 
 const showSubtypes = computed((): boolean => adapterSubtypes.value.length > 0)
 

@@ -32,7 +32,8 @@ export interface Calculation {
   Name: string
   Type: string // e.g. C#, SIMBA, ...
   Subtype: string
-  RunMode: string // e.g. Continuous, Triggered
+  RunMode: string // e.g. Continuous, Triggered, InputDriven
+  InitialStartTime: fast.Timestamp // ISO 8601 date-time string
   InitErrorResponse: string // e.g. Fail, Retry, Stop
   HistoryScope: string // e.g. All, ExcludeInputs, ExcludeStates, ExcludeInputsAndStates
   Enabled: boolean

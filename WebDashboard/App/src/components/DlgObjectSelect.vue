@@ -6,12 +6,11 @@
     @keydown="(e: any) => e.key === 'Escape' && close()"
   >
     <v-card>
-      <v-card-title>
-        <span class="text-h5">Select object</span>
-      </v-card-title>
+      
+      <span class="text-h6 ml-3">Select object</span>    
 
       <v-card-text>
-        <v-toolbar class="mt-1">
+        <v-toolbar class="mt-0" density="compact">
           <div style="display: flex; flex-wrap: wrap">
             <v-btn
               v-for="module in modules"

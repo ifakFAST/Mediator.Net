@@ -292,7 +292,7 @@ const moveObject = (up: boolean): void => {
 }
 
 const resetVariables = async (): Promise<void> => {
-  const confirm = (window as any).$refs.confirm
+  const confirm = dlgConfirm.value as any
   const name = objectTitle.value
   if (await confirm.open('Confirm Reset', `Do you want to reset all variables (including history) of ${name}?`, { color: 'red' })) {
     const id = editObject.value?.ID

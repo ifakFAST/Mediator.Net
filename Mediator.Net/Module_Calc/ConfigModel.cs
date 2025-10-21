@@ -166,6 +166,7 @@ public class Signal : ModelObject
 public enum RunMode {
     Continuous,
     Triggered,
+    InputDriven,
 }
 
 public enum InitErrorResponse {
@@ -221,6 +222,8 @@ public class Calculation : ModelObject
     public History? History { get; set; } = null;
 
     public bool WindowVisible { get; set; } = false;
+
+    public Timestamp? InitialStartTime { get; set; } = null; // only used when RunMode == InputDriven
 
     public Duration Cycle { get; set; } = Duration.FromSeconds(10);
 
@@ -309,6 +312,8 @@ public class Calculation : ModelObject
     public bool ShouldSerializeRealTimeScale() => RealTimeScale != 1.0;
 
     public bool ShouldSerializeSubtype() => !string.IsNullOrEmpty(Subtype);
+
+    public bool ShouldSerializeInitialStartTime() => InitialStartTime.HasValue;
 
     public void Normalize(IEnumerable<AdapterInfo> adapters) {
         if (History.HasValue) {

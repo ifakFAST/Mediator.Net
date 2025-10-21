@@ -37,9 +37,24 @@
       </template>
       <span>Available time units: ms, s, min, h, d</span>
     </v-tooltip>
+    <v-tooltip
+      v-if="type === 'Timestamp'"
+      right
+    >
+      <template #activator="{ props }">
+        <v-text-field
+          v-bind="props"
+          v-model="model"
+          placeholder="YYYY-MM-DDTHH:mm:ssZ"
+        />
+      </template>
+      <span>ISO 8601 format, e.g. 2024-01-31T12:00:00Z</span>
+    </v-tooltip>
     <v-switch
       v-if="type === 'Boolean'"
       v-model="model"
+      color="primary"
+      hide-details
     />
     <v-select
       v-if="type === 'Enum'"
