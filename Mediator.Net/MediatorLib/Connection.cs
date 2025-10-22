@@ -640,6 +640,8 @@ namespace Ifak.Fast.Mediator
         public Timestamp   ChangeStart { get; set; }
         public Timestamp   ChangeEnd   { get; set; }
         public HistoryChangeType ChangeType { get; set; }
+
+        public override readonly string ToString() => $"HistoryChange {ChangeType} {Variable}  [{ChangeStart} - {ChangeEnd}]";
     }
 
     public enum HistoryChangeType

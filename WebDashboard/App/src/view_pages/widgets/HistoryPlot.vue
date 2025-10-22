@@ -1425,6 +1425,9 @@ watch(
       })
 
       sliceDataToDateWindow(data, payload.WindowLeft, payload.WindowRight)
+
+      // Trigger reactivity by reassigning the ref
+      historyData.value = [...data]
     }
   },
 )

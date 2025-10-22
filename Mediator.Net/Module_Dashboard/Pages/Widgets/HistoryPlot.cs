@@ -422,7 +422,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             }
         }
 
+        private DataAppendEvent lastDataAppendEvent = new(0, 0, 0, "");
+
         public override async Task OnVariableHistoryChanged(List<HistoryChange> changes) {
+
+            // string strChanges = string.Join("\r\n - ", changes.Select(ch => ch.ToString()));
+            // Console.WriteLine($"HistoryPlot: OnVariableHistoryChanged called with:\r\n - {strChanges}");
 
             var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
 
@@ -458,15 +463,33 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
                     WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
                 }
 
-                var evt = new {
-                    WindowLeft = windowLeft.JavaTicks,
-                    WindowRight = windowRight.JavaTicks,
-                    DataRevision = dataRevision,
-                    Data = sb.ToString()
-                };
+                var evt = new DataAppendEvent(
+                    windowLeft.JavaTicks,
+                    windowRight.JavaTicks,
+                    dataRevision,
+                    sb.ToString());
 
-                await Context.SendEventToUI("DataAppend", evt);
+                if (RelevantChanges(lastDataAppendEvent, evt)) {
+                    lastDataAppendEvent = evt;
+                    // Console.WriteLine($"HistoryPlot: Sending DataAppend event tMinChanged: {tMinChanged}");
+                    await Context.SendEventToUI("DataAppend", evt);
+                }
+                else {
+                    // Console.WriteLine("HistoryPlot: Skipping DataAppend event.");
+                }
             }
+        }
+
+        record DataAppendEvent(
+            long WindowLeft, 
+            long WindowRight,
+            long DataRevision,
+            string Data
+        );
+
+        private static bool RelevantChanges(DataAppendEvent oldEvent, DataAppendEvent newEvent) {
+            return oldEvent.DataRevision != newEvent.DataRevision ||
+                   oldEvent.Data != newEvent.Data;
         }
 
         private static (Timestamp left, Timestamp right) GetTimeWindow(TimeRange range, List<VTTQs> data) {
