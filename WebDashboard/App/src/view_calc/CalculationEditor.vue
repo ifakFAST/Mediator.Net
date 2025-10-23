@@ -3,6 +3,7 @@
     <v-tabs
       v-model="selectedTab"
       style="margin-top: 8px"
+      density="compact"
     >
       <v-tab value="Properties">Properties</v-tab>
       <v-tab
@@ -129,7 +130,7 @@
       <code-editor
         v-if="hasCode"
         v-model="model.Definition"
-        height="calc(100vh - 185px)"
+        height="calc(100vh - 250px)"
         :lang="codeLang"
         width="100%"
       />
