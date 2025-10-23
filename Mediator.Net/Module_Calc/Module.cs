@@ -334,7 +334,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             Log_Info("CalcRestart", $"Restarting calculation {adapter.Name}. Reason: {reason}");
         }
 
-        const int TimeoutSeconds = 10;
+        const int TimeoutSeconds = 30;
         try {
             Task shutdown = ShutdownAdapter(adapter);
             Task t = await Task.WhenAny(shutdown, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds)));
@@ -356,11 +356,13 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 // Thread.Sleep(500);
                 // Environment.Exit(1); // will result in restart of entire module by Mediator
                 TimeSpan delay = BoundDuration(
-                    duration: TimeSpan.FromSeconds(5 + 2 * tryCounter), 
-                    min: TimeSpan.FromSeconds(5), 
+                    duration: TimeSpan.FromSeconds(5 + 2 * tryCounter),
+                    min: TimeSpan.FromSeconds(5),
                     max: TimeSpan.FromSeconds(60));
                 await Task.Delay(delay);
-                Task _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                if (adapter.State != State.ShutdownCompleted && adapter.State != State.ShutdownStarted) {
+                    Task _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                }
             }
             else {
                 Log_Info("CalcRestartFailed", errMsg);
@@ -384,7 +386,11 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     private async Task ShutdownAdapters(IEnumerable<CalcInstance> adapters) {
 
         Task[] shutdownTasks = adapters
-            .Where(a => a.State == State.InitStarted || a.State == State.InitComplete || a.State == State.Running)
+            .Where(a => 
+                        a.State == State.InitStarted || 
+                        a.State == State.InitComplete || 
+                        a.State == State.InitError || 
+                        a.State == State.Running)
             .Select(ShutdownAdapter)
             .ToArray();
 
