@@ -44,26 +44,31 @@
             Delete
           </v-btn>
 
-          <template v-if="isFolderObject">
-            <v-btn
-              variant="text"
-              @click="addFolder"
-            >
-              Add Folder
-            </v-btn>
-            <v-btn
-              variant="text"
-              @click="addSignal"
-            >
-              Add Signal
-            </v-btn>
-            <v-btn
-              variant="text"
-              @click="addCalculation"
-            >
-              Add Calculation
-            </v-btn>
-          </template>
+          <v-menu
+            v-if="isFolderObject"
+            location="bottom end"
+            offset-y
+          >
+            <template #activator="{ props }">
+              <v-btn
+                icon
+                v-bind="props"
+              >
+                <v-icon>mdi-plus</v-icon>
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="addFolder">
+                <v-list-item-title>Add Folder</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="addSignal">
+                <v-list-item-title>Add Signal</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="addCalculation">
+                <v-list-item-title>Add Calculation</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
 
           <v-btn
             :disabled="selectedItem === null || selectedItem.first"
