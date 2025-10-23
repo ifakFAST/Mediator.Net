@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-toolbar>
+    <v-toolbar density="compact">
       <v-btn
         :disabled="!ackEnabled"
         variant="text"
@@ -35,6 +35,7 @@
       item-value="T"
       :items="alarms"
       must-sort
+      return-object
       no-data-text="No active warnings or alarms"
       :search="search"
       show-select

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-toolbar>
+    <v-toolbar density="compact">
       <v-checkbox
         v-model="includeAlarms"
         class="mr-4 ml-2"

@@ -5,7 +5,9 @@
   >
     <v-row>
       <v-col>
-        <v-tabs v-model="currentTab">
+        <v-tabs 
+          v-model="currentTab" 
+          density="compact">
           <v-tab :value="0">Active Alarms</v-tab>
           <v-tab :value="1">Event Log</v-tab>
         </v-tabs>
