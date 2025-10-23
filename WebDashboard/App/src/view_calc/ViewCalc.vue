@@ -1,7 +1,7 @@
 <template>
   <Splitter
     class="ma-4"
-    :default-percent="30"
+    :default-percent="20"
     style="height: calc(100vh - 100px); overflow-y: auto"
   >
     <template #left-pane>

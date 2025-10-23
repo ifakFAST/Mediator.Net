@@ -1,7 +1,6 @@
 
 # DashboardDist
 
-This folder stores the build result of the web dashboard as specified by **outputDir** in:
+This folder stores the build result of the web dashboard as specified by **build.outDir** in:
 
-* WebDashboard/App/vue.config.js
-* WebDashboard/ViewBundle_Generic/vue.config.js
+* WebDashboard/App/vite.config.mts
