@@ -601,7 +601,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         public InputDrivenRunCondition(CalcInstance adapter, Module module) {
             this.module = module;
             this.adapter = adapter;
-            variableInputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue).ToList();
+            variableInputs = adapter.CalcConfig.Inputs.Where(inp => inp.Variable.HasValue && !inp.Constant.HasValue).ToList();
             cycle = adapter.CalcConfig.Cycle;
             offset = adapter.CalcConfig.Offset;
             affectedObjects = [adapter.ID];
