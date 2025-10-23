@@ -582,7 +582,9 @@ const onValueTypeChanged = (input: calcmodel.Input, newValue: AssignState): void
       break
     case 'Variable':
       input.Constant = null
-      input.Variable = { Object: '', Name: '' }
+      if (!input.Variable) {
+        input.Variable = { Object: '', Name: '' }
+      }
       break
   }
 }
