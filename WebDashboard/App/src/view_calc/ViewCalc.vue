@@ -1,12 +1,13 @@
 <template>
-  <v-container
-    fluid
-    class="pa-4"
+  <Splitter
+    class="ma-4"
+    :default-percent="30"
+    style="height: calc(100vh - 100px); overflow-y: auto"
   >
-    <v-row>
-      <v-col
-        cols="auto"
-        style="min-width: 260px"
+    <template #left-pane>
+      <div
+        class="pr-4"
+        style="min-width: 260px;"
       >
         <TreeView
           v-model:selected="selectedNode"
@@ -14,14 +15,19 @@
           :icon-function="iconFunction"
           :root="treeRoot"
         />
-      </v-col>
-      <v-col cols="fill">
+      </div>
+    </template>
+    <template #right-pane>
+      <div class="pl-4">
         <v-toolbar
           v-if="editObject !== null"
           :elevation="4"
           density="compact"
         >
-          <v-toolbar-title>{{ objectTitle }}</v-toolbar-title>
+          <div class="my-toolbar-title">
+            {{ objectTitle }}
+          </div>
+
           <v-spacer />
           <v-btn
             :disabled="!isObjectDirty"
@@ -108,9 +114,9 @@
           :adapter-types-info="adapterTypesInfo"
           :variables="editObjectVariables as CalculationVariables"
         />
-      </v-col>
-    </v-row>
-  </v-container>
+      </div>
+    </template>
+  </Splitter>
 
   <v-dialog
     v-model="addDialog.show"
@@ -168,6 +174,7 @@ import { model2TreeItems } from './conversion'
 import FolderEditor from './FolderEditor.vue'
 import SignalEditor from './SignalEditor.vue'
 import CalculationEditor from './CalculationEditor.vue'
+import Splitter from '../components/Splitter.vue'
 import type { Node } from '../components/TreeView.vue'
 
 interface EventEntry {
@@ -494,4 +501,16 @@ const iconFunction = (node: Node, isExpanded: boolean): string => {
 }
 </script>
 
-<style></style>
+<style scoped>
+
+.my-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.75rem;
+  text-transform: none;
+  margin-left: 15px;
+  margin-right: 15px;
+}
+
+</style>
