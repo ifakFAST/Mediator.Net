@@ -237,7 +237,9 @@ namespace Ifak.Fast.Mediator.IO
                     // Environment.Exit(1); // will result in restart of entire module by Mediator
                     int delayMS = Math.Min(10 * 1000, (tryCounter + 1) * 1000);
                     await Task.Delay(delayMS);
-                    _ = RestartAdapter(adapter, exp.Message, exp, critical, tryCounter + 1);
+                    if (adapter.State != State.ShutdownCompleted && adapter.State != State.ShutdownStarted) {
+                        _ = RestartAdapter(adapter, exp.Message, exp, critical, tryCounter + 1);
+                    }
                 }
                 else {
                     adapter.IsRestarting = false;
@@ -334,7 +336,11 @@ namespace Ifak.Fast.Mediator.IO
         private async Task ShutdownAdapters(IEnumerable<AdapterState> adapters) {
 
             Task[] shutdownTasks = adapters
-                .Where(a => a.State == State.InitStarted || a.State == State.InitComplete || a.State == State.Running)
+                .Where(a =>
+                        a.State == State.InitStarted ||
+                        a.State == State.InitComplete ||
+                        a.State == State.InitError ||
+                        a.State == State.Running)
                 .Select(ShutdownAdapter)
                 .ToArray();
 
