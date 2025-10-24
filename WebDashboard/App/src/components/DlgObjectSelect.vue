@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     v-model="value"
-    max-width="790px"
+    max-width="1200px"
     scrollable
     @keydown="(e: any) => e.key === 'Escape' && close()"
   >

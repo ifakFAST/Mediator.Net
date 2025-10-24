@@ -2,7 +2,7 @@
   <div>
     <v-dialog
       v-model="showDialog"
-      max-width="700px"
+      max-width="850px"
       persistent
     >
       <v-card>
