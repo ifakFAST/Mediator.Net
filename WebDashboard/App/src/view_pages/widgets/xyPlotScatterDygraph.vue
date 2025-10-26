@@ -43,9 +43,14 @@ watch(
       }
     })
 
-    // Add visibility entries for new series
+    // Add or update visibility entries for all series
     newSeries.forEach((item) => {
       if (!(item.Name in visibility)) {
+        // New series: initialize with Checked value
+        visibility[item.Name] = item.Checked
+        changed = true
+      } else if (visibility[item.Name] !== item.Checked) {
+        // Existing series: update if Checked value changed
         visibility[item.Name] = item.Checked
         changed = true
       }
