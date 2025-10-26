@@ -75,7 +75,6 @@ const activeSeries = computed<XySeriesData[]>(() =>
 const graphStyle = computed(() => ({
   width: props.plotWidth,
   height: props.plotHeight,
-  border: '1px solid #ccc',
 }))
 
 // Transform XY scatter data to Dygraph format
@@ -337,7 +336,7 @@ const calculateXExtent = (): [number, number] | null => {
   if (cfg.XAxisStartFromZero && min > 0) min = 0
 
   const range = max - min
-  return [min - range * 0.05, max + range * 0.05]
+  return [min - range * 0.1, max + range * 0.1]
 }
 
 const calculateYExtent = (): [number, number] | null => {
@@ -347,23 +346,53 @@ const calculateYExtent = (): [number, number] | null => {
     return [cfg.YAxisLimitMin, cfg.YAxisLimitMax]
   }
 
-  let min = Infinity
-  let max = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
 
   for (let i = 0; i < activeSeries.value.length; i++) {
     const series = activeSeries.value[i]
     for (let j = 0; j < series.Points.length; j++) {
       const point = series.Points[j]
-      if (point.Y < min) min = point.Y
-      if (point.Y > max) max = point.Y
+      if (point.Y < minY) minY = point.Y
+      if (point.Y > maxY) maxY = point.Y
     }
   }
 
-  if (min === Infinity) return [0, 1]
-  if (cfg.YAxisStartFromZero && min > 0) min = 0
+  // Default to [0, 1] if no data
+  if (minY === Infinity) return [0, 1]
 
-  const range = max - min
-  return [min - range * 0.05, max + range * 0.05]
+  // Include zero if requested by the user
+  if (cfg.YAxisStartFromZero) {
+    if (minY > 0) minY = 0
+    if (maxY < 0) maxY = 0
+  }
+
+  // Ensure valid scale
+  if (minY === Infinity) minY = 0
+  if (maxY === -Infinity) maxY = 1
+
+  let span = maxY - minY
+  // Special case: if we have no sense of scale, center on the sole value
+  if (span === 0) {
+    if (maxY !== 0) {
+      span = Math.abs(maxY)
+    } else {
+      // If the sole value is zero, use range 0-1
+      maxY = 1
+      span = 1
+    }
+  }
+
+  // Apply 10% padding (Dygraph's ypadCompat mode)
+  const ypad = 0.1
+  let minAxisY = minY - ypad * span
+  let maxAxisY = maxY + ypad * span
+
+  // Move a close-to-zero edge to zero (prevents invisible lines at edge)
+  if (minAxisY < 0 && minY >= 0) minAxisY = 0
+  if (maxAxisY > 0 && maxY <= 0) maxAxisY = 0
+
+  return [minAxisY, maxAxisY]
 }
 
 // Setup legend checkbox interaction

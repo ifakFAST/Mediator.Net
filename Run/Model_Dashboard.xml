@@ -26,7 +26,7 @@
         {
           "Columns": [
             {
-              "Width": "TwelveOfTwelve",
+              "Width": "Auto",
               "Widgets": [
                 {
                   "ID": "W_c691",
@@ -39,11 +39,9 @@
                       "FilterByQuality": "ExcludeBad",
                       "XAxisName": "X",
                       "YAxisName": "Y",
-                      "XAxisStartFromZero": true,
-                      "YAxisStartFromZero": true,
-                      "XAxisLimitMin": -1.0,
-                      "XAxisLimitMax": 5.0,
-                      "YAxisLimitMin": 0.0,
+                      "XAxisStartFromZero": false,
+                      "YAxisStartFromZero": false,
+                      "YAxisLimitMin": 1.0,
                       "YAxisLimitMax": 4.0,
                       "ShowGrid": true,
                       "ShowLegend": true,
@@ -76,6 +74,10 @@
                   }
                 }
               ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
             }
           ]
         },
