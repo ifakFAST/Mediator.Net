@@ -30,7 +30,7 @@
         <v-list-item @click="onConfigure">
           <v-list-item-title>Configure...</v-list-item-title>
         </v-list-item>
-        <v-list-item @click="loadData">
+        <v-list-item @click="onRefresh">
           <v-list-item-title>Refresh Data</v-list-item-title>
         </v-list-item>
       </v-list>
@@ -90,7 +90,17 @@ const plotHeight = computed(() => {
   return props.height
 })
 
+const onRefresh = async (): Promise<void> => {
+  await loadData()
+}
+
 const loadData = async (): Promise<void> => {
+
+  if (loading.value) {
+    console.log('Data load already in progress, skipping.')
+    return
+  }
+
   loading.value = true
   error.value = ''
 
@@ -106,9 +116,11 @@ const loadData = async (): Promise<void> => {
     data.value.forEach((series) => {
       console.log(`Series "${series.Name}": ${series.Points.length} points`)
     })
-  } catch (err: any) {
+  } 
+  catch (err: any) {
     error.value = err.message || 'Failed to load data'
-  } finally {
+  } 
+  finally {
     loading.value = false
   }
 }
@@ -151,9 +163,7 @@ const onConfigure = async (): Promise<void> => {
 watch(
   () => props.timeRange,
   () => {
-    if (!loading.value) {
-      loadData()
-    }
+    loadData()
   },
   { deep: true },
 )
