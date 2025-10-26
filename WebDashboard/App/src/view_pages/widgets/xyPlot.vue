@@ -66,6 +66,7 @@ const props = defineProps<{
   dateWindow: number[] | null
 }>()
 
+const canUpdateConfig = ref(false)
 const loading = ref(false)
 const error = ref('')
 const data = ref<XySeriesData[]>([])
@@ -126,14 +127,16 @@ const loadData = async (): Promise<void> => {
 }
 
 const onContextMenu = (e: MouseEvent): void => {
-  e.preventDefault()
-  e.stopPropagation()
-  contextMenu.value.show = false
-  contextMenu.value.clientX = e.clientX
-  contextMenu.value.clientY = e.clientY
-  setTimeout(() => {
-    contextMenu.value.show = true
-  }, 10)
+  if (canUpdateConfig.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    contextMenu.value.show = false
+    contextMenu.value.clientX = e.clientX
+    contextMenu.value.clientY = e.clientY
+    setTimeout(() => {
+      contextMenu.value.show = true
+    }, 10)
+  }
 }
 
 const onConfigure = async (): Promise<void> => {
@@ -179,5 +182,6 @@ onMounted(() => {
   nextTick().then(() => {
     loadData()
   })
+  canUpdateConfig.value = (window.parent as any)['dashboardApp'].canUpdateViewConfig()
 })
 </script>

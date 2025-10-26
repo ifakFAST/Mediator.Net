@@ -140,6 +140,9 @@
         </Users>
         <Roles>
             <Role name="Admin" />
+            <Role name="ReadOnly" >
+                <RestrictConfigChanges>true</RestrictConfigChanges>
+            </Role>
         </Roles>
     </UserManagement>
     
