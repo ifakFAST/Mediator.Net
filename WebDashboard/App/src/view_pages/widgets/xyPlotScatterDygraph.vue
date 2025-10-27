@@ -68,9 +68,7 @@ const isSeriesVisible = (name: string): boolean => {
   return visibility[name] !== false
 }
 
-const activeSeries = computed<XySeriesData[]>(() =>
-  props.series.filter((seriesItem) => isSeriesVisible(seriesItem.Name))
-)
+const activeSeries = computed<XySeriesData[]>(() => props.series.filter((seriesItem) => isSeriesVisible(seriesItem.Name)))
 
 const graphStyle = computed(() => ({
   width: props.plotWidth,
@@ -140,10 +138,7 @@ const dyGraphID = computed(() => {
 })
 
 // Draw 45-degree line (y = x)
-const draw45DegreeLine = (
-  ctx: CanvasRenderingContext2D,
-  g: Dygraph
-) => {
+const draw45DegreeLine = (ctx: CanvasRenderingContext2D, g: Dygraph) => {
   const cfg = props.config.PlotConfig
   const xRange = g.xAxisRange()
   const yRange = g.yAxisRange()
@@ -180,11 +175,7 @@ const draw45DegreeLine = (
 }
 
 // Draw regression line
-const drawRegressionLine = (
-  ctx: CanvasRenderingContext2D,
-  g: Dygraph,
-  regression: { Slope: number; Offset: number; Color: string }
-) => {
+const drawRegressionLine = (ctx: CanvasRenderingContext2D, g: Dygraph, regression: { Slope: number; Offset: number; Color: string }) => {
   const xRange = g.xAxisRange()
   const xMin = xRange[0]
   const xMax = xRange[1]
@@ -277,11 +268,7 @@ const dygraphOptions = computed(() => {
   }
 
   // Underlays for 45-degree line and regression lines
-  const underlayCallback = (
-    canvas: CanvasRenderingContext2D,
-    _area: { x: number; y: number; w: number; h: number },
-    g: Dygraph
-  ) => {
+  const underlayCallback = (canvas: CanvasRenderingContext2D, _area: { x: number; y: number; w: number; h: number }, g: Dygraph) => {
     const ctx = canvas
 
     // Draw 45-degree line if enabled

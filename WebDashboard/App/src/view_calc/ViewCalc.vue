@@ -7,7 +7,7 @@
     <template #left-pane>
       <div
         class="pr-4"
-        style="min-width: 260px;"
+        style="min-width: 260px"
       >
         <TreeView
           v-model:selected="selectedNode"
@@ -507,7 +507,6 @@ const iconFunction = (node: Node, isExpanded: boolean): string => {
 </script>
 
 <style scoped>
-
 .my-toolbar-title {
   font-size: 1.25rem;
   font-weight: 400;
@@ -517,5 +516,4 @@ const iconFunction = (node: Node, isExpanded: boolean): string => {
   margin-left: 15px;
   margin-right: 15px;
 }
-
 </style>

@@ -96,7 +96,6 @@ const onRefresh = async (): Promise<void> => {
 }
 
 const loadData = async (): Promise<void> => {
-
   if (loading.value) {
     console.log('Data load already in progress, skipping.')
     return
@@ -117,11 +116,9 @@ const loadData = async (): Promise<void> => {
     data.value.forEach((series) => {
       console.log(`Series "${series.Name}": ${series.Points.length} points`)
     })
-  } 
-  catch (err: any) {
+  } catch (err: any) {
     error.value = err.message || 'Failed to load data'
-  } 
-  finally {
+  } finally {
     loading.value = false
   }
 }
