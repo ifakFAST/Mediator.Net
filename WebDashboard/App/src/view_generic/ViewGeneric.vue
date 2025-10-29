@@ -1,12 +1,13 @@
 <template>
-  <v-container
-    fluid
-    class="pa-4 pl-2"
+  <Splitter
+    class="ma-4"
+    :default-percent="30"
+    style="height: calc(100vh - 100px); overflow-y: auto"
   >
-    <v-row>
-      <v-col
-        cols="auto"
-        style="min-width: 400px; max-width: 660px"
+    <template #left-pane>
+      <div
+        class="pr-4"
+        style="min-width: 260px"
       >
         <ul style="padding-left: 0px">
           <object-tree
@@ -19,10 +20,12 @@
             @select-object="onObjectSelected"
           />
         </ul>
-      </v-col>
-      <v-col
-        cols="fill"
-        style="max-width: 850px"
+      </div>
+    </template>
+    <template #right-pane>
+      <div
+        class="pl-4"
+        style="max-width: 950px"
       >
         <object-editor
           :child-types="childTypes"
@@ -39,15 +42,16 @@
           @save="onSave"
           @update-member="onUpdateMember"
         />
-      </v-col>
-    </v-row>
-  </v-container>
+      </div>
+    </template>
+  </Splitter>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import ObjectTree from './ObjectTree.vue'
 import ObjectEditor from './ObjectEditor.vue'
+import Splitter from '../components/Splitter.vue'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, ObjectMap, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
 
