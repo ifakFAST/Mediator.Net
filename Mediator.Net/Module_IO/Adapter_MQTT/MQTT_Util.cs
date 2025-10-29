@@ -81,7 +81,7 @@ public static class MQTT_Util {
             certificates.Insert(0, clientCert);
         }
 
-        bool useTLS = certificates.Count > 0 || port != 1883;
+        bool useTLS = config.TLS.HasValue ? config.TLS.Value : certificates.Count > 0 || port != 1883;
 
         if (useTLS) {
             builder = builder
@@ -183,4 +183,5 @@ public sealed class MqttConfig {
     public bool IgnoreCertificateRevocationErrors { get; set; } = false;
     public bool IgnoreCertificateChainErrors { get; set; } = false;
     public bool AllowUntrustedCertificates { get; set; } = false;
+    public bool? TLS { get; set; } = null;
 }

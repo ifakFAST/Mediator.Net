@@ -30,6 +30,10 @@ namespace Ifak.Fast.Mediator
             return map.ContainsKey(name) ? bool.Parse(map[name]) : defaultValue;
         }
 
+        public bool? GetOptionalBoolNullable(string name, bool? defaultValue) {
+            return map.ContainsKey(name) ? bool.Parse(map[name]) : defaultValue;
+        }
+
         public int GetOptionalInt(string name, int defaultValue) {
             return map.ContainsKey(name) ? int.Parse(map[name], CultureInfo.InvariantCulture) : defaultValue;
         }
