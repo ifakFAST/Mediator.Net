@@ -9,6 +9,7 @@
           <v-text-field
             v-if="m.Type === 'String' && m.IsScalar"
             :label="m.Name"
+            style="min-width: 16ch"
             :model-value="value[m.Name]"
             @update:model-value="updateField(m.Name, $event)"
           ></v-text-field>

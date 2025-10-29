@@ -303,13 +303,13 @@
                       >
                         <tbody>
                           <tr>
-                            <td style="vertical-align: top; width: 25%">
+                            <td style="vertical-align: top; width: 40%">
                               <v-text-field
                                 v-model="row.Value[idx].Name"
                                 label="Name"
                               ></v-text-field>
                             </td>
-                            <td style="width: 75%">
+                            <td style="width: 60%">
                               <v-textarea
                                 v-model="row.Value[idx].Value"
                                 auto-grow
@@ -517,6 +517,7 @@
             no-data-text="No values"
             show-select
             select-strategy="single"
+            return-object
           >
           </v-data-table>
         </v-card-text>
