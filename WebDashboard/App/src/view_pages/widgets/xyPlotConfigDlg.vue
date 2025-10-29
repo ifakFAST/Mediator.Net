@@ -495,7 +495,7 @@
 
     <dlg-object-select
       v-model="selectObject.show"
-      :allow-config-variables="false"
+      :allow-config-variables="true"
       :module-id="selectObject.selectedModuleID"
       :modules="selectObject.modules"
       :object-id="selectObject.selectedObjectID"
@@ -728,7 +728,7 @@ const onObjectSelected = (obj: Obj): void => {
     currentVariable.value.Object = obj.ID
     if (variables.length === 1) {
       currentVariable.value.Name = variables[0]
-    } else if (variables.length > 0) {
+    } else {
       currentVariable.value.Name = ''
     }
   }

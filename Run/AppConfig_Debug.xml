@@ -128,10 +128,10 @@
             <ImplClass>Ifak.Fast.Mediator.TagMetaData.Module</ImplClass>
             <Config>
                 <NamedValue name="model-file"             value="Model_TagMetaData.xml"/>
-                <NamedValue name="meta-model-file"        value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\meta_model.xml"/>
-                <NamedValue name="block-library-file"     value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\block_lib.json"/>
-                <NamedValue name="images-path"            value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\images"/>
-                <NamedValue name="module-types-path"      value="D:\Fast\Mediator.Net\ExampleConfig\TagMetaData\module_types"/>
+                <NamedValue name="meta-model-file"        value="..\ExampleConfig\TagMetaData\meta_model.xml"/>
+                <NamedValue name="block-library-file"     value="..\ExampleConfig\TagMetaData\block_lib.json"/>
+                <NamedValue name="images-path"            value="..\ExampleConfig\TagMetaData\images"/>
+                <NamedValue name="module-types-path"      value="..\ExampleConfig\TagMetaData\module_types"/>
                 <NamedValue name="model-file-auto-reload" value="true"/>
                 
             </Config>
