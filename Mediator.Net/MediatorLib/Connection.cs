@@ -502,6 +502,33 @@ namespace Ifak.Fast.Mediator
         public abstract Task<VTTQs> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone);
 
         /// <summary>
+        /// Reads aggregated historical data for the specified variable over defined intervals.
+        /// </summary>
+        /// <remarks>
+        /// This method retrieves historical data and aggregates it within specified intervals.
+        /// The <paramref name="intervalBounds"/> array must contain N sorted timestamps that define N-1 intervals.
+        /// Each interval is [bounds[i], bounds[i+1]), left-inclusive and right-exclusive.
+        ///
+        /// For intervals with no data points:
+        /// - Count and Sum return 0
+        /// - All other aggregations return DataValue.Empty
+        ///
+        /// The quality of all returned VTQs is always Good. The <paramref name="rawFilter"/> only controls
+        /// which raw data points are included in the aggregation calculation.
+        /// 
+        /// Note that non-numerical values are ignored/filtered out before applying the aggregation.
+        /// 
+        /// </remarks>
+        /// <param name="variable">The variable reference for which to retrieve aggregated data.</param>
+        /// <param name="intervalBounds">Array of timestamps defining interval boundaries. Must be sorted in ascending order.
+        /// Creates intervalBounds.Length - 1 intervals. Overall time range is [intervalBounds[0], intervalBounds[Last]].</param>
+        /// <param name="aggregation">The aggregation method to apply within each interval (Average, Min, Max, Count, Sum, First, Last).</param>
+        /// <param name="rawFilter">Quality filter applied to raw data points before aggregation. Default: ExcludeNone.</param>
+        /// <returns>List of aggregated VTQs with length = intervalBounds.Length - 1. Each VTQ has Quality=Good
+        /// and timestamp equal to the interval start time. Value is DataValue.Empty for empty intervals (except Count/Sum which return 0).</returns>
+        public abstract Task<VTQs> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone);
+
+        /// <summary>
         /// Counts the number of data points in the history of a variable within a certain time interval.
         /// </summary>
         /// <param name="variable">The variable</param>
@@ -584,6 +611,16 @@ namespace Ifak.Fast.Mediator
         public abstract Task<BrowseResult> BrowseObjectMemberValues(MemberRef member, int? continueID = null);
 
         public abstract void Dispose();
+    }
+
+    public enum Aggregation {
+        Average,
+        Min,
+        Max,
+        Count,
+        Sum,
+        First,
+        Last
     }
 
     public class ConnectivityException : Exception

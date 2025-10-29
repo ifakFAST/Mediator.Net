@@ -451,6 +451,86 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
         }
 
+        public override List<VTQ> ReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+
+            if (intervalBounds == null || intervalBounds.Length < 2) {
+                return new List<VTQ>();
+            }
+
+            int numIntervals = intervalBounds.Length - 1;
+            var result = new List<VTQ>(numIntervals);
+
+            // Create PreparedStatement ONCE for all intervals
+            PreparedStatement stmt = CreateAggregationStatement(aggregation, filter);
+            try {
+                // Reuse the same statement for all intervals
+                for (int i = 0; i < numIntervals; i++) {
+                    Timestamp intervalStart = intervalBounds[i];
+                    Timestamp intervalEnd = intervalBounds[i + 1];
+
+                    VTQ vtq = ComputeAggregation(stmt, aggregation, intervalStart, intervalEnd);
+                    result.Add(vtq);
+                }
+            }
+            finally {
+                stmt.Reset();
+            }
+            return result;
+        }
+
+        private PreparedStatement CreateAggregationStatement(Aggregation aggregation, QualityFilter filter) {
+
+            string qualiFilter = filter switch {
+                QualityFilter.ExcludeBad => "AND quality <> 0",
+                QualityFilter.ExcludeNonGood => "AND quality = 1",
+                _ => ""
+            };
+
+            string innerQuery = $"SELECT CAST(data AS REAL) AS val, data, time FROM {table} WHERE time >= @1 AND time < @2 {qualiFilter}";
+            const string isNumeric = "val != 0.0 OR TRIM(data) IN ('0', '0.0', '0.00', '.0', '0e0', '+0')"; // we need this extra check because CAST('non-numeric-string' AS REAL) yields 0.0 in SQLite!
+
+            string sql = aggregation switch {
+                Aggregation.Count   => $"SELECT COUNT(val) FROM ({innerQuery}) WHERE {isNumeric}",
+                Aggregation.Sum     => $"SELECT SUM(val)   FROM ({innerQuery}) WHERE {isNumeric}",
+                Aggregation.Average => $"SELECT AVG(val)   FROM ({innerQuery}) WHERE {isNumeric}",
+                Aggregation.Min     => $"SELECT MIN(val)   FROM ({innerQuery}) WHERE {isNumeric}",
+                Aggregation.Max     => $"SELECT MAX(val)   FROM ({innerQuery}) WHERE {isNumeric}",
+                Aggregation.First   => $"SELECT data       FROM ({innerQuery}) WHERE {isNumeric} ORDER BY time ASC LIMIT 1",
+                Aggregation.Last    => $"SELECT data       FROM ({innerQuery}) WHERE {isNumeric} ORDER BY time DESC LIMIT 1",
+                _ => throw new ArgumentException($"Unknown aggregation type: {aggregation}")
+            };
+
+            return new PreparedStatement(connection, sql, 2);
+        }
+
+        private VTQ ComputeAggregation(PreparedStatement stmt, Aggregation aggregation, Timestamp start, Timestamp end) {
+            stmt[0] = start.JavaTicks;
+            stmt[1] = end.JavaTicks;
+
+            if (aggregation == Aggregation.Count) {
+                long count = (long)stmt.ExecuteScalar()!;
+                return new VTQ(start, Quality.Good, DataValue.FromLong(count));
+            }
+            else if (aggregation == Aggregation.First || aggregation == Aggregation.Last) {
+                using (var reader = stmt.ExecuteReader()) {
+                    if (reader.Read()) {
+                        string data = (string)reader["data"];
+                        return new VTQ(start, Quality.Good, DataValue.FromJSON(data));
+                    }
+                }
+                return new VTQ(start, Quality.Good, DataValue.Empty);
+            }
+            else { // Sum, Average, Min, Max
+                object? result = stmt.ExecuteScalar();
+                if (result == null || result is DBNull) {
+                    return aggregation == Aggregation.Sum
+                        ? new VTQ(start, Quality.Good, DataValue.FromDouble(0.0))
+                        : new VTQ(start, Quality.Good, DataValue.Empty);
+                }
+                return new VTQ(start, Quality.Good, DataValue.FromDouble(Convert.ToDouble(result)));
+            }
+        }
+
         private VTTQ ReadVTTQ(DbDataReader reader) {
             Timestamp t = Timestamp.FromJavaTicks((long)reader["time"]);
             Timestamp tDB = t + Duration.FromSeconds((long)reader["diffDB"]);

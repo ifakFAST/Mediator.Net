@@ -179,6 +179,33 @@ namespace Ifak.Fast.Mediator
             }
         }
 
+        public Task<List<VTQ>> ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+            var promise = new TaskCompletionSource<List<VTQ>>();
+            if (CheckPrecondition(promise)) {
+                queue.Post(new WI_ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter, promise));
+            }
+            return promise.Task;
+        }
+
+        private class WI_ReadAggregatedIntervals : WorkItem
+        {
+            public readonly VariableRef Variable;
+            public readonly Timestamp[] IntervalBounds;
+            public readonly Aggregation Aggregation;
+            public readonly QualityFilter Filter;
+
+            public readonly TaskCompletionSource<List<VTQ>> Promise;
+            public override bool IsReadRequest => true;
+
+            public WI_ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter, TaskCompletionSource<List<VTQ>> promise) {
+                Variable = variable;
+                IntervalBounds = intervalBounds;
+                Aggregation = aggregation;
+                Filter = filter;
+                Promise = promise;
+            }
+        }
+
         public Task<long> DeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
             var promise = new TaskCompletionSource<long>();
             if (CheckPrecondition(promise)) {
@@ -349,6 +376,9 @@ namespace Ifak.Fast.Mediator
                 else if (it is WI_Count count) {
                     DoCount(count);
                 }
+                else if (it is WI_ReadAggregatedIntervals readAggregatedIntervals) {
+                    DoReadAggregatedIntervals(readAggregatedIntervals);
+                }
                 else if (it is WI_DeleteInterval deleteInterval) {
                     DoDeleteInterval(deleteInterval);
                 }
@@ -423,6 +453,27 @@ namespace Ifak.Fast.Mediator
                     }
 
                     promise.SetResult(res);
+                }
+            }
+            catch (Exception exp) {
+                promise.SetException(exp);
+            }
+        }
+
+        private void DoReadAggregatedIntervals(WI_ReadAggregatedIntervals req) {
+            var promise = req.Promise;
+            try {
+                Channel? ch = GetChannelOrNull(req.Variable);
+                if (ch == null) {
+                    promise.SetResult(new List<VTQ>());
+                }
+                else {
+                    Timestamp[] intervalBounds = req.IntervalBounds;
+                    Aggregation aggregation = req.Aggregation;
+                    QualityFilter filter = req.Filter;
+
+                    List<VTQ> result = ch.ReadAggregatedIntervals(intervalBounds, aggregation, Map(filter));
+                    promise.SetResult(result);
                 }
             }
             catch (Exception exp) {

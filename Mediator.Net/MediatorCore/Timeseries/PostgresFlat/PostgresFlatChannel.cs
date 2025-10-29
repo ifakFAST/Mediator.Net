@@ -264,6 +264,10 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             };
         }
 
+        public override List<VTQ> ReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+            throw new NotImplementedException("ReadAggregatedIntervals is not yet implemented for PostgresFlatChannel");
+        }
+
         public override List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
             long N = CountData(startInclusive, endInclusive, filter);

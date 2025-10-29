@@ -146,6 +146,10 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("HistorianReadRaw on closed connection");
         }
 
+        public override Task<List<VTQ>> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+            throw new InvalidOperationException("HistorianReadAggregatedIntervals on closed connection");
+        }
+
         public override Task Ping() {
             throw new InvalidOperationException("Ping on closed connection");
         }

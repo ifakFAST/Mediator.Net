@@ -93,6 +93,8 @@ namespace Ifak.Fast.Mediator.Timeseries
 
         public abstract List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter);
 
+        public abstract List<VTQ> ReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter);
+
         public abstract long DeleteData(Timestamp startInclusive, Timestamp endInclusive);
 
         /// <summary>

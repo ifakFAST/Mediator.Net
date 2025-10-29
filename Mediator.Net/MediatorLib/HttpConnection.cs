@@ -418,6 +418,15 @@ namespace Ifak.Fast.Mediator
             return await Post<VTTQs>(request, binaryDeserializer: BinSeri.VTTQ_Serializer.Deserialize);
         }
 
+        public override async Task<VTQs> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+            var request = MakeSessionRequest<HistorianReadAggregatedIntervalsReq>();
+            request.Variable = variable;
+            request.IntervalBounds = intervalBounds;
+            request.Aggregation = aggregation;
+            request.Filter = rawFilter;
+            return await Post<VTQs>(request, binaryDeserializer: BinSeri.VTQ_Serializer.Deserialize);
+        }
+
         public override async Task<VariableValues> ReadAllVariablesOfObjectTree(ObjectRef objectID) {
             var request = MakeSessionRequest<ReadAllVariablesOfObjectTreeReq>();
             request.ObjectID = objectID;

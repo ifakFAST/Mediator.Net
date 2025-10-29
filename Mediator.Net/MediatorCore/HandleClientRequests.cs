@@ -779,6 +779,25 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(vttqs, serializer);
                         }
 
+                    case HistorianReadAggregatedIntervalsReq.ID: {
+
+                            var req = (HistorianReadAggregatedIntervalsReq)request;
+
+                            VariableRef variable = req.Variable;
+                            Timestamp[] intervalBounds = req.IntervalBounds;
+                            Aggregation aggregation = req.Aggregation;
+                            QualityFilter filter = req.Filter;
+
+                            VTQs vtqs = await core.history.HistorianReadAggregatedIntervals(variable, intervalBounds, aggregation, filter);
+
+                            Action<object, Stream>? serializer = null;
+                            if (req.ReturnBinaryResponse) {
+                                serializer = (obj, stream) => VTQ_Serializer.Serialize(stream, (VTQs)obj, info.BinaryVersion);
+                            }
+
+                            return Result_OK(vtqs, serializer);
+                        }
+
                     case HistorianCountReq.ID: {
 
                             var req = (HistorianCountReq)request;

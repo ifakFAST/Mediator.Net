@@ -82,6 +82,7 @@ namespace Ifak.Fast.Mediator
         public static readonly ReqDef HistorianDeleteAllVariablesOfObjectTree = ReqDef.Make<HistorianDeleteAllVariablesOfObjectTreeReq>();
         public static readonly ReqDef HistorianDeleteVariables = ReqDef.Make<HistorianDeleteVariablesReq>();
         public static readonly ReqDef HistorianGetLatestTimestampDB = ReqDef.Make<HistorianGetLatestTimestampDBReq>();
+        public static readonly ReqDef HistorianReadAggregatedIntervals = ReqDef.Make<HistorianReadAggregatedIntervalsReq>();
         public static readonly ReqDef CallMethod = ReqDef.Make<CallMethodReq>();
         public static readonly ReqDef BrowseObjectMemberValues = ReqDef.Make<BrowseObjectMemberValuesReq>();
         public static readonly ReqDef GetMetaInfos = ReqDef.Make<GetMetaInfosReq>();
@@ -101,7 +102,7 @@ namespace Ifak.Fast.Mediator
             EnableVariableValueChangedEvents, EnableVariableHistoryChangedEvents, EnableConfigChangedEvents,
             DisableChangeEvents, EnableAlarmsAndEvents, DisableAlarmsAndEvents,
             HistorianReadRaw, HistorianCount, HistorianDeleteInterval, HistorianModify, HistorianDeleteAllVariablesOfObjectTree,
-            HistorianDeleteVariables, HistorianGetLatestTimestampDB,
+            HistorianDeleteVariables, HistorianGetLatestTimestampDB, HistorianReadAggregatedIntervals,
             CallMethod, BrowseObjectMemberValues, GetMetaInfos, Ping, EnableEventPing, Logout,
             CanUpdateConfig, ResetAllVariablesOfObjectTreeReq
         );
@@ -851,6 +852,26 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("endInclusive")]
         public Timestamp EndInclusive { get; set; }
+    }
+
+    public class HistorianReadAggregatedIntervalsReq : RequestBase
+    {
+        public const int ID = 47;
+
+        public override int GetID() => ID;
+        public override string GetPath() => "HistorianReadAggregatedIntervals";
+
+        [JsonProperty("variable")]
+        public VariableRef Variable { get; set; }
+
+        [JsonProperty("intervalBounds")]
+        public Timestamp[] IntervalBounds { get; set; } = Array.Empty<Timestamp>();
+
+        [JsonProperty("aggregation")]
+        public Aggregation Aggregation { get; set; }
+
+        [JsonProperty("filter")]
+        public QualityFilter Filter { get; set; } = QualityFilter.ExcludeNone;
     }
 
     public class CallMethodReq : RequestBase

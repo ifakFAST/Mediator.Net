@@ -109,6 +109,13 @@ namespace Ifak.Fast.Mediator
             return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
         }
 
+        public async Task<List<VTQ>> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+
+            HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
+            CheckExistingVariable(variable);
+            return await worker.ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter);
+        }
+
         public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
 
             HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
