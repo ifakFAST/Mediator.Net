@@ -240,13 +240,29 @@ public class MQTT : AdapterBase {
 
         (VTQ vtq, string unit)? payload = ParsePayload(topic, Timestamp.Now, payloadBytes);
 
+        DataType GuessDataType() {
+            if (!payload.HasValue) return DataType.Float64;
+            DataValue dv = payload.Value.vtq.V;
+            if (dv.IsString) return DataType.String;
+            if (dv.IsBool) return DataType.Bool;
+            if (dv.AsDouble().HasValue) return DataType.Float64;
+            return DataType.JSON;
+        }
+
+        int GuessDimension() {
+            if (!payload.HasValue) return 1;
+            DataValue dv = payload.Value.vtq.V;
+            if (dv.IsArray) return 0;
+            return 1;
+        }
+
         var item = new DataItemUpsert() {
             ParentNodeID = null,
             ID = id,
             Name = id,
             Unit = payload.HasValue ? payload.Value.unit : "",
-            Type = DataType.Float64,
-            Dimension = 1,
+            Type = GuessDataType(),
+            Dimension = GuessDimension(),
             Read = true,
             Write = false,
             Address = topic
