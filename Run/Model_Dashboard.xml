@@ -20,6 +20,70 @@
   "ConfigVariables": [],
   "Pages": [
     {
+      "ID": "P_854b",
+      "Name": "Agg",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_f5d9",
+                  "Type": "TimeAggregatedBarChart",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "ChartConfig": {
+                      "StartTime": "2025-01-01T00:00:00Z",
+                      "TimeGranularity": "Monthly",
+                      "WeekStart": "Monday"
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "Series 1",
+                        "Color": "#1BA1E2",
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      },
+                      {
+                        "Name": "Series 2",
+                        "Color": "#A05000",
+                        "Variable": {
+                          "Object": "IO:Data_002",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": []
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        }
+      ]
+    },
+    {
       "ID": "P_0c67",
       "Name": "xy Plot",
       "Rows": [

@@ -65,18 +65,32 @@ const totalLabelPlugin: Plugin<'bar'> = {
     if (!datasets || datasets.length === 0) return
 
     const ctx = chart.ctx
-    const lastDatasetIndex = datasets.length - 1
-    const lastMeta = chart.getDatasetMeta(lastDatasetIndex)
 
-    lastMeta.data.forEach((bar, index) => {
+    // Find the topmost visible dataset
+    let topVisibleMeta = null
+    for (let i = datasets.length - 1; i >= 0; i--) {
+      const meta = chart.getDatasetMeta(i)
+      if (!meta.hidden) {
+        topVisibleMeta = meta
+        break
+      }
+    }
+
+    if (!topVisibleMeta) return
+
+    topVisibleMeta.data.forEach((bar, index) => {
       let total = 0
       let hasNumbers = false
 
-      datasets.forEach((ds) => {
-        const value = ds.data[index] as number | undefined
-        if (typeof value === 'number') {
-          total += value
-          hasNumbers = true
+      // Sum all visible datasets
+      datasets.forEach((ds, dsIndex) => {
+        const meta = chart.getDatasetMeta(dsIndex)
+        if (!meta.hidden) {
+          const value = ds.data[index] as number | undefined
+          if (typeof value === 'number') {
+            total += value
+            hasNumbers = true
+          }
         }
       })
 
@@ -84,12 +98,14 @@ const totalLabelPlugin: Plugin<'bar'> = {
         return
       }
 
+      const fractionDigits = 2
+
       ctx.save()
       ctx.fillStyle = '#000'
       ctx.font = 'bold 12px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
-      ctx.fillText(total.toFixed(2), bar.x, bar.y - 4)
+      ctx.fillText(total.toFixed(fractionDigits), bar.x, bar.y - 4)
       ctx.restore()
     })
   },
@@ -143,7 +159,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
       stacked: true,
       ticks: {
         autoSkip: true,
-        maxRotation: 45,
+        maxRotation: 90,
         minRotation: 0,
       },
     },
