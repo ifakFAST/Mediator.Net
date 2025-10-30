@@ -186,7 +186,15 @@ public sealed class DerivedSignal : Identifiable
             calcParameterValues[idxParameter_Inputs.Value] = Inputs;
         }
 
-        double result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
+        double result;
+
+        try {
+            result = (double)calcMethod.Invoke(Calculation.Target, calcParameterValues)!;
+        }
+        catch (TargetInvocationException ex) {
+            string errMs = $"Error during calculation of DerivedSignal \"{ID}\": {ex.InnerException?.Message}";
+            throw new Exception(errMs);
+        }
 
         for (int i = 0; i < ParamStates.Count; ++i) {
             object? updatedStateValue = calcParameterValues[numberOfInputParameters + i];
