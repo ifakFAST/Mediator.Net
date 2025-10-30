@@ -77,9 +77,16 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
                 intervalBounds[buckets.Count] = buckets[buckets.Count - 1].End;
 
                 // Convert BarAggregation enum to Aggregation enum
-                Aggregation aggregation = dataSeries.Aggregation == BarAggregation.Sum
-                    ? Aggregation.Sum
-                    : Aggregation.Average;
+                Aggregation aggregation = dataSeries.Aggregation switch {
+                    BarAggregation.Average => Aggregation.Average,
+                    BarAggregation.Sum => Aggregation.Sum,
+                    BarAggregation.Count => Aggregation.Count,
+                    BarAggregation.Min => Aggregation.Min,
+                    BarAggregation.Max => Aggregation.Max,
+                    BarAggregation.First => Aggregation.First,
+                    BarAggregation.Last => Aggregation.Last,
+                    _ => throw new Exception("Unsupported aggregation type"),
+                };                  
 
                 VTQs aggregatedData;
                 try {
@@ -259,4 +266,9 @@ public enum BarAggregation
 {
     Average, // average of all points in the time granularity interval
     Sum,     // sum of all points in the time granularity interval
+    Min,     // minimum of all points in the time granularity interval
+    Max,      // maximum of all points in the time granularity interval
+    Count,   // count of all points in the time granularity interval    
+    First,   // first value in the time granularity interval
+    Last,     // last value in the time granularity interval
 }

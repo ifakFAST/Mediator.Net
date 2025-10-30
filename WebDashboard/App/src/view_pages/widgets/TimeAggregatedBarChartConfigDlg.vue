@@ -94,7 +94,7 @@
                     <td>
                       <v-select
                         v-model="item.Aggregation"
-                        :items="['Average', 'Sum']"
+                        :items="['Average', 'Sum', 'Min', 'Max', 'Count', 'First', 'Last']"
                         style="width: 12ch; margin-left: 1ex"
                       ></v-select>
                     </td>
@@ -379,7 +379,7 @@ const addSeries = () => {
       Object: '',
       Name: 'Value',
     },
-    Aggregation: 'Sum',
+    Aggregation: 'Average',
   })
 }
 
