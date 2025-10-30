@@ -2,7 +2,7 @@
   <div>
     <v-dialog
       v-model="showDialog"
-      max-width="750px"
+      max-width="950px"
       persistent
     >
       <v-card>
@@ -18,7 +18,7 @@
               <table style="width: 100%; border-collapse: collapse; margin-top: 16px">
                 <thead>
                   <tr>
-                    <th style="width: 100%; text-align: left">Name</th>
+                    <th style="text-align: left">Name</th>
                     <th>Color</th>
                     <th>&nbsp;</th>
                     <th>Object Name</th>
@@ -37,7 +37,7 @@
                     <td>
                       <v-text-field 
                         v-model="item.Name"
-                        style="min-width: 10ch"></v-text-field>
+                        style="min-width: 20ch"></v-text-field>
                     </td>
                     <td>
                       <v-menu offset-y>
@@ -72,7 +72,7 @@
                         class="mr-2"
                       ></v-text-field>
                     </td>
-                    <td style="font-size: 14px">
+                    <td style="font-size: 14px; overflow-wrap: anywhere">
                       {{ getObjectName(item.Variable.Object) }}
                     </td>
                     <td>
