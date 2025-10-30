@@ -21,6 +21,8 @@ export interface TimeAggregatedBarChartMainConfig {
   EndTime?: string | null
   TimeGranularity: TimeGranularityOption
   WeekStart: WeekStartOption
+  ShowSumOverBars: boolean
+  SumFractionDigits: number
 }
 
 export interface TimeAggregatedBarChartConfig {

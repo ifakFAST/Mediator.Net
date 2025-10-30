@@ -52,15 +52,33 @@ import {
   type ChartData,
   type ChartOptions,
   type Plugin,
+  type ChartType,
+  type ChartDataset,
 } from 'chart.js'
 import type { TimeRange } from '../../utils'
 import type { ObjectMap } from './common'
 import type { TimeAggregatedBarChartConfig, LoadDataResponse } from './TimeAggregatedBarChartTypes'
 import TimeAggregatedBarChartConfigDlg from './TimeAggregatedBarChartConfigDlg.vue'
 
+// Extend Chart.js types to include our custom plugin options
+declare module 'chart.js' {
+  interface PluginOptionsByType<TType extends ChartType> {
+    totalLabel?: {
+      enabled?: boolean
+      fractionDigits?: number
+    }
+  }
+}
+
 const totalLabelPlugin: Plugin<'bar'> = {
   id: 'totalLabel',
   afterDatasetsDraw(chart) {
+    const options = chart.options?.plugins?.totalLabel
+    const enabled = options?.enabled ?? true
+    const fractionDigits = options?.fractionDigits ?? 2
+
+    if (!enabled) return
+
     const datasets = chart.data.datasets
     if (!datasets || datasets.length === 0) return
 
@@ -78,12 +96,12 @@ const totalLabelPlugin: Plugin<'bar'> = {
 
     if (!topVisibleMeta) return
 
-    topVisibleMeta.data.forEach((bar, index) => {
+    topVisibleMeta.data.forEach((bar, index: number) => {
       let total = 0
       let hasNumbers = false
 
       // Sum all visible datasets
-      datasets.forEach((ds, dsIndex) => {
+      datasets.forEach((ds: ChartDataset<'bar'>, dsIndex: number) => {
         const meta = chart.getDatasetMeta(dsIndex)
         if (!meta.hidden) {
           const value = ds.data[index] as number | undefined
@@ -97,8 +115,6 @@ const totalLabelPlugin: Plugin<'bar'> = {
       if (!hasNumbers || !Number.isFinite(total)) {
         return
       }
-
-      const fractionDigits = 2
 
       ctx.save()
       ctx.fillStyle = '#000'
@@ -182,6 +198,26 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
     tooltip: {
       mode: 'index',
       intersect: false,
+      animation: false,
+      filter: (tooltipItem) => {
+        // Get all items at this index to check if all values are 0/null
+        const index = tooltipItem.dataIndex
+        const chart = tooltipItem.chart
+        const datasets = chart.data.datasets
+
+        // Check if any dataset has a non-zero/non-null value at this index
+        const hasNonZeroValue = datasets.some((dataset) => {
+          const value = dataset.data[index] as number | null | undefined
+          return value !== null
+        })
+
+        // Only show tooltip if there's at least one non-zero value
+        return hasNonZeroValue
+      },
+    },
+    totalLabel: {
+      enabled: props.config.ChartConfig.ShowSumOverBars ?? true,
+      fractionDigits: props.config.ChartConfig.SumFractionDigits ?? 2,
     },
   },
 }))

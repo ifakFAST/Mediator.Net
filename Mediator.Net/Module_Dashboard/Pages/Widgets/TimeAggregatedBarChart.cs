@@ -241,6 +241,8 @@ public sealed class TimeAggregatedBarChartMainConfig
     public Timestamp? EndTime { get; set; } = null;
     public TimeGranularity TimeGranularity { get; set; } = TimeGranularity.Monthly;
     public DayOfWeek WeekStart { get; set; } = DayOfWeek.Monday; // relevant if TimeMode == Weekly
+    public bool ShowSumOverBars { get; set; } = true;
+    public int SumFractionDigits { get; set; } = 1;
 
     public bool ShouldSerializeEndTime() => EndTime.HasValue;
 }

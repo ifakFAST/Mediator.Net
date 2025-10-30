@@ -37,7 +37,9 @@
                     "ChartConfig": {
                       "StartTime": "2025-01-01T00:00:00Z",
                       "TimeGranularity": "Monthly",
-                      "WeekStart": "Monday"
+                      "WeekStart": "Monday",
+                      "ShowSumOverBars": true,
+                      "SumFractionDigits": 1
                     },
                     "DataSeries": [
                       {

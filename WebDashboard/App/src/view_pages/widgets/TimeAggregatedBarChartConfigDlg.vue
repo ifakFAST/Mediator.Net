@@ -171,6 +171,24 @@
                   </v-col>
                 </v-row>
 
+                <v-row>
+                  <v-col cols="4">
+                    <v-checkbox
+                      v-model="configData.ChartConfig.ShowSumOverBars"
+                      label="Show sum over bars"
+                    ></v-checkbox>
+                  </v-col>
+                  <v-col cols="4">
+                    <v-text-field
+                      v-model.number="configData.ChartConfig.SumFractionDigits"
+                      label="Fraction digits for sum"
+                      type="number"
+                      :min="0"
+                      :max="10"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+
               </v-container>
             </v-window-item>
           </v-window>
@@ -225,6 +243,8 @@ const createDefaultConfig = (): TimeAggregatedBarChartConfig => ({
     EndTime: null,
     TimeGranularity: 'Monthly',
     WeekStart: 'Monday',
+    ShowSumOverBars: true,
+    SumFractionDigits: 1,
   },
   DataSeries: [],
 })
@@ -319,6 +339,8 @@ const open = (
         EndTime: normalizedConfig.ChartConfig.EndTime ?? null,
         TimeGranularity: (normalizedConfig.ChartConfig.TimeGranularity || 'Monthly') as TimeGranularityOption,
         WeekStart: (normalizedConfig.ChartConfig.WeekStart || 'Monday') as WeekStartOption,
+        ShowSumOverBars: normalizedConfig.ChartConfig.ShowSumOverBars ?? true,
+        SumFractionDigits: normalizedConfig.ChartConfig.SumFractionDigits ?? 1,
       }
     }
 
