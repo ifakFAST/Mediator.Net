@@ -69,12 +69,18 @@ const totalLabelPlugin: Plugin<'bar'> = {
     const lastMeta = chart.getDatasetMeta(lastDatasetIndex)
 
     lastMeta.data.forEach((bar, index) => {
-      const total = datasets.reduce((sum, ds) => {
-        const value = ds.data[index] as number | undefined
-        return sum + (typeof value === 'number' ? value : 0)
-      }, 0)
+      let total = 0
+      let hasNumbers = false
 
-      if (!Number.isFinite(total)) {
+      datasets.forEach((ds) => {
+        const value = ds.data[index] as number | undefined
+        if (typeof value === 'number') {
+          total += value
+          hasNumbers = true
+        }
+      })
+
+      if (!hasNumbers || !Number.isFinite(total)) {
         return
       }
 
@@ -83,7 +89,7 @@ const totalLabelPlugin: Plugin<'bar'> = {
       ctx.font = 'bold 12px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'
-      ctx.fillText(total.toFixed(0), bar.x, bar.y - 4)
+      ctx.fillText(total.toFixed(2), bar.x, bar.y - 4)
       ctx.restore()
     })
   },

@@ -95,8 +95,8 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
                 }
 
                 // Extract values from VTQs
-                double[] aggregatedValues = aggregatedData
-                    .Select(vtq => vtq.V.AsDouble() ?? 0.0)
+                double?[] aggregatedValues = aggregatedData
+                    .Select(vtq => vtq.V.AsDouble())
                     .ToArray();
 
                 seriesData.Add(new SeriesData {
@@ -218,7 +218,7 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
     {
         public string Name { get; set; } = "";
         public string Color { get; set; } = "";
-        public double[] Values { get; set; } = [];
+        public double?[] Values { get; set; } = [];
     }
 }
 
