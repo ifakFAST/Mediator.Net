@@ -510,7 +510,7 @@ namespace Ifak.Fast.Mediator
         /// Each interval is [bounds[i], bounds[i+1]), left-inclusive and right-exclusive.
         ///
         /// For intervals with no data points:
-        /// - Count and Sum return 0
+        /// - Count returns 0
         /// - All other aggregations return DataValue.Empty
         ///
         /// The quality of all returned VTQs is always Good. The <paramref name="rawFilter"/> only controls

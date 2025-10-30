@@ -523,9 +523,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             else { // Sum, Average, Min, Max
                 object? result = stmt.ExecuteScalar();
                 if (result == null || result is DBNull) {
-                    return aggregation == Aggregation.Sum
-                        ? new VTQ(start, Quality.Good, DataValue.FromDouble(0.0))
-                        : new VTQ(start, Quality.Good, DataValue.Empty);
+                    return new VTQ(start, Quality.Good, DataValue.Empty);
                 }
                 return new VTQ(start, Quality.Good, DataValue.FromDouble(Convert.ToDouble(result)));
             }
