@@ -196,6 +196,21 @@
       :width="width"
       @date-window-changed="onDateWindowChanged"
     ></time-aggregated-bar-chart>
+
+    <time-aggregated-table
+      v-if="type === 'TimeAggregatedTable'"
+      :id="id"
+      :backend-async="backendAsync"
+      :config="config as any"
+      :date-window="dateWindowForComponents as any"
+      :event-name="eventName"
+      :event-payload="eventPayload"
+      :height="height"
+      :resize="resize"
+      :time-range="timeRange"
+      :width="width"
+      @date-window-changed="onDateWindowChanged"
+    ></time-aggregated-table>
   </v-card>
 </template>
 
@@ -213,6 +228,7 @@ import ImageDisplay from './widgets/ImageDisplay.vue'
 import GeoMap from './widgets/GeoMap.vue'
 import XyPlot from './widgets/xyPlot.vue'
 import TimeAggregatedBarChart from './widgets/TimeAggregatedBarChart.vue'
+import TimeAggregatedTable from './widgets/TimeAggregatedTable.vue'
 import type { TimeRange } from '../utils'
 import * as model from './model'
 

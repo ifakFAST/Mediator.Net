@@ -29,22 +29,22 @@
               "Width": "Fill",
               "Widgets": [
                 {
-                  "ID": "W_f5d9",
-                  "Type": "TimeAggregatedBarChart",
+                  "ID": "W_249c",
+                  "Type": "TimeAggregatedTable",
                   "Width": "100%",
-                  "Height": "300px",
+                  "Height": "600px",
                   "Config": {
-                    "ChartConfig": {
+                    "TableConfig": {
                       "StartTime": "2025-01-01T00:00:00Z",
-                      "TimeGranularity": "Monthly",
+                      "TimeGranularity": "Yearly",
                       "WeekStart": "Monday",
-                      "ShowSumOverBars": true,
-                      "SumFractionDigits": 1
+                      "ShowTotalRow": true,
+                      "ShowTotalColumn": true,
+                      "FractionDigits": 1
                     },
                     "DataSeries": [
                       {
-                        "Name": "Series 1",
-                        "Color": "#1BA1E2",
+                        "Name": "N2O Emissions Rate Average – Zone 1 (g/m3/d)",
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
@@ -52,10 +52,25 @@
                         "Aggregation": "Average"
                       },
                       {
-                        "Name": "Series 2",
-                        "Color": "#A05000",
+                        "Name": "N2O Emissions Rate Average – Zone 2 (g/m3/d)",
                         "Variable": {
                           "Object": "IO:Data_002",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      },
+                      {
+                        "Name": "N2O Emissions Rate Average – Zone 3 (g/m3/d) ",
+                        "Variable": {
+                          "Object": "IO:Data_003",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      },
+                      {
+                        "Name": "N2O Emissions Rate Average – Zone 4 (g/m3/d)",
+                        "Variable": {
+                          "Object": "IO:1_001",
                           "Name": "Value"
                         },
                         "Aggregation": "Average"
@@ -67,7 +82,24 @@
             },
             {
               "Width": "Fill",
-              "Widgets": []
+              "Widgets": [
+                {
+                  "ID": "W_6642",
+                  "Type": "TimeAggregatedBarChart",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "ChartConfig": {
+                      "StartTime": "2025-01-01T00:00:00Z",
+                      "TimeGranularity": "Monthly",
+                      "WeekStart": "Monday",
+                      "ShowSumOverBars": true,
+                      "SumFractionDigits": 1
+                    },
+                    "DataSeries": []
+                  }
+                }
+              ]
             }
           ]
         },
