@@ -44,6 +44,7 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
         Context.SetConfigVariables(configVars);
 
         List<TimeBucket> buckets = CalculateTimeBuckets(
+            0,
             configuration.TableConfig.StartTime,
             configuration.TableConfig.EndTime,
             configuration.TableConfig.TimeGranularity,
@@ -99,6 +100,7 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
         TimeGranularity childGranularity = GetChildGranularity(current);
 
         List<TimeBucket> buckets = CalculateTimeBuckets(
+            level + 1,
             Timestamp.FromISO8601(startTime),
             Timestamp.FromISO8601(endTime),
             childGranularity,
@@ -217,7 +219,7 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
         return await GetValuesForBucket(bucket);
     }
 
-    private List<TimeBucket> CalculateTimeBuckets(Timestamp startTs, Timestamp? endTs, TimeGranularity granularity, DayOfWeek weekStart) {
+    private static List<TimeBucket> CalculateTimeBuckets(int level, Timestamp startTs, Timestamp? endTs, TimeGranularity granularity, DayOfWeek weekStart) {
         Timestamp actualEndTs = endTs ?? Timestamp.Now;
 
         if (startTs.IsEmpty || actualEndTs.IsEmpty || actualEndTs <= startTs) {
@@ -239,7 +241,7 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
             buckets.Add(new TimeBucket {
                 Start = Timestamp.FromDateTime(current),
                 End = Timestamp.FromDateTime(cappedEnd),
-                Label = FormatLabel(current, granularity, weekStart)
+                Label = FormatLabel(level, current, granularity, weekStart)
             });
             current = next;
         }
@@ -288,12 +290,12 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
         return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, dt.Millisecond, DateTimeKind.Utc);
     }
 
-    private static string FormatLabel(DateTime bucketStart, TimeGranularity granularity, DayOfWeek weekStart) {
+    private static string FormatLabel(int level, DateTime bucketStart, TimeGranularity granularity, DayOfWeek weekStart) {
         var culture = CultureInfo.InvariantCulture;
         return granularity switch {
             TimeGranularity.Yearly => bucketStart.ToString("yyyy", culture),
             TimeGranularity.Quarterly => $"Q{((bucketStart.Month - 1) / 3) + 1} {bucketStart:yyyy}",
-            TimeGranularity.Monthly => bucketStart.ToString("MMMM yyyy", culture),
+            TimeGranularity.Monthly => level == 0 ? bucketStart.ToString("MMMM yyyy", culture) : bucketStart.ToString("MMMM", culture),
             TimeGranularity.Weekly => FormatWeeklyLabel(bucketStart, weekStart, culture),
             TimeGranularity.Daily => bucketStart.ToString("yyyy-MM-dd", culture),
             _ => bucketStart.ToString(culture)
@@ -355,6 +357,7 @@ public sealed class TimeAggregatedTableMainConfig
     public DayOfWeek WeekStart { get; set; } = DayOfWeek.Monday;
     public bool ShowTotalRow { get; set; } = true;
     public bool ShowTotalColumn { get; set; } = false;
+    public TableAggregation TotalColumnAggregation { get; set; } = TableAggregation.Sum;
     public int FractionDigits { get; set; } = 2;
 
     public bool ShouldSerializeEndTime() => EndTime.HasValue;

@@ -101,7 +101,7 @@
             <v-window-item value="table">
               <v-container>
                 <v-row>
-                  <v-col cols="4">
+                  <v-col cols="3">
                     <v-text-field
                       v-model="configData.TableConfig.StartTime"
                       label="Start Time"
@@ -109,7 +109,7 @@
                       hint="Format: YYYY-MM-DDTHH:mm:ss"
                     ></v-text-field>
                   </v-col>
-                  <v-col cols="4">
+                  <v-col cols="3">
                     <v-text-field
                       v-model="configData.TableConfig.EndTime"
                       label="End Time (optional)"
@@ -121,14 +121,14 @@
                 </v-row>
 
                 <v-row>
-                  <v-col cols="4">
+                  <v-col cols="3">
                     <v-select
                       v-model="configData.TableConfig.TimeGranularity"
                       label="Time Granularity"
                       :items="timeGranularityOptions"
                     ></v-select>
                   </v-col>
-                  <v-col cols="4" v-if="configData.TableConfig.TimeGranularity === 'Weekly'">
+                  <v-col cols="3" v-if="configData.TableConfig.TimeGranularity === 'Weekly'">
                     <v-select
                       v-model="configData.TableConfig.WeekStart"
                       label="Week Start Day"
@@ -138,19 +138,33 @@
                 </v-row>
 
                 <v-row>
-                  <v-col cols="4">
+                  <v-col cols="3">
                     <v-checkbox
                       v-model="configData.TableConfig.ShowTotalRow"
                       label="Show total row"
                     ></v-checkbox>
                   </v-col>
-                  <v-col cols="4">
+                </v-row>
+
+                <v-row>
+                  <v-col cols="3">
                     <v-checkbox
                       v-model="configData.TableConfig.ShowTotalColumn"
                       label="Show total column"
                     ></v-checkbox>
                   </v-col>
-                  <v-col cols="4">
+                  <v-col cols="3">
+                    <v-select
+                      v-model="configData.TableConfig.TotalColumnAggregation"
+                      label="Total column aggregation"
+                      :items="['Sum', 'Average', 'Min', 'Max']"
+                      :disabled="!configData.TableConfig.ShowTotalColumn"
+                    ></v-select>
+                  </v-col>
+                </v-row>
+
+                <v-row>
+                  <v-col cols="3">
                     <v-text-field
                       v-model.number="configData.TableConfig.FractionDigits"
                       label="Fraction digits"
@@ -217,6 +231,7 @@ const createDefaultConfig = (): TimeAggregatedTableConfig => ({
     WeekStart: 'Monday',
     ShowTotalRow: true,
     ShowTotalColumn: false,
+    TotalColumnAggregation: 'Sum',
     FractionDigits: 2,
   },
   DataSeries: [],
@@ -299,6 +314,7 @@ const open = (
         WeekStart: (normalizedConfig.TableConfig.WeekStart || 'Monday') as WeekStartOption,
         ShowTotalRow: normalizedConfig.TableConfig.ShowTotalRow ?? true,
         ShowTotalColumn: normalizedConfig.TableConfig.ShowTotalColumn ?? false,
+        TotalColumnAggregation: (normalizedConfig.TableConfig.TotalColumnAggregation || 'Sum') as TableAggregationOption,
         FractionDigits: normalizedConfig.TableConfig.FractionDigits ?? 2,
       }
     }

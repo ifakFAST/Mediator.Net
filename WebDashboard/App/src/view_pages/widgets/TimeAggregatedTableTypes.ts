@@ -22,6 +22,7 @@ export interface TimeAggregatedTableMainConfig {
   WeekStart: WeekStartOption
   ShowTotalRow: boolean
   ShowTotalColumn: boolean
+  TotalColumnAggregation: TableAggregationOption
   FractionDigits: number
 }
 

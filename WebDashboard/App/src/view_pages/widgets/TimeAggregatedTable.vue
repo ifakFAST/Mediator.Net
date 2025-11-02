@@ -31,7 +31,7 @@
               class="text-right"
               style="font-size: 14px; font-weight: bold"
             >
-              Total
+              {{ config.TableConfig.TotalColumnAggregation || 'Sum' }}
             </th>
           </tr>
         </thead>
@@ -221,17 +221,26 @@ const calculateRowTotal = (values: (number | null)[] | null): number | null => {
     return null
   }
 
-  let sum = 0
-  let hasValues = false
+  const validValues = values.filter(v => v !== null && v !== undefined) as number[]
 
-  for (const value of values) {
-    if (value !== null && value !== undefined) {
-      sum += value
-      hasValues = true
-    }
+  if (validValues.length === 0) {
+    return null
   }
 
-  return hasValues ? sum : null
+  const aggregation = props.config.TableConfig.TotalColumnAggregation || 'Sum'
+
+  switch (aggregation) {
+    case 'Sum':
+      return validValues.reduce((acc, val) => acc + val, 0)
+    case 'Average':
+      return validValues.reduce((acc, val) => acc + val, 0) / validValues.length
+    case 'Min':
+      return Math.min(...validValues)
+    case 'Max':
+      return Math.max(...validValues)
+    default:
+      return validValues.reduce((acc, val) => acc + val, 0) // fallback to Sum
+  }
 }
 
 const getRowStyle = (row: TimeAggregatedTableRow) => {

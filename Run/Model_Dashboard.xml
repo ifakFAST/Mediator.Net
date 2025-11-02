@@ -40,6 +40,7 @@
                       "WeekStart": "Monday",
                       "ShowTotalRow": true,
                       "ShowTotalColumn": true,
+                      "TotalColumnAggregation": "Sum",
                       "FractionDigits": 1
                     },
                     "DataSeries": [
