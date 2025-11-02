@@ -61,11 +61,15 @@ public class MQTT : AdapterBase {
 
         mapTopicsToReadableDataItemIDs.Clear();
 
+        // Build hierarchies for looking up parent nodes and topic prefixes
+        Dictionary<string, string?> itemToParentMap = BuildNodeHierarchy(config);
+        Dictionary<string, Node> nodeMap = BuildNodeMap(config);
+
         List<DataItem> allDataItems = config.GetAllDataItems();
 
         foreach (DataItem item in allDataItems) {
 
-            string topic = item.Address;
+            string topic = GetEffectiveTopic(item, itemToParentMap, nodeMap);
             string id = item.ID;
 
             if (!string.IsNullOrEmpty(topic)) {
@@ -494,6 +498,72 @@ public class MQTT : AdapterBase {
         }
     }
 
+    private static Dictionary<string, string?> BuildNodeHierarchy(Adapter config) {
+        var mapID2ParentNodeID = new Dictionary<string, string?>();
+
+        void VisitNodes(List<Node> nodes, string? parentID) {
+            foreach (Node node in nodes) {
+                mapID2ParentNodeID[node.ID] = parentID;
+                foreach (DataItem dataItem in node.DataItems) {
+                    mapID2ParentNodeID[dataItem.ID] = node.ID;
+                }
+                VisitNodes(node.Nodes, node.ID);
+            }
+        }
+
+        VisitNodes(config.Nodes, null);
+        foreach (DataItem dataItem in config.DataItems) {
+            mapID2ParentNodeID[dataItem.ID] = null;
+        }
+
+        return mapID2ParentNodeID;
+    }
+
+    private static Dictionary<string, Node> BuildNodeMap(Adapter config) {
+        var nodeMap = new Dictionary<string, Node>();
+
+        void VisitNodes(List<Node> nodes) {
+            foreach (Node node in nodes) {
+                nodeMap[node.ID] = node;
+                VisitNodes(node.Nodes);
+            }
+        }
+
+        VisitNodes(config.Nodes);
+        return nodeMap;
+    }
+
+    private static string GetEffectiveTopic(DataItem item, Dictionary<string, string?> itemToParentMap, Dictionary<string, Node> nodeMap) {
+        var prefixes = new List<string>();
+
+        // Start with the DataItem's address
+        string address = item.Address;
+
+        // Walk up the Node hierarchy collecting TopicPrefix values
+        string? currentNodeID = itemToParentMap.GetValueOrDefault(item.ID);
+        while (currentNodeID != null) {
+            if (nodeMap.TryGetValue(currentNodeID, out Node? node)) {
+                var nodeConfig = new Mediator.Config(node.Config);
+                string topicPrefix = nodeConfig.GetOptionalString("TopicPrefix", "");
+                if (!string.IsNullOrEmpty(topicPrefix)) {
+                    prefixes.Insert(0, topicPrefix.Trim('/'));
+                }
+                currentNodeID = itemToParentMap.GetValueOrDefault(currentNodeID);
+            }
+            else {
+                break;
+            }
+        }
+
+        // Build the effective topic
+        if (prefixes.Count > 0) {
+            prefixes.Add(address.Trim('/'));
+            return string.Join("/", prefixes);
+        }
+        else {
+            return address;
+        }
+    }
     public override Task<string[]> BrowseAdapterAddress() => Task.FromResult(Array.Empty<string>());
 
     public override Task<string[]> BrowseDataItemAddress(string? idOrNull) => Task.FromResult(Array.Empty<string>());
