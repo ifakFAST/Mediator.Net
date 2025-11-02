@@ -59,7 +59,7 @@
                     {{ row.IsExpanded ? 'mdi-minus-box-outline' : 'mdi-plus-box-outline' }}
                   </v-icon>
                   <span v-else style="margin-left: 24px"></span>
-                  {{ row.Label }}
+                  {{ formatRowLabel(row) }}
                 </span>
               </td>
               <td
@@ -146,6 +146,7 @@ import type {
   LoadChildDataResponse,
 } from './TimeAggregatedTableTypes'
 import TimeAggregatedTableConfigDlg from './TimeAggregatedTableConfigDlg.vue'
+import { formatTimeLabel } from './dateFormatUtils'
 
 const props = defineProps<{
   id: string
@@ -214,6 +215,15 @@ const formatValue = (value: number | null | undefined): string => {
   }
   const fractionDigits = props.config.TableConfig.FractionDigits ?? 2
   return value.toFixed(fractionDigits)
+}
+
+const formatRowLabel = (row: TimeAggregatedTableRow): string => {
+  return formatTimeLabel(
+    row.StartTime,
+    row.Granularity,
+    row.Level,
+    props.config.TableConfig.WeekStart
+  )
 }
 
 const calculateRowTotal = (values: (number | null)[] | null): number | null => {

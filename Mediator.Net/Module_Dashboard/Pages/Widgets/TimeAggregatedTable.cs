@@ -63,12 +63,12 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
                 bool canExpand = CanExpandGranularity(configuration.TableConfig.TimeGranularity);
 
                 rows.Add(new TableRow {
-                    Label = bucket.Label,
                     Values = values,
                     Level = 0,
                     CanExpand = canExpand,
                     StartTime = bucket.Start,
-                    EndTime = bucket.End
+                    EndTime = bucket.End,
+                    Granularity = configuration.TableConfig.TimeGranularity
                 });
             }
         }
@@ -117,12 +117,12 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
                 bool canExpand = CanExpandGranularity(childGranularity);
 
                 rows.Add(new TableRow {
-                    Label = bucket.Label,
                     Values = values,
                     Level = level + 1,
                     CanExpand = canExpand,
                     StartTime = bucket.Start,
-                    EndTime = bucket.End
+                    EndTime = bucket.End,
+                    Granularity = childGranularity
                 });
             }
         }
@@ -334,12 +334,12 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
 
     private class TableRow
     {
-        public string Label { get; set; } = "";
         public double?[] Values { get; set; } = [];
         public int Level { get; set; }
         public bool CanExpand { get; set; }
         public Timestamp StartTime { get; set; }
         public Timestamp EndTime { get; set; }
+        public TimeGranularity Granularity { get; set; }
     }
 }
 

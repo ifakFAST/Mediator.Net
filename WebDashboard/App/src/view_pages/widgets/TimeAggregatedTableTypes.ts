@@ -38,7 +38,6 @@ export interface TimeAggregatedTableSeriesData {
 }
 
 export interface TimeAggregatedTableRow {
-  Label: string
   Values: (number | null)[]
   Level: number
   ParentIndex?: number
@@ -46,6 +45,7 @@ export interface TimeAggregatedTableRow {
   CanExpand: boolean
   StartTime: string
   EndTime: string
+  Granularity: TimeGranularityOption
   Children?: TimeAggregatedTableRow[]
 }
 
