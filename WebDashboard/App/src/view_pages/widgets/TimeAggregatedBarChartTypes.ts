@@ -37,6 +37,8 @@ export interface TimeAggregatedBarChartSeriesData {
 }
 
 export interface LoadDataResponse {
-  Labels: string[]
+  BucketStartTimes: string[]
+  Granularity: TimeGranularityOption
+  WeekStart: WeekStartOption
   Series: TimeAggregatedBarChartSeriesData[]
 }

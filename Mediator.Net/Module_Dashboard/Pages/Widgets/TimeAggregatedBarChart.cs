@@ -115,7 +115,9 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
         }
 
         var response = new {
-            Labels = buckets.Select(b => b.Label).ToArray(),
+            BucketStartTimes = buckets.Select(b => b.Start).ToArray(),
+            Granularity = configuration.ChartConfig.TimeGranularity,
+            WeekStart = configuration.ChartConfig.WeekStart,
             Series = seriesData
         };
 

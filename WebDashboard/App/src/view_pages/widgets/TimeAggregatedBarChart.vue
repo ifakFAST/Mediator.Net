@@ -59,6 +59,7 @@ import type { TimeRange } from '../../utils'
 import type { ObjectMap } from './common'
 import type { TimeAggregatedBarChartConfig, LoadDataResponse } from './TimeAggregatedBarChartTypes'
 import TimeAggregatedBarChartConfigDlg from './TimeAggregatedBarChartConfigDlg.vue'
+import { formatTimeLabel } from './dateFormatUtils'
 
 // Extend Chart.js types to include our custom plugin options
 declare module 'chart.js' {
@@ -241,8 +242,18 @@ const loadData = async (): Promise<void> => {
       configVars: {},
     })
 
+    // Format labels using locale-aware formatting
+    const formattedLabels = response.BucketStartTimes.map(startTime =>
+      formatTimeLabel(
+        startTime,
+        response.Granularity,
+        0, // Always use level 0 (full format) for bar chart
+        response.WeekStart
+      )
+    )
+
     chartData.value = {
-      labels: response.Labels,
+      labels: formattedLabels,
       datasets: response.Series.map((series) => ({
         label: series.Name,
         data: series.Values,
@@ -253,7 +264,7 @@ const loadData = async (): Promise<void> => {
       })),
     }
 
-    console.log(`Loaded ${response.Series.length} series with ${response.Labels.length} time buckets`)
+    console.log(`Loaded ${response.Series.length} series with ${response.BucketStartTimes.length} time buckets`)
   } catch (err: any) {
     error.value = err?.message || 'Failed to load data'
     chartData.value = null

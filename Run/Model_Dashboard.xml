@@ -97,7 +97,17 @@
                       "ShowSumOverBars": true,
                       "SumFractionDigits": 1
                     },
-                    "DataSeries": []
+                    "DataSeries": [
+                      {
+                        "Name": "Series 1",
+                        "Color": "#1BA1E2",
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      }
+                    ]
                   }
                 }
               ]
