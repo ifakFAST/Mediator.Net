@@ -30,8 +30,8 @@ public class MQTT : AdapterBase {
     private readonly BufferNewDataItems bufferNewDataItems = new();
 
     private CancellationTokenSource? cancelSource;
-    private readonly Dictionary<string, List<string>> mapTopicsToReadableDataItemIDs = [];
-    private readonly Dictionary<string, string> mapDataItemID2Topic = [];
+    private readonly Dictionary<string, List<(string id, string? jsonPointer)>> mapTopicsToItemsAndPointers = [];
+    private readonly Dictionary<string, (string topic, string? jsonPointer)> mapDataItemID2TopicAndPointer = [];
 
     private bool runLoopTerminated = false;
 
@@ -59,7 +59,7 @@ public class MQTT : AdapterBase {
         var mqttConfig = MqttConfigFromAdapterConfig(config);
         this.mqttOptions = MakeMqttOptions(certBaseDir, mqttConfig);
 
-        mapTopicsToReadableDataItemIDs.Clear();
+        mapTopicsToItemsAndPointers.Clear();
 
         // Build hierarchies for looking up parent nodes and topic prefixes
         Dictionary<string, string?> itemToParentMap = BuildNodeHierarchy(config);
@@ -69,19 +69,22 @@ public class MQTT : AdapterBase {
 
         foreach (DataItem item in allDataItems) {
 
-            string topic = GetEffectiveTopic(item, itemToParentMap, nodeMap);
+            string effectiveTopic = GetEffectiveTopic(item, itemToParentMap, nodeMap);
             string id = item.ID;
 
-            if (!string.IsNullOrEmpty(topic)) {
+            if (!string.IsNullOrEmpty(effectiveTopic)) {
 
-                mapDataItemID2Topic[id] = topic;
+                // Parse topic and JSON pointer from the effective topic
+                (string topic, string? jsonPointer) = ParseTopicAndJsonPointer(effectiveTopic);
+
+                mapDataItemID2TopicAndPointer[id] = (topic, jsonPointer);
 
                 if (item.Read) {
-                    if (mapTopicsToReadableDataItemIDs.TryGetValue(topic, out List<string>? items)) {
-                        items.Add(id);
+                    if (mapTopicsToItemsAndPointers.TryGetValue(topic, out List<(string id, string? jsonPointer)>? items)) {
+                        items.Add((id, jsonPointer));
                     }
                     else {
-                        mapTopicsToReadableDataItemIDs[topic] = [id];
+                        mapTopicsToItemsAndPointers[topic] = [(id, jsonPointer)];
                     }
                 }
             }
@@ -155,7 +158,7 @@ public class MQTT : AdapterBase {
 
             clientMQTT.ApplicationMessageReceivedAsync += OnReceivedMessage;
 
-            List<string> topics = mapTopicsToReadableDataItemIDs.Keys.ToList();
+            List<string> topics = mapTopicsToItemsAndPointers.Keys.ToList();
 
             if (autoCreateDataItems) {
                 topics.Add(autoCreateDataItems_RootTopic + "/#");
@@ -225,9 +228,9 @@ public class MQTT : AdapterBase {
             LogWarn("Acknowledge", err, dataItem: null, details: e.ToString());
         }
 
-        if (mapTopicsToReadableDataItemIDs.TryGetValue(topic, out List<string>? ids)) {
+        if (mapTopicsToItemsAndPointers.TryGetValue(topic, out List<(string id, string? jsonPointer)>? items)) {
 
-            SendAssignedValues(topic, ids, Now, msg.PayloadSegment);
+            SendAssignedValues(topic, items, Now, msg.PayloadSegment);
         }
         else if(autoCreateDataItems) {
 
@@ -242,7 +245,7 @@ public class MQTT : AdapterBase {
             return;
         }
 
-        (VTQ vtq, string unit)? payload = ParsePayload(topic, Timestamp.Now, payloadBytes);
+        (VTQ vtq, string unit)? payload = ParsePayloadBytes(topic, Timestamp.Now, payloadBytes);
 
         DataType GuessDataType() {
             if (!payload.HasValue) return DataType.Float64;
@@ -294,28 +297,58 @@ public class MQTT : AdapterBase {
         return topicSuffix.Replace('/', '_').Replace(" ", "_");
     }
 
-    private void SendAssignedValues(string topic, List<string> ids, Timestamp now, ArraySegment<byte> payloadBytes) {
+    private void SendAssignedValues(string topic, List<(string id, string? jsonPointer)> itemsWithPointers, Timestamp now, ArraySegment<byte> payloadBytes) {
 
-        (VTQ vtq, string unit)? payload = ParsePayload(topic, now, payloadBytes);
+        // First, try to parse the full payload as JSON once
+        JsonNode? rootNode = null;
+        bool hasJsonPointers = itemsWithPointers.Any(item => !string.IsNullOrEmpty(item.jsonPointer));
 
-        if (payload == null) {
-            return;
+        if (hasJsonPointers) {
+            // We have at least one JSON pointer, so parse the payload as JSON
+            if (payloadBytes.Array != null && payloadBytes.Count > 0) {
+                try {
+                    string payload = Encoding.UTF8.GetString(payloadBytes);
+                    var options = new JsonNodeOptions { PropertyNameCaseInsensitive = true };
+                    rootNode = JsonNode.Parse(payload, options);
+                }
+                catch (Exception) {
+                    // Not valid JSON, can't use JSON pointers
+                    rootNode = null;
+                }
+            }
         }
 
-        var dataItems = new DataItemValue[ids.Count];
-        for (int i = 0; i < ids.Count; i++) {
-            string id = ids[i];
-            dataItems[i] = new DataItemValue(id, payload.Value.vtq);
+        var dataItems = new List<DataItemValue>();
+
+        foreach ((string id, string? jsonPointer) in itemsWithPointers) {
+
+            (VTQ vtq, string unit)? result = null;
+
+            if (string.IsNullOrEmpty(jsonPointer)) {
+                // No JSON pointer, use original behavior (parse entire payload)
+                result = ParsePayloadBytes(topic, now, payloadBytes);
+            }
+            else if (rootNode != null) {
+                // Extract value at JSON pointer path
+                result = ExtractValueAtJsonPointer(rootNode, jsonPointer, topic, now);
+            }
+            // else: JSON pointer specified but payload isn't valid JSON - silently ignore
+
+            if (result.HasValue) {
+                dataItems.Add(new DataItemValue(id, result.Value.vtq));
+            }
         }
-        callback?.Notify_DataItemsChanged(dataItems);
+
+        if (dataItems.Count > 0) {
+            callback?.Notify_DataItemsChanged(dataItems.ToArray());
+        }
     }
 
-    private (VTQ vtq, string unit)? ParsePayload(string topic, Timestamp now, ArraySegment<byte> payloadBytes) {
-
-        string unit = "";
-        var vtq = VTQ.Make(DataValue.Empty, now, Quality.Good);
+    private (VTQ vtq, string unit)? ParsePayloadBytes(string topic, Timestamp now, ArraySegment<byte> payloadBytes) {
 
         if (payloadBytes.Array == null || payloadBytes.Count <= 0) {
+            var vtq = VTQ.Make(DataValue.Empty, now, Quality.Good);
+            string unit = "";
             return (vtq, unit);
         }
 
@@ -328,6 +361,14 @@ public class MQTT : AdapterBase {
             LogWarn("Value", err);
             return null;
         }
+
+       return ParsePayloadString(topic, now, payload);
+    }
+
+    private (VTQ vtq, string unit)? ParsePayloadString(string topic, Timestamp now, string payload) {
+
+        string unit = "";
+        var vtq = VTQ.Make(DataValue.Empty, now, Quality.Good);
 
         try {
 
@@ -361,6 +402,25 @@ public class MQTT : AdapterBase {
         }
 
         return (vtq, unit);
+    }
+
+    /// <summary>
+    /// Extract value from a JSON node at a specific JSON pointer path.
+    /// Returns null if the path doesn't exist (silent ignore).
+    /// </summary>
+    private (VTQ vtq, string unit)? ExtractValueAtJsonPointer(JsonNode rootNode, string? jsonPointer, string topic, Timestamp now) {
+
+        // Navigate to the target node using JSON pointer
+        JsonNode? targetNode = NavigateJsonPointer(rootNode, jsonPointer ?? "");
+
+        if (targetNode == null) {
+            // Path not found - silently ignore
+            return null;
+        }
+
+        // Now parse the target node as if it were the full payload
+        string targetJson = targetNode.ToJsonString();
+        return ParsePayloadString(topic, now, targetJson);
     }
 
     public static VTQ? TryParseVTQ(JsonObject obj, string valueProperty, string timestampProperty) {
@@ -454,7 +514,10 @@ public class MQTT : AdapterBase {
 
             string id = div.ID;
 
-            if (mapDataItemID2Topic.TryGetValue(id, out var topic)) {
+            if (mapDataItemID2TopicAndPointer.TryGetValue(id, out (string topic, string? jsonPointer) topicAndPointer)) {
+
+                string topic = topicAndPointer.topic;
+                // Note: JSON pointer is ignored for writes, entire value is published to the topic
 
                 string payload = div.Value.V.JSON;
 
@@ -546,7 +609,7 @@ public class MQTT : AdapterBase {
                 var nodeConfig = new Mediator.Config(node.Config);
                 string topicPrefix = nodeConfig.GetOptionalString("TopicPrefix", "");
                 if (!string.IsNullOrEmpty(topicPrefix)) {
-                    prefixes.Insert(0, topicPrefix.Trim('/'));
+                    prefixes.Insert(0, topicPrefix);
                 }
                 currentNodeID = itemToParentMap.GetValueOrDefault(currentNodeID);
             }
@@ -557,13 +620,93 @@ public class MQTT : AdapterBase {
 
         // Build the effective topic
         if (prefixes.Count > 0) {
-            prefixes.Add(address.Trim('/'));
-            return string.Join("/", prefixes);
+            prefixes.Add(address);
+            return string.Join("", prefixes);
         }
         else {
             return address;
         }
     }
+
+    /// <summary>
+    /// Navigate to a specific path in a JsonNode using JSON Pointer notation.
+    /// Example: "/params/p1" navigates to root["params"]["p1"]
+    /// Returns null if the path doesn't exist.
+    /// </summary>
+    private static JsonNode? NavigateJsonPointer(JsonNode root, string jsonPointer) {
+
+        if (string.IsNullOrEmpty(jsonPointer)) {
+            return root;
+        }
+
+        // JSON Pointer should start with '/'
+        if (!jsonPointer.StartsWith('/')) {
+            return null;
+        }
+
+        // Remove leading "/" and split by "/"
+        string[] pathSegments = jsonPointer.Substring(1).Split('/');
+
+        JsonNode? current = root;
+
+        foreach (string segment in pathSegments) {
+
+            if (current == null) {
+                return null;
+            }
+
+            // Unescape JSON Pointer special characters
+            string unescapedSegment = segment.Replace("~1", "/").Replace("~0", "~");
+
+            // Try to navigate to the next segment
+            if (current is JsonObject obj) {
+                if (!obj.TryGetPropertyValue(unescapedSegment, out JsonNode? next)) {
+                    return null; // Property not found
+                }
+                current = next;
+            }
+            else if (current is JsonArray array) {
+                // Array navigation - try to parse as integer index
+                if (int.TryParse(unescapedSegment, out int index)) {
+                    if (index >= 0 && index < array.Count) {
+                        current = array[index];
+                    }
+                    else {
+                        return null; // Index out of bounds
+                    }
+                }
+                else {
+                    return null; // Invalid array index
+                }
+            }
+            else {
+                return null; // Can't navigate further
+            }
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    /// Parses the address to separate topic from JSON pointer notation.
+    /// Examples:
+    ///   "root/folder#/params/p1" -> ("root/folder", "/params/p1")
+    ///   "root/folder/#" -> ("root/folder/#", null)
+    ///   "root/folder/##/params/p1" -> ("root/folder/#", "/params/p1")
+    ///   "root/folder" -> ("root/folder", null)
+    /// </summary>
+    private static (string topic, string? jsonPointer) ParseTopicAndJsonPointer(string topicWithPointer) {
+
+        int idx = topicWithPointer.LastIndexOf("#/");
+        if (idx == -1) {
+            return (topicWithPointer, null);
+        }
+
+        string topic = topicWithPointer[..idx];
+        string pointer = topicWithPointer[(idx + 1)..];
+        return (topic, pointer);
+    }
+    
     public override Task<string[]> BrowseAdapterAddress() => Task.FromResult(Array.Empty<string>());
 
     public override Task<string[]> BrowseDataItemAddress(string? idOrNull) => Task.FromResult(Array.Empty<string>());
