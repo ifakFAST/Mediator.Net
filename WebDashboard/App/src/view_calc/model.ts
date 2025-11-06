@@ -21,6 +21,7 @@ export interface Signal {
   Unit: string
   Type: fast.DataType
   Dimension: number
+  TypeConstraints: string
   Location: fast.LocationRef | null // e.g. Influent/North Side
   Comment: string
   ValueSource: fast.VariableRef | null
