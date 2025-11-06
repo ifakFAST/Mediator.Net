@@ -86,7 +86,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
         ResolveVariables();
         List<VTTQs> listHistories = await GetVariablesData(VariablesUnresolved, tStart, tEnd, configuration.PlotConfig.MaxDataPoints);
-       
+
         IsLoaded = true;
 
         var (windowLeft, windowRight) = GetTimeWindow(timeRange, listHistories);
@@ -225,7 +225,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             }
 
             var variable = Context.ResolveVariableRef(variableUnresoved);
-            
+
             try {
 
                 DataType variableType = await GetDataTypeOrThrow(variable);
@@ -481,7 +481,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     }
 
     record DataAppendEvent(
-        long WindowLeft, 
+        long WindowLeft,
         long WindowRight,
         long DataRevision,
         string Data
@@ -749,9 +749,9 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     }
 
     private static void WriteExcelDataSIMBA(
-        ExcelPackage excel, 
-        IList<string> columns, 
-        List<VTTQs> variables, 
+        ExcelPackage excel,
+        IList<string> columns,
+        List<VTTQs> variables,
         SpreadsheetDataExport format) {
 
         const double MillisecondsPerDay = 24 * 60 * 60 * 1000.0;
@@ -759,7 +759,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         string[] tags = columns.Skip(1).ToArray();
 
         Timestamp tFirst = Timestamp.Max;
-        Timestamp tLast = Timestamp.Empty;            
+        Timestamp tLast = Timestamp.Empty;
 
         foreach (VTTQs vttqs in variables) {
             if (vttqs.Count > 0) {
@@ -868,6 +868,10 @@ public class ItemConfig
     public Axis Axis { get; set; } = Axis.Left;
     public bool Checked { get; set; } = true;
     public VariableRefUnresolved Variable { get; set; }
+
+    public string KeyValue { get; set; } = "Value"; // When the value is a object/dictionary, this is the key to use for getting the numeric value
+
+    public bool ShouldSerializeKeyValue() => KeyValue != "Value";
 
     public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
 }
