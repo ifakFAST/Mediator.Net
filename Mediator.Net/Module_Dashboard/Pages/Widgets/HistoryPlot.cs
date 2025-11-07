@@ -100,7 +100,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                 writer.Write(", \"WindowRight\": " + windowRight.JavaTicks);
                 writer.Write(", \"DataRevision\": " + dataRevision);
                 writer.Write(", \"Data\": ");
-                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
+                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories, configuration.Items);
                 writer.Write('}');
             }
             res.Seek(0, SeekOrigin.Begin);
@@ -390,7 +390,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
                     contentType = "text/csv";
                     using (var writer = new StreamWriter(res, Encoding.UTF8, 8 * 1024, leaveOpen: true)) {
-                        WriteUnifiedData(new CsvDataRecordArrayWriter(writer, columns, configuration.DataExport.CSV), listHistories);
+                        WriteUnifiedData(new CsvDataRecordArrayWriter(writer, columns, configuration.DataExport.CSV), listHistories, configuration.Items);
                     }
                     break;
 
@@ -404,7 +404,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                         }
                         else {
                             ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
-                            WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);
+                            WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories, configuration.Items);
                         }
                         excel.Save();
                     }
@@ -460,7 +460,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
             var sb = new StringBuilder();
             using (var writer = new StringWriter(sb)) {
-                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories);
+                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories, configuration.Items);
             }
 
             var evt = new DataAppendEvent(
@@ -512,7 +512,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
     }
 
-    private static void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables) {
+    private static void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables, ItemConfig[] items) {
 
         HistReader[] vars = variables.Select(v => new HistReader(v)).ToArray();
 
@@ -535,13 +535,22 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
             writer.WriteValueTimestamp(time);
 
-            foreach (var reader in vars) {
+            for (int i = 0; i < vars.Length; i++) {
+                var reader = vars[i];
                 writer.WriteColumSeparator();
                 Timestamp? t = reader.Time;
                 if (t.HasValue && t.Value == time) {
                     DataValue v = reader.Value;
                     if (IsSimpleDouble(v.JSON)) {
                         writer.WriteValueJsonDouble(v.JSON);
+                    }
+                    else if (v.IsObject && !string.IsNullOrEmpty(items[i].KeyValue)) {
+                        DataValue extracted = v[items[i].KeyValue];
+                        double? value = extracted.AsDouble();
+                        if (value.HasValue)
+                            writer.WriteValueDouble(value.Value);
+                        else
+                            writer.WriteValueEmpty();
                     }
                     else {
                         double? value = v.AsDouble();
@@ -869,9 +878,9 @@ public class ItemConfig
     public bool Checked { get; set; } = true;
     public VariableRefUnresolved Variable { get; set; }
 
-    public string KeyValue { get; set; } = "Value"; // When the value is a object/dictionary, this is the key to use for getting the numeric value
+    public string KeyValue { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the numeric value
 
-    public bool ShouldSerializeKeyValue() => KeyValue != "Value";
+    public bool ShouldSerializeKeyValue() => !string.IsNullOrEmpty(KeyValue);
 
     public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
 }
