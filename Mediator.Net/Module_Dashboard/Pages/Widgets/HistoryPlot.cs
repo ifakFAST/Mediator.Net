@@ -879,8 +879,12 @@ public class ItemConfig
     public VariableRefUnresolved Variable { get; set; }
 
     public string KeyValue { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the numeric value
+    public string KeyLabel { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the label to show above each point
+    public bool ShowLabel { get; set; } = false; // If true, show the KeyLabel value centered above each point
 
     public bool ShouldSerializeKeyValue() => !string.IsNullOrEmpty(KeyValue);
+    public bool ShouldSerializeKeyLabel() => !string.IsNullOrEmpty(KeyLabel);
+    public bool ShouldSerializeShowLabel() => ShowLabel != false;
 
     public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
 }
