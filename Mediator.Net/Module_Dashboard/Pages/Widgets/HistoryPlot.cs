@@ -100,7 +100,9 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                 writer.Write(", \"WindowRight\": " + windowRight.JavaTicks);
                 writer.Write(", \"DataRevision\": " + dataRevision);
                 writer.Write(", \"Data\": ");
-                WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories, configuration.Items);
+                List<Annotation> annotations = WriteUnifiedData(new JsonDataRecordArrayWriter(writer), listHistories, configuration.Items);
+                writer.Write(", \"Annotations\": ");
+                WriteAnnotations(writer, annotations);
                 writer.Write('}');
             }
             res.Seek(0, SeekOrigin.Begin);
@@ -512,9 +514,10 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
     }
 
-    private static void WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables, ItemConfig[] items) {
+    private static List<Annotation> WriteUnifiedData(DataRecordArrayWriter writer, List<VTTQs> variables, ItemConfig[] items) {
 
         HistReader[] vars = variables.Select(v => new HistReader(v)).ToArray();
+        List<Annotation> annotations = new List<Annotation>();
 
         writer.WriteArrayStart();
 
@@ -551,6 +554,19 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                             writer.WriteValueDouble(value.Value);
                         else
                             writer.WriteValueEmpty();
+
+                        // Extract label if ShowLabel is true and KeyLabel is specified
+                        if (!string.IsNullOrEmpty(items[i].KeyLabel)) {
+                            DataValue labelValue = v[items[i].KeyLabel];
+                            string? labelText = labelValue.GetString();
+                            if (!string.IsNullOrEmpty(labelText)) {
+                                annotations.Add(new Annotation {
+                                    Series = items[i].GetLabel(),
+                                    X = time.JavaTicks,
+                                    Text = labelText
+                                });
+                            }
+                        }
                     }
                     else {
                         double? value = v.AsDouble();
@@ -570,12 +586,29 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
 
         writer.WriteArrayEnd();
+        return annotations;
     }
 
     private static bool IsSimpleDouble(string str) {
         if (str.Length == 0) return false;
         char firstChar = str[0];
         return char.IsDigit(firstChar) || firstChar == '-';
+    }
+
+    private static void WriteAnnotations(TextWriter writer, List<Annotation> annotations) {
+        writer.Write('[');
+        for (int i = 0; i < annotations.Count; i++) {
+            if (i > 0) writer.Write(',');
+            var ann = annotations[i];
+            writer.Write("{\"series\":\"");
+            writer.Write(ann.Series.Replace("\"", "\\\""));
+            writer.Write("\",\"x\":");
+            writer.Write(ann.X);
+            writer.Write(",\"text\":\"");
+            writer.Write(ann.Text.Replace("\"", "\\\""));
+            writer.Write("\"}");
+        }
+        writer.Write(']');
     }
 
     class HistReader
@@ -868,6 +901,13 @@ public class PlotConfig
     public bool ShouldSerializeRightAxisLimitY() => RightAxisLimitY.HasValue;
 }
 
+internal class Annotation
+{
+    public string Series { get; set; } = "";
+    public long X { get; set; }
+    public string Text { get; set; } = "";
+}
+
 public class ItemConfig
 {
     public string Name { get; set; } = "";
@@ -880,11 +920,9 @@ public class ItemConfig
 
     public string KeyValue { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the numeric value
     public string KeyLabel { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the label to show above each point
-    public bool ShowLabel { get; set; } = false; // If true, show the KeyLabel value centered above each point
 
     public bool ShouldSerializeKeyValue() => !string.IsNullOrEmpty(KeyValue);
     public bool ShouldSerializeKeyLabel() => !string.IsNullOrEmpty(KeyLabel);
-    public bool ShouldSerializeShowLabel() => ShowLabel != false;
 
     public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
 }

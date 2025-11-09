@@ -540,6 +540,14 @@ interface ItemConfig {
   Axis: Axis
   Checked: boolean
   Variable: Variable
+  KeyValue?: string
+  KeyLabel?: string
+}
+
+interface Annotation {
+  series: string
+  x: number
+  text: string  
 }
 
 type SeriesType = 'Line' | 'Scatter'
@@ -893,6 +901,7 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
     WindowRight: number
     Data: any[][]
     DataRevision: number
+    Annotations: Annotation[]
   } = await props.backendAsync('LoadData', para)
 
   const resolveMap = stringWithVarResolvedMap.value
@@ -909,6 +918,28 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
   convertTimestamps(data)
   sliceDataToDateWindow(data, response.WindowLeft, response.WindowRight)
   historyData.value = data
+
+  // Handle annotations
+  if (response.Annotations && response.Annotations.length > 0) {
+    // Convert x timestamps to JavaScript Date objects
+    const processedAnnotations = response.Annotations.map((ann: Annotation) => ({
+      series: ann.series,
+      xval: ann.x,
+      shortText: ann.text,
+      width: '75',
+      height: '24',
+    }))
+    // Apply annotations to the graph
+    const theGraphValue = dyGraph.value
+    if (theGraphValue) {
+      theGraphValue.setAnnotations(processedAnnotations)
+    }
+  } else {
+    const theGraphValue = dyGraph.value
+    if (theGraphValue) {
+      theGraphValue.setAnnotations([])
+    }
+  }
 
   enforceYAxisLimits()
 
