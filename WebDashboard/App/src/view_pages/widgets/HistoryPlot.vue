@@ -534,6 +534,7 @@ import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vu
 import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
 import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
 import * as model from '../model'
+import type { DataType } from '@/fast_types'
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -1014,6 +1015,26 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   const timestamp = getContextTimestamp()
   const yvalue = getAxisValueFromContext(item.Axis)
   const yvalueStr = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
+
+  try {
+    const para = {
+      variable: item.Variable,
+    }
+    const response: {
+      Name: string,
+      Type: DataType,
+      TypeConstraints: string,
+      Dimension: number,
+      Unit: string
+    } = await props.backendAsync('GetVariableInfo', para)
+
+    console.log('Variable Info:', response)
+
+  } catch (err: any) {
+    alert(err.message)
+    return
+  }
+
   const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalueStr, item)
   if (!result) {
     return

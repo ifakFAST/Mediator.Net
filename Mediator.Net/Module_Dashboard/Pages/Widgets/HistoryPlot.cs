@@ -22,6 +22,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     private VariableRef[] variables = [];
 
     private readonly Dictionary<VariableRef, DataType> VariablesType = [];
+    private readonly Dictionary<VariableRef, VarInfo> VariablesInfo = [];
 
     private TimeRange LastTimeRange = new TimeRange();
     private bool IsLoaded = false;
@@ -71,6 +72,30 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             VariablesType[variable] = variableType;
         }
         return variableType;
+    }
+
+    public record VarInfo(
+        string Name,
+        DataType Type,
+        string TypeConstraints,
+        int Dimension,
+        string Unit
+    );
+
+    public async Task<ReqResult> UiReq_GetVariableInfo(VariableRef variable) {
+        if (!VariablesInfo.TryGetValue(variable, out VarInfo? variableInfo)) {
+            ObjectInfo objInfo = await Connection.GetObjectByID(variable.Object); // throws if object does not exist
+            Variable variableMeta = objInfo.Variables.First(v => v.Name == variable.Name); // throws if variable does not exist
+            variableInfo = new VarInfo(
+                Name: variableMeta.Name,
+                Type: variableMeta.Type,
+                TypeConstraints: variableMeta.TypeConstraints,
+                Dimension: variableMeta.Dimension,
+                Unit: variableMeta.Unit
+            );
+            VariablesInfo[variable] = variableInfo;
+        }
+        return ReqResult.OK(variableInfo);
     }
 
     public async Task<ReqResult> UiReq_LoadData(TimeRange timeRange, Dictionary<string, string> configVars) {
