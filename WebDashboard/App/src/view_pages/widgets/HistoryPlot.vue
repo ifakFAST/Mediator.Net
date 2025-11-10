@@ -902,6 +902,56 @@ const closeContextMenu = (): void => {
   contextMenu.value.show = false
 }
 
+const determineTimestampStep = (rangeMs: number): number => {
+  const Second = 1000
+  const Minute = 60 * Second
+  const Hour = 60 * Minute
+  const Day = 24 * Hour
+  if (rangeMs >= 20 * Day) {
+    return Day
+  }
+  if (rangeMs >= 7 * Day) {
+    return 6 * Hour
+  }
+  if (rangeMs >= Day) {
+    return Hour
+  }
+  if (rangeMs >= 6 * Hour) {
+    return 15 * Minute
+  }
+  if (rangeMs >= Hour) {
+    return 5 * Minute
+  }
+  if (rangeMs >= 15 * Minute) {
+    return Minute
+  }
+  if (rangeMs >= 5 * Minute) {
+    return 30 * Second
+  }
+  return Second
+}
+
+const getVisibleRangeMs = (graphInstance: any): number => {
+  try {
+    const [min, max] = graphInstance.xAxisRange()
+    return max - min
+  } catch {
+    return 0
+  }
+}
+
+const roundTimestampForVisibleRange = (timestamp: number, graphInstance: any): number => {
+  const rangeMs = getVisibleRangeMs(graphInstance)
+  if (!(rangeMs > 0)) {
+    return timestamp
+  }
+  const step = determineTimestampStep(rangeMs)
+  if (!(step > 0)) {
+    return timestamp
+  }
+  return Math.round(timestamp / step) * step
+}
+
 const updateContextMenuDataFromMouse = (e: MouseEvent): void => {
   const wrapper = graphWrapper.value
   const graphInstance = dyGraph.value
@@ -918,7 +968,8 @@ const updateContextMenuDataFromMouse = (e: MouseEvent): void => {
 
   try {
     const [timestamp, leftY] = graphInstance.toDataCoords(canvasX, canvasY)
-    contextMenu.value.timestamp = typeof timestamp === 'number' ? timestamp : null
+    contextMenu.value.timestamp =
+      typeof timestamp === 'number' ? roundTimestampForVisibleRange(timestamp, graphInstance) : null
     contextMenu.value.yLeft = typeof leftY === 'number' ? leftY : null
   } catch {
     contextMenu.value.timestamp = null
