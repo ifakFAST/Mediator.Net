@@ -1,6 +1,9 @@
 <template>
   <div>
-    <div @contextmenu="onContextMenu">
+    <div
+      ref="graphWrapper"
+      @contextmenu="onContextMenu"
+    >
       <dy-graph
         ref="theGraph"
         :graph-data="historyData"
@@ -516,6 +519,7 @@
       :object-id="selectObject.selectedObjectID"
       @onselected="selectObject_OK"
     ></dlg-object-select>
+    <history-plot-insert-data-point-dlg ref="insertDataPointDialog"></history-plot-insert-data-point-dlg>
   </div>
 </template>
 
@@ -528,6 +532,7 @@ import type { TimeRange, TimeUnit } from '../../utils'
 import { TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
+import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
 import * as model from '../model'
 
 /////////////////////////////////////////////////////////////////////////
@@ -610,6 +615,24 @@ interface DownloadOptions {
   simbaFormat: boolean
 }
 
+interface InsertDataPointResult {
+  timestamp: number
+  value: number
+}
+
+interface ContextMenuState {
+  show: boolean
+  clientX: number
+  clientY: number
+  timestamp: number | null
+  yLeft: number | null
+  yRight: number | null
+}
+
+interface InsertDataPointDialogExpose {
+  open: (timestamp: number, yvalue: number, item: ItemConfig) => Promise<InsertDataPointResult | null>
+}
+
 /////////////////////////////////////////////////////////////////////////
 
 interface EditorPlot {
@@ -658,10 +681,13 @@ const emit = defineEmits<{
 // Reactive data
 const qualityFilterValues = ref(QualityFilterValues)
 const canUpdateConfig = ref(false)
-const contextMenu = ref({
+const contextMenu = ref<ContextMenuState>({
   show: false,
   clientX: 0,
   clientY: 0,
+  timestamp: null,
+  yLeft: null,
+  yRight: null,
 })
 const historyData = ref<any[][]>([])
 const zoomResetTime = ref(0)
@@ -713,6 +739,8 @@ const stringWithVarResolvedMap = ref<Map<string, string>>(new Map())
 
 // Template refs
 const theGraph = ref<InstanceType<typeof DyGraph> | null>(null)
+const graphWrapper = ref<HTMLElement | null>(null)
+const insertDataPointDialog = ref<InsertDataPointDialogExpose | null>(null)
 
 // Computed properties
 const variables = computed(() => {
@@ -848,7 +876,7 @@ const resolvedRightAxisName = computed(() => {
 })
 
 const dyGraph = computed(() => {
-  const gr: any = theGraph.value
+  const gr = theGraph.value
   if (gr) {
     return gr._data.graph.value
   }
@@ -856,7 +884,7 @@ const dyGraph = computed(() => {
 })
 
 const dyGraphID = computed(() => {
-  const gr: any = theGraph.value
+  const gr = theGraph.value
   if (gr) {
     return gr._data.id.value
   }
@@ -874,10 +902,51 @@ const closeContextMenu = (): void => {
   contextMenu.value.show = false
 }
 
+const updateContextMenuDataFromMouse = (e: MouseEvent): void => {
+  const wrapper = graphWrapper.value
+  const graphInstance = dyGraph.value
+  if (!wrapper || !graphInstance) {
+    contextMenu.value.timestamp = null
+    contextMenu.value.yLeft = null
+    contextMenu.value.yRight = null
+    return
+  }
+
+  const rect = wrapper.getBoundingClientRect()
+  const canvasX = e.clientX - rect.left
+  const canvasY = e.clientY - rect.top
+
+  try {
+    const [timestamp, leftY] = graphInstance.toDataCoords(canvasX, canvasY)
+    contextMenu.value.timestamp = typeof timestamp === 'number' ? timestamp : null
+    contextMenu.value.yLeft = typeof leftY === 'number' ? leftY : null
+  } catch {
+    contextMenu.value.timestamp = null
+    contextMenu.value.yLeft = null
+  }
+
+  try {
+    const [, rightY] = graphInstance.toDataCoords(canvasX, canvasY, 1)
+    contextMenu.value.yRight = typeof rightY === 'number' ? rightY : null
+  } catch {
+    contextMenu.value.yRight = null
+  }
+}
+
+const getContextTimestamp = (): number => {
+  return contextMenu.value.timestamp ?? new Date().getTime()
+}
+
+const getAxisValueFromContext = (axis: Axis): number => {
+  const value = axis === 'Right' ? contextMenu.value.yRight : contextMenu.value.yLeft
+  return value ?? 0
+}
+
 const onContextMenu = (e: MouseEvent): void => {
   e.preventDefault()
   e.stopPropagation()
   closeContextMenu()
+  updateContextMenuDataFromMouse(e)
   contextMenu.value.clientX = e.clientX
   contextMenu.value.clientY = e.clientY
   nextTick(() => {
@@ -885,9 +954,19 @@ const onContextMenu = (e: MouseEvent): void => {
   })
 }
 
-const onInsertDataPoint = (item: ItemConfig): void => {
+const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   closeContextMenu()
-  console.log('Insert data point for item:', item)
+  const dialog = insertDataPointDialog.value
+  if (!dialog) {
+    return
+  }
+  const timestamp = getContextTimestamp()
+  const yvalue = getAxisValueFromContext(item.Axis)
+  const result = await dialog.open(timestamp, yvalue, item)
+  if (!result) {
+    return
+  }
+  // TODO: Handle inserting data point result once backend process is defined
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
