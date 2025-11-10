@@ -12,6 +12,7 @@
 
     <v-menu
       v-model="contextMenu.show"
+      :close-on-content-click="false"
       :target="[contextMenu.clientX, contextMenu.clientY]"
     >
       <v-list>
@@ -32,6 +33,28 @@
         </v-list-item>
         <v-list-item @click="downloadSpreadsheet">
           <v-list-item-title>Download Spreadsheet File</v-list-item-title>
+        </v-list-item>
+        <v-list-item 
+          v-if="items.length > 0" 
+          append-icon="mdi-menu-right"
+        >
+          <v-list-item-title>Insert data point</v-list-item-title>
+          <v-menu            
+            activator="parent"
+            open-on-hover
+            submenu
+            :transition="false"
+          >
+            <v-list>
+              <v-list-item
+                v-for="(item, idx) in items"
+                :key="idx"
+                @click="onInsertDataPoint(item)"
+              >
+                <v-list-item-title>{{ item.Name }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -847,15 +870,24 @@ const isItemsOK = computed(() => {
 })
 
 // Methods
+const closeContextMenu = (): void => {
+  contextMenu.value.show = false
+}
+
 const onContextMenu = (e: MouseEvent): void => {
   e.preventDefault()
   e.stopPropagation()
-  contextMenu.value.show = false
+  closeContextMenu()
   contextMenu.value.clientX = e.clientX
   contextMenu.value.clientY = e.clientY
   nextTick(() => {
     contextMenu.value.show = true
   })
+}
+
+const onInsertDataPoint = (item: ItemConfig): void => {
+  closeContextMenu()
+  console.log('Insert data point for item:', item)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
@@ -877,6 +909,7 @@ const onDownloadOptionsKeydown = (e: KeyboardEvent): void => {
 }
 
 const onConfigurePlotItems = async (): Promise<void> => {
+  closeContextMenu()
   const response: {
     ObjectMap: ObjectMap
     Modules: ModuleInfo[]
@@ -1214,6 +1247,7 @@ const editorItems_ObjectID2Variables = (id: Variable): string[] => {
 }
 
 const onConfigurePlot = (): void => {
+  closeContextMenu()
   const str = JSON.stringify(plotConfig.value)
   editorPlot.value.plot = JSON.parse(str)
   editorPlot.value.show = true
@@ -1272,11 +1306,13 @@ const selectObject_OK = (obj: Obj): void => {
 }
 
 const downloadSpreadsheet = (): void => {
+  closeContextMenu()
   downloadOptions.value.fileType = 'Spreadsheet'
   showDownloadDlg()
 }
 
 const downloadCSV = (): void => {
+  closeContextMenu()
   downloadOptions.value.fileType = 'CSV'
   downloadOptions.value.simbaFormat = false
   showDownloadDlg()
