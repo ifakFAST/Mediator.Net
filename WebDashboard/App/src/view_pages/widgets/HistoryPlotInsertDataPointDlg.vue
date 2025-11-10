@@ -14,6 +14,8 @@
         <v-text-field
           v-model="state.timestampText"
           label="Timestamp"
+          hint="YYYY-MM-DD HH:mm:ss"
+          persistent-hint
         ></v-text-field>
         <v-text-field
           v-model="state.valueText"
@@ -70,8 +72,32 @@ const state = reactive<DialogState>({
 
 let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
+const pad = (value: number): string => {
+  return value.toString().padStart(2, '0')
+}
+
+const formatTimestampForDisplay = (timestamp: number): string => {
+  const date = new Date(timestamp)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
+    date.getMinutes(),
+  )}:${pad(date.getSeconds())}`
+}
+
+const parseTimestampFromDisplay = (text: string): number => {
+  const trimmed = text.trim()
+  if (trimmed === '') {
+    return Date.now()
+  }
+  const normalized = trimmed.replace(' ', 'T')
+  const parsed = Date.parse(normalized)
+  if (Number.isNaN(parsed)) {
+    return Date.now()
+  }
+  return parsed
+}
+
 const open = async (timestamp: number, yvalue: number, item: ItemConfig): Promise<InsertDataPointResult | null> => {
-  state.timestampText = timestamp.toString()
+  state.timestampText = formatTimestampForDisplay(timestamp)
   state.valueText = yvalue.toString()
   state.itemName = item.Name
   state.show = true
@@ -97,7 +123,7 @@ const onCancel = (): void => {
 }
 
 const onSave = (): void => {
-  const timestamp = Number(state.timestampText)
+  const timestamp = parseTimestampFromDisplay(state.timestampText)
   const value = Number(state.valueText)
   closeDialog()
   resolveAndReset({
