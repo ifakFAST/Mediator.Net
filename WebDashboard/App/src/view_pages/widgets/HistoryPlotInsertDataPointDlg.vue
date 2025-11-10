@@ -54,7 +54,7 @@ interface ItemConfig {
 
 interface InsertDataPointResult {
   timestamp: number
-  value: number
+  value: string
 }
 
 interface DialogState {
@@ -99,9 +99,9 @@ const parseTimestampFromDisplay = (text: string): number => {
   return parsed
 }
 
-const open = async (timestamp: number, yvalue: number, item: ItemConfig): Promise<InsertDataPointResult | null> => {
+const open = async (timestamp: number, yvalue: string, item: ItemConfig): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
-  state.valueText = yvalue.toString()
+  state.valueText = yvalue
   state.itemName = item.Name
   state.show = true
 
@@ -127,7 +127,7 @@ const onCancel = (): void => {
 
 const onSave = (): void => {
   const timestamp = parseTimestampFromDisplay(state.timestampText)
-  const value = Number(state.valueText)
+  const value = state.valueText
   closeDialog()
   resolveAndReset({
     timestamp,

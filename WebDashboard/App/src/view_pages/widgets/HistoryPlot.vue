@@ -617,7 +617,7 @@ interface DownloadOptions {
 
 interface InsertDataPointResult {
   timestamp: number
-  value: number
+  value: string
 }
 
 interface ContextMenuState {
@@ -630,7 +630,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: number, item: ItemConfig) => Promise<InsertDataPointResult | null>
+  open: (timestamp: number, yvalue: string, item: ItemConfig) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1013,7 +1013,8 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   }
   const timestamp = getContextTimestamp()
   const yvalue = getAxisValueFromContext(item.Axis)
-  const result = await dialog.open(timestamp, yvalue, item)
+  const yvalueStr = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
+  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalueStr, item)
   if (!result) {
     return
   }
