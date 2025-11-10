@@ -29,5 +29,6 @@ export default createVuetify({
     VTextarea: { density: 'compact', hideDetails: true },
     VChip: { density: 'compact' },
     VSwitch: { density: 'compact', transition: false },
+    VList: { density: 'compact', transition: false },
   },
 })

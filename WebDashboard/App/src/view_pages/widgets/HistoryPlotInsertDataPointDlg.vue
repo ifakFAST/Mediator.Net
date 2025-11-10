@@ -213,8 +213,6 @@ const onKeydown = (e: KeyboardEvent): void => {
   }
 }
 
-
-
 defineExpose({
   open,
 })

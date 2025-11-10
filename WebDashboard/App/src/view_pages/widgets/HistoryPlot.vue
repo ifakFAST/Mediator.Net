@@ -1034,7 +1034,7 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   if (!result) {
     return
   }
-  // TODO: Handle inserting data point result once backend process is defined
+  // TODO: Handle inserting data point by calling backend (result.value is the raw JSON value that is mapped to a DataValue on the backend)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
