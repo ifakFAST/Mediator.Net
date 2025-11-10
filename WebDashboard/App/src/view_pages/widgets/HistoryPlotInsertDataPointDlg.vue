@@ -13,9 +13,10 @@
       <v-card-text>
         <v-text-field
           v-model="state.timestampText"
+          class="mb-5"
           label="Timestamp"
-          hint="YYYY-MM-DD HH:mm:ss"
-          persistent-hint
+          :messages="[timestampHint]"
+          hide-details="auto"
         ></v-text-field>
         <v-text-field
           v-model="state.valueText"
@@ -69,6 +70,8 @@ const state = reactive<DialogState>({
   valueText: '',
   itemName: '',
 })
+
+const timestampHint = 'YYYY-MM-DD HH:mm:ss (local time; append Z for UTC)'
 
 let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
