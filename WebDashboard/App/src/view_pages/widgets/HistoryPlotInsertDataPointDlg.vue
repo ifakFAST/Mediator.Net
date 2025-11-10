@@ -76,9 +76,10 @@ const timestampHint = 'YYYY-MM-DD HH:mm:ss (local time; append Z for UTC)'
 
 let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
-type KeyValuePair = { Key: string; Value: string };
+type MemberType = 'string' | 'number';
+type TypedMember = { Name: string; Type: MemberType };
 
-const parseTypeConstraints = (str: string): KeyValuePair[] => {
+const parseTypeConstraints = (str: string): TypedMember[] => {
   if (!str || /^\s*$/.test(str)) return [];
   return str
     .split(",")
@@ -87,11 +88,11 @@ const parseTypeConstraints = (str: string): KeyValuePair[] => {
     .map(part => {
       const kv = part.split(":").filter(s => s.length > 0); // remove empty entries
       if (kv.length !== 2) {
-        throw new Error(`Invalid key/value pair: '${part}'`);
+        throw new Error(`Invalid name/type pair: '${part}'`);
       }
       return {
-        Key: kv[0].trim(),
-        Value: kv[1].trim(),
+        Name: kv[0].trim(),
+        Type: kv[1].trim().toLowerCase() as MemberType,
       };
     });
 }
