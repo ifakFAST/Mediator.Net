@@ -19,9 +19,18 @@
           hide-details="auto"
         ></v-text-field>
         <v-text-field
+          v-if="!isObject"
           v-model="state.valueText"
           label="Value"
         ></v-text-field>
+        <template v-if="isObject">
+          <v-text-field
+            v-for="member in objectMembers"
+            :key="member.Name"
+            v-model="memberValues[member.Name]"
+            :label="member.Name"
+          ></v-text-field>
+        </template>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -81,6 +90,7 @@ type TypedMember = { Name: string; Type: MemberType };
 
 const isObject = ref<boolean>(false)
 const objectMembers = ref<TypedMember[]>([])
+const memberValues = ref<Record<string, string>>({})
 
 const parseTypeConstraints = (str: string): TypedMember[] => {
   if (!str || /^\s*$/.test(str)) return [];
@@ -124,9 +134,9 @@ const parseTimestampFromDisplay = (text: string): number => {
   return parsed
 }
 
-const open = async (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo): Promise<InsertDataPointResult | null> => {
+const open = async (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
-  state.valueText = yvalue
+  state.valueText = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
   state.itemName = item.Name
   state.show = true
 
@@ -134,9 +144,22 @@ const open = async (timestamp: number, yvalue: string, item: ItemConfig, variabl
   if (isObject.value) {
     try {
       objectMembers.value = parseTypeConstraints(variableInfo.TypeConstraints)
+
+      memberValues.value = {}
+
+      const valueMember = objectMembers.value.find(m => {
+        const name = m.Name.toLowerCase()
+        return name === 'value' || name === 'val' || name === 'v'
+      })
+
+      if (valueMember) {
+        memberValues.value[valueMember.Name] = state.valueText
+      }
+
     } catch (err: any) {
       alert(`Failed to parse variable type constraints: ${err.message}`)
       objectMembers.value = []
+      memberValues.value = {}
     }
   }
 
@@ -162,7 +185,24 @@ const onCancel = (): void => {
 
 const onSave = (): void => {
   const timestamp = parseTimestampFromDisplay(state.timestampText)
-  const value = state.valueText
+  let value: string
+
+  if (isObject.value) {
+    // Construct JSON object from member values
+    const obj: Record<string, string | number> = {}
+    for (const member of objectMembers.value) {
+      const val = memberValues.value[member.Name] || ''
+      if (member.Type === 'number') {
+        obj[member.Name] = val === '' ? 0 : Number(val)
+      } else {
+        obj[member.Name] = val
+      }
+    }
+    value = JSON.stringify(obj)
+  } else {
+    value = state.valueText
+  }
+
   closeDialog()
   resolveAndReset({
     timestamp,

@@ -631,7 +631,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo) => Promise<InsertDataPointResult | null>
+  open: (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1014,21 +1014,23 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   }
   const timestamp = getContextTimestamp()
   const yvalue = getAxisValueFromContext(item.Axis)
-  const yvalueStr = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
-
+  let variableInfo: VariableInfo
   try {
     const para = {
       variable: item.Variable,
     }
     const response: VariableInfo = await props.backendAsync('GetVariableInfo', para)
     console.log('Variable Info:', response)
+    variableInfo = response
 
   } catch (err: any) {
     alert(err.message)
     return
   }
 
-  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalueStr, item)
+  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalue, item, variableInfo)
+  console.log('Insert Data Point Result:', result)
+
   if (!result) {
     return
   }
