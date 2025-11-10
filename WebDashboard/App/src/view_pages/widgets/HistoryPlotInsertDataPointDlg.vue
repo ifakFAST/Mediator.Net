@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import type { VariableInfo } from './common'
 
 type Axis = 'Left' | 'Right'
@@ -78,6 +78,9 @@ let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
 type MemberType = 'string' | 'number';
 type TypedMember = { Name: string; Type: MemberType };
+
+const isObject = ref<boolean>(false)
+const objectMembers = ref<TypedMember[]>([])
 
 const parseTypeConstraints = (str: string): TypedMember[] => {
   if (!str || /^\s*$/.test(str)) return [];
@@ -126,6 +129,16 @@ const open = async (timestamp: number, yvalue: string, item: ItemConfig, variabl
   state.valueText = yvalue
   state.itemName = item.Name
   state.show = true
+
+  isObject.value = variableInfo.Type == 'Struct' && variableInfo.Dimension == 1
+  if (isObject.value) {
+    try {
+      objectMembers.value = parseTypeConstraints(variableInfo.TypeConstraints)
+    } catch (err: any) {
+      alert(`Failed to parse variable type constraints: ${err.message}`)
+      objectMembers.value = []
+    }
+  }
 
   return await new Promise<InsertDataPointResult | null>((resolve) => {
     resolver = resolve
