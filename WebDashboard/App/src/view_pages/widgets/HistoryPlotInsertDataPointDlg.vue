@@ -6,22 +6,19 @@
     @keydown="onKeydown"
   >
     <v-card>
-      <v-card-title class="text-wrap">Insert Data Point</v-card-title>
-      <v-card-subtitle v-if="state.itemName">
-        {{ state.itemName }}
-      </v-card-subtitle>
+      <v-card-title class="text-wrap">Insert Data Point into {{ state.itemName }}</v-card-title>
       <v-card-text>
+        <label class="text-subtitle-2 mb-2">Timestamp</label>
         <v-text-field
           v-model="state.timestampText"
-          class="mb-5"
-          label="Timestamp"
+          class="mb-4"
           :messages="[timestampHint]"
           hide-details="auto"
         ></v-text-field>
+        <label class="text-subtitle-2 mb-2">Value</label>
         <v-text-field
           v-if="!isObject"
           v-model="state.valueText"
-          label="Value"
         ></v-text-field>
         <template v-if="isObject">
           <v-text-field

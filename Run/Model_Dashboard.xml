@@ -58,6 +58,18 @@
                         },
                         "KeyValue": "Value",
                         "KeyLabel": "Label"
+                      },
+                      {
+                        "Name": "SO",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -316,8 +328,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       },
                       {
                         "Name": "NH",
@@ -331,8 +342,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       },
                       {
                         "Name": "TSS",
@@ -346,8 +356,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       },
                       {
                         "Name": "SO PP",
@@ -361,8 +370,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       }
                     ],
                     "DataExport": {
@@ -414,8 +422,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       },
                       {
                         "Name": "NH",
@@ -429,8 +436,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       }
                     ],
                     "DataExport": {
@@ -488,8 +494,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       }
                     ],
                     "DataExport": {
@@ -537,8 +542,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       }
                     ],
                     "DataExport": {
@@ -695,8 +699,7 @@
                           "Name": "Value"
                         },
                         "KeyValue": "Value",
-                        "KeyLabel": "Label",
-                        "ShowLabel": true
+                        "KeyLabel": "Label"
                       }
                     ],
                     "DataExport": {
