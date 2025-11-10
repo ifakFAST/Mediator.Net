@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue'
+import type { VariableInfo } from './common'
 
 type Axis = 'Left' | 'Right'
 
@@ -75,6 +76,26 @@ const timestampHint = 'YYYY-MM-DD HH:mm:ss (local time; append Z for UTC)'
 
 let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
+type KeyValuePair = { Key: string; Value: string };
+
+const parseTypeConstraints = (str: string): KeyValuePair[] => {
+  if (!str || /^\s*$/.test(str)) return [];
+  return str
+    .split(",")
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(part => {
+      const kv = part.split(":").filter(s => s.length > 0); // remove empty entries
+      if (kv.length !== 2) {
+        throw new Error(`Invalid key/value pair: '${part}'`);
+      }
+      return {
+        Key: kv[0].trim(),
+        Value: kv[1].trim(),
+      };
+    });
+}
+
 const pad = (value: number): string => {
   return value.toString().padStart(2, '0')
 }
@@ -99,7 +120,7 @@ const parseTimestampFromDisplay = (text: string): number => {
   return parsed
 }
 
-const open = async (timestamp: number, yvalue: string, item: ItemConfig): Promise<InsertDataPointResult | null> => {
+const open = async (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
   state.valueText = yvalue
   state.itemName = item.Name
@@ -140,6 +161,8 @@ const onKeydown = (e: KeyboardEvent): void => {
     onCancel()
   }
 }
+
+
 
 defineExpose({
   open,

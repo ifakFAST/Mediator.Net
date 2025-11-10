@@ -531,7 +531,7 @@ import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 import type { TimeRange, TimeUnit } from '../../utils'
 import { TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
-import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
+import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo, VariableInfo } from './common'
 import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
 import * as model from '../model'
 import type { DataType } from '@/fast_types'
@@ -631,7 +631,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: string, item: ItemConfig) => Promise<InsertDataPointResult | null>
+  open: (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1020,14 +1020,7 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
     const para = {
       variable: item.Variable,
     }
-    const response: {
-      Name: string,
-      Type: DataType,
-      TypeConstraints: string,
-      Dimension: number,
-      Unit: string
-    } = await props.backendAsync('GetVariableInfo', para)
-
+    const response: VariableInfo = await props.backendAsync('GetVariableInfo', para)
     console.log('Variable Info:', response)
 
   } catch (err: any) {
