@@ -29,6 +29,7 @@ const deepCopy = (obj: any) => {
   copy.legendFormatter = obj.legendFormatter
   copy.zoomCallback = obj.zoomCallback
   copy.underlayCallback = obj.underlayCallback
+  copy.drawPointCallback = obj.drawPointCallback
   return copy
 }
 
