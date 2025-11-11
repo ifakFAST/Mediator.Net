@@ -2,7 +2,6 @@
  * MyAnnotations Plugin for Dygraphs
  *
  * This is a TypeScript port of the built-in Dygraphs Annotations plugin.
- * Initially works exactly the same as the original - can be customized later.
  *
  * Based on: dygraphs/src/plugins/annotations.js
  * License: MIT
@@ -18,18 +17,6 @@ interface AnnotationPoint {
 interface AnnotationConfig {
   text?: string
   shortText?: string
-  icon?: string
-  width?: number
-  height?: number
-  tickHeight?: number
-  tickColor?: string
-  tickWidth?: number
-  cssClass?: string
-  attachAtBottom?: boolean
-  div?: HTMLDivElement
-  clickHandler?: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => void
-  mouseOverHandler?: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => void
-  mouseOutHandler?: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => void
   dblClickHandler?: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => void
 }
 
@@ -97,7 +84,7 @@ class MyAnnotations {
 
       const div = document.createElement('div')
       div.style.fontSize = g.getOption('axisLabelFontSize') + 'px'
-      div.className = 'dygraph-annotation'      
+      div.className = 'dygraph-annotation'
       div.appendChild(document.createTextNode(p.annotation.shortText!))
       div.style.visibility = 'hidden'
       containerDiv.appendChild(div)
@@ -111,7 +98,6 @@ class MyAnnotations {
       div.style.visibility = 'visible'
       div.title = p.annotation.text || ''
       //div.style.color = g.colorsMap_[p.name]
-      a.div = div
       this.annotations_.push(div)
     }
   }
