@@ -334,6 +334,15 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             }
         }
 
+        if (!reloadData) {
+            for (int i = 0; i < items.Length; ++i) {
+                if (!items[i].ObjectConfig.Equals(configuration.Items[i].ObjectConfig)) {
+                    reloadData = true;
+                    break;
+                }
+            }
+        }
+
         configuration.Items = items;
 
         await Context.SaveWidgetConfiguration(configuration);
@@ -988,6 +997,20 @@ public sealed class ObjectConfig {
     public string KeyTooltip { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the tooltip to show above each point
 
     public bool ShouldSerialize() => !string.IsNullOrEmpty(KeyLabel) || !string.IsNullOrEmpty(KeyValue) || ShowLabel || !string.IsNullOrEmpty(KeyTooltip);
+
+    public override bool Equals(object? obj) {
+        if (obj is ObjectConfig other) {
+            return KeyValue == other.KeyValue &&
+                   ShowLabel == other.ShowLabel &&
+                   KeyLabel == other.KeyLabel &&
+                   KeyTooltip == other.KeyTooltip;
+        }
+        return false;
+    }
+
+    public override int GetHashCode() {
+        return HashCode.Combine(KeyValue, ShowLabel, KeyLabel, KeyTooltip);
+    }
 }
 
 public enum SeriesType
