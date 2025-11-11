@@ -1,6 +1,9 @@
 <template>
   <tr>
-    <td class="FieldName" style="vertical-align: top">
+    <td
+      class="FieldName"
+      style="vertical-align: top"
+    >
       <div style="padding-top: 8px">{{ name }}</div>
     </td>
 

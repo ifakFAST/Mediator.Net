@@ -36,7 +36,8 @@
                       <v-text-field
                         v-model="item.Name"
                         class="mr-2"
-                        style="min-width: 20ch"></v-text-field>
+                        style="min-width: 20ch"
+                      ></v-text-field>
                     </td>
                     <td style="font-size: 14px; overflow-wrap: anywhere">
                       {{ getObjectName(item.Variable.Object) }}
@@ -128,7 +129,10 @@
                       :items="timeGranularityOptions"
                     ></v-select>
                   </v-col>
-                  <v-col cols="3" v-if="configData.TableConfig.TimeGranularity === 'Weekly'">
+                  <v-col
+                    cols="3"
+                    v-if="configData.TableConfig.TimeGranularity === 'Weekly'"
+                  >
                     <v-select
                       v-model="configData.TableConfig.WeekStart"
                       label="Week Start Day"
@@ -174,7 +178,6 @@
                     ></v-text-field>
                   </v-col>
                 </v-row>
-
               </v-container>
             </v-window-item>
           </v-window>
@@ -296,11 +299,7 @@ const cloneSeries = (items: TimeAggregatedTableDataSeries[]): TimeAggregatedTabl
     },
   }))
 
-const open = (
-  config: TimeAggregatedTableConfig,
-  objectMapData: ObjectMap,
-  modules: ModuleInfo[],
-): Promise<TimeAggregatedTableConfig | null> => {
+const open = (config: TimeAggregatedTableConfig, objectMapData: ObjectMap, modules: ModuleInfo[]): Promise<TimeAggregatedTableConfig | null> => {
   return new Promise((resolve) => {
     const normalizedConfig = JSON.parse(JSON.stringify(config ?? createDefaultConfig())) as TimeAggregatedTableConfig
 

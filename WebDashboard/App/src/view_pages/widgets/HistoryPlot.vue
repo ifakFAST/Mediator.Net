@@ -37,12 +37,12 @@
         <v-list-item @click="downloadSpreadsheet">
           <v-list-item-title>Download Spreadsheet File</v-list-item-title>
         </v-list-item>
-        <v-list-item 
-          v-if="items.length > 0" 
+        <v-list-item
+          v-if="items.length > 0"
           append-icon="mdi-menu-right"
         >
           <v-list-item-title>Insert data point</v-list-item-title>
-          <v-menu            
+          <v-menu
             activator="parent"
             open-on-hover
             submenu
@@ -543,7 +543,6 @@
 </template>
 
 <script setup lang="ts">
-
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, getCurrentInstance } from 'vue'
 import DyGraph from '../../components/DyGraph.vue'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
@@ -596,7 +595,7 @@ interface ObjectConfig {
   KeyValue: string
   ShowLabel: boolean
   KeyLabel: string
-  KeyTooltip:string
+  KeyTooltip: string
 }
 
 interface Annotation {
@@ -880,7 +879,7 @@ const options = computed(() => {
     emit('date-window-changed', dateWindow)
     enforceYAxisLimitsWithCurrentRanges(yRanges)
   }
-/*
+  /*
   const drawPointCallback = (g: any, seriesName: string, canvasContext: CanvasRenderingContext2D, cx: number, cy: number, color: string, pointSize: number, idx: number) => {
     // Draw the default point
     canvasContext.beginPath()
@@ -1046,8 +1045,7 @@ const updateContextMenuDataFromMouse = (e: MouseEvent): void => {
 
   try {
     const [timestamp, leftY] = graphInstance.toDataCoords(canvasX, canvasY)
-    contextMenu.value.timestamp =
-      typeof timestamp === 'number' ? roundTimestampForVisibleRange(timestamp, graphInstance) : null
+    contextMenu.value.timestamp = typeof timestamp === 'number' ? roundTimestampForVisibleRange(timestamp, graphInstance) : null
     contextMenu.value.yLeft = typeof leftY === 'number' ? leftY : null
   } catch {
     contextMenu.value.timestamp = null
@@ -1099,7 +1097,6 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
     const response: VariableInfo = await props.backendAsync('GetVariableInfo', para)
     console.log('Variable Info:', response)
     variableInfo = response
-
   } catch (err: any) {
     alert(err.message)
     return
@@ -1205,7 +1202,8 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
         text: ann.tooltip || '',
       }))
       theGraphValue.setAnnotations(processedAnnotations)
-    }}
+    }
+  }
   //annotationMap.value = newAnnotationMap
 
   enforceYAxisLimits()

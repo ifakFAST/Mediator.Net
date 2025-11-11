@@ -57,6 +57,7 @@ public class MyWidgetConfig
 ```
 
 Key points:
+
 - `IdentifyWidget` ID must match the frontend type string.
 - `WidgetBaseWithConfig<T>` auto-deserializes `widget.Config` into the strongly typed `Config` property.
 - Override `DefaultHeight` and `DefaultWidth` so the Page layout has sensible defaults when the widget is added (`View.cs:700-708`).
@@ -64,6 +65,7 @@ Key points:
 ### 2. Use the Widget Context
 
 `WidgetBase` provides a `Context` (`WidgetBase.cs:22-68`) with helpers used throughout existing widgets:
+
 - `SaveWidgetConfiguration(object config)` persists the config and notifies the UI (`View.cs:482-504`).
 - `SendEventToUI(string name, object payload)` pushes events that `ViewPages.vue` will route to the active page (`ViewPages.vue:137-160`).
 - `LogPageAction`, `GetLoggedPageActions`, and `GetPageActionLogVariable` integrate with the page action log widget.
@@ -78,12 +80,12 @@ Key points:
 
 Override these methods if your widget needs live data:
 
-| Method | Purpose |
-| --- | --- |
-| `OnVariableValueChanged` | Receive value updates for subscribed variables. |
-| `OnVariableHistoryChanged` | Handle historian changes for trend-oriented widgets. |
-| `OnConfigChanged` | Respond to configuration changes elsewhere in Mediator. |
-| `OnAlarmOrEvents` | Process alarms/events. |
+| Method                     | Purpose                                                 |
+| -------------------------- | ------------------------------------------------------- |
+| `OnVariableValueChanged`   | Receive value updates for subscribed variables.         |
+| `OnVariableHistoryChanged` | Handle historian changes for trend-oriented widgets.    |
+| `OnConfigChanged`          | Respond to configuration changes elsewhere in Mediator. |
+| `OnAlarmOrEvents`          | Process alarms/events.                                  |
 
 Each hook is fanned out by `PageState` (`View.cs:762-821`) to every instanced widget.
 
@@ -157,6 +159,7 @@ const saveTitle = async () => {
 ```
 
 Implementation notes:
+
 - **Props contract:** Match the existing widgets (`WidgetWrapper.vue:187-246`).
 - **Backend requests:** Always use `props.backendAsync`; it automatically routes through `UiReq_RequestFromWidget`.
 - **Config variables:** Use `model.VariableReplacer` if your widget supports template titles (`WidgetWrapper.vue:219-234`).
@@ -199,6 +202,7 @@ Once the backend class compiles and the frontend is rebuilt, the widget type aut
 ## Working with Page Layout
 
 The page editor accesses backend layout APIs at `View.cs:206-356`. When your widget is added:
+
 - `ConfigWidgetAdd` creates a new instance, calls `WidgetInit`, and injects defaults.
 - The updated page snapshot returns to `Page.vue`, which swaps it into the local state (`Page.vue:314-333`).
 - `ViewPages.vue` keeps a map of widgets for the active page and merges config or event updates in-place (`ViewPages.vue:137-214`).
@@ -219,13 +223,13 @@ If you need to modify layout data (e.g., custom columns), prefer extending the b
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-| --- | --- | --- |
-| Widget type missing in Add dialog | `[IdentifyWidget]` attribute missing or duplicate ID. | Ensure the backend class is decorated and rebuild the Dashboard module. |
-| Frontend crashes with `Unknown widget type` | `WidgetWrapper.vue` branch missing. | Import the component and add the `v-if` clause with the correct type string. |
-| Config changes are not persisted | `SaveWidgetConfiguration` not called. | Use `Context.SaveWidgetConfiguration` in your `UiReq_` method. |
-| Frontend backend calls fail with `Unknown command` | Method not named `UiReq_*`. | Prefix backend handlers with `UiReq_` so `WidgetBase` registers them. |
-| Variable placeholders stay unresolved | Missing config variable values. | Ensure the page config variables are defined and update them via the provided APIs (`View.cs:112-170`). |
+| Symptom                                            | Likely Cause                                          | Fix                                                                                                     |
+| -------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Widget type missing in Add dialog                  | `[IdentifyWidget]` attribute missing or duplicate ID. | Ensure the backend class is decorated and rebuild the Dashboard module.                                 |
+| Frontend crashes with `Unknown widget type`        | `WidgetWrapper.vue` branch missing.                   | Import the component and add the `v-if` clause with the correct type string.                            |
+| Config changes are not persisted                   | `SaveWidgetConfiguration` not called.                 | Use `Context.SaveWidgetConfiguration` in your `UiReq_` method.                                          |
+| Frontend backend calls fail with `Unknown command` | Method not named `UiReq_*`.                           | Prefix backend handlers with `UiReq_` so `WidgetBase` registers them.                                   |
+| Variable placeholders stay unresolved              | Missing config variable values.                       | Ensure the page config variables are defined and update them via the provided APIs (`View.cs:112-170`). |
 
 ---
 
@@ -234,4 +238,3 @@ If you need to modify layout data (e.g., custom columns), prefer extending the b
 - Review existing widgets (e.g., `TextDisplay`, `HistoryPlot`) for advanced patterns such as streaming updates, dialogs, and asset uploads.
 - Extend the documentation with widget-specific guides when introducing complex components.
 - Consider adding unit/integration tests in the backend to exercise `UiReq_` logic for mission-critical widgets.
-

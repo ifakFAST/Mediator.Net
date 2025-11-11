@@ -15,9 +15,7 @@
           :messages="[timestampHint]"
           hide-details="auto"
         ></v-text-field>
-        <div class="text-caption text-grey mb-4 ml-1">
-          Interpreted as: {{ formattedUTCTimestamp }}
-        </div>
+        <div class="text-caption text-grey mb-4 ml-1">Interpreted as: {{ formattedUTCTimestamp }}</div>
         <label class="text-subtitle-2 mb-2">Value</label>
         <v-text-field
           v-if="!isObject"
@@ -85,29 +83,29 @@ const timestampHint = 'YYYY-MM-DD HH:mm:ss (local time; append Z for UTC)'
 
 let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 
-type MemberType = 'string' | 'number';
-type TypedMember = { Name: string; Type: MemberType };
+type MemberType = 'string' | 'number'
+type TypedMember = { Name: string; Type: MemberType }
 
 const isObject = ref<boolean>(false)
 const objectMembers = ref<TypedMember[]>([])
 const memberValues = ref<Record<string, string>>({})
 
 const parseTypeConstraints = (str: string): TypedMember[] => {
-  if (!str || /^\s*$/.test(str)) return [];
+  if (!str || /^\s*$/.test(str)) return []
   return str
-    .split(",")
-    .map(part => part.trim())
-    .filter(part => part.length > 0)
-    .map(part => {
-      const kv = part.split(":").filter(s => s.length > 0); // remove empty entries
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const kv = part.split(':').filter((s) => s.length > 0) // remove empty entries
       if (kv.length !== 2) {
-        throw new Error(`Invalid name/type pair: '${part}'`);
+        throw new Error(`Invalid name/type pair: '${part}'`)
       }
       return {
         Name: kv[0].trim(),
         Type: kv[1].trim().toLowerCase() as MemberType,
-      };
-    });
+      }
+    })
 }
 
 const pad = (value: number): string => {
@@ -158,7 +156,7 @@ const open = async (timestamp: number, yvalue: number, item: ItemConfig, variabl
 
       memberValues.value = {}
 
-      const valueMember = objectMembers.value.find(m => {
+      const valueMember = objectMembers.value.find((m) => {
         const name = m.Name.toLowerCase()
         return name === 'value' || name === 'val' || name === 'v'
       })
@@ -166,7 +164,6 @@ const open = async (timestamp: number, yvalue: number, item: ItemConfig, variabl
       if (valueMember) {
         memberValues.value[valueMember.Name] = state.valueText
       }
-
     } catch (err: any) {
       alert(`Failed to parse variable type constraints: ${err.message}`)
       objectMembers.value = []

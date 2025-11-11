@@ -1,4 +1,4 @@
-import type { DataType } from "@/fast_types"
+import type { DataType } from '@/fast_types'
 
 export interface ModuleInfo {
   ID: string

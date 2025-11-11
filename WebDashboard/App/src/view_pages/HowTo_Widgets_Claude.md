@@ -3,6 +3,7 @@
 ## Architecture Overview
 
 The Pages view uses a **client-server widget architecture** where:
+
 - **Backend (C#)**: Widget business logic, data access, event subscriptions
 - **Frontend (Vue.js 3)**: Widget UI rendering and user interaction
 - **Communication**: Async request/response pattern via `backendAsync` function
@@ -28,6 +29,7 @@ public class YourWidget : WidgetBaseWithConfig<YourWidgetConfig>
 ```
 
 **Key points:**
+
 - Must inherit from `WidgetBaseWithConfig<T>` where T is your config class
 - Use `[IdentifyWidget(id: "...")]` attribute with unique ID
 - Override `DefaultHeight` and `DefaultWidth` (empty string = auto size)
@@ -189,6 +191,7 @@ const props = defineProps<{
 ```
 
 **Required Props:**
+
 - `id`: Widget instance ID
 - `width`, `height`: Widget dimensions
 - `config`: Widget configuration (matches backend config class)
@@ -230,7 +233,7 @@ watch(
       // Handle variable change event from backend
       updateUI(newVal)
     }
-  }
+  },
 )
 ```
 

@@ -30,13 +30,13 @@ class MyAnnotations {
   private annotations_: HTMLDivElement[] = []
 
   toString(): string {
-    return "MyAnnotations Plugin"
+    return 'MyAnnotations Plugin'
   }
 
   activate(g: any): { clearChart: Function; didDrawChart: Function } {
     return {
       clearChart: this.clearChart.bind(this),
-      didDrawChart: this.didDrawChart.bind(this)
+      didDrawChart: this.didDrawChart.bind(this),
     }
   }
 
@@ -68,15 +68,9 @@ class MyAnnotations {
     const area = e.dygraph.getArea()
 
     for (let i = 0; i < points.length; i++) {
-      
       const p = points[i]
 
-      if (
-        p.canvasx < area.x ||
-        p.canvasx > area.x + area.w ||
-        p.canvasy < area.y ||
-        p.canvasy > area.y + area.h
-      ) {
+      if (p.canvasx < area.x || p.canvasx > area.x + area.w || p.canvasy < area.y || p.canvasy > area.y + area.h) {
         continue
       }
 
@@ -93,7 +87,7 @@ class MyAnnotations {
 
       const left = p.canvasx - divWidth / 2
       const divTop = p.canvasy - divHeight - 3
-      div.style.left = left + 'px'      
+      div.style.left = left + 'px'
       div.style.top = divTop + 'px'
       div.style.visibility = 'visible'
       div.title = p.annotation.text || ''

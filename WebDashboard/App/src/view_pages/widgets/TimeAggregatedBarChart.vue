@@ -243,13 +243,13 @@ const loadData = async (): Promise<void> => {
     })
 
     // Format labels using locale-aware formatting
-    const formattedLabels = response.BucketStartTimes.map(startTime =>
+    const formattedLabels = response.BucketStartTimes.map((startTime) =>
       formatTimeLabel(
         startTime,
         response.Granularity,
         0, // Always use level 0 (full format) for bar chart
-        response.WeekStart
-      )
+        response.WeekStart,
+      ),
     )
 
     chartData.value = {

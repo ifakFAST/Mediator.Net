@@ -35,9 +35,10 @@
                     :key="idx"
                   >
                     <td>
-                      <v-text-field 
+                      <v-text-field
                         v-model="item.Name"
-                        style="min-width: 20ch"></v-text-field>
+                        style="min-width: 20ch"
+                      ></v-text-field>
                     </td>
                     <td>
                       <v-menu offset-y>
@@ -162,7 +163,10 @@
                       :items="timeGranularityOptions"
                     ></v-select>
                   </v-col>
-                  <v-col cols="4" v-if="configData.ChartConfig.TimeGranularity === 'Weekly'">
+                  <v-col
+                    cols="4"
+                    v-if="configData.ChartConfig.TimeGranularity === 'Weekly'"
+                  >
                     <v-select
                       v-model="configData.ChartConfig.WeekStart"
                       label="Week Start Day"
@@ -188,7 +192,6 @@
                     ></v-text-field>
                   </v-col>
                 </v-row>
-
               </v-container>
             </v-window-item>
           </v-window>

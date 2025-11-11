@@ -58,7 +58,10 @@
                   >
                     {{ row.IsExpanded ? 'mdi-minus-box-outline' : 'mdi-plus-box-outline' }}
                   </v-icon>
-                  <span v-else style="margin-left: 24px"></span>
+                  <span
+                    v-else
+                    style="margin-left: 24px"
+                  ></span>
                   {{ formatRowLabel(row) }}
                 </span>
               </td>
@@ -139,12 +142,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import type { TimeRange } from '../../utils'
 import type { ObjectMap } from './common'
-import type {
-  TimeAggregatedTableConfig,
-  TimeAggregatedTableRow,
-  LoadDataResponse,
-  LoadChildDataResponse,
-} from './TimeAggregatedTableTypes'
+import type { TimeAggregatedTableConfig, TimeAggregatedTableRow, LoadDataResponse, LoadChildDataResponse } from './TimeAggregatedTableTypes'
 import TimeAggregatedTableConfigDlg from './TimeAggregatedTableConfigDlg.vue'
 import { formatTimeLabel } from './dateFormatUtils'
 
@@ -190,7 +188,7 @@ const tableHeight = computed(() => {
 })
 
 const hasAnyData = (row: TimeAggregatedTableRow): boolean => {
-  return row.Values.some(value => value !== null && value !== undefined)
+  return row.Values.some((value) => value !== null && value !== undefined)
 }
 
 const displayedRows = computed(() => {
@@ -218,12 +216,7 @@ const formatValue = (value: number | null | undefined): string => {
 }
 
 const formatRowLabel = (row: TimeAggregatedTableRow): string => {
-  return formatTimeLabel(
-    row.StartTime,
-    row.Granularity,
-    row.Level,
-    props.config.TableConfig.WeekStart
-  )
+  return formatTimeLabel(row.StartTime, row.Granularity, row.Level, props.config.TableConfig.WeekStart)
 }
 
 const calculateRowTotal = (values: (number | null)[] | null): number | null => {
@@ -231,7 +224,7 @@ const calculateRowTotal = (values: (number | null)[] | null): number | null => {
     return null
   }
 
-  const validValues = values.filter(v => v !== null && v !== undefined) as number[]
+  const validValues = values.filter((v) => v !== null && v !== undefined) as number[]
 
   if (validValues.length === 0) {
     return null
@@ -283,7 +276,6 @@ const toggleExpand = async (row: TimeAggregatedTableRow, rowIndex: number): Prom
     // Expand - load child data
     if (!row.Children || row.Children.length === 0) {
       try {
-
         const response: LoadChildDataResponse = await props.backendAsync('LoadChildData', {
           level: row.Level,
           startTime: row.StartTime,

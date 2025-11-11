@@ -6,15 +6,13 @@ import MyAnnotations from '@/plugins/MyAnnotations'
 
 const DygraphAny = Dygraph as any
 if (DygraphAny.PLUGINS && DygraphAny.Plugins) {
-  DygraphAny.PLUGINS = DygraphAny.PLUGINS.map(
-    (plugin: any) => {
-      if (plugin === DygraphAny.Plugins.Annotations) {
-        console.log('Replaced built-in DyGraphs Annotations plugin with MyAnnotations')
-        return MyAnnotations
-      }
-      return plugin
+  DygraphAny.PLUGINS = DygraphAny.PLUGINS.map((plugin: any) => {
+    if (plugin === DygraphAny.Plugins.Annotations) {
+      console.log('Replaced built-in DyGraphs Annotations plugin with MyAnnotations')
+      return MyAnnotations
     }
-  )  
+    return plugin
+  })
 }
 
 // Props
