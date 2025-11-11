@@ -576,7 +576,8 @@ interface ItemConfig {
 interface Annotation {
   series: string
   x: number
-  text: string  
+  label: string
+  tooltip?: string
 }
 
 type SeriesType = 'Line' | 'Scatter'
@@ -737,7 +738,7 @@ const downloadOptions = ref<DownloadOptions>({
 const currentVariable = ref<Variable>({ Object: '', Name: '' })
 const dataRevision = ref(0)
 const stringWithVarResolvedMap = ref<Map<string, string>>(new Map())
-const annotationMap = ref<Map<string, Map<number, string>>>(new Map())
+//const annotationMap = ref<Map<string, Map<number, string>>>(new Map())
 
 // Template refs
 const theGraph = ref<InstanceType<typeof DyGraph> | null>(null)
@@ -852,7 +853,7 @@ const options = computed(() => {
     emit('date-window-changed', dateWindow)
     enforceYAxisLimitsWithCurrentRanges(yRanges)
   }
-
+/*
   const drawPointCallback = (g: any, seriesName: string, canvasContext: CanvasRenderingContext2D, cx: number, cy: number, color: string, pointSize: number, idx: number) => {
     // Draw the default point
     canvasContext.beginPath()
@@ -899,7 +900,7 @@ const options = computed(() => {
       }
     }
   }
-
+*/
   return {
     labels: ['Date'].concat(itemsValue.map(makeLabel)),
     legend: 'always',
@@ -913,7 +914,7 @@ const options = computed(() => {
     visibility: itemsValue.map((it) => it.Checked),
     legendFormatter,
     zoomCallback,
-    drawPointCallback,
+    //drawPointCallback,
   }
 })
 
@@ -1158,19 +1159,27 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
   sliceDataToDateWindow(data, response.WindowLeft, response.WindowRight)
   historyData.value = data
 
-  // Build annotation lookup map
-  const newAnnotationMap = new Map<string, Map<number, string>>()
+  // const newAnnotationMap = new Map<string, Map<number, string>>()
   if (response.Annotations && response.Annotations.length > 0) {
-    for (const ann of response.Annotations) {
-      let seriesMap = newAnnotationMap.get(ann.series)
-      if (!seriesMap) {
-        seriesMap = new Map<number, string>()
-        newAnnotationMap.set(ann.series, seriesMap)
-      }
-      seriesMap.set(ann.x, ann.text)
-    }
-  }
-  annotationMap.value = newAnnotationMap
+    // for (const ann of response.Annotations) {
+    //   let seriesMap = newAnnotationMap.get(ann.series)
+    //   if (!seriesMap) {
+    //     seriesMap = new Map<number, string>()
+    //     newAnnotationMap.set(ann.series, seriesMap)
+    //   }
+    //   seriesMap.set(ann.x, ann.text)
+    // }
+    const theGraphValue = dyGraph.value
+    if (theGraphValue) {
+      const processedAnnotations = response.Annotations.map((ann: Annotation) => ({
+        series: ann.series,
+        xval: ann.x,
+        shortText: ann.label,
+        text: ann.tooltip || '',
+      }))
+      theGraphValue.setAnnotations(processedAnnotations)
+    }}
+  //annotationMap.value = newAnnotationMap
 
   enforceYAxisLimits()
 

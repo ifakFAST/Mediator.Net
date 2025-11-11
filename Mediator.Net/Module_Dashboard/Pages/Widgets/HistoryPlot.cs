@@ -635,15 +635,24 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     private static void WriteAnnotations(TextWriter writer, List<Annotation> annotations) {
         writer.Write('[');
         for (int i = 0; i < annotations.Count; i++) {
-            if (i > 0) writer.Write(',');
-            var ann = annotations[i];
-            writer.Write("{\"series\":\"");
-            writer.Write(ann.Series.Replace("\"", "\\\""));
+            if (i > 0) {
+                writer.Write(',');
+            }
+            var annotation = annotations[i];
+            writer.Write('{');
+            writer.Write("\"series\":\"");
+            writer.Write(annotation.Series.Replace("\\", "\\\\").Replace("\"", "\\\""));
             writer.Write("\",\"x\":");
-            writer.Write(ann.X);
+            writer.Write(annotation.X);
             writer.Write(",\"label\":\"");
-            writer.Write(ann.Label.Replace("\"", "\\\""));
-            writer.Write("\"}");
+            writer.Write(annotation.Label.Replace("\\", "\\\\").Replace("\"", "\\\""));
+            writer.Write('"');
+            if (annotation.Tooltip != null) {
+                writer.Write(",\"tooltip\":\"");
+                writer.Write(annotation.Tooltip.Replace("\\", "\\\\").Replace("\"", "\\\""));
+                writer.Write('"');
+            }
+            writer.Write('}');
         }
         writer.Write(']');
     }
