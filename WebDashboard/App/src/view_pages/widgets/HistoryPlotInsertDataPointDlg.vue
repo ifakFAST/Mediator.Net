@@ -180,6 +180,14 @@ const onCancel = (): void => {
   resolveAndReset(null)
 }
 
+function parseNumberSafely(str: string): number | null {
+  if (!str || !str.trim()) {
+    return null // Explicitly handle empty input
+  }
+  const num = Number(str)
+  return isNaN(num) ? null : num
+}
+
 const onSave = (): void => {
   const timestamp = parseTimestampFromDisplay(state.timestampText)
   if (timestamp === null) {
@@ -194,13 +202,24 @@ const onSave = (): void => {
     for (const member of objectMembers.value) {
       const val = memberValues.value[member.Name] || ''
       if (member.Type === 'number') {
-        obj[member.Name] = val === '' ? 0 : Number(val)
+        const parsedNumber = parseNumberSafely(val)
+        if (parsedNumber === null) {
+          alert(`Invalid number format for '${member.Name}'.`)
+          return
+        }
+        obj[member.Name] = parsedNumber
       } else {
         obj[member.Name] = val
       }
     }
     value = JSON.stringify(obj)
+    console.log('Constructed object value:', value)
   } else {
+    const parsedNumber = parseNumberSafely(state.valueText)
+    if (parsedNumber === null) {
+      alert('Invalid number format for value.')
+      return
+    }
     value = state.valueText
   }
 
