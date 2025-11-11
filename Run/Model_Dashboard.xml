@@ -56,8 +56,12 @@
                           "Object": "CALC:Annotations1",
                           "Name": "Value"
                         },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        "ObjectConfig": {
+                          "KeyValue": "Value",
+                          "ShowLabel": true,
+                          "KeyLabel": "Label",
+                          "KeyTooltip": ""
+                        }
                       },
                       {
                         "Name": "TSS",
@@ -326,9 +330,7 @@
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       },
                       {
                         "Name": "NH",
@@ -340,9 +342,7 @@
                         "Variable": {
                           "Object": "IO:Data_002",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       },
                       {
                         "Name": "TSS",
@@ -354,9 +354,7 @@
                         "Variable": {
                           "Object": "IO:Data_003",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       },
                       {
                         "Name": "SO PP",
@@ -368,9 +366,7 @@
                         "Variable": {
                           "Object": "IO:3_002",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -420,9 +416,7 @@
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       },
                       {
                         "Name": "NH",
@@ -434,9 +428,7 @@
                         "Variable": {
                           "Object": "IO:Data_002",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -492,9 +484,7 @@
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -540,9 +530,7 @@
                         "Variable": {
                           "Object": "IO:Data_002",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       }
                     ],
                     "DataExport": {
@@ -697,9 +685,7 @@
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
-                        },
-                        "KeyValue": "Value",
-                        "KeyLabel": "Label"
+                        }
                       }
                     ],
                     "DataExport": {

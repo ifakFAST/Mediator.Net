@@ -208,6 +208,20 @@
                     variant="text"
                     @click="editorItems_AddItem"
                   ></v-btn>
+                  <v-btn
+                    icon="mdi-tune"
+                    size="small"
+                    variant="text"
+                    @click="showExtendedConfig = true"
+                  >
+                    <v-icon>mdi-tune</v-icon>
+                    <v-tooltip
+                      activator="parent"
+                      location="top"
+                    >
+                      Extended Configuration
+                    </v-tooltip>
+                  </v-btn>
                 </td>
                 <td>&nbsp;</td>
               </tr>
@@ -520,6 +534,11 @@
       @onselected="selectObject_OK"
     ></dlg-object-select>
     <history-plot-insert-data-point-dlg ref="insertDataPointDialog"></history-plot-insert-data-point-dlg>
+    <history-plot-ext-config-dlg
+      v-model="showExtendedConfig"
+      :items="editorItems.items"
+      @update:items="editorItems.items = $event"
+    ></history-plot-ext-config-dlg>
   </div>
 </template>
 
@@ -533,6 +552,7 @@ import { TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimes
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
 import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo, VariableInfo } from './common'
 import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
+import HistoryPlotExtConfigDlg from './HistoryPlotExtConfigDlg.vue'
 import * as model from '../model'
 import type { DataType } from '@/fast_types'
 
@@ -705,6 +725,7 @@ const editorItems = ref<EditorItems>({
   items: [],
   colorList: ['#1BA1E2', '#A05000', '#339933', '#A2C139', '#D80073', '#F09609', '#E671B8', '#A200FF', '#E51400', '#00ABA9', '#000000', '#CCCCCC'],
 })
+const showExtendedConfig = ref(false)
 const editorPlot = ref<EditorPlot>({
   show: false,
   plot: {
