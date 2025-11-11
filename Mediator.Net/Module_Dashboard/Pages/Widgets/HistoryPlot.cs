@@ -584,8 +584,8 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                     if (IsSimpleDouble(v.JSON)) {
                         writer.WriteValueJsonDouble(v.JSON);
                     }
-                    else if (v.IsObject && !string.IsNullOrEmpty(items[i].KeyValue)) {
-                        DataValue extracted = v[items[i].KeyValue];
+                    else if (v.IsObject && !string.IsNullOrEmpty(items[i].ObjectConfig?.KeyValue)) {
+                        DataValue extracted = v[items[i].ObjectConfig!.KeyValue];
                         double? value = extracted.AsDouble();
                         if (value.HasValue)
                             writer.WriteValueDouble(value.Value);
@@ -593,14 +593,20 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                             writer.WriteValueEmpty();
 
                         // Extract label if ShowLabel is true and KeyLabel is specified
-                        if (!string.IsNullOrEmpty(items[i].KeyLabel)) {
-                            DataValue labelValue = v[items[i].KeyLabel];
-                            string? labelText = labelValue.GetString();
+                        if (items[i].ObjectConfig!.ShowLabel && !string.IsNullOrEmpty(items[i].ObjectConfig!.KeyLabel)) {
+                            DataValue labelValue = v[items[i].ObjectConfig!.KeyLabel];
+                            string? labelText = labelValue.IsString ? labelValue.GetString() : null;
                             if (!string.IsNullOrEmpty(labelText)) {
+                                string? tooltip = null;
+                                if (!string.IsNullOrEmpty(items[i].ObjectConfig!.KeyTooltip)) {
+                                    DataValue tooltipValue = v[items[i].ObjectConfig!.KeyTooltip];
+                                    tooltip = tooltipValue.IsString ? tooltipValue.GetString() : null;
+                                }
                                 annotations.Add(new Annotation {
                                     Series = items[i].GetLabel(),
                                     X = time.JavaTicks,
-                                    Label = labelText
+                                    Label = labelText,
+                                    Tooltip = tooltip
                                 });
                             }
                         }
@@ -965,13 +971,23 @@ public class ItemConfig
     public bool Checked { get; set; } = true;
     public VariableRefUnresolved Variable { get; set; }
 
-    public string KeyValue { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the numeric value
-    public string KeyLabel { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the label to show above each point
+    public ObjectConfig ObjectConfig { get; set; } = new();
 
-    public bool ShouldSerializeKeyValue() => !string.IsNullOrEmpty(KeyValue);
-    public bool ShouldSerializeKeyLabel() => !string.IsNullOrEmpty(KeyLabel);
+    public bool ShouldSerializeObjectConfig() => ObjectConfig != null && ObjectConfig.ShouldSerialize();
 
     public string GetLabel() => Name + ((Axis == Axis.Right) ? " [R]" : "");
+}
+
+// Specifies how to extract value and label from object/dictionary (Struct) type variables
+public sealed class ObjectConfig {
+
+    public string KeyValue { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the numeric value
+
+    public bool ShowLabel { get; set; } = false; // Whether to show labels above each point
+    public string KeyLabel { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the label to show above each point
+    public string KeyTooltip { get; set; } = ""; // When the value is an object/dictionary, this is the key to use for getting the tooltip to show above each point
+
+    public bool ShouldSerialize() => !string.IsNullOrEmpty(KeyLabel) || !string.IsNullOrEmpty(KeyValue) || ShowLabel || !string.IsNullOrEmpty(KeyTooltip);
 }
 
 public enum SeriesType

@@ -524,7 +524,7 @@
 </template>
 
 <script setup lang="ts">
-// @ts-nocheck
+
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, getCurrentInstance } from 'vue'
 import DyGraph from '../../components/DyGraph.vue'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
@@ -569,8 +569,14 @@ interface ItemConfig {
   Axis: Axis
   Checked: boolean
   Variable: Variable
-  KeyValue?: string
-  KeyLabel?: string
+  ObjectConfig: ObjectConfig
+}
+
+interface ObjectConfig {
+  KeyValue: string
+  ShowLabel: boolean
+  KeyLabel: string
+  KeyTooltip:string
 }
 
 interface Annotation {
@@ -1306,6 +1312,12 @@ const editorItems_AddItem = (): void => {
       Object: '',
       Name: '',
     },
+    ObjectConfig: {
+      KeyValue: '',
+      ShowLabel: false,
+      KeyLabel: '',
+      KeyTooltip: '',
+    },
   }
   editorItems.value.items.push(item)
 }
@@ -1382,6 +1394,12 @@ const replaceEditorItemsFromCsvFromClipboard = (): void => {
             Axis: 'Left',
             Checked: true,
             Variable: { Object: '', Name: 'Value' },
+            ObjectConfig: {
+              KeyValue: '',
+              ShowLabel: false,
+              KeyLabel: '',
+              KeyTooltip: '',
+            },
           }
 
           // Assign values to properties based on header column names
@@ -1504,10 +1522,10 @@ const editorItems_SelectObj = (item: ItemConfig): void => {
 const selectObject_OK = (obj: Obj): void => {
   objectMap.value[obj.ID] = {
     Name: obj.Name,
-    Variables: obj.Variables,
+    Variables: obj.Variables || [],
   }
   currentVariable.value.Object = obj.ID
-  if (obj.Variables.length === 1) {
+  if (obj.Variables && obj.Variables.length === 1) {
     currentVariable.value.Name = obj.Variables[0]
   }
 }
