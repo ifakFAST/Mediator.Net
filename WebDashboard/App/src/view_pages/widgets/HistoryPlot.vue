@@ -737,6 +737,7 @@ const downloadOptions = ref<DownloadOptions>({
 const currentVariable = ref<Variable>({ Object: '', Name: '' })
 const dataRevision = ref(0)
 const stringWithVarResolvedMap = ref<Map<string, string>>(new Map())
+const annotationMap = ref<Map<string, Map<number, string>>>(new Map())
 
 // Template refs
 const theGraph = ref<InstanceType<typeof DyGraph> | null>(null)
@@ -852,6 +853,53 @@ const options = computed(() => {
     enforceYAxisLimitsWithCurrentRanges(yRanges)
   }
 
+  const drawPointCallback = (g: any, seriesName: string, canvasContext: CanvasRenderingContext2D, cx: number, cy: number, color: string, pointSize: number, idx: number) => {
+    // Draw the default point
+    canvasContext.beginPath()
+    canvasContext.fillStyle = color
+    canvasContext.arc(cx, cy, pointSize, 0, 2 * Math.PI, false)
+    canvasContext.fill()
+
+    const seriesMap = annotationMap.value.get(seriesName)
+    if (!seriesMap) {
+      return
+    }
+
+    // Check if this point has an annotation
+    const data = historyData.value
+    if (idx >= 0 && idx < data.length) {
+      const timestamp = data[idx][0].getTime()      
+      const annotationText = seriesMap.get(timestamp)
+
+      if (annotationText) {
+        // Set text style
+        canvasContext.font = '14px sans-serif'
+        canvasContext.textAlign = 'center'
+        canvasContext.textBaseline = 'bottom'
+
+        // Measure text to draw background
+        //const textMetrics = canvasContext.measureText(annotationText)
+        //const textWidth = textMetrics.width
+        const textHeight = 16 // Approximate height for 14px font
+        const padding = 2
+
+        // Position text above the point
+        const textX = cx
+        let textY = cy - pointSize - 2
+
+        // If too close to top, position below instead
+        if (textY - textHeight - padding < 0) {
+          textY = cy + pointSize + 4
+          canvasContext.textBaseline = 'top'
+        }
+
+        // Draw text
+        canvasContext.fillStyle = '#000000'
+        canvasContext.fillText(annotationText, textX, textY)
+      }
+    }
+  }
+
   return {
     labels: ['Date'].concat(itemsValue.map(makeLabel)),
     legend: 'always',
@@ -865,6 +913,7 @@ const options = computed(() => {
     visibility: itemsValue.map((it) => it.Checked),
     legendFormatter,
     zoomCallback,
+    drawPointCallback,
   }
 })
 
@@ -1109,27 +1158,19 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
   sliceDataToDateWindow(data, response.WindowLeft, response.WindowRight)
   historyData.value = data
 
-  // Handle annotations
+  // Build annotation lookup map
+  const newAnnotationMap = new Map<string, Map<number, string>>()
   if (response.Annotations && response.Annotations.length > 0) {
-    // Convert x timestamps to JavaScript Date objects
-    const processedAnnotations = response.Annotations.map((ann: Annotation) => ({
-      series: ann.series,
-      xval: ann.x,
-      shortText: ann.text,
-      width: '75',
-      height: '24',
-    }))
-    // Apply annotations to the graph
-    const theGraphValue = dyGraph.value
-    if (theGraphValue) {
-      theGraphValue.setAnnotations(processedAnnotations)
-    }
-  } else {
-    const theGraphValue = dyGraph.value
-    if (theGraphValue) {
-      theGraphValue.setAnnotations([])
+    for (const ann of response.Annotations) {
+      let seriesMap = newAnnotationMap.get(ann.series)
+      if (!seriesMap) {
+        seriesMap = new Map<number, string>()
+        newAnnotationMap.set(ann.series, seriesMap)
+      }
+      seriesMap.set(ann.x, ann.text)
     }
   }
+  annotationMap.value = newAnnotationMap
 
   enforceYAxisLimits()
 

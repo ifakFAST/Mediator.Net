@@ -58,18 +58,6 @@
                         },
                         "KeyValue": "Value",
                         "KeyLabel": "Label"
-                      },
-                      {
-                        "Name": "SO",
-                        "Color": "#A05000",
-                        "Size": 3.0,
-                        "SeriesType": "Scatter",
-                        "Axis": "Right",
-                        "Checked": true,
-                        "Variable": {
-                          "Object": "IO:Data_001",
-                          "Name": "Value"
-                        }
                       }
                     ],
                     "DataExport": {
