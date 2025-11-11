@@ -600,7 +600,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                                 annotations.Add(new Annotation {
                                     Series = items[i].GetLabel(),
                                     X = time.JavaTicks,
-                                    Text = labelText
+                                    Label = labelText
                                 });
                             }
                         }
@@ -641,8 +641,8 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             writer.Write(ann.Series.Replace("\"", "\\\""));
             writer.Write("\",\"x\":");
             writer.Write(ann.X);
-            writer.Write(",\"text\":\"");
-            writer.Write(ann.Text.Replace("\"", "\\\""));
+            writer.Write(",\"label\":\"");
+            writer.Write(ann.Label.Replace("\"", "\\\""));
             writer.Write("\"}");
         }
         writer.Write(']');
@@ -942,7 +942,8 @@ internal class Annotation
 {
     public string Series { get; set; } = "";
     public long X { get; set; }
-    public string Text { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string? Tooltip { get; set; } = null;
 }
 
 public class ItemConfig
