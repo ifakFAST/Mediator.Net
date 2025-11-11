@@ -16,7 +16,7 @@ interface AnnotationPoint {
 }
 
 interface AnnotationConfig {
-  text: string
+  text?: string
   shortText?: string
   icon?: string
   width?: number
@@ -77,29 +77,13 @@ class MyAnnotations {
 
     const containerDiv = e.canvas.parentNode as HTMLElement
 
-    const bindEvt = (
-      eventName: keyof Pick<AnnotationConfig, 'clickHandler' | 'mouseOverHandler' | 'mouseOutHandler' | 'dblClickHandler'>,
-      classEventName: string,
-      pt: AnnotationPoint
-    ) => {
-      return (annotation_event: Event) => {
-        const a = pt.annotation
-        if (a.hasOwnProperty(eventName) && a[eventName]) {
-          a[eventName]!(a, pt, g, annotation_event)
-        } else if (g.getOption(classEventName)) {
-          g.getOption(classEventName)(a, pt, g, annotation_event)
-        }
-      }
-    }
-
     // Add the annotations one-by-one.
     const area = e.dygraph.getArea()
 
-    // x-coord to sum of previous annotation's heights (used for stacking).
-    const xToUsedHeight: { [key: number]: number } = {}
-
     for (let i = 0; i < points.length; i++) {
+      
       const p = points[i]
+
       if (
         p.canvasx < area.x ||
         p.canvasx > area.x + area.w ||
@@ -109,83 +93,26 @@ class MyAnnotations {
         continue
       }
 
-      const a = p.annotation
-      let tick_height = 6
-      if (a.hasOwnProperty('tickHeight')) {
-        tick_height = a.tickHeight!
-      }
+      const a: AnnotationConfig = p.annotation
 
-      // TODO: deprecate axisLabelFontSize in favor of CSS
       const div = document.createElement('div')
       div.style.fontSize = g.getOption('axisLabelFontSize') + 'px'
-      let className = 'dygraph-annotation'
-      if (!a.hasOwnProperty('icon')) {
-        // camelCase class names are deprecated.
-        className += ' dygraphDefaultAnnotation dygraph-default-annotation'
-      }
-      if (a.hasOwnProperty('cssClass')) {
-        className += ' ' + a.cssClass
-      }
-      div.className = className
-
-      const width = a.hasOwnProperty('width') ? a.width! : 16
-      const height = a.hasOwnProperty('height') ? a.height! : 16
-      if (a.hasOwnProperty('icon')) {
-        const img = document.createElement('img')
-        img.src = a.icon!
-        img.width = width
-        img.height = height
-        div.appendChild(img)
-      } else if (p.annotation.hasOwnProperty('shortText')) {
-        div.appendChild(document.createTextNode(p.annotation.shortText!))
-      }
-      const left = p.canvasx - width / 2
-      div.style.left = left + 'px'
-      let divTop = 0
-      if (a.attachAtBottom) {
-        let y = area.y + area.h - height - tick_height
-        if (xToUsedHeight[left]) {
-          y -= xToUsedHeight[left]
-        } else {
-          xToUsedHeight[left] = 0
-        }
-        xToUsedHeight[left] += tick_height + height
-        divTop = y
-      } else {
-        divTop = p.canvasy - height - tick_height
-      }
-      div.style.top = divTop + 'px'
-      div.style.width = width + 'px'
-      div.style.height = height + 'px'
-      div.title = p.annotation.text
-      div.style.color = g.colorsMap_[p.name]
-      div.style.borderColor = g.colorsMap_[p.name]
-      a.div = div
-
-      g.addAndTrackEvent(div, 'click', bindEvt('clickHandler', 'annotationClickHandler', p))
-      g.addAndTrackEvent(div, 'mouseover', bindEvt('mouseOverHandler', 'annotationMouseOverHandler', p))
-      g.addAndTrackEvent(div, 'mouseout', bindEvt('mouseOutHandler', 'annotationMouseOutHandler', p))
-      g.addAndTrackEvent(div, 'dblclick', bindEvt('dblClickHandler', 'annotationDblClickHandler', p))
-
+      div.className = 'dygraph-annotation'      
+      div.appendChild(document.createTextNode(p.annotation.shortText!))
+      div.style.visibility = 'hidden'
       containerDiv.appendChild(div)
-      this.annotations_.push(div)
+      const divWidth = div.offsetWidth
+      const divHeight = div.offsetHeight
 
-      const ctx = e.drawingContext
-      ctx.save()
-      ctx.strokeStyle = a.hasOwnProperty('tickColor') ? a.tickColor! : g.colorsMap_[p.name]
-      ctx.lineWidth = a.hasOwnProperty('tickWidth') ? a.tickWidth! : g.getOption('strokeWidth')
-      ctx.beginPath()
-      if (!a.attachAtBottom) {
-        ctx.moveTo(p.canvasx, p.canvasy)
-        ctx.lineTo(p.canvasx, p.canvasy - 2 - tick_height)
-      } else {
-        const y = divTop + height
-        ctx.moveTo(p.canvasx, y)
-        ctx.lineTo(p.canvasx, y + tick_height)
-      }
-      ctx.closePath()
-      ctx.stroke()
-      ctx.restore()
+      const left = p.canvasx - divWidth / 2
+      const divTop = p.canvasy - divHeight - 3
+      div.style.left = left + 'px'      
+      div.style.top = divTop + 'px'
+      div.style.visibility = 'visible'
+      div.title = p.annotation.text || ''
+      //div.style.color = g.colorsMap_[p.name]
+      a.div = div
+      this.annotations_.push(div)
     }
   }
 
