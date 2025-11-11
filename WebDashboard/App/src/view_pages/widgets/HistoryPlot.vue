@@ -1184,6 +1184,7 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
   sliceDataToDateWindow(data, response.WindowLeft, response.WindowRight)
   historyData.value = data
 
+  const theGraphValue = dyGraph.value
   // const newAnnotationMap = new Map<string, Map<number, string>>()
   if (response.Annotations && response.Annotations.length > 0) {
     // for (const ann of response.Annotations) {
@@ -1194,7 +1195,6 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
     //   }
     //   seriesMap.set(ann.x, ann.text)
     // }
-    const theGraphValue = dyGraph.value
     if (theGraphValue) {
       const processedAnnotations = response.Annotations.map((ann: Annotation) => ({
         series: ann.series,
@@ -1203,6 +1203,10 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
         text: ann.tooltip || '',
       }))
       theGraphValue.setAnnotations(processedAnnotations)
+    }
+  } else {
+    if (theGraphValue) {
+      theGraphValue.setAnnotations([])
     }
   }
   //annotationMap.value = newAnnotationMap
