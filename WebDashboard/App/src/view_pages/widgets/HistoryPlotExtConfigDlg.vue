@@ -1,15 +1,12 @@
 <template>
   <v-dialog
     v-model="show"
-    max-width="900px"
+    max-width="800px"
     persistent
     @keydown.esc="cancel"
   >
     <v-card>
-      <v-card-title class="bg-primary">
-        <span class="text-h6">Extended Item Configuration</span>
-      </v-card-title>
-
+      <v-card-title>Extended Item Configuration</v-card-title>
       <v-card-text class="pa-0">
         <v-container fluid>
           <v-row style="height: 500px">
@@ -19,10 +16,6 @@
               class="pr-4"
               style="border-right: 1px solid #e0e0e0; height: 100%; overflow-y: auto"
             >
-              <div class="d-flex justify-space-between align-center mb-3">
-                <h3>Items</h3>
-              </div>
-
               <v-list
                 density="compact"
                 class="pa-0"
