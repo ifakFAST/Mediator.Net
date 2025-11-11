@@ -62,20 +62,18 @@
               style="height: 100%; overflow-y: auto"
             >
               <div v-if="selectedItem && selectedItem.ObjectConfig">
-                <h3 class="mb-4">Annotation Configuration</h3>
-
-                <!-- Annotation Configuration -->
+                <!-- Struct Value Configuration -->
                 <v-card
                   variant="outlined"
                   class="mb-4"
                 >
-                  <v-card-title class="text-subtitle-1 bg-grey-lighten-4">Annotation Settings</v-card-title>
+                  <v-card-title class="text-subtitle-1 bg-grey-lighten-4">Struct Value Settings</v-card-title>
                   <v-card-text>
                     <v-text-field
                       v-model="selectedItem.ObjectConfig.KeyValue"
-                      label="Annotation Key"
+                      label="Value Key"
                       class="mb-3"
-                      hint="Unique identifier for the annotation"
+                      hint="Unique identifier for the value"
                       persistent-hint
                     ></v-text-field>
 
@@ -83,21 +81,22 @@
                       v-model="selectedItem.ObjectConfig.ShowLabel"
                       label="Show Annotation Label"
                       class="mt-2 mb-3"
+                      :disabled="!selectedItem.ObjectConfig.KeyValue"
                     ></v-checkbox>
 
                     <v-text-field
                       v-model="selectedItem.ObjectConfig.KeyLabel"
-                      label="Annotation Label Text"
+                      label="Label Key"
                       class="mb-3"
-                      :disabled="!selectedItem.ObjectConfig.ShowLabel"
+                      :disabled="!selectedItem.ObjectConfig.ShowLabel || !selectedItem.ObjectConfig.KeyValue"
                       hint="Text displayed on the plot"
                       persistent-hint
                     ></v-text-field>
 
                     <v-text-field
                       v-model="selectedItem.ObjectConfig.KeyTooltip"
-                      label="Annotation Tooltip"
-                      :disabled="!selectedItem.ObjectConfig.ShowLabel"
+                      label="Tooltip Key"
+                      :disabled="!selectedItem.ObjectConfig.ShowLabel || !selectedItem.ObjectConfig.KeyValue"
                       hint="Tooltip shown on hover"
                       persistent-hint
                     ></v-text-field>
@@ -126,9 +125,9 @@
           Cancel
         </v-btn>
         <v-btn
-          color="primary"
+          color="primary-darken-1"
+          variant="text"
           @click="save"
-          variant="flat"
         >
           OK
         </v-btn>

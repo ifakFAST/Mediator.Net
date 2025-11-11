@@ -208,6 +208,8 @@
                     variant="text"
                     @click="editorItems_AddItem"
                   ></v-btn>
+                </td>
+                <td>
                   <v-btn
                     icon="mdi-tune"
                     size="small"
@@ -223,7 +225,6 @@
                     </v-tooltip>
                   </v-btn>
                 </td>
-                <td>&nbsp;</td>
               </tr>
             </tbody>
           </table>
