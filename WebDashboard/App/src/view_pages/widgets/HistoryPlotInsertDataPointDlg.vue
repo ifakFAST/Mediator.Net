@@ -6,15 +6,18 @@
     @keydown="onKeydown"
   >
     <v-card>
-      <v-card-title class="text-wrap">Insert Data Point into {{ state.itemName }}</v-card-title>
+      <v-card-title class="text-wrap">{{ state.itemName }}</v-card-title>
       <v-card-text>
         <label class="text-subtitle-2 mb-2">Timestamp</label>
         <v-text-field
           v-model="state.timestampText"
-          class="mb-4"
+          class="mb-2"
           :messages="[timestampHint]"
           hide-details="auto"
         ></v-text-field>
+        <div class="text-caption text-grey mb-4 ml-1">
+          Interpreted as: {{ formattedUTCTimestamp }}
+        </div>
         <label class="text-subtitle-2 mb-2">Value</label>
         <v-text-field
           v-if="!isObject"
@@ -49,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import type { VariableInfo } from './common'
 
 type Axis = 'Left' | 'Right'
@@ -130,6 +133,17 @@ const parseTimestampFromDisplay = (text: string): number | null => {
   }
   return parsed
 }
+
+const formattedUTCTimestamp = computed<string>(() => {
+  const timestamp = parseTimestampFromDisplay(state.timestampText)
+  if (timestamp === null) {
+    return 'Invalid timestamp'
+  }
+  const date = new Date(timestamp)
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(
+    date.getUTCMinutes(),
+  )}:${pad(date.getUTCSeconds())} UTC`
+})
 
 const open = async (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)

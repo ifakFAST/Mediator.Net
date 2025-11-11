@@ -58,6 +58,18 @@
                         },
                         "KeyValue": "Value",
                         "KeyLabel": "Label"
+                      },
+                      {
+                        "Name": "TSS",
+                        "Color": "#A05000",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:signal_003",
+                          "Name": "Value"
+                        }
                       }
                     ],
                     "DataExport": {
