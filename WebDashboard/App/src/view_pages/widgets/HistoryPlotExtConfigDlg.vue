@@ -80,14 +80,14 @@
                     <v-checkbox
                       v-model="selectedItem.ObjectConfig.ShowLabel"
                       label="Show Annotation Label"
-                      class="mt-2 mb-3"
+                      class="mt-2 mb-2"
                       :disabled="!selectedItem.ObjectConfig.KeyValue"
                     ></v-checkbox>
 
                     <v-text-field
                       v-model="selectedItem.ObjectConfig.KeyLabel"
                       label="Label Key"
-                      class="mb-3"
+                      class="ml-8 mb-3"
                       :disabled="!selectedItem.ObjectConfig.ShowLabel || !selectedItem.ObjectConfig.KeyValue"
                       hint="Text displayed on the plot"
                       persistent-hint
@@ -96,6 +96,7 @@
                     <v-text-field
                       v-model="selectedItem.ObjectConfig.KeyTooltip"
                       label="Tooltip Key"
+                      class="ml-8"
                       :disabled="!selectedItem.ObjectConfig.ShowLabel || !selectedItem.ObjectConfig.KeyValue"
                       hint="Tooltip shown on hover"
                       persistent-hint
@@ -218,9 +219,3 @@ const cancel = (): void => {
   show.value = false
 }
 </script>
-
-<style scoped>
-.gap-2 {
-  gap: 8px;
-}
-</style>
