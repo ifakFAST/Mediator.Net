@@ -118,15 +118,15 @@ const formatTimestampForDisplay = (timestamp: number): string => {
   )}:${pad(date.getSeconds())}`
 }
 
-const parseTimestampFromDisplay = (text: string): number => {
+const parseTimestampFromDisplay = (text: string): number | null => {
   const trimmed = text.trim()
   if (trimmed === '') {
-    return Date.now()
+    return null
   }
   const normalized = trimmed.replace(' ', 'T')
   const parsed = Date.parse(normalized)
   if (Number.isNaN(parsed)) {
-    return Date.now()
+    return null
   }
   return parsed
 }
@@ -182,6 +182,10 @@ const onCancel = (): void => {
 
 const onSave = (): void => {
   const timestamp = parseTimestampFromDisplay(state.timestampText)
+  if (timestamp === null) {
+    alert('Invalid timestamp format.')
+    return
+  }
   let value: string
 
   if (isObject.value) {
