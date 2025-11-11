@@ -3,6 +3,7 @@
     v-model="show"
     max-width="900px"
     persistent
+    @keydown.esc="cancel"
   >
     <v-card>
       <v-card-title class="bg-primary">
