@@ -31,6 +31,13 @@
         </template>
       </v-card-text>
       <v-card-actions>
+        <v-btn
+          v-if="editMode"
+          color="red-darken-1"
+          variant="text"
+          @click="onDelete"
+          >Delete</v-btn
+        >
         <v-spacer></v-spacer>
         <v-btn
           color="grey-darken-1"
@@ -63,6 +70,7 @@ interface ItemConfig {
 interface InsertDataPointResult {
   timestamp: number
   value: string
+  delete: boolean
 }
 
 interface DialogState {
@@ -200,6 +208,23 @@ const onCancel = (): void => {
   resolveAndReset(null)
 }
 
+const onDelete = (): void => {
+  if (!confirm('Are you sure you want to delete this data point?')) {
+    return
+  }
+  const timestamp = parseTimestampFromDisplay(state.timestampText)
+  if (timestamp === null) {
+    alert('Invalid timestamp format.')
+    return
+  }
+  closeDialog()
+  resolveAndReset({
+    timestamp,
+    value: '',
+    delete: true
+  })
+}
+
 function parseNumberSafely(str: string): number | null {
   if (!str || !str.trim()) {
     return null // Explicitly handle empty input
@@ -247,6 +272,7 @@ const onSave = (): void => {
   resolveAndReset({
     timestamp,
     value,
+    delete: false
   })
 }
 

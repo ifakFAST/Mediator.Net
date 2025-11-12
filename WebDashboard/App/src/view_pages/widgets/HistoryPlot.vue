@@ -647,6 +647,7 @@ interface DownloadOptions {
 interface InsertDataPointResult {
   timestamp: number
   value: string
+  delete: boolean
 }
 
 interface ContextMenuState {
@@ -1114,8 +1115,9 @@ const openInsertDataPointDialog = async (edit: boolean, item: ItemConfig, timest
       variable: item.Variable,
       timestamp: result.timestamp,
       value: result.value,
+      delete: result.delete,
     }
-    await props.backendAsync('InsertDataPoint', para)
+    await props.backendAsync('UpsertDataPoint', para)
     await onLoadData(false)
   } catch (err: any) {
     alert(err.message)

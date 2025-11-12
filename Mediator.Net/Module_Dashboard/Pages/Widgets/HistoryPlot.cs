@@ -371,14 +371,14 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         });
     }
 
-    public async Task<ReqResult> UiReq_InsertDataPoint(VariableRef variable, long timestamp, string value) {
+    public async Task<ReqResult> UiReq_UpsertDataPoint(VariableRef variable, long timestamp, string value, bool delete) {
 
         Timestamp time = Timestamp.FromJavaTicks(timestamp);
         string jsonValue = string.IsNullOrWhiteSpace(value) ? "null" : value;
         DataValue dataValue = DataValue.FromJSON(jsonValue);
         VTQ vtq = VTQ.Make(dataValue, time, Quality.Good);
 
-        await Connection.HistorianModify(variable, ModifyMode.Upsert, vtq);
+        await Connection.HistorianModify(variable, delete ? ModifyMode.Delete : ModifyMode.Upsert, vtq);
 
         return ReqResult.OK();
     }
