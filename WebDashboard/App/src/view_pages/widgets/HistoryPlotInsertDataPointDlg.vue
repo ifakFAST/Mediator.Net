@@ -143,7 +143,7 @@ const formattedUTCTimestamp = computed<string>(() => {
   )}:${pad(date.getUTCSeconds())} UTC`
 })
 
-const open = async (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo): Promise<InsertDataPointResult | null> => {
+const open = async (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
   state.valueText = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
   state.itemName = item.Name
@@ -164,6 +164,13 @@ const open = async (timestamp: number, yvalue: number, item: ItemConfig, variabl
       if (valueMember) {
         memberValues.value[valueMember.Name] = state.valueText
       }
+
+      if (initialMemberValues) {
+        for (const [key, value] of initialMemberValues) {
+          memberValues.value[key] = value
+        }
+      }
+
     } catch (err: any) {
       alert(`Failed to parse variable type constraints: ${err.message}`)
       objectMembers.value = []

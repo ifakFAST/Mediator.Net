@@ -659,7 +659,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo) => Promise<InsertDataPointResult | null>
+  open: (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1083,7 @@ const onContextMenu = (e: MouseEvent): void => {
   })
 }
 
-const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: number): Promise<void> => {
+const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: number, initialMemberValues?: Map<string, string>): Promise<void> => {
 
   const dialog = insertDataPointDialog.value
   if (!dialog) {
@@ -1103,7 +1103,7 @@ const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yv
     return
   }
 
-  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalue, item, variableInfo)
+  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalue, item, variableInfo, initialMemberValues)
   console.log('Insert Data Point Result:', result)
 
   if (!result) {
@@ -1220,7 +1220,10 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
 
             const timestamp = ann.x
             const yvalue = ann.y
-            await openInsertDataPointDialog(item, timestamp, yvalue)            
+            const initialMemberValues = new Map<string, string>()
+            initialMemberValues.set(item.ObjectConfig.KeyLabel, ann.label)
+            initialMemberValues.set(item.ObjectConfig.KeyTooltip, ann.tooltip || '')
+            await openInsertDataPointDialog(item, timestamp, yvalue, initialMemberValues)            
           },
         }
         return res
