@@ -7,14 +7,16 @@
  * License: MIT
  */
 
-interface AnnotationPoint {
+export interface AnnotationPoint {
   canvasx: number
   canvasy: number
   name: string
   annotation: AnnotationConfig
 }
 
-interface AnnotationConfig {
+export interface AnnotationConfig {
+  series: string
+  xval: number
   text?: string
   shortText?: string
   dblClickHandler?: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => void
@@ -92,6 +94,14 @@ class MyAnnotations {
       div.style.visibility = 'visible'
       div.title = p.annotation.text || ''
       //div.style.color = g.colorsMap_[p.name]
+
+      // Add double-click handler if provided
+      if (a.dblClickHandler) {
+        div.addEventListener('dblclick', (e) => {
+          a.dblClickHandler!(a, p, g, e)
+        })
+      }
+
       this.annotations_.push(div)
     }
   }

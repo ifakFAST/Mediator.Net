@@ -554,7 +554,7 @@ import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo, Varia
 import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
 import HistoryPlotExtConfigDlg from './HistoryPlotExtConfigDlg.vue'
 import * as model from '../model'
-import type { DataType } from '@/fast_types'
+import type { AnnotationPoint, AnnotationConfig } from '../../plugins/MyAnnotations'
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -1196,13 +1196,26 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
     //   seriesMap.set(ann.x, ann.text)
     // }
     if (theGraphValue) {
-      const processedAnnotations = response.Annotations.map((ann: Annotation) => ({
-        series: ann.series,
-        xval: ann.x,
-        shortText: ann.label,
-        text: ann.tooltip || '',
-      }))
-      theGraphValue.setAnnotations(processedAnnotations)
+
+      const makeAnnotationConfig = (ann: Annotation) => {
+        const res: AnnotationConfig = {
+          series: ann.series,
+          xval: ann.x,
+          shortText: ann.label,
+          text: ann.tooltip || '',
+          dblClickHandler: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => {
+            const item: ItemConfig | undefined = items.value.find((it) => {
+              const nameResolved = resolveMap.get(it.Name) || it.Name
+              return nameResolved === a.series
+            })
+            // TODO: Open edit dialog HistoryPlotInsertDataPointDlg
+          },
+        }
+        return res
+      }
+
+      const annotationConfigs = response.Annotations.map(makeAnnotationConfig)
+      theGraphValue.setAnnotations(annotationConfigs)
     }
   } else {
     if (theGraphValue) {
