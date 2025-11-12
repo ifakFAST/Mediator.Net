@@ -602,6 +602,7 @@ interface ObjectConfig {
 interface Annotation {
   series: string
   x: number
+  y: number
   label: string
   tooltip?: string
 }
@@ -1082,14 +1083,13 @@ const onContextMenu = (e: MouseEvent): void => {
   })
 }
 
-const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
-  closeContextMenu()
+const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: number): Promise<void> => {
+
   const dialog = insertDataPointDialog.value
   if (!dialog) {
     return
   }
-  const timestamp = getContextTimestamp()
-  const yvalue = getAxisValueFromContext(item.Axis)
+
   let variableInfo: VariableInfo
   try {
     const para = {
@@ -1120,6 +1120,13 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   } catch (err: any) {
     alert(err.message)
   }
+}
+
+const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
+  closeContextMenu()  
+  const timestamp = getContextTimestamp()
+  const yvalue = getAxisValueFromContext(item.Axis)  
+  await openInsertDataPointDialog(item, timestamp, yvalue)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
@@ -1203,12 +1210,17 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
           xval: ann.x,
           shortText: ann.label,
           text: ann.tooltip || '',
-          dblClickHandler: (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => {
+          dblClickHandler: async (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => {
+
             const item: ItemConfig | undefined = items.value.find((it) => {
               const nameResolved = resolveMap.get(it.Name) || it.Name
               return nameResolved === a.series
             })
-            // TODO: Open edit dialog HistoryPlotInsertDataPointDlg
+            if (!item) return
+
+            const timestamp = ann.x
+            const yvalue = ann.y
+            await openInsertDataPointDialog(item, timestamp, yvalue)            
           },
         }
         return res

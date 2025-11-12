@@ -602,7 +602,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                             writer.WriteValueEmpty();
 
                         // Extract label if ShowLabel is true and KeyLabel is specified
-                        if (items[i].ObjectConfig!.ShowLabel && !string.IsNullOrEmpty(items[i].ObjectConfig!.KeyLabel)) {
+                        if (value.HasValue && items[i].ObjectConfig!.ShowLabel && !string.IsNullOrEmpty(items[i].ObjectConfig!.KeyLabel)) {
                             DataValue labelValue = v[items[i].ObjectConfig!.KeyLabel];
                             string? labelText = labelValue.IsString ? labelValue.GetString() : null;
                             if (!string.IsNullOrEmpty(labelText)) {
@@ -614,6 +614,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                                 annotations.Add(new Annotation {
                                     Series = items[i].GetLabel(),
                                     X = time.JavaTicks,
+                                    Y = value.Value,
                                     Label = labelText,
                                     Tooltip = tooltip
                                 });
@@ -658,7 +659,9 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             writer.Write("\"series\":\"");
             writer.Write(annotation.Series.Replace("\\", "\\\\").Replace("\"", "\\\""));
             writer.Write("\",\"x\":");
-            writer.Write(annotation.X);
+            writer.Write(annotation.X.ToString(CultureInfo.InvariantCulture));
+            writer.Write(",\"y\":");
+            writer.Write(annotation.Y.ToString(CultureInfo.InvariantCulture));
             writer.Write(",\"label\":\"");
             writer.Write(annotation.Label.Replace("\\", "\\\\").Replace("\"", "\\\""));
             writer.Write('"');
@@ -966,6 +969,7 @@ internal class Annotation
 {
     public string Series { get; set; } = "";
     public long X { get; set; }
+    public double Y { get; set; }
     public string Label { get; set; } = "";
     public string? Tooltip { get; set; } = null;
 }
