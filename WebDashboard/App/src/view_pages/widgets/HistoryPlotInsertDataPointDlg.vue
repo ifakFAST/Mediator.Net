@@ -42,7 +42,7 @@
           color="primary-darken-1"
           variant="text"
           @click="onSave"
-          >Insert</v-btn
+          >{{ editMode ? 'Update' : 'Insert' }}</v-btn
         >
       </v-card-actions>
     </v-card>
@@ -86,6 +86,7 @@ let resolver: ((result: InsertDataPointResult | null) => void) | null = null
 type MemberType = 'string' | 'number'
 type TypedMember = { Name: string; Type: MemberType }
 
+const editMode = ref<boolean>(false)
 const isObject = ref<boolean>(false)
 const objectMembers = ref<TypedMember[]>([])
 const memberValues = ref<Record<string, string>>({})
@@ -143,11 +144,12 @@ const formattedUTCTimestamp = computed<string>(() => {
   )}:${pad(date.getUTCSeconds())} UTC`
 })
 
-const open = async (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>): Promise<InsertDataPointResult | null> => {
+const open = async (edit: boolean, timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
   state.valueText = yvalue
   state.itemName = item.Name
   state.show = true
+  editMode.value = edit
 
   isObject.value = variableInfo.Type == 'Struct' && variableInfo.Dimension == 1
   if (isObject.value) {

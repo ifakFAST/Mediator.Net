@@ -659,7 +659,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
+  open: (edit: boolean, timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1083,7 @@ const onContextMenu = (e: MouseEvent): void => {
   })
 }
 
-const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: string, initialMemberValues?: Map<string, string>): Promise<void> => {
+const openInsertDataPointDialog = async (edit: boolean, item: ItemConfig, timestamp: number, yvalue: string, initialMemberValues?: Map<string, string>): Promise<void> => {
 
   const dialog = insertDataPointDialog.value
   if (!dialog) {
@@ -1103,7 +1103,7 @@ const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yv
     return
   }
 
-  const result: InsertDataPointResult | null = await dialog.open(timestamp, yvalue, item, variableInfo, initialMemberValues)
+  const result: InsertDataPointResult | null = await dialog.open(edit, timestamp, yvalue, item, variableInfo, initialMemberValues)
   console.log('Insert Data Point Result:', result)
 
   if (!result) {
@@ -1127,7 +1127,7 @@ const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   const timestamp = getContextTimestamp()
   const yvalue = getAxisValueFromContext(item.Axis)
   const yvalueStr = parseFloat(yvalue.toFixed(3)).toString()
-  await openInsertDataPointDialog(item, timestamp, yvalueStr)
+  await openInsertDataPointDialog(false, item, timestamp, yvalueStr)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
@@ -1224,7 +1224,7 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
             const initialMemberValues = new Map<string, string>()
             initialMemberValues.set(item.ObjectConfig.KeyLabel, ann.label)
             initialMemberValues.set(item.ObjectConfig.KeyTooltip, ann.tooltip || '')
-            await openInsertDataPointDialog(item, timestamp, yvalue, initialMemberValues)            
+            await openInsertDataPointDialog(true, item, timestamp, yvalue, initialMemberValues)            
           },
         }
         return res
