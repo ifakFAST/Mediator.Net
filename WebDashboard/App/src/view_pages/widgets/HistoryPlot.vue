@@ -659,7 +659,7 @@ interface ContextMenuState {
 }
 
 interface InsertDataPointDialogExpose {
-  open: (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
+  open: (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1083,7 @@ const onContextMenu = (e: MouseEvent): void => {
   })
 }
 
-const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: number, initialMemberValues?: Map<string, string>): Promise<void> => {
+const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yvalue: string, initialMemberValues?: Map<string, string>): Promise<void> => {
 
   const dialog = insertDataPointDialog.value
   if (!dialog) {
@@ -1125,8 +1125,9 @@ const openInsertDataPointDialog = async (item: ItemConfig, timestamp: number, yv
 const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
   closeContextMenu()  
   const timestamp = getContextTimestamp()
-  const yvalue = getAxisValueFromContext(item.Axis)  
-  await openInsertDataPointDialog(item, timestamp, yvalue)
+  const yvalue = getAxisValueFromContext(item.Axis)
+  const yvalueStr = parseFloat(yvalue.toFixed(3)).toString()
+  await openInsertDataPointDialog(item, timestamp, yvalueStr)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
@@ -1219,7 +1220,7 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
             if (!item) return
 
             const timestamp = ann.x
-            const yvalue = ann.y
+            const yvalue = ann.y.toString()
             const initialMemberValues = new Map<string, string>()
             initialMemberValues.set(item.ObjectConfig.KeyLabel, ann.label)
             initialMemberValues.set(item.ObjectConfig.KeyTooltip, ann.tooltip || '')

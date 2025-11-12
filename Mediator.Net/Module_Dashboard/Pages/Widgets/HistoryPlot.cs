@@ -120,7 +120,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
         var res = MemoryManager.GetMemoryStream("LoadHistory");
         try {
-            using (var writer = new StreamWriter(res, Encoding.ASCII, 8 * 1024, leaveOpen: true)) {
+            using (var writer = new StreamWriter(res, Encoding.UTF8, 8 * 1024, leaveOpen: true)) {
                 writer.Write("{ \"WindowLeft\": " + windowLeft.JavaTicks);
                 writer.Write(", \"WindowRight\": " + windowRight.JavaTicks);
                 writer.Write(", \"DataRevision\": " + dataRevision);

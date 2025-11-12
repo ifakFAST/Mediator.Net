@@ -143,9 +143,9 @@ const formattedUTCTimestamp = computed<string>(() => {
   )}:${pad(date.getUTCSeconds())} UTC`
 })
 
-const open = async (timestamp: number, yvalue: number, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>): Promise<InsertDataPointResult | null> => {
+const open = async (timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>): Promise<InsertDataPointResult | null> => {
   state.timestampText = formatTimestampForDisplay(timestamp)
-  state.valueText = Math.abs(yvalue) < 1.0 ? yvalue.toFixed(3) : yvalue.toFixed(2)
+  state.valueText = yvalue
   state.itemName = item.Name
   state.show = true
 
