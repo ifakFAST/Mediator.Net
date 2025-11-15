@@ -2,6 +2,18 @@
 import { ref, watch, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import Dygraph from 'dygraphs'
 import 'dygraphs/dist/dygraph.css'
+import MyAnnotations from '@/plugins/MyAnnotations'
+
+const DygraphAny = Dygraph as any
+if (DygraphAny.PLUGINS && DygraphAny.Plugins) {
+  DygraphAny.PLUGINS = DygraphAny.PLUGINS.map((plugin: any) => {
+    if (plugin === DygraphAny.Plugins.Annotations) {
+      console.log('Replaced built-in DyGraphs Annotations plugin with MyAnnotations')
+      return MyAnnotations
+    }
+    return plugin
+  })
+}
 
 // Props
 interface Props {
@@ -29,6 +41,7 @@ const deepCopy = (obj: any) => {
   copy.legendFormatter = obj.legendFormatter
   copy.zoomCallback = obj.zoomCallback
   copy.underlayCallback = obj.underlayCallback
+  copy.drawPointCallback = obj.drawPointCallback
   return copy
 }
 

@@ -17,6 +17,7 @@
           <Signal id="signal_007" name="TSS_6" unit="mg/L" />
           <Signal id="signal_008" name="TSS_7" unit="mg/L" />
           <Signal id="signal_009" name="TSS_8" unit="mg/L" />
+          <Signal id="Annotations1" name="Annotations1" type="Struct" typeConstraints="Value: number, Label: string, Tooltip: string" />
         </Signals>
       </Folder>
     </Folders>

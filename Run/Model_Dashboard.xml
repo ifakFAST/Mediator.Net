@@ -20,6 +20,84 @@
   "ConfigVariables": [],
   "Pages": [
     {
+      "ID": "P_58be",
+      "Name": "Anno",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_81f1",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 8000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
+                    },
+                    "Items": [
+                      {
+                        "Name": "Annotations1",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:Annotations1",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "Value",
+                          "ShowLabel": true,
+                          "KeyLabel": "Label",
+                          "KeyTooltip": "Tooltip"
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": []
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        }
+      ]
+    },
+    {
       "ID": "P_854b",
       "Name": "Agg",
       "Rows": [

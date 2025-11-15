@@ -1,3 +1,5 @@
+import type { DataType } from '@/fast_types'
+
 export interface ModuleInfo {
   ID: string
   Name: string
@@ -30,4 +32,12 @@ export interface SelectObject {
 
 export interface ObjectMap {
   [key: string]: ObjInfo
+}
+
+export interface VariableInfo {
+  Name: string
+  Type: DataType
+  TypeConstraints: string
+  Dimension: number
+  Unit: string
 }

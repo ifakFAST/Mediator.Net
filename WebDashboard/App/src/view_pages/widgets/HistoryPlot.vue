@@ -1,6 +1,9 @@
 <template>
   <div>
-    <div @contextmenu="onContextMenu">
+    <div
+      ref="graphWrapper"
+      @contextmenu="onContextMenu"
+    >
       <dy-graph
         ref="theGraph"
         :graph-data="historyData"
@@ -12,6 +15,7 @@
 
     <v-menu
       v-model="contextMenu.show"
+      :close-on-content-click="false"
       :target="[contextMenu.clientX, contextMenu.clientY]"
     >
       <v-list>
@@ -32,6 +36,28 @@
         </v-list-item>
         <v-list-item @click="downloadSpreadsheet">
           <v-list-item-title>Download Spreadsheet File</v-list-item-title>
+        </v-list-item>
+        <v-list-item
+          v-if="items.length > 0"
+          append-icon="mdi-menu-right"
+        >
+          <v-list-item-title>Insert data point</v-list-item-title>
+          <v-menu
+            activator="parent"
+            open-on-hover
+            submenu
+            :transition="false"
+          >
+            <v-list>
+              <v-list-item
+                v-for="(item, idx) in items"
+                :key="idx"
+                @click="onInsertDataPoint(item)"
+              >
+                <v-list-item-title>{{ item.Name }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -183,7 +209,22 @@
                     @click="editorItems_AddItem"
                   ></v-btn>
                 </td>
-                <td>&nbsp;</td>
+                <td>
+                  <v-btn
+                    icon="mdi-tune"
+                    size="small"
+                    variant="text"
+                    @click="showExtendedConfig = true"
+                  >
+                    <v-icon>mdi-tune</v-icon>
+                    <v-tooltip
+                      activator="parent"
+                      location="top"
+                    >
+                      Extended Configuration
+                    </v-tooltip>
+                  </v-btn>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -493,19 +534,27 @@
       :object-id="selectObject.selectedObjectID"
       @onselected="selectObject_OK"
     ></dlg-object-select>
+    <history-plot-insert-data-point-dlg ref="insertDataPointDialog"></history-plot-insert-data-point-dlg>
+    <history-plot-ext-config-dlg
+      v-model="showExtendedConfig"
+      :items="editorItems.items"
+      @update:items="editorItems.items = $event"
+    ></history-plot-ext-config-dlg>
   </div>
 </template>
 
 <script setup lang="ts">
-// @ts-nocheck
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, getCurrentInstance } from 'vue'
 import DyGraph from '../../components/DyGraph.vue'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
 import type { TimeRange, TimeUnit } from '../../utils'
 import { TimeUnitValues, timeWindowFromTimeRange, getLocalDateIsoStringFromTimestamp } from '../../utils'
 import TextFieldNullableNumber from '../../components/TextFieldNullableNumber.vue'
-import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo } from './common'
+import type { ModuleInfo, ObjectMap, Obj, Variable, SelectObject, ObjInfo, VariableInfo } from './common'
+import HistoryPlotInsertDataPointDlg from './HistoryPlotInsertDataPointDlg.vue'
+import HistoryPlotExtConfigDlg from './HistoryPlotExtConfigDlg.vue'
 import * as model from '../model'
+import type { AnnotationPoint, AnnotationConfig } from '../../plugins/MyAnnotations'
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -540,6 +589,22 @@ interface ItemConfig {
   Axis: Axis
   Checked: boolean
   Variable: Variable
+  ObjectConfig: ObjectConfig
+}
+
+interface ObjectConfig {
+  KeyValue: string
+  ShowLabel: boolean
+  KeyLabel: string
+  KeyTooltip: string
+}
+
+interface Annotation {
+  series: string
+  x: number
+  y: number
+  label: string
+  tooltip?: string
 }
 
 type SeriesType = 'Line' | 'Scatter'
@@ -577,6 +642,25 @@ interface DownloadOptions {
   resolutionUnit: TimeUnit
   skipEmptyIntervals: boolean
   simbaFormat: boolean
+}
+
+interface InsertDataPointResult {
+  timestamp: number
+  value: string
+  delete: boolean
+}
+
+interface ContextMenuState {
+  show: boolean
+  clientX: number
+  clientY: number
+  timestamp: number | null
+  yLeft: number | null
+  yRight: number | null
+}
+
+interface InsertDataPointDialogExpose {
+  open: (edit: boolean, timestamp: number, yvalue: string, item: ItemConfig, variableInfo: VariableInfo, initialMemberValues?: Map<string, string>) => Promise<InsertDataPointResult | null>
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -627,10 +711,13 @@ const emit = defineEmits<{
 // Reactive data
 const qualityFilterValues = ref(QualityFilterValues)
 const canUpdateConfig = ref(false)
-const contextMenu = ref({
+const contextMenu = ref<ContextMenuState>({
   show: false,
   clientX: 0,
   clientY: 0,
+  timestamp: null,
+  yLeft: null,
+  yRight: null,
 })
 const historyData = ref<any[][]>([])
 const zoomResetTime = ref(0)
@@ -640,6 +727,7 @@ const editorItems = ref<EditorItems>({
   items: [],
   colorList: ['#1BA1E2', '#A05000', '#339933', '#A2C139', '#D80073', '#F09609', '#E671B8', '#A200FF', '#E51400', '#00ABA9', '#000000', '#CCCCCC'],
 })
+const showExtendedConfig = ref(false)
 const editorPlot = ref<EditorPlot>({
   show: false,
   plot: {
@@ -679,9 +767,12 @@ const downloadOptions = ref<DownloadOptions>({
 const currentVariable = ref<Variable>({ Object: '', Name: '' })
 const dataRevision = ref(0)
 const stringWithVarResolvedMap = ref<Map<string, string>>(new Map())
+//const annotationMap = ref<Map<string, Map<number, string>>>(new Map())
 
 // Template refs
 const theGraph = ref<InstanceType<typeof DyGraph> | null>(null)
+const graphWrapper = ref<HTMLElement | null>(null)
+const insertDataPointDialog = ref<InsertDataPointDialogExpose | null>(null)
 
 // Computed properties
 const variables = computed(() => {
@@ -791,7 +882,54 @@ const options = computed(() => {
     emit('date-window-changed', dateWindow)
     enforceYAxisLimitsWithCurrentRanges(yRanges)
   }
+  /*
+  const drawPointCallback = (g: any, seriesName: string, canvasContext: CanvasRenderingContext2D, cx: number, cy: number, color: string, pointSize: number, idx: number) => {
+    // Draw the default point
+    canvasContext.beginPath()
+    canvasContext.fillStyle = color
+    canvasContext.arc(cx, cy, pointSize, 0, 2 * Math.PI, false)
+    canvasContext.fill()
 
+    const seriesMap = annotationMap.value.get(seriesName)
+    if (!seriesMap) {
+      return
+    }
+
+    // Check if this point has an annotation
+    const data = historyData.value
+    if (idx >= 0 && idx < data.length) {
+      const timestamp = data[idx][0].getTime()      
+      const annotationText = seriesMap.get(timestamp)
+
+      if (annotationText) {
+        // Set text style
+        canvasContext.font = '14px sans-serif'
+        canvasContext.textAlign = 'center'
+        canvasContext.textBaseline = 'bottom'
+
+        // Measure text to draw background
+        //const textMetrics = canvasContext.measureText(annotationText)
+        //const textWidth = textMetrics.width
+        const textHeight = 16 // Approximate height for 14px font
+        const padding = 2
+
+        // Position text above the point
+        const textX = cx
+        let textY = cy - pointSize - 2
+
+        // If too close to top, position below instead
+        if (textY - textHeight - padding < 0) {
+          textY = cy + pointSize + 4
+          canvasContext.textBaseline = 'top'
+        }
+
+        // Draw text
+        canvasContext.fillStyle = '#000000'
+        canvasContext.fillText(annotationText, textX, textY)
+      }
+    }
+  }
+*/
   return {
     labels: ['Date'].concat(itemsValue.map(makeLabel)),
     legend: 'always',
@@ -805,6 +943,7 @@ const options = computed(() => {
     visibility: itemsValue.map((it) => it.Checked),
     legendFormatter,
     zoomCallback,
+    //drawPointCallback,
   }
 })
 
@@ -817,7 +956,7 @@ const resolvedRightAxisName = computed(() => {
 })
 
 const dyGraph = computed(() => {
-  const gr: any = theGraph.value
+  const gr = theGraph.value
   if (gr) {
     return gr._data.graph.value
   }
@@ -825,7 +964,7 @@ const dyGraph = computed(() => {
 })
 
 const dyGraphID = computed(() => {
-  const gr: any = theGraph.value
+  const gr = theGraph.value
   if (gr) {
     return gr._data.id.value
   }
@@ -839,15 +978,158 @@ const isItemsOK = computed(() => {
 })
 
 // Methods
+const closeContextMenu = (): void => {
+  contextMenu.value.show = false
+}
+
+const determineTimestampStep = (rangeMs: number): number => {
+  const Second = 1000
+  const Minute = 60 * Second
+  const Hour = 60 * Minute
+  const Day = 24 * Hour
+  if (rangeMs >= 20 * Day) {
+    return Day
+  }
+  if (rangeMs >= 7 * Day) {
+    return 6 * Hour
+  }
+  if (rangeMs >= Day) {
+    return Hour
+  }
+  if (rangeMs >= 6 * Hour) {
+    return 15 * Minute
+  }
+  if (rangeMs >= Hour) {
+    return 5 * Minute
+  }
+  if (rangeMs >= 15 * Minute) {
+    return Minute
+  }
+  if (rangeMs >= 5 * Minute) {
+    return 30 * Second
+  }
+  return Second
+}
+
+const getVisibleRangeMs = (graphInstance: any): number => {
+  try {
+    const [min, max] = graphInstance.xAxisRange()
+    return max - min
+  } catch {
+    return 0
+  }
+}
+
+const roundTimestampForVisibleRange = (timestamp: number, graphInstance: any): number => {
+  const rangeMs = getVisibleRangeMs(graphInstance)
+  if (!(rangeMs > 0)) {
+    return timestamp
+  }
+  const step = determineTimestampStep(rangeMs)
+  if (!(step > 0)) {
+    return timestamp
+  }
+  return Math.round(timestamp / step) * step
+}
+
+const updateContextMenuDataFromMouse = (e: MouseEvent): void => {
+  const wrapper = graphWrapper.value
+  const graphInstance = dyGraph.value
+  if (!wrapper || !graphInstance) {
+    contextMenu.value.timestamp = null
+    contextMenu.value.yLeft = null
+    contextMenu.value.yRight = null
+    return
+  }
+
+  const rect = wrapper.getBoundingClientRect()
+  const canvasX = e.clientX - rect.left
+  const canvasY = e.clientY - rect.top
+
+  try {
+    const [timestamp, leftY] = graphInstance.toDataCoords(canvasX, canvasY)
+    contextMenu.value.timestamp = typeof timestamp === 'number' ? roundTimestampForVisibleRange(timestamp, graphInstance) : null
+    contextMenu.value.yLeft = typeof leftY === 'number' ? leftY : null
+  } catch {
+    contextMenu.value.timestamp = null
+    contextMenu.value.yLeft = null
+  }
+
+  try {
+    const [, rightY] = graphInstance.toDataCoords(canvasX, canvasY, 1)
+    contextMenu.value.yRight = typeof rightY === 'number' ? rightY : null
+  } catch {
+    contextMenu.value.yRight = null
+  }
+}
+
+const getContextTimestamp = (): number => {
+  return contextMenu.value.timestamp ?? new Date().getTime()
+}
+
+const getAxisValueFromContext = (axis: Axis): number => {
+  const value = axis === 'Right' ? contextMenu.value.yRight : contextMenu.value.yLeft
+  return value ?? 0
+}
+
 const onContextMenu = (e: MouseEvent): void => {
   e.preventDefault()
   e.stopPropagation()
-  contextMenu.value.show = false
+  closeContextMenu()
+  updateContextMenuDataFromMouse(e)
   contextMenu.value.clientX = e.clientX
   contextMenu.value.clientY = e.clientY
   nextTick(() => {
     contextMenu.value.show = true
   })
+}
+
+const openInsertDataPointDialog = async (edit: boolean, item: ItemConfig, timestamp: number, yvalue: string, initialMemberValues?: Map<string, string>): Promise<void> => {
+
+  const dialog = insertDataPointDialog.value
+  if (!dialog) {
+    return
+  }
+
+  let variableInfo: VariableInfo
+  try {
+    const para = {
+      variable: item.Variable,
+    }
+    const response: VariableInfo = await props.backendAsync('GetVariableInfo', para)
+    console.log('Variable Info:', response)
+    variableInfo = response
+  } catch (err: any) {
+    alert(err.message)
+    return
+  }
+
+  const result: InsertDataPointResult | null = await dialog.open(edit, timestamp, yvalue, item, variableInfo, initialMemberValues)
+  console.log('Insert Data Point Result:', result)
+
+  if (!result) {
+    return
+  }
+  try {
+    const para = {
+      variable: item.Variable,
+      timestamp: result.timestamp,
+      value: result.value,
+      delete: result.delete,
+    }
+    await props.backendAsync('UpsertDataPoint', para)
+    await onLoadData(false)
+  } catch (err: any) {
+    alert(err.message)
+  }
+}
+
+const onInsertDataPoint = async (item: ItemConfig): Promise<void> => {
+  closeContextMenu()  
+  const timestamp = getContextTimestamp()
+  const yvalue = getAxisValueFromContext(item.Axis)
+  const yvalueStr = parseFloat(yvalue.toFixed(3)).toString()
+  await openInsertDataPointDialog(false, item, timestamp, yvalueStr)
 }
 
 const onEditorItemsKeydown = (e: KeyboardEvent): void => {
@@ -869,6 +1151,7 @@ const onDownloadOptionsKeydown = (e: KeyboardEvent): void => {
 }
 
 const onConfigurePlotItems = async (): Promise<void> => {
+  closeContextMenu()
   const response: {
     ObjectMap: ObjectMap
     Modules: ModuleInfo[]
@@ -893,6 +1176,7 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
     WindowRight: number
     Data: any[][]
     DataRevision: number
+    Annotations: Annotation[]
   } = await props.backendAsync('LoadData', para)
 
   const resolveMap = stringWithVarResolvedMap.value
@@ -909,6 +1193,54 @@ const onLoadData = async (resetZoom: boolean): Promise<void> => {
   convertTimestamps(data)
   sliceDataToDateWindow(data, response.WindowLeft, response.WindowRight)
   historyData.value = data
+
+  const theGraphValue = dyGraph.value
+  // const newAnnotationMap = new Map<string, Map<number, string>>()
+  if (response.Annotations && response.Annotations.length > 0) {
+    // for (const ann of response.Annotations) {
+    //   let seriesMap = newAnnotationMap.get(ann.series)
+    //   if (!seriesMap) {
+    //     seriesMap = new Map<number, string>()
+    //     newAnnotationMap.set(ann.series, seriesMap)
+    //   }
+    //   seriesMap.set(ann.x, ann.text)
+    // }
+    if (theGraphValue) {
+
+      const makeAnnotationConfig = (ann: Annotation) => {
+        const res: AnnotationConfig = {
+          series: ann.series,
+          xval: ann.x,
+          shortText: ann.label,
+          text: ann.tooltip || '',
+          dblClickHandler: async (a: AnnotationConfig, pt: AnnotationPoint, g: any, e: Event) => {
+
+            const item: ItemConfig | undefined = items.value.find((it) => {
+              const nameResolved = resolveMap.get(it.Name) || it.Name
+              return nameResolved === a.series
+            })
+            if (!item) return
+
+            const timestamp = ann.x
+            const yvalue = ann.y.toString()
+            const initialMemberValues = new Map<string, string>()
+            initialMemberValues.set(item.ObjectConfig.KeyLabel, ann.label)
+            initialMemberValues.set(item.ObjectConfig.KeyTooltip, ann.tooltip || '')
+            await openInsertDataPointDialog(true, item, timestamp, yvalue, initialMemberValues)            
+          },
+        }
+        return res
+      }
+
+      const annotationConfigs = response.Annotations.map(makeAnnotationConfig)
+      theGraphValue.setAnnotations(annotationConfigs)
+    }
+  } else {
+    if (theGraphValue) {
+      theGraphValue.setAnnotations([])
+    }
+  }
+  //annotationMap.value = newAnnotationMap
 
   enforceYAxisLimits()
 
@@ -1035,6 +1367,12 @@ const editorItems_AddItem = (): void => {
       Object: '',
       Name: '',
     },
+    ObjectConfig: {
+      KeyValue: '',
+      ShowLabel: false,
+      KeyLabel: '',
+      KeyTooltip: '',
+    },
   }
   editorItems.value.items.push(item)
 }
@@ -1111,6 +1449,12 @@ const replaceEditorItemsFromCsvFromClipboard = (): void => {
             Axis: 'Left',
             Checked: true,
             Variable: { Object: '', Name: 'Value' },
+            ObjectConfig: {
+              KeyValue: '',
+              ShowLabel: false,
+              KeyLabel: '',
+              KeyTooltip: '',
+            },
           }
 
           // Assign values to properties based on header column names
@@ -1183,6 +1527,7 @@ const editorItems_ObjectID2Variables = (id: Variable): string[] => {
 }
 
 const onConfigurePlot = (): void => {
+  closeContextMenu()
   const str = JSON.stringify(plotConfig.value)
   editorPlot.value.plot = JSON.parse(str)
   editorPlot.value.show = true
@@ -1232,20 +1577,22 @@ const editorItems_SelectObj = (item: ItemConfig): void => {
 const selectObject_OK = (obj: Obj): void => {
   objectMap.value[obj.ID] = {
     Name: obj.Name,
-    Variables: obj.Variables,
+    Variables: obj.Variables || [],
   }
   currentVariable.value.Object = obj.ID
-  if (obj.Variables.length === 1) {
+  if (obj.Variables && obj.Variables.length === 1) {
     currentVariable.value.Name = obj.Variables[0]
   }
 }
 
 const downloadSpreadsheet = (): void => {
+  closeContextMenu()
   downloadOptions.value.fileType = 'Spreadsheet'
   showDownloadDlg()
 }
 
 const downloadCSV = (): void => {
+  closeContextMenu()
   downloadOptions.value.fileType = 'CSV'
   downloadOptions.value.simbaFormat = false
   showDownloadDlg()
