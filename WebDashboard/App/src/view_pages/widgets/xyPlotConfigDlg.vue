@@ -4,6 +4,7 @@
       v-model="showDialog"
       max-width="850px"
       persistent
+      @keydown.esc="cancel"
     >
       <v-card>
         <v-card-title>Configure XY Plot</v-card-title>

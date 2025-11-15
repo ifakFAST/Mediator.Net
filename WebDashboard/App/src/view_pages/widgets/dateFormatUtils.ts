@@ -57,7 +57,7 @@ export function formatTimeLabel(
   granularity: TimeGranularityOption,
   level: number,
   weekStart: WeekStartOption = 'Monday',
-  locale?: string
+  locale?: string,
 ): string {
   const date = new Date(startTime)
   const userLocale = locale || getUserLocale()
@@ -78,12 +78,12 @@ export function formatTimeLabel(
         // Full: "January 2025"
         return new Intl.DateTimeFormat(userLocale, {
           month: 'long',
-          year: 'numeric'
+          year: 'numeric',
         }).format(date)
       } else {
         // Abbreviated: "January"
         return new Intl.DateTimeFormat(userLocale, {
-          month: 'long'
+          month: 'long',
         }).format(date)
       }
 
@@ -97,7 +97,7 @@ export function formatTimeLabel(
       return new Intl.DateTimeFormat(userLocale, {
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit'
+        day: '2-digit',
       }).format(date)
 
     default:
