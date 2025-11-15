@@ -1,7 +1,10 @@
 <template>
   <tr>
-    <td class="FieldName">
-      <div style="margin-top: 4px; padding-top: 12px">{{ name }}</div>
+    <td
+      class="FieldName"
+      style="vertical-align: top"
+    >
+      <div style="padding-top: 8px">{{ name }}</div>
     </td>
 
     <td><div style="min-width: 10px">&nbsp;</div></td>

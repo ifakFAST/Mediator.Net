@@ -18,6 +18,21 @@
       :optional="false"
       type="DataType"
     />
+    <v-tooltip
+      v-if="model.Type === 'Struct'"
+      right
+    >
+      <template #activator="{ props }">
+        <member-row
+          v-bind="props"
+          v-model="model.TypeConstraints"
+          name="TypeConstraints"
+          :optional="false"
+          type="Text"
+        />
+      </template>
+      <span>Specify struct members, e.g.: Value: number, Label: string</span>
+    </v-tooltip>
     <member-row
       v-model="model.Dimension"
       name="Dimension"

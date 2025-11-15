@@ -100,6 +100,9 @@ public class Signal : ModelObject
     [XmlAttribute("type")]
     public DataType Type { get; set; } = DataType.Float64;
 
+    [XmlAttribute("typeConstraints")]
+    public string TypeConstraints { get; set; } = "";
+
     [XmlAttribute("dimension")]
     public int Dimension { get; set; } = 1;
 
@@ -122,6 +125,7 @@ public class Signal : ModelObject
     public bool ShouldSerializeUnit() => !string.IsNullOrEmpty(Unit);
     public bool ShouldSerializeDimension() => Dimension != 1;
     public bool ShouldSerializeType() => Type != DataType.Float64;
+    public bool ShouldSerializeTypeConstraints() => !string.IsNullOrEmpty(TypeConstraints);
     protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
         History history;
@@ -144,7 +148,7 @@ public class Signal : ModelObject
                 type: Type,
                 defaultValue: GetDefaultValue(),
                 unit: Unit,
-                typeConstraints: "",
+                typeConstraints: TypeConstraints,
                 dimension: Dimension,
                 dimensionNames: new string[0],
                 remember: true,

@@ -112,4 +112,5 @@ export const DataTypeValues: DataType[] = [
   'Duration',
   'Enum',
   'Struct',
+  'Timeseries',
 ]
