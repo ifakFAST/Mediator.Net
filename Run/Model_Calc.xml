@@ -20,6 +20,11 @@
           <Signal id="Annotations1" name="Annotations1" type="Struct" typeConstraints="Value: number, Label: string, Tooltip: string" />
         </Signals>
       </Folder>
+      <Folder id="Calculated" name="Calculated">
+        <Signals>
+          <Signal id="Sum0102" name="Sum0102" unit="kW" />
+        </Signals>
+      </Folder>
     </Folders>
     <Calculations>
       <Calculation id="cs" name="CSharp" type="CSharp" enabled="false">
@@ -177,6 +182,41 @@ def GetSignalRefsBelowFolder(folderIDs):
         <Outputs>
           <Output id="Y" name="Y" unit="m³/d" />
         </Outputs>
+      </Calculation>
+      <Calculation id="DerivedSignals" name="DerivedSignals" type="CSharp" enabled="true">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>1 min</Cycle>
+        <Definition>using StdLib;
+using static StdLib.DerivedSignal;
+
+class Script
+{
+    const string Folder = "Calculated";
+
+    DerivedSignal Sum0102 = new(
+        parentFolderID: Folder,
+        unit: "kW",
+        resolution: Duration.FromMinutes(1),
+        inputsRequired: InputsRequired.None,
+        inputs: [
+            DefineInput("a", DataItemRef("Data_001")),
+            DefineInput("b", DataItemRef("Data_002")),
+        ],
+        calculation: (double a, double b) =&gt; {
+            a = double.IsNaN(a) ? 10.0 : a;
+            b = double.IsNaN(b) ? 10.0 : b;
+            return double.NaN;
+        }
+    );
+
+    public void Step(Timestamp t, Duration dt) {
+        Console.WriteLine("Calculations...");
+        UpdateDerivedSignals(this, t);
+        Console.WriteLine("Calculations end..");
+    }
+}</Definition>
+        <Inputs />
+        <Outputs />
       </Calculation>
     </Calculations>
   </RootFolder>

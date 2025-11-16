@@ -34,12 +34,22 @@ public sealed class DerivedSignal : Identifiable
 
     private readonly object?[] calcParameterValues;
     private readonly MethodInfo calcMethod;
+    private readonly InputsRequired inputsRequired;
 
     private VariableRef? VarRefSelf = null;
 
     public VariableRef VariableRef => VarRefSelf ?? throw new Exception($"DerivedSignal {ID} not initialized yet.");
 
-    public DerivedSignal(string parentFolderID, InputDef[] inputs, Delegate calculation, Duration resolution, string fullID = "", string fullName = "", string unit = "", Timestamp? startTime = null) {
+    public DerivedSignal(string parentFolderID, 
+                         InputDef[] inputs, 
+                         Delegate calculation, 
+                         Duration resolution, 
+                         string fullID = "", 
+                         string fullName = "", 
+                         string unit = "", 
+                         Timestamp? startTime = null, 
+                         InputsRequired inputsRequired = InputsRequired.All) {
+
         FullID = fullID;
         FullName = string.IsNullOrWhiteSpace(fullName) ? fullID : fullName;
         Unit = unit;
@@ -48,12 +58,13 @@ public sealed class DerivedSignal : Identifiable
         Inputs = inputs;
         Calculation = calculation;
         StartTime = startTime;
+        this.inputsRequired = inputsRequired;
 
         InitTest();
-        int countParameterValues = 
-            (parametersAsArray ? 1 : Inputs.Length) + 
-            ParamStates.Count + 
-            (idxParameterLast.HasValue ? 1 : 0) + 
+        int countParameterValues =
+            (parametersAsArray ? 1 : Inputs.Length) +
+            ParamStates.Count +
+            (idxParameterLast.HasValue ? 1 : 0) +
             (idxParameter_dt.HasValue ? 1 : 0) +
             (idxParameter_t.HasValue ? 1 : 0) +
             (idxParameter_Inputs.HasValue ? 1 : 0);
@@ -350,22 +361,29 @@ public sealed class DerivedSignal : Identifiable
 
             time += Resolution;
 
-            bool allValuesFound = true;
+            int countFoundValues = 0;
+            int countMissingValues = 0;
             values.Clear();
 
             foreach (InputDef input in Inputs) {
                 double? v = input.GetValueFor(time, Resolution, out bool canAbort);
                 if (canAbort) {
+                    // Console.WriteLine($"Calculation aborted for {input.Name} at {time}");
                     DrainBuffer();
                     return;
                 }
                 if (v == null) {
-                    // Console.WriteLine($"No value found for {param.Name} at {time}");
-                    allValuesFound = false;
-                    break;
+                    // Console.WriteLine($"No value found for {input.Name} at {time}");
+                    countMissingValues++;
+                    if (inputsRequired == InputsRequired.All)
+                        break;
+                }
+                else {
+                    // Console.WriteLine($"A value found for {input.Name} at {time}: {v.Value}");
+                    countFoundValues++;
                 }
 
-                if (input.PT1TimeConstant.HasValue) {
+                if (input.PT1TimeConstant.HasValue && v.HasValue) {
                     StateFloat64 stateValue = (StateFloat64)InputStates[input.IndexPT1StateValue];
                     StateTimestamp stateTime = (StateTimestamp)InputStates[input.IndexPT1StateTime];
 
@@ -375,17 +393,21 @@ public sealed class DerivedSignal : Identifiable
                     double T_ms = input.PT1TimeConstant.Value.TotalMilliseconds;
                     double dt_ms = dt.TotalMilliseconds;
                     double alpha = dt_ms / (T_ms + dt_ms);
-                    
+
                     double vPrev = stateValue.ValueOrNull ?? v.Value;
                     v = alpha * v.Value + (1.0 - alpha) * vPrev;
                     stateValue.ValueOrNull = v;
                     stateTime.ValueOrNull = time;
                 }
 
-                values.Add(v.Value);
+                values.Add(v ?? double.NaN);
             }
 
-            if (!allValuesFound) {
+            if (countMissingValues > 0 && inputsRequired == InputsRequired.All) {
+                continue;
+            }
+
+            if (countFoundValues == 0 && inputsRequired == InputsRequired.AtLeastOne) {
                 continue;
             }
 
@@ -406,6 +428,13 @@ public sealed class DerivedSignal : Identifiable
 
         DrainBuffer();
     }
+}
+
+public enum InputsRequired
+{
+    All, // All inputs are required for the calculation to be run
+    AtLeastOne, // At least one input is required for the calculation to be run
+    None // None of the inputs is required for the calculation to be run (meaning the calculation is always run, even if no input data is available)
 }
 
 public record SiblingSignal(string Id);

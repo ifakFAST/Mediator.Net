@@ -873,7 +873,7 @@
                   "Config": {
                     "PlotConfig": {
                       "MaxDataPoints": 12000,
-                      "FilterByQuality": "ExcludeBad",
+                      "FilterByQuality": "ExcludeNone",
                       "LeftAxisName": "",
                       "LeftAxisStartFromZero": false,
                       "LeftAxisScaleDivisor": 1.0,
@@ -883,14 +883,14 @@
                     },
                     "Items": [
                       {
-                        "Name": "Sine",
+                        "Name": "Sum0102",
                         "Color": "#1BA1E2",
                         "Size": 3.0,
-                        "SeriesType": "Line",
+                        "SeriesType": "Scatter",
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "IO:Data_002",
+                          "Object": "CALC:Sum0102",
                           "Name": "Value"
                         }
                       }
