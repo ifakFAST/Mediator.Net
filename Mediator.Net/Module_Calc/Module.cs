@@ -589,6 +589,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
     sealed class InputDrivenRunCondition : ICalcRunCondition {
 
+        private const int ChunkSize = 5000;
+
         private readonly Module module;
         private readonly CalcInstance adapter;
         private readonly List<Config.Input> variableInputs;
@@ -598,6 +600,32 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         private Timestamp nextCursor;
         private VTQs preparedValues = [];
 
+        internal sealed class DataBuffer {
+            public readonly VTTQs Data = [];
+            public int StartIdx = 0;
+            public void Clear() {
+                Data.Clear();
+                StartIdx = 0;
+            }
+            public int Count => Data.Count;
+            public VTTQ Last => Data[Data.Count - 1];
+
+            internal void AddRange(VTTQs data) {
+                Data.AddRange(data);
+            }
+
+            public VTTQ this[int index] => Data[index];
+
+            public void DropUntil(Timestamp t) {
+                while (StartIdx < Data.Count && Data[StartIdx].T <= t) {
+                    StartIdx++;
+                }
+            }
+        }
+
+        // Buffer storage for each input variable
+        private readonly List<DataBuffer> inputBuffers;
+
         public InputDrivenRunCondition(CalcInstance adapter, Module module) {
             this.module = module;
             this.adapter = adapter;
@@ -606,6 +634,12 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             offset = adapter.CalcConfig.Offset;
             affectedObjects = [adapter.ID];
             nextCursor = GetInitialCursorOrThrow();
+
+            // Initialize buffers for each input variable
+            inputBuffers = new List<DataBuffer>(variableInputs.Count);
+            for (int i = 0; i < variableInputs.Count; i++) {
+                inputBuffers.Add(new DataBuffer());
+            }
         }
 
         public bool ProvidesInputValues => true;
@@ -685,7 +719,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
                 for (int i = 0; i < variableInputs.Count; ++i) {
                     Config.Input input = variableInputs[i];
-                    VTTQ? data = await ReadFirstUseableValue(input, searchCursor);
+                    VTTQ? data = await ReadFirstUseableValueBuffered(i, input, searchCursor);
                     Console.WriteLine($"InputDrivenRunCondition: ReadFirstUseableValue for input '{input.Name}' returned: {data?.ToString() ?? "null"} (searchCursor: {searchCursor}) for calculation {adapter.Name}");
                     if (!data.HasValue) {
                         return null;
@@ -712,6 +746,11 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                             values.Add(vtqs[i].ToVTQ());
                         }
                         Console.WriteLine($"InputDrivenRunCondition: Found aligned data at {maxTimestamp} for calculation {adapter.Name}");
+
+                        foreach (var buf in inputBuffers) {
+                            buf.DropUntil(maxTimestamp);
+                        }
+
                         return (maxTimestamp, values);
                     }
                     else {
@@ -729,37 +768,64 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             return null;
         }
 
-        private async Task<VTTQ?> ReadFirstUseableValue(Config.Input input, Timestamp start) {
+        private async Task<VTTQ?> ReadFirstUseableValueBuffered(int inputIndex, Config.Input input, Timestamp start) {
 
             VariableRef variable = input.Variable!.Value;
+            DataBuffer buffer = inputBuffers[inputIndex];
 
-            while (adapter.State == State.Running) {
-                try {
-                    VTTQs data = await module.connection.HistorianReadRaw(
-                        variable,
-                        start,
-                        Timestamp.Max,
-                        1,
-                        BoundingMethod.TakeFirstN,
-                        QualityFilter.ExcludeBad);
+            // Check if we need to refill the buffer
+            if (buffer.Count == 0 || buffer.StartIdx >= buffer.Count || buffer.Last.T < start) {
 
-                    return data.Count == 0 ? null : data[0];
+                // Clear buffer and reset index
+                buffer.Clear();
+
+                // Read a chunk of data
+                while (adapter.State == State.Running) {
+                    try {
+                        VTTQs data = await module.connection.HistorianReadRaw(
+                            variable,
+                            start,
+                            Timestamp.Max,
+                            ChunkSize,
+                            BoundingMethod.TakeFirstN,
+                            QualityFilter.ExcludeBad);
+
+                        buffer.AddRange(data);
+                        break;
+                    }
+                    catch (ConnectivityException) {
+                        await module.RestartConnectionOrFail();
+                    }
+                    catch (RequestException exp) {
+                        module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
+                        return null;
+                    }
+                    catch (Exception exp) {
+                        Exception baseExp = exp.GetBaseException() ?? exp;
+                        module.Log_Error("InputDrivenConfig", $"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}");
+                        return null;
+                    }
                 }
-                catch (ConnectivityException) {
-                    await module.RestartConnectionOrFail();
-                }
-                catch (RequestException exp) {
-                    module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
-                    return null;
-                }
-                catch (Exception exp) {
-                    Exception baseExp = exp.GetBaseException() ?? exp;
-                    module.Log_Error("InputDrivenConfig", $"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}");
+
+                // If no data available, return null
+                if (buffer.Count == 0) {
                     return null;
                 }
             }
 
-            return null;
+            // Find the first value at or after 'start' timestamp
+            for (int i = buffer.StartIdx; i < buffer.Count; i++) {
+                if (buffer[i].T >= start) {
+                    return buffer[i];
+                }
+            }
+
+            // No value found in current buffer at or after 'start', need to refill
+            // This can happen if we've consumed all buffer data but need a later timestamp
+            buffer.Clear();
+
+            // Recursive call to refill and try again
+            return await ReadFirstUseableValueBuffered(inputIndex, input, start);
         }
     }
 
