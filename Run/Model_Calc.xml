@@ -18,6 +18,9 @@
           <Signal id="signal_008" name="TSS_7" unit="mg/L" />
           <Signal id="signal_009" name="TSS_8" unit="mg/L" />
           <Signal id="Annotations1" name="Annotations1" type="Struct" typeConstraints="Value: number, Label: string, Tooltip: string" />
+          <Signal id="InputA" name="InputA" />
+          <Signal id="InputB" name="InputB" />
+          <Signal id="InputC" name="InputC" />
         </Signals>
       </Folder>
       <Folder id="Calculated" name="Calculated">
@@ -217,6 +220,41 @@ class Script
 }</Definition>
         <Inputs />
         <Outputs />
+      </Calculation>
+      <Calculation id="InputDrivenCalc" name="InputDrivenCalc" type="CSharp" enabled="false">
+        <RunMode>InputDriven</RunMode>
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <InitialStartTime>2025-11-01T11:00:00Z</InitialStartTime>
+        <Cycle>1 min</Cycle>
+        <Definition>using Std;
+
+class Script {
+    
+    Input  A = new Input(name: "A", unit: "mg/L", defaultValue: null);
+    Input  B = new Input(name: "B", unit: "mg/L", defaultValue: null);
+    //Input  C = new Input(name: "C", unit: "mg/L", defaultValue: null);
+    
+    Output Y = new Output("Y", "m³/d");
+    
+    public void Step(Timestamp t, Duration dt) {
+        
+        if (A.HasValidValue&amp;&amp; B.HasValidValue /* &amp;&amp; C.HasValidValue*/) {
+            Y.Value = A.Value + B.Value; // + C.Value;
+        }
+    }
+}
+</Definition>
+        <Inputs>
+          <Input id="A" name="A" unit="mg/L">
+            <Variable object="CALC:InputA" name="Value" />
+          </Input>
+          <Input id="B" name="B" unit="mg/L">
+            <Constant>100</Constant>
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="Y" name="Y" unit="m³/d" />
+        </Outputs>
       </Calculation>
     </Calculations>
   </RootFolder>

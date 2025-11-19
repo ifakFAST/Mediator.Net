@@ -601,25 +601,67 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         private VTQs preparedValues = [];
 
         internal sealed class DataBuffer {
-            public readonly VTTQs Data = [];
-            public int StartIdx = 0;
-            public void Clear() {
-                Data.Clear();
-                StartIdx = 0;
+            private readonly VTTQs data = [];
+            private int startIdx = 0;
+            private int LastIdx => data.Count - 1;
+            internal bool Empty => data.Count == 0;
+            internal void Clear() {
+                data.Clear();
+                startIdx = 0;
             }
-            public int Count => Data.Count;
-            public VTTQ Last => Data[Data.Count - 1];
-
-            internal void AddRange(VTTQs data) {
-                Data.AddRange(data);
-            }
-
-            public VTTQ this[int index] => Data[index];
-
-            public void DropUntil(Timestamp t) {
-                while (StartIdx < Data.Count && Data[StartIdx].T <= t) {
-                    StartIdx++;
+            internal VTTQ First => data[startIdx];
+            internal VTTQ Last => data[LastIdx];
+            internal void SetData(VTTQs newData) {
+                Clear();
+                // Verify that newData is sorted by timestamp ascending:
+                bool isSorted = true;
+                for (int i = 1; i < newData.Count; ++i) {
+                    if (newData[i - 1].T > newData[i].T) {
+                        isSorted = false;
+                        break;
+                    }
                 }
+                if (!isSorted) {
+                    newData.Sort();
+                }
+                data.AddRange(newData);
+            }
+            private readonly VTTQ defaultValue = VTTQ.Make(DataValue.Empty, Timestamp.Empty, Timestamp.Empty, Quality.Bad);
+
+            /// <summary>
+            /// Finds the greatest buffered value whose timestamp is <= t.
+            /// Returns a default bad value if the buffer is empty, or if t is earlier than
+            /// the current cursor (`startIdx`) because the buffer is consumed in order.
+            /// Assumes calls advance t monotonically.
+            /// </summary>
+            internal VTTQ FindGreatestValueSmallerOrEqualTo(Timestamp t) {
+
+                if (Empty) {
+                    return defaultValue; // nothing buffered
+                }
+
+                if (t < First.T) {
+                    return defaultValue; // requested time is before first unconsumed sample
+                }
+
+                if (t >= Last.T) { // fast-path if we’re beyond the buffer tail
+                    startIdx = LastIdx;
+                    return Last;
+                }
+
+                for (int i = startIdx + 1; i < data.Count; ++i) {
+                    Timestamp tt = data[i].T;
+                    if (t == tt) {
+                        startIdx = i;
+                        return data[i];
+                    }
+                    if (t < tt) {
+                        startIdx = i - 1;
+                        return data[i - 1];
+                    }
+                }
+
+                throw new Exception("Unreachable code reached in FindGreatestValueSmallerOrEqualTo");
             }
         }
 
@@ -651,13 +693,18 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         }
 
         public async Task<(Timestamp, Duration)> WaitForFirstRun() {
-            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+            // We intentionally wait until the next normalized timestamp after now,
+            // even if this is not strictly necessary for historical data processing.
+            Timestamp t = cycle > Duration.FromMinutes(1)
+                ? Time.GetNextNormalizedTimestamp(Duration.FromMinutes(1), Duration.FromMinutes(0))
+                : Time.GetNextNormalizedTimestamp(cycle, offset);
+
             await adapter.WaitUntil(t);
-            return await WaitForCompleteInputSet();
+            return await WaitForNextInputSet();
         }
 
         public async Task<(Timestamp, Duration)> WaitForNextRun() {
-            return await WaitForCompleteInputSet();
+            return await WaitForNextInputSet();
         }
 
         private Timestamp GetInitialCursorOrThrow() {
@@ -681,23 +728,23 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             throw new Exception("InitialStartTime is not configured.");
         }
 
-        private async Task<(Timestamp, Duration)> WaitForCompleteInputSet() {
+        private async Task<(Timestamp, Duration)> WaitForNextInputSet() {
 
             while (adapter.State == State.Running) {
 
                 if (variableInputs.Count > 0) {
 
-                    (Timestamp runTime, VTQs values)? result = await FindAlignedData(nextCursor);
+                    VTQs? values = await GetNextInputData(nextCursor);
 
-                    if (result.HasValue) {
-                        (Timestamp runTime, VTQs values) = result.Value;
+                    if (values is not null) {
                         preparedValues = values;
-                        nextCursor = runTime + cycle;
-                        return (runTime, cycle);
+                        Timestamp time = nextCursor;
+                        nextCursor += cycle;
+                        return (time, cycle);
                     }
                 }
                 else {
-                    module.Log_Warn("InputDrivenConfig", $"Calculation {adapter.Name} has no variable inputs configured.", affectedObjects: affectedObjects);
+                    throw new Exception("No variable inputs configured.");
                 }
 
                 Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
@@ -708,124 +755,121 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             return (Timestamp.Empty, Duration.Zero);
         }
 
-        private async Task<(Timestamp runTime, VTQs values)?> FindAlignedData(Timestamp start) {
+        private async Task<VTQs?> GetNextInputData(Timestamp time) {
 
-            Timestamp searchCursor = start;
+            VTQs values = new(variableInputs.Count);
 
-            while (adapter.State == State.Running) {
+            for (int i = 0; i < variableInputs.Count; ++i) {
 
-                var vtqs = new VTTQ[variableInputs.Count];
-                Timestamp maxTimestamp = searchCursor;
+                Config.Input input = variableInputs[i];
+                VTTQ? data = await ReadValueForTimestamp(i, input, time);
+                Console.WriteLine($"InputDrivenRunCondition: ReadValueForTimestamp for input '{input.Name}' returned: {data} (time: {time}) for calculation {adapter.Name}");
 
-                for (int i = 0; i < variableInputs.Count; ++i) {
-                    Config.Input input = variableInputs[i];
-                    VTTQ? data = await ReadFirstUseableValueBuffered(i, input, searchCursor);
-                    Console.WriteLine($"InputDrivenRunCondition: ReadFirstUseableValue for input '{input.Name}' returned: {data?.ToString() ?? "null"} (searchCursor: {searchCursor}) for calculation {adapter.Name}");
-                    if (!data.HasValue) {
-                        return null;
-                    }
-                    vtqs[i] = data.Value;
-                    if (data.Value.T > maxTimestamp) {
-                        maxTimestamp = data.Value.T;
-                    }
-                }
-
-                bool allSame = true;
-                for (int i = 0; i < vtqs.Length; ++i) {
-                    if (vtqs[i].T != maxTimestamp) {
-                        allSame = false;
-                        break;
-                    }
-                }
-
-                if (allSame) {
-
-                    if (Time.IsNormalizedTimestamp(maxTimestamp, cycle, offset)) {
-                        var values = new VTQs(variableInputs.Count);
-                        for (int i = 0; i < vtqs.Length; ++i) {
-                            values.Add(vtqs[i].ToVTQ());
-                        }
-                        Console.WriteLine($"InputDrivenRunCondition: Found aligned data at {maxTimestamp} for calculation {adapter.Name}");
-
-                        foreach (var buf in inputBuffers) {
-                            buf.DropUntil(maxTimestamp);
-                        }
-
-                        return (maxTimestamp, values);
-                    }
-                    else {
-                        Console.WriteLine($"InputDrivenRunCondition: Aligned data at {maxTimestamp} is not aligned to cycle for calculation {adapter.Name}, continuing search...");
-                        maxTimestamp = Time.GetNextNormalizedTimestamp(maxTimestamp, cycle, offset);
-                    }
-                }
-                else {
-                    Console.WriteLine($"InputDrivenRunCondition: Not all inputs aligned at {maxTimestamp} for calculation {adapter.Name}, continuing search...");
-                }
-
-                searchCursor = maxTimestamp;
-            }
-
-            return null;
-        }
-
-        private async Task<VTTQ?> ReadFirstUseableValueBuffered(int inputIndex, Config.Input input, Timestamp start) {
-
-            VariableRef variable = input.Variable!.Value;
-            DataBuffer buffer = inputBuffers[inputIndex];
-
-            // Check if we need to refill the buffer
-            if (buffer.Count == 0 || buffer.StartIdx >= buffer.Count || buffer.Last.T < start) {
-
-                // Clear buffer and reset index
-                buffer.Clear();
-
-                // Read a chunk of data
-                while (adapter.State == State.Running) {
-                    try {
-                        VTTQs data = await module.connection.HistorianReadRaw(
-                            variable,
-                            start,
-                            Timestamp.Max,
-                            ChunkSize,
-                            BoundingMethod.TakeFirstN,
-                            QualityFilter.ExcludeBad);
-
-                        buffer.AddRange(data);
-                        break;
-                    }
-                    catch (ConnectivityException) {
-                        await module.RestartConnectionOrFail();
-                    }
-                    catch (RequestException exp) {
-                        module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
-                        return null;
-                    }
-                    catch (Exception exp) {
-                        Exception baseExp = exp.GetBaseException() ?? exp;
-                        module.Log_Error("InputDrivenConfig", $"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}");
-                        return null;
-                    }
-                }
-
-                // If no data available, return null
-                if (buffer.Count == 0) {
+                if (data is null) { // not enough data available yet => abort
                     return null;
                 }
+
+                VTQ vtq = data.Value.ToVTQ();
+                values.Add(vtq);
             }
 
-            // Find the first value at or after 'start' timestamp
-            for (int i = buffer.StartIdx; i < buffer.Count; i++) {
-                if (buffer[i].T >= start) {
-                    return buffer[i];
+            Console.WriteLine($"InputDrivenRunCondition: Found data at {time} for calculation {adapter.Name}");
+
+            return values;
+        }
+
+        /// <summary>
+        /// Retrieves the value at the given timestamp, or the latest value before it, for the specified input.
+        /// </summary>
+        /// <remarks>
+        /// Returns <see langword="null" /> only when there is no historian data at <paramref name="t" /> and 
+        /// no data after <paramref name="t" /> (which means that the calculation needs to wait for more data to arrive).
+        /// If data exists after <paramref name="t" /> but none at/before it, a default bad-quality value is returned.
+        /// Otherwise the value at or immediately before <paramref name="t" /> is returned.
+        /// </remarks>
+        /// <param name="inputIndex">Zero-based input index.</param>
+        /// <param name="input">The input configuration.</param>
+        /// <param name="t">The timestamp to resolve.</param>
+        /// <returns>A <see cref="VTTQ"/> as described above, or <see langword="null" /> when no data exists 
+        /// at/after <paramref name="t" />.</returns>
+        private async Task<VTTQ?> ReadValueForTimestamp(int inputIndex, Config.Input input, Timestamp t) {
+
+            DataBuffer buffer = inputBuffers[inputIndex];
+
+            if (buffer.Empty || buffer.Last.T < t) { // We need to refill the buffer
+
+                buffer.Clear();
+
+                VTTQs data = await HistorianReadRaw(input,
+                                                    startInclusive: t,
+                                                    endInclusive: Timestamp.Max,
+                                                    maxValues: ChunkSize,
+                                                    BoundingMethod.TakeFirstN);
+
+                if (data.Count == 0) {
+                    // there is no more data at or after t (yet) so we must abort the calculation run
+                    // and wait for more data to arrive
+                    return null;
+                }
+
+                VTTQ first = data.First();
+
+                if (t < first.T) {
+
+                    // there is data after t but not exactly at t
+                    // find the oldest data point before or at t:
+
+                    VTTQs prior = await HistorianReadRaw(input,
+                                                         startInclusive: Timestamp.Empty,
+                                                         endInclusive: t,
+                                                         maxValues: 1,
+                                                         BoundingMethod.TakeLastN);
+
+                    if (prior.Count != 0) {
+                        data.Insert(0, prior[0]);
+                    }
+                }
+
+                buffer.SetData(data);
+            }
+            
+            // buffer has data and t <= buffer.Last.T
+
+            VTTQ vtqFound = buffer.FindGreatestValueSmallerOrEqualTo(t);
+            return vtqFound;
+        }
+
+        private async Task<VTTQs> HistorianReadRaw(Config.Input input, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding) {
+
+            VariableRef variable = input.Variable!.Value;
+
+            while (adapter.State == State.Running) {
+                try {
+                    VTTQs data = await module.connection.HistorianReadRaw(
+                        variable,
+                        startInclusive,
+                        endInclusive,
+                        maxValues,
+                        bounding,
+                        QualityFilter.ExcludeNone);
+
+                    return data;
+                }
+                catch (ConnectivityException) {
+                    await module.RestartConnectionOrFail();
+                }
+                catch (RequestException exp) {
+                    module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
+                    throw new Exception($"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}", exp);
+                }
+                catch (Exception exp) {
+                    Exception baseExp = exp.GetBaseException() ?? exp;
+                    module.Log_Error("InputDrivenConfig", $"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}");
+                    throw new Exception($"Unexpected historian error for calculation '{adapter.Name}': {baseExp.Message}", baseExp);
                 }
             }
 
-            // No value found in current buffer at or after 'start', need to refill
-            // This can happen if we've consumed all buffer data but need a later timestamp
-            buffer.Clear();
-
-            // Recursive call to refill and try again
-            return await ReadFirstUseableValueBuffered(inputIndex, input, start);
+            return [];
         }
     }
 
