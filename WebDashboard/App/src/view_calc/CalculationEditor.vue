@@ -58,6 +58,12 @@
           type="Timestamp"
         />
         <member-row
+          v-model="model.MaxInputAge"
+          name="Max Input Age"
+          :optional="true"
+          type="Duration"
+        />
+        <member-row
           v-model="model.InitErrorResponse"
           :enum-values="initErrorResponses"
           name="Init Error Response"

@@ -31,7 +31,6 @@
       <td>
         <v-btn
           class="small"
-          style="margin-top: 16px"
           @click="model = null"
         >
           <v-icon>mdi-delete</v-icon>
@@ -40,11 +39,10 @@
     </template>
 
     <template v-if="optional && model === null">
-      <td><div style="margin-top: 4px; padding-top: 12px">Not set</div></td>
+      <td><div style="margin-top: 4px;">Not set</div></td>
       <td>
         <v-btn
           class="small"
-          style="margin-top: 16px"
           @click="updateSetDefault"
         >
           Set

@@ -217,6 +217,8 @@ public class Calculation : ModelObject
 
     public RunMode RunMode { get; set; } = RunMode.Continuous;
 
+    public Duration? MaxInputAge { get; set; } = null; // if input is older than this, it will be replaced with null
+
     public InitErrorResponse InitErrorResponse { get; set; } = InitErrorResponse.Retry;
 
     public HistoryScope HistoryScope { get; set; } = HistoryScope.All;
@@ -245,6 +247,7 @@ public class Calculation : ModelObject
 
     public List<State> States { get; set; } = new List<State>();
 
+    public bool ShouldSerializeMaxInputAge() => MaxInputAge.HasValue;
     public bool ShouldSerializeOffset() => Offset.TotalMilliseconds != 0;
     public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
     public bool ShouldSerializeRunMode() => RunMode != RunMode.Continuous;

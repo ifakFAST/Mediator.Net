@@ -134,8 +134,10 @@ public class CalcInstance
         lastRunTimestamp = timestamp;
     }
 
-    public InputValue[] CurrentInputValues(Timestamp now) {
+    public InputValue[] CurrentInputValues(Timestamp t) {
         int N = CalcConfig.Inputs.Count;
+        bool checkMaxAge = CalcConfig.MaxInputAge.HasValue;
+        Duration maxAge = checkMaxAge ? CalcConfig.MaxInputAge!.Value : Duration.Zero;
         InputValue[] res = new InputValue[N];
         for (int n = 0; n < N; ++n) {
             Config.Input input = CalcConfig.Inputs[n];
@@ -143,15 +145,17 @@ public class CalcInstance
                 InputID = input.ID
             };
             if (input.Constant.HasValue) {
-                inValue.Value = VTQ.Make(input.Constant.Value, now, Quality.Good);
+                inValue.Value = VTQ.Make(input.Constant.Value, t, Quality.Good);
             }
-            else if (mapInputValues.ContainsKey(input.ID)) {
-                VariableValue vv = mapInputValues[input.ID];
-                inValue.Value = vv.Value;
+            else if (mapInputValues.TryGetValue(input.ID, out VariableValue vv)) {
+                bool inputIsTooOld = checkMaxAge && (t - vv.Value.T) > maxAge;
+                inValue.Value = inputIsTooOld ? 
+                                    VTQ.Make(DataValue.Empty, vv.Value.T, Quality.Bad) :
+                                    vv.Value;
                 inValue.AttachedVariable = vv.Variable;
             }
             else {
-                inValue.Value = VTQ.Make(input.GetDefaultValue(), now, Quality.Bad);
+                inValue.Value = VTQ.Make(input.GetDefaultValue(), t, Quality.Bad);
             }
             res[n] = inValue;
         }
@@ -236,8 +240,8 @@ public class CalcInstance
         }
     }
 
-    private List<OutputValue> lastOutputValues = new List<OutputValue>();
-    private List<StateValue> lastStateValues = new List<StateValue>();
+    private readonly List<OutputValue> lastOutputValues = [];
+    private readonly List<StateValue> lastStateValues = [];
     private SingleThreadCalculation? instance;
 
     public OutputValue[] LastOutputValues => lastOutputValues.ToArray();

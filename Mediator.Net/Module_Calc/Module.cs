@@ -695,8 +695,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         public async Task<(Timestamp, Duration)> WaitForFirstRun() {
             // We intentionally wait until the next normalized timestamp after now,
             // even if this is not strictly necessary for historical data processing.
-            Timestamp t = cycle > Duration.FromMinutes(1)
-                ? Time.GetNextNormalizedTimestamp(Duration.FromMinutes(1), Duration.FromMinutes(0))
+            Timestamp t = cycle > Duration.FromSeconds(10)
+                ? Time.GetNextNormalizedTimestamp(Duration.FromSeconds(10), Duration.FromMinutes(0))
                 : Time.GetNextNormalizedTimestamp(cycle, offset);
 
             await adapter.WaitUntil(t);
@@ -763,7 +763,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
                 Config.Input input = variableInputs[i];
                 VTTQ? data = await ReadValueForTimestamp(i, input, time);
-                Console.WriteLine($"InputDrivenRunCondition: ReadValueForTimestamp for input '{input.Name}' returned: {data} (time: {time}) for calculation {adapter.Name}");
+                // Console.WriteLine($"InputDrivenRunCondition: ReadValueForTimestamp for input '{input.Name}' returned: {data} (time: {time}) for calculation {adapter.Name}");
 
                 if (data is null) { // not enough data available yet => abort
                     return null;
@@ -773,7 +773,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 values.Add(vtq);
             }
 
-            Console.WriteLine($"InputDrivenRunCondition: Found data at {time} for calculation {adapter.Name}");
+            // Console.WriteLine($"InputDrivenRunCondition: Found data at {time} for calculation {adapter.Name}");
 
             return values;
         }
