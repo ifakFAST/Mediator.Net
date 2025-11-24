@@ -120,6 +120,7 @@ public class CSharp : CalculationBase, EventSink, ConnectionConsumer {
         apis = GetMembers<Api>(obj, recursive: true, []);
         foreach (Api api in apis) {
             api.moduleID = parameter.ModuleID;
+            api.calculationName = parameter.Calculation.Name;
             api.connectionGetter = retriever;
         }
 

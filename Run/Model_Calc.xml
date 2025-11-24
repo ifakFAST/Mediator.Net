@@ -213,9 +213,9 @@ class Script
     );
 
     public void Step(Timestamp t, Duration dt) {
-        Console.WriteLine("Calculations...");
+        //Console.WriteLine("Calculations...");
         UpdateDerivedSignals(this, t);
-        Console.WriteLine("Calculations end..");
+        //Console.WriteLine("Calculations end..");
     }
 }</Definition>
         <Inputs />

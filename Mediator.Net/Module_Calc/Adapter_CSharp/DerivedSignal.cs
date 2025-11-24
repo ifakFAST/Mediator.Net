@@ -4,6 +4,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Ifak.Fast.Mediator;
@@ -252,8 +254,8 @@ public sealed class DerivedSignal : Identifiable
 
         List<DerivedSignal> derivedSignals = CSharp.GetIdentifiableMembers<DerivedSignal>(script, "", recursive: true, []);
 
-        foreach (var signal in derivedSignals) {
-
+        for (int i = 0; i < derivedSignals.Count; i++) {
+            DerivedSignal signal = derivedSignals[i];
             VariableRef GetSiblingWithLocalID(string siblingLocalID) {
                 var (path, _) = signal.SplitId();
                 bool emptyPath = string.IsNullOrEmpty(path);
@@ -265,7 +267,14 @@ public sealed class DerivedSignal : Identifiable
                 return sibling.VarRefSelf ?? throw new ArgumentException($"Sibling signal {siblingID} not initialized yet.");
             }
 
+            string calculationName = signal.api.calculationName;
+            var sw = Stopwatch.StartNew();
             signal.Update(tEnd, GetSiblingWithLocalID);
+            sw.Stop();
+            string strDuration = sw.Elapsed > TimeSpan.FromSeconds(10) ?
+                sw.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture) + " s" :
+                sw.Elapsed.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture) + " ms";
+            Console.WriteLine($"[{calculationName}] Finished update of derived signal {signal.ID} ({i + 1} of {derivedSignals.Count}) in {strDuration}");
         }
     }
 

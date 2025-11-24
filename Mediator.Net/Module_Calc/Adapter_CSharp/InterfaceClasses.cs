@@ -368,6 +368,8 @@ public class Api
 
     internal string moduleID { get; set; } = "";
 
+    internal string calculationName { get; set; } = "";
+
     internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
 
     public VTQs HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
