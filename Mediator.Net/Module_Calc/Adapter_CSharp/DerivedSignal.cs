@@ -483,6 +483,20 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
         return api.HistorianReadRaw(Var, startInclusive, endInclusive, maxValues, bounding, filter);
     }
 
+    public List<VTQ> HistorianReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+        if (api == null) {
+            throw new Exception("Api not set.");
+        }
+        return api.HistorianReadAggregatedIntervals(Var, intervalBounds, aggregation, rawFilter);
+    }
+
+    public double? HistorianReadAggregatedInterval(Timestamp startInclusive, Timestamp endInclusive, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+        if (api == null) {
+            throw new Exception("Api not set.");
+        }
+        return api.HistorianReadAggregatedInterval(Var, startInclusive, endInclusive, aggregation, rawFilter);
+    }
+
     public double? GetValueFor(Timestamp tt, Duration interval, out bool canAbort) {
 
         canAbort = false;

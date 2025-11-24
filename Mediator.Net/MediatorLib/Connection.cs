@@ -525,7 +525,7 @@ namespace Ifak.Fast.Mediator
         /// <param name="aggregation">The aggregation method to apply within each interval (Average, Min, Max, Count, Sum, First, Last).</param>
         /// <param name="rawFilter">Quality filter applied to raw data points before aggregation. Default: ExcludeNone.</param>
         /// <returns>List of aggregated VTQs with length = intervalBounds.Length - 1. Each VTQ has Quality=Good
-        /// and timestamp equal to the interval start time. Value is DataValue.Empty for empty intervals (except Count/Sum which return 0).</returns>
+        /// and timestamp equal to the interval start time. Value is DataValue.Empty for empty intervals (except Count which returns 0).</returns>
         public abstract Task<VTQs> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone);
 
         /// <summary>

@@ -4,6 +4,7 @@ from Ifak.Fast.Mediator.Calc import Aggregation
 import Ifak.Fast.Mediator
 import json
 from System.Collections.Generic import List
+from System import Array
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 
@@ -615,6 +616,15 @@ class Api(Ifak.Fast.Mediator.Calc.Adapter_Python.PyApi):
             dotnet_inputs.Add(obj)
         result = super().ReadVariablesHistoryLastN(dotnet_inputs, n, emptyResultOnError)
         return _convertDotNetListOfList(result)
+
+    def HistorianReadAggregatedIntervals(self, variable: Ifak.Fast.Mediator.VariableRef, intervalBounds: list[Timestamp], aggregation: Aggregation, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> list[Ifak.Fast.Mediator.VTQ]:
+        dotnet_array = Array[Timestamp](intervalBounds)
+        result = super().HistorianReadAggregatedIntervals(variable, dotnet_array, aggregation, rawFilter)
+        return [vtq for vtq in result]
+
+    def HistorianReadAggregatedInterval(self, variable: Ifak.Fast.Mediator.VariableRef, startInclusive: Timestamp, endInclusive: Timestamp, aggregation: Aggregation, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> Optional[float]:
+        result = super().HistorianReadAggregatedInterval(variable, startInclusive, endInclusive, aggregation, rawFilter)
+        return result
 
     @classmethod
     def MakeVariableRefs(cls, inputs: list[PyInputBase]) -> list[Ifak.Fast.Mediator.VariableRef]:

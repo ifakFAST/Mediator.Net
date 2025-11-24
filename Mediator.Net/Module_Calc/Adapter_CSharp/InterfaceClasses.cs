@@ -437,6 +437,36 @@ public class Api
         }
     }
 
+    public VTQs HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Mediator.Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+
+        VTQs vtqs = [];
+        string? errMsg = null;
+
+        SingleThreadedAsync.Run(async () => {
+            try {
+                Connection con = await connectionGetter();
+                vtqs = await con.HistorianReadAggregatedIntervals(variable, intervalBounds, aggregation, rawFilter);
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                errMsg = e.Message;
+            }
+        });
+
+        if (errMsg != null) {
+            throw new Exception(errMsg);
+        }
+
+        return vtqs;
+    }
+
+    public double? HistorianReadAggregatedInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInlusive, Mediator.Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+        VTQs res = HistorianReadAggregatedIntervals(variable, [startInclusive, endInlusive.AddMillis(1)], aggregation, rawFilter);
+        VTQ res0 = res[0];
+        double? v = res0.V.AsDouble();
+        return v;
+    }
+
     public VariableRef[] GetVariableRefsBelow(IEnumerable<string> objectIDs, IEnumerable<string> ofType, IEnumerable<string> varNames) {
 
         ObjectRef[] objs = objectIDs.Select(id => ObjectRef.FromEncodedString(id)).ToArray();
