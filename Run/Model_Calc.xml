@@ -186,7 +186,7 @@ def GetSignalRefsBelowFolder(folderIDs):
           <Output id="Y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
-      <Calculation id="DerivedSignals" name="DerivedSignals" type="CSharp" enabled="true">
+      <Calculation id="DerivedSignals" name="DerivedSignals" type="CSharp" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>1 min</Cycle>
         <Definition>using StdLib;
@@ -206,9 +206,9 @@ class Script
             DefineInput("b", DataItemRef("Data_002")),
         ],
         calculation: (double a, double b) =&gt; {
-            a = double.IsNaN(a) ? 10.0 : a;
-            b = double.IsNaN(b) ? 10.0 : b;
-            return double.NaN;
+            //a = double.IsNaN(a) ? 10.0 : a;
+            //b = double.IsNaN(b) ? 10.0 : b;
+            return a + b;
         }
     );
 

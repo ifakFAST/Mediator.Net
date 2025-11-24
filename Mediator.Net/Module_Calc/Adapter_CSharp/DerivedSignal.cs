@@ -315,18 +315,31 @@ public sealed class DerivedSignal : Identifiable
 
         if (!latestVTQ.HasValue) {
 
-            VariableRef v = Inputs[0].Var;
-            List<VTQ> firstVTQ = api.HistorianReadRaw(v, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeFirstN);
-
-            if (firstVTQ.Count == 0) {
-                Console.WriteLine($"No data found for {v}");
-                return;
-            }
-
-            time = firstVTQ[0].T.Truncate(Resolution) - Resolution;
-
-            if (StartTime.HasValue && StartTime.Value > time) {
+            if (StartTime.HasValue) {
                 time = StartTime.Value.Truncate(Resolution) - Resolution;
+            }
+            else {
+                // Find the oldest timestamp across ALL inputs
+                Timestamp? oldestTime = null;
+
+                foreach (InputDef inputDef in Inputs) {
+                    VariableRef v = inputDef.Var;
+                    List<VTQ> firstVTQ = api.HistorianReadRaw(v, Timestamp.Empty, Timestamp.Max, 1, BoundingMethod.TakeFirstN);
+
+                    if (firstVTQ.Count > 0) {
+                        Timestamp inputFirstTime = firstVTQ[0].T;
+                        if (!oldestTime.HasValue || inputFirstTime < oldestTime.Value) {
+                            oldestTime = inputFirstTime;
+                        }
+                    }
+                }
+
+                if (!oldestTime.HasValue) {
+                    Console.WriteLine($"No data found for any input of signal {ID}");
+                    return;
+                }
+
+                time = oldestTime.Value.Truncate(Resolution) - Resolution;
             }
 
             foreach (InputDef input in Inputs) {
