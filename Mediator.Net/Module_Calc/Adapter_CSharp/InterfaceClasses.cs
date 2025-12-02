@@ -92,7 +92,7 @@ public abstract class InputBase : Identifiable {
 
     internal Func<Task<Connection>> connectionGetter { get; set; } = () => Task.FromResult((Connection)new ClosedConnection());
 
-    public List<VTQ> HistorianReadRaw(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
+    public VTQs HistorianReadRaw(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter = QualityFilter.ExcludeNone) {
 
         VariableRef variable = AttachedVariable ?? throw new Exception($"No variable connected to input {ID}");
         
@@ -144,6 +144,38 @@ public abstract class InputBase : Identifiable {
         }
 
         return result;
+    }
+
+    public VTQs HistorianReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+
+        VariableRef variable = AttachedVariable ?? throw new Exception($"No variable connected to input {ID}");
+
+        VTQs vtqs = [];
+        string? errMsg = null;
+
+        SingleThreadedAsync.Run(async () => {
+            try {
+                Connection con = await connectionGetter();
+                vtqs = await con.HistorianReadAggregatedIntervals(variable, intervalBounds, aggregation, rawFilter);
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                errMsg = e.Message;
+            }
+        });
+
+        if (errMsg != null) {
+            throw new Exception($"HistorianReadAggregatedIntervals failed for input {ID}: {errMsg}");
+        }
+
+        return vtqs;
+    }
+
+    public double? HistorianReadAggregatedInterval(Timestamp startInclusive, Timestamp endInclusive, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+
+        VTQs vtqs = HistorianReadAggregatedIntervals([startInclusive, endInclusive.AddMillis(1)], aggregation, rawFilter);
+        VTQ res0 = vtqs[0];
+        return res0.V.AsDouble();
     }
 }
 
@@ -439,7 +471,7 @@ public class Api
         }
     }
 
-    public VTQs HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Mediator.Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+    public VTQs HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
 
         VTQs vtqs = [];
         string? errMsg = null;
@@ -462,7 +494,7 @@ public class Api
         return vtqs;
     }
 
-    public double? HistorianReadAggregatedInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInlusive, Mediator.Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
+    public double? HistorianReadAggregatedInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInlusive, Aggregation aggregation, QualityFilter rawFilter = QualityFilter.ExcludeNone) {
         VTQs res = HistorianReadAggregatedIntervals(variable, [startInclusive, endInlusive.AddMillis(1)], aggregation, rawFilter);
         VTQ res0 = res[0];
         double? v = res0.V.AsDouble();
@@ -549,11 +581,19 @@ public class Api
     }
 
     public static VariableRef[] MakeVariableRefs(IEnumerable<InputBase> inputs) {
-        return inputs.Select(i => i.AttachedVariable ?? throw new Exception($"No variable connected to input {i.ID}")).ToArray();
+        return inputs.Select(MakeVariableRef).ToArray();
     }
 
-    public static VariableRef[] MakeVariableRefsFromObjectIDs(IEnumerable<string> objectIDs) {        
-        return objectIDs.Select(id => VariableRef.Make(ObjectRef.FromEncodedString(id), "Value")).ToArray();
+    public static VariableRef MakeVariableRef(InputBase input) {
+        return input.AttachedVariable ?? throw new Exception($"No variable connected to input {input.ID}");
+    }
+
+    public static VariableRef[] MakeVariableRefsFromObjectIDs(IEnumerable<string> objectIDs) {
+        return objectIDs.Select(MakeVariableRefFromObjectID).ToArray();
+    }
+
+    public static VariableRef MakeVariableRefFromObjectID(string objectID) {
+        return VariableRef.Make(ObjectRef.FromEncodedString(objectID), "Value");
     }
 
     public List<VTQs> ReadVariablesHistory(         IEnumerable<VariableRef> variables, 

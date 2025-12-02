@@ -256,6 +256,134 @@ class Script {
           <Output id="Y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
+      <Calculation id="PyHistory" name="PyHistory" type="Python" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition>
+x  = Input(name="X", unit="mg/L", defaultValue=0.0)
+y  = Output("Y", "m³/d", roundDigits=6)
+
+api = Api()
+
+def step(t, dt):
+    
+    tEnd = Timestamp.FromPosixSeconds(t.timestamp())
+    tStart = tEnd.AddMinutes(-15);
+
+    variable = Api.MakeVariableRef(x)
+    
+    avg = api.HistorianReadAggregatedInterval(variable, tStart, tEnd, Aggregation.Average)
+    
+    print(avg)
+    
+    y.Value = avg</Definition>
+        <Inputs>
+          <Input id="x" name="X" unit="mg/L">
+            <Variable object="IO:Data_001" name="Value" />
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="y" name="Y" unit="m³/d" />
+        </Outputs>
+      </Calculation>
+      <Calculation id="PyHistory2" name="PyHistory2" type="Python" enabled="true">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition>
+x  = Input(name="X", unit="mg/L", defaultValue=0.0)
+y  = Output("Y", "m³/d", roundDigits=6)
+
+def step(t, dt):
+    
+    tEnd = Timestamp.FromPosixSeconds(t.timestamp())
+    tStart = tEnd.AddMinutes(-5);
+
+    rawValues = x.HistorianReadRaw(tStart, tEnd, 1000, BoundingMethod.TakeLastN)
+    for raw in rawValues: # rawValues is a list of VTQ (Value, Timestamp, Quality)
+        print(raw.T, raw.V.AsDouble()) # AsDouble() returns a float or None (the float can still be nan!)
+
+    avg = x.HistorianReadAggregatedInterval(tStart, tEnd, Aggregation.Average) # other aggregations: Min, Max, Count, Sum, First, Last
+    print(avg) # avg is float or None (the float can still be nan!)
+    
+    res = x.HistorianReadAggregatedIntervals([tStart, tEnd.AddMillis(1)], Aggregation.Average)
+    print(res[0].V.AsDouble()) # res is a list of VTQ (Value, Timestamp, Quality)
+                           
+    y.Value = avg</Definition>
+        <Inputs>
+          <Input id="x" name="X" unit="mg/L">
+            <Variable object="IO:Data_001" name="Value" />
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="y" name="Y" unit="m³/d" />
+        </Outputs>
+      </Calculation>
+      <Calculation id="PyHistory3" name="PyHistory3" type="Python" enabled="true">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition>import numpy as np
+
+x1 = Input(name="X1", unit="mg/L", defaultValue=0.0)
+x2 = Input(name="X2", unit="mg/L", defaultValue=0.0)
+x3 = Input(name="X3", unit="mg/L", defaultValue=0.0)
+
+Y = Output("Y", "m³/d", roundDigits=3)
+
+api = Api()
+
+def step(t, dt):
+    
+    #variables = MakeSignalRefs(["signal_001", "signal_002"])
+    variables = Api.MakeVariableRefs([x1, x2, x3])
+    
+    # tEnd = Timestamp.FromComponents(2025, 9, 17, 17, 00, 00)
+    # tEnd = Timestamp.Now
+    # tEnd = Timestamp.FromISO8601("2025-09-17T17:25")
+    tEnd = Timestamp.FromPosixSeconds(t.timestamp())
+    tStart = tEnd.AddMinutes(-5);
+    dataTime = api.ReadVariablesHistory(variables, tStart, tEnd)
+    matrixTime = AggregationUtils.ExportToMatrix(dataTime)
+    matrixTime.Print(numDigits=3)
+    # matrixTime.TimestampsPosixSeconds may be used to convert to Python datetime
+    numpy_array = np.array(matrixTime.Values)
+    #print(numpy_array[0])
+    
+    count = 20
+    dataRaw = api.ReadVariablesHistoryLastN(variables, count)
+    matrixRaw = AggregationUtils.ExportToMatrix(dataRaw)
+    #matrixRaw.Print(numDigits=2)
+    
+    dataAggregated = AggregationUtils.Aggregate(dataRaw, Aggregation.First, Duration.FromMinutes(1), False)
+    matrixAggregated = AggregationUtils.ExportToMatrix(dataAggregated)
+    #matrixAggregated.Print(numDigits=2)
+
+def initialize(initParams):
+    name = initParams.Calculation.Name
+    print("initialize " + name)
+    
+def shutdown():
+    print("shutdown")
+    
+def MakeSignalRefs(ids):
+    objRefs = ["CALC:" + id for id in ids]
+    # print(objRefs)
+    return Api.MakeVariableRefsFromObjectIDs(objRefs)
+</Definition>
+        <Inputs>
+          <Input id="x1" name="X1" unit="mg/L">
+            <Variable object="IO:Data_001" name="Value" />
+          </Input>
+          <Input id="x2" name="X2" unit="mg/L">
+            <Variable object="IO:Data_002" name="Value" />
+          </Input>
+          <Input id="x3" name="X3" unit="mg/L">
+            <Variable object="IO:Data_003" name="Value" />
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="Y" name="Y" unit="m³/d" />
+        </Outputs>
+      </Calculation>
     </Calculations>
   </RootFolder>
 </Calc_Model>

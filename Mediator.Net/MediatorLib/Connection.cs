@@ -15,7 +15,6 @@ using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberVa
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
-using System.Xml.Linq;
 using System.Xml.Schema;
 using System.Xml;
 using System.Linq;

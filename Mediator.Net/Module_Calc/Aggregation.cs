@@ -83,6 +83,7 @@ public static class AggregationUtils
             Aggregation.First => values.First(),
             Aggregation.Last => values.Last(),
             Aggregation.Count => values.Count,
+            Aggregation.Sum => values.Sum(),
             _ => throw new ArgumentOutOfRangeException(nameof(aggregation), "Invalid aggregation method."),
         };
         return VTQ.Make(DataValue.FromDouble(aggregatedValue), intervalStart, Quality.Good);
@@ -244,14 +245,4 @@ public class TimeAlignedMatrix
         }
         Console.WriteLine("   ");
     }
-}
-
-public enum Aggregation
-{
-    Average,
-    Min,
-    Max,
-    First,
-    Last,
-    Count
 }

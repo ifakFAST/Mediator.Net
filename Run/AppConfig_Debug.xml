@@ -86,7 +86,7 @@
                 <NamedValue name="simba-location" value="D:\Simba\SIMBA5_Clean\Workspace\wSisi\bin\Release\simba.exe"/>
                 <NamedValue name="csharp-libraries" value="CSharpLib.cs"/>
                 <NamedValue name="adapter-assemblies" value=""/>
-                <NamedValue name="python-dll" value="C:\Users\hue\AppData\Local\Programs\Python\Python312\python312.dll"/>
+                <NamedValue name="python-dll" value="C:\Users\hue.AD\AppData\Local\Programs\Python\Python313\python313.dll"/>
                 <NamedValue name="python-library-directories" value="."/>
             </Config>
             <HistoryDBs>

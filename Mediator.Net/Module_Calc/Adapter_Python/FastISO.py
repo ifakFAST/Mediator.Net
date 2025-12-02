@@ -1,6 +1,5 @@
 from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase
-from Ifak.Fast.Mediator import Quality, Duration, Timestamp, QualityFilter
-from Ifak.Fast.Mediator.Calc import Aggregation
+from Ifak.Fast.Mediator import Quality, Duration, Timestamp, QualityFilter, Aggregation, BoundingMethod
 import Ifak.Fast.Mediator
 import json
 from System.Collections.Generic import List
@@ -131,6 +130,21 @@ class MyInputBase(PyInputBase):
     def Time(self) -> datetime:
         return datetime.fromtimestamp(self.GetTimestamp(), timezone.utc)
 
+    def HistorianReadRaw(self, startInclusive: Timestamp, endInclusive: Timestamp, maxValues: int, bounding: BoundingMethod, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> list[Ifak.Fast.Mediator.VTQ]:
+        result = super().HistorianReadRaw(startInclusive, endInclusive, maxValues, bounding, rawFilter)
+        return [vtq for vtq in result]
+
+    def HistorianCount(self, startInclusive: Timestamp, endInclusive: Timestamp, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> int:
+        return super().HistorianCount(startInclusive, endInclusive, rawFilter)
+
+    def HistorianReadAggregatedIntervals(self, intervalBounds: list[Timestamp], aggregation: Aggregation, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> list[Ifak.Fast.Mediator.VTQ]:
+        dotnet_array = Array[Timestamp](intervalBounds)
+        result = super().HistorianReadAggregatedIntervals(dotnet_array, aggregation, rawFilter)
+        return [vtq for vtq in result]
+
+    def HistorianReadAggregatedInterval(self, startInclusive: Timestamp, endInclusive: Timestamp, aggregation: Aggregation, rawFilter: QualityFilter = QualityFilter.ExcludeNone) -> Optional[float]:
+        result = super().HistorianReadAggregatedInterval(startInclusive, endInclusive, aggregation, rawFilter)
+        return result
 
 class InputFloat64(MyInputBase):
 
