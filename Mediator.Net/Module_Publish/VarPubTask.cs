@@ -3,11 +3,12 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
-using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using ObjectRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectRef>;
-using System.Linq;
+using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
 namespace Ifak.Fast.Mediator.Publish;
 
@@ -17,9 +18,33 @@ internal class VarPubTask {
 
         ObjectRefs rootObjects = varPub.RootObjects;
 
-        Duration cycle = varPub.PublishInterval;
-        Duration offset = varPub.PublishOffset;
-        bool enableChangeBasedVariableUpdates = cycle == Duration.Zero;
+        bool UseCyclicPublishing() {
+            if (varPub.PublishMode == PubMode.Cyclic) return true;
+            if (varPub.PublishMode == PubMode.OnVarValueUpdate && varPub.PublishInterval > Duration.Zero) return true;
+            return false;
+        }
+
+        (Duration cycle, Duration offset) GetCycleAndOffset() {
+            if (varPub.PublishMode == PubMode.Cyclic && varPub.PublishInterval > Duration.Zero) return (varPub.PublishInterval, varPub.PublishOffset);
+            if (varPub.PublishMode == PubMode.OnVarValueUpdate && varPub.PublishInterval > Duration.Zero) return (varPub.PublishInterval, varPub.PublishOffset);
+            return (Duration.FromMinutes(1), Duration.Zero);
+        }
+
+        bool UseVarValueUpdateCyclicPublishing() {
+            if (varPub.PublishMode == PubMode.Cyclic && varPub.PublishInterval == Duration.Zero) return true;
+            if (varPub.PublishMode == PubMode.OnVarValueUpdate) return true;
+            return false;
+        }
+
+        bool UseOnVarHistoryUpdateCyclicPublishing() {
+            return varPub.PublishMode == PubMode.OnVarHistoryUpdate;
+        }
+
+        bool cyclicPublishing = UseCyclicPublishing();
+        var (cycle, offset) = GetCycleAndOffset();
+
+        bool enableChangeBasedVariableUpdates = UseVarValueUpdateCyclicPublishing();
+        bool enableHistoryBasedVariableUpdates = UseOnVarHistoryUpdateCyclicPublishing();
 
         string strObjects = string.Join(", ", rootObjects.Select(r => r.ToString()));
         Console.WriteLine($"Starting variable publish task {publisher.PublisherID}: Cycle={cycle}; RootObjects={strObjects}; ChangeBasedVarUpdates={enableChangeBasedVariableUpdates}");
@@ -29,11 +54,7 @@ internal class VarPubTask {
             await Time.WaitUntil(t, abort: shutdown);
         }
 
-        if (enableChangeBasedVariableUpdates) {
-            cycle = Duration.FromMinutes(1);
-            offset = Duration.Zero;
-        }
-        else {
+        if (!enableChangeBasedVariableUpdates && !enableHistoryBasedVariableUpdates) {
             await WaitForNextCycle();
         }
 
@@ -56,9 +77,17 @@ internal class VarPubTask {
             return PublishRelevantVariableValues(client, allValues);
         }
 
+        async Task OnVariablesHistoryChangedEvent(Connection client, List<HistoryChange> changes) {
+            VariableValues allValues = await ReadHistoricChanges(client, changes);
+            await PublishRelevantVariableValues(client, allValues);
+        }
+
         async Task RegisterForChangeEvents(Connection client) {
             if (enableChangeBasedVariableUpdates) {
                 await client.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), rootObjects.ToArray());
+            }
+            if (enableHistoryBasedVariableUpdates) {
+                await client.EnableVariableHistoryChangedEvents(rootObjects.ToArray());
             }
             await client.EnableConfigChangedEvents(rootObjects.ToArray());
         }
@@ -66,19 +95,46 @@ internal class VarPubTask {
         var wrapper = new ConnectionWrapper(info) {
             OnConnectionCreated = RegisterForChangeEvents,
             OnConfigurationChanged = OnConfigurationChanged,
-            OnVariableValueChanged = OnVariablesChangedEvent
+            OnVariableValueChanged = OnVariablesChangedEvent,
+            OnVariableHistoryChanged = OnVariablesHistoryChangedEvent
         };
 
         while (!shutdown()) {
             Connection clientFAST = await wrapper.EnsureConnectionOrThrow();
-            VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);            
-            await PublishRelevantVariableValues(clientFAST, allValues);
+            if (cyclicPublishing) {
+                VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);
+                await PublishRelevantVariableValues(clientFAST, allValues);
+            }
             await WaitForNextCycle();
         }
 
         await wrapper.Close();
         publisher.Close();
         await varMetaMan.Close();
+    }
+
+    private static async Task<VariableValues> ReadHistoricChanges(Connection client, List<HistoryChange> changes) {
+        VariableValues allValues = [];
+        // Read historical values for each changed variable:
+        foreach (HistoryChange change in changes) {
+            try {
+                var historyData = await client.HistorianReadRaw(
+                    change.Variable,
+                    change.ChangeStart,
+                    change.ChangeEnd,
+                    maxValues: 50000,
+                    BoundingMethod.TakeFirstN,
+                    QualityFilter.ExcludeNone);
+
+                foreach (VTTQ vttq in historyData) {
+                    allValues.Add(VariableValue.Make(change.Variable, vttq.ToVTQ()));
+                }
+            }
+            catch (Exception ex) {
+                Console.Error.WriteLine($"Error reading history for {change.Variable}: {ex.Message}");
+            }
+        }
+        return allValues;
     }
 
     private static VariableValues Filter(VariableValues values, VarPubCommon config) {

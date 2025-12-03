@@ -12,8 +12,8 @@ public partial class MqttPublisher
     public static Task MakeVarPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
 
         BufferedVarPub publisher = config.VarPublish!.Mode switch {
-            PublishMode.TopicPerVariable => new MqttPub_Var_PerVariable(info.DataFolder, certDir, config),
-            PublishMode.Bulk => new MqttPub_Var_Bulk(info.DataFolder, certDir, config),
+            TopicMode.TopicPerVariable => new MqttPub_Var_PerVariable(info.DataFolder, certDir, config),
+            TopicMode.Bulk => new MqttPub_Var_Bulk(info.DataFolder, certDir, config),
             _ => throw new ArgumentException($"Invalid VarPublish mode: {config.VarPublish.Mode}")
         };
 

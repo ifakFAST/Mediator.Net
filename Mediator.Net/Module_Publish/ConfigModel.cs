@@ -92,6 +92,12 @@ public enum NaNHandling {
     Remove
 }
 
+public enum PubMode {
+    Cyclic, // IF PublishInterval = 0 THEN: publish on variable value update with additional 1 min cycle ELSE: Cyclic publish
+    OnVarValueUpdate, // publish on variable value update (+ additional cycle publish if PublishInterval > 0)
+    OnVarHistoryUpdate // publish on variable history update
+}
+
 public interface VarPubCommon {
     List<ObjectRef> RootObjects { get; set; }
     bool BufferIfOffline { get; set; }
@@ -101,6 +107,7 @@ public interface VarPubCommon {
     NaNHandling NaN_Handling { get; set; }
     Duration PublishInterval { get; set; }
     Duration PublishOffset { get; set; }
+    PubMode PublishMode { get; set; }
 }
 
 public class MqttVarPub : ModelObject, VarPubCommon {
@@ -130,7 +137,7 @@ public class MqttVarPub : ModelObject, VarPubCommon {
     public PubVarFormat PubFormat { get; set; } = PubVarFormat.Array;
     public PubVarFormat PubFormatReg { get; set; } = PubVarFormat.Array;
 
-    public PublishMode Mode { get; set; } = PublishMode.Bulk;
+    public TopicMode Mode { get; set; } = TopicMode.Bulk;
     public string TopicTemplate { get; set; } = "{ID}";
 
     public bool BufferIfOffline { get; set; } = false;
@@ -145,6 +152,7 @@ public class MqttVarPub : ModelObject, VarPubCommon {
 
     public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
     public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+    public PubMode PublishMode { get; set; } = PubMode.Cyclic;
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
@@ -166,7 +174,7 @@ public enum PubVarFormat {
     Object
 }
 
-public enum PublishMode {
+public enum TopicMode {
     Bulk,            // All variables in one topic
     TopicPerVariable // One topic per variable
 }
@@ -329,6 +337,7 @@ public class SQLVarPub : ModelObject, VarPubCommon {
 
     public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
     public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+    public PubMode PublishMode { get; set; } = PubMode.Cyclic;
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
@@ -393,6 +402,7 @@ public class OpcUaVarPub : ModelObject, VarPubCommon {
 
     public Duration PublishInterval { get; set; } = Duration.FromSeconds(5);
     public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
+    public PubMode PublishMode { get; set; } = PubMode.Cyclic;
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
