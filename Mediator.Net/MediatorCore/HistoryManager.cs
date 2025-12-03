@@ -19,6 +19,12 @@ namespace Ifak.Fast.Mediator
 
         private readonly Dictionary<string, ModuleDBs> dbs = [];
 
+        /// <summary>
+        /// Tracks the last saved value per variable for proper deadband comparison.
+        /// This prevents "deadband drift" where accumulated small changes are lost.
+        /// </summary>
+        private readonly Dictionary<VariableRef, DataValue> lastSavedForDeadband = [];
+
         private Func<VariableRef, Variable?> fVarResolver = (vr) => null;
         private Action<IList<HistoryChange>> fNotifyChanges = (changes) => { };
 
@@ -300,7 +306,10 @@ namespace Ifak.Fast.Mediator
                                 break;
 
                         case HistoryMode.ValueOrQualityChanged: {
-                                if (value.Value.V != previousValue.V || value.Value.Q != previousValue.Q) {
+                                // Compare against last saved value (not last observed) for proper deadband behavior
+                                DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
+                                if (value.Value.Q != previousValue.Q ||
+                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband)) {
                                     valuesToSave.Add(new StoreValue(value, type));
                                 }
                                 break;
@@ -317,8 +326,10 @@ namespace Ifak.Fast.Mediator
                             }
 
                         case HistoryMode.IntervalOrChanged: {
-                                if (value.Value.V != previousValue.V ||
-                                    value.Value.Q != previousValue.Q ||
+                                // Compare against last saved value (not last observed) for proper deadband behavior
+                                DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
+                                if (value.Value.Q != previousValue.Q ||
+                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband) ||
                                     IsIntervalHit(tNew, history) ||
                                     (tNew - tOld >= history.Interval) ||
                                     IsIntervalBetweenTimetamps(tOld, tNew, history)) {
@@ -336,8 +347,10 @@ namespace Ifak.Fast.Mediator
                             }
 
                         case HistoryMode.IntervalExactOrChanged: {
-                                if (value.Value.V != previousValue.V ||
-                                    value.Value.Q != previousValue.Q ||
+                                // Compare against last saved value (not last observed) for proper deadband behavior
+                                DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
+                                if (value.Value.Q != previousValue.Q ||
+                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband) ||
                                     IsIntervalHit(tNew, history)) {
                                     valuesToSave.Add(new StoreValue(value, type));
                                 }
@@ -352,11 +365,68 @@ namespace Ifak.Fast.Mediator
             }
 
             if (valuesToSave.Count > 0) {
-                return SaveToDB(moduleDBs, moduleID, valuesToSave);
+                int result = SaveToDB(moduleDBs, moduleID, valuesToSave);
+                // Update last saved values for deadband tracking
+                UpdateLastSavedForDeadband(valuesToSave);
+                return result;
             }
             else {
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Gets the value to compare against for change detection.
+        /// Returns the last saved value if available, otherwise falls back to the previous observed value.
+        /// This ensures proper deadband behavior by always comparing against the last actually saved value.
+        /// </summary>
+        private DataValue GetLastSavedOrPreviousValue(VariableRef varRef, DataValue previousObservedValue) {
+            if (lastSavedForDeadband.TryGetValue(varRef, out DataValue lastSaved)) {
+                return lastSaved;
+            }
+            return previousObservedValue;
+        }
+
+        /// <summary>
+        /// Updates the last saved value dictionary after successfully saving values.
+        /// This ensures proper deadband comparison against the last actually saved value.
+        /// </summary>
+        private void UpdateLastSavedForDeadband(IList<StoreValue> savedValues) {
+            foreach (StoreValue sv in savedValues) {
+                lastSavedForDeadband[sv.Value.Variable] = sv.Value.Value.V;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a value has changed, considering the deadband for numeric types.
+        /// Quality changes should be checked separately before calling this method.
+        /// </summary>
+        /// <param name="newValue">The new value</param>
+        /// <param name="oldValue">The previous value</param>
+        /// <param name="type">The data type of the variable</param>
+        /// <param name="deadband">Optional absolute deadband threshold</param>
+        /// <returns>True if the value has changed (beyond the deadband for numeric types)</returns>
+        private static bool HasValueChanged(DataValue newValue, DataValue oldValue, DataType type, double? deadband) {
+            // If values are exactly equal, no change
+            if (newValue == oldValue) return false;
+
+            // If deadband is specified and type is numeric, apply deadband logic
+            if (deadband.HasValue && type.IsNumeric()) {
+                double? newDouble = newValue.AsDouble();
+                double? oldDouble = oldValue.AsDouble();
+
+                if (newDouble.HasValue && oldDouble.HasValue) {
+                    // Handle NaN: if either value is NaN, consider it a change
+                    // (unless both are NaN, which would have been caught by the JSON string equality check above)
+                    return 
+                        double.IsNaN(newDouble.Value) || 
+                        double.IsNaN(oldDouble.Value) || 
+                        Math.Abs(newDouble.Value - oldDouble.Value) > deadband.Value;
+                }
+            }
+
+            // For non-numeric types or when deadband doesn't apply, values are different
+            return true;
         }
 
         private static bool IsIntervalBetweenTimetamps(Timestamp tLeft, Timestamp tRight, History history) {

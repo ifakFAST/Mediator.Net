@@ -286,7 +286,7 @@ def step(t, dt):
           <Output id="y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
-      <Calculation id="PyHistory2" name="PyHistory2" type="Python" enabled="true">
+      <Calculation id="PyHistory2" name="PyHistory2" type="Python" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>10 s</Cycle>
         <Definition>
@@ -318,7 +318,7 @@ def step(t, dt):
           <Output id="y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
-      <Calculation id="PyHistory3" name="PyHistory3" type="Python" enabled="true">
+      <Calculation id="PyHistory3" name="PyHistory3" type="Python" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>10 s</Cycle>
         <Definition>import numpy as np

@@ -149,13 +149,17 @@
                       :label="row.Name"
                       :locations="locations"
                     ></location>
-                    <template v-if="row.Type === 'Struct'">
+                    <template v-if="row.Type === 'Struct' && row.TypeConstraints !== 'Ifak.Fast.Mediator.History'">
                       <p class="font-weight-bold">{{ row.Name }}</p>
                       <struct-editor
                         :members="row.StructMembers"
                         :value="row.Value"
                         @update:value="row.Value = $event"
                       ></struct-editor>
+                    </template>
+                    <template v-if="row.Type === 'Struct' && row.TypeConstraints === 'Ifak.Fast.Mediator.History'">
+                      <p class="font-weight-bold">{{ row.Name }}</p>
+                      <history-editor v-model="row.Value" />
                     </template>
                   </td>
                   <td>
@@ -214,13 +218,17 @@
                       :label="row.Name"
                       :locations="locations"
                     ></location>
-                    <template v-if="row.Type === 'Struct'">
+                    <template v-if="row.Type === 'Struct' && row.TypeConstraints !== 'Ifak.Fast.Mediator.History'">
                       <p class="font-weight-bold">{{ row.Name }}</p>
                       <struct-editor
                         :members="row.StructMembers"
                         :value="row.Value"
                         @update:value="row.Value = $event"
                       ></struct-editor>
+                    </template>
+                    <template v-if="row.Type === 'Struct' && row.TypeConstraints === 'Ifak.Fast.Mediator.History'">
+                      <p class="font-weight-bold">{{ row.Name }}</p>
+                      <history-editor v-model="row.Value" />
                     </template>
                   </td>
                   <td>
@@ -550,6 +558,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import StructEditor from './StructEditor.vue'
 import StructArrayEditor from './StructArrayEditor.vue'
 import Confirm from '../components/Confirm.vue'
+import HistoryEditor from '../components/HistoryEditor.vue'
 import Location from './Location.vue'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'

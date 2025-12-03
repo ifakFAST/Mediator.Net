@@ -39,6 +39,7 @@ export interface ObjectMember {
   Key: string
   Name: string
   Type: string
+  TypeConstraints: string
   IsScalar: boolean
   IsOption: boolean
   IsArray: boolean

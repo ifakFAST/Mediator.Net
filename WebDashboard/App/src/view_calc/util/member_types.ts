@@ -5,7 +5,7 @@ export type MemberTypeEnum = 'History' | 'String' | 'Text' | 'DataType' | 'Numbe
 export function defaultValueFromMemberType(t: MemberTypeEnum): any {
   switch (t) {
     case 'History': {
-      const h: fast.History = { Mode: 'None', Interval: null, Offset: null }
+      const h: fast.History = { Mode: 'None', Interval: null, Offset: null, Deadband: null }
       return h
     }
     case 'String':

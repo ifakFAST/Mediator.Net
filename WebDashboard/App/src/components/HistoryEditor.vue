@@ -7,7 +7,7 @@
             v-model="model.Mode"
             :items="historyItems"
             label="Mode"
-            :style="{ width: modeWidth + 'px' }"
+            style="width: 225px"
           />
         </td>
         <td>
@@ -38,6 +38,20 @@
             <span>Available time units: ms, s, min, h, d</span>
           </v-tooltip>
         </td>
+        <td>
+          <v-tooltip location="right">
+            <template #activator="{ props }">
+              <text-field-nullable-number
+                v-show="showDeadband"
+                v-model="model.Deadband"
+                v-bind="props"
+                label="Deadband"
+                style="width: 100px"
+              ></text-field-nullable-number>
+            </template>
+            <span>Absolute deadband value for numeric types. Value change detected when |new - old| > deadband</span>
+          </v-tooltip>
+        </td>
       </tr>
     </tbody>
   </table>
@@ -46,6 +60,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import * as fast from '../fast_types'
+import TextFieldNullableNumber from './TextFieldNullableNumber.vue'
 
 const model = defineModel<fast.History>({ required: true })
 
@@ -60,8 +75,12 @@ const showInterval = computed((): boolean => {
   )
 })
 
-const modeWidth = computed((): string => {
-  return showInterval.value ? '140' : '225'
+const showDeadband = computed((): boolean => {
+  return (
+    model.value.Mode === 'ValueOrQualityChanged' ||
+    model.value.Mode === 'IntervalOrChanged' ||
+    model.value.Mode === 'IntervalExactOrChanged'
+  )
 })
 
 watch(
@@ -74,6 +93,12 @@ watch(
       model.value.Offset = null
     } else if (model.value.Interval === null || model.value.Interval.trim() === '') {
       model.value.Interval = '10 s'
+    }
+
+    const noDeadbandMode =
+      newMode !== 'ValueOrQualityChanged' && newMode !== 'IntervalOrChanged' && newMode !== 'IntervalExactOrChanged'
+    if (noDeadbandMode) {
+      model.value.Deadband = null
     }
   },
 )

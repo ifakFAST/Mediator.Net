@@ -345,6 +345,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                     Key = obj.ToEncodedString() + "__" + m.Name,
                     Name = m.Name,
                     Type = m.Type.ToString(),
+                    TypeConstraints = m.TypeConstraints,
                     IsScalar = m.Dimension == Dimension.Scalar,
                     IsOption = m.Dimension == Dimension.Optional,
                     IsArray = m.Dimension == Dimension.Array,
@@ -437,6 +438,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public string Key { get; set; } = "";
             public string Name { get; set; } = "";
             public string Type { get; set; } = "";
+            public string TypeConstraints { get; set; } = "";
             public bool IsScalar { get; set; }
             public bool IsOption { get; set; }
             public bool IsArray { get; set; }

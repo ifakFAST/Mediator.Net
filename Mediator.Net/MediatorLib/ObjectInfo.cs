@@ -167,21 +167,27 @@ namespace Ifak.Fast.Mediator
         public static bool operator !=(Variable? lhs, Variable? rhs) => !(lhs == rhs);
     }
 
-    public struct History(HistoryMode mode, Duration? interval = null, Duration? offset = null) : IEquatable<History>, IXmlSerializable
+    public struct History(HistoryMode mode, Duration? interval = null, Duration? offset = null, double? deadband = null) : IEquatable<History>, IXmlSerializable
     {
         public static History None => new();
         public static History Complete => new(HistoryMode.Complete);
-        public static History ValueOrQualityChanged => new(HistoryMode.ValueOrQualityChanged);
+        public static History ValueOrQualityChanged(double? deadband = null) => new(HistoryMode.ValueOrQualityChanged, deadband: deadband);
         public static History IntervalDefault(Duration interval, Duration? offset = null) => new(HistoryMode.Interval, interval, offset);
         public static History IntervalExact(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalExact, interval, offset);
-        public static History IntervalOrChanged(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalOrChanged, interval, offset);
-        public static History IntervalExactOrChanged(Duration interval, Duration? offset = null) => new(HistoryMode.IntervalExactOrChanged, interval, offset);
+        public static History IntervalOrChanged(Duration interval, Duration? offset = null, double? deadband = null) => new(HistoryMode.IntervalOrChanged, interval, offset, deadband);
+        public static History IntervalExactOrChanged(Duration interval, Duration? offset = null, double? deadband = null) => new(HistoryMode.IntervalExactOrChanged, interval, offset, deadband);
 
         public HistoryMode Mode { get; set; } = mode;
         public Duration? Interval { get; set; } = interval;
         public Duration? Offset { get; set; } = offset;
+        /// <summary>
+        /// Absolute deadband value for numeric types. A value change is detected when |new - old| > deadband.
+        /// Only applicable for ValueOrQualityChanged, IntervalOrChanged, and IntervalExactOrChanged modes.
+        /// For non-numeric types, the deadband is ignored and simple equality comparison is used.
+        /// </summary>
+        public double? Deadband { get; set; } = deadband;
 
-        public readonly bool Equals(History other) => Mode == other.Mode && Interval == other.Interval && Offset == other.Offset;
+        public readonly bool Equals(History other) => Mode == other.Mode && Interval == other.Interval && Offset == other.Offset && Deadband == other.Deadband;
 
         public readonly override bool Equals(object obj) {
             if (obj is History h) {
@@ -204,6 +210,10 @@ namespace Ifak.Fast.Mediator
 
         public readonly bool ShouldSerializeOffset() => Offset.HasValue;
 
+        public readonly bool ShouldSerializeDeadband() => Deadband.HasValue;
+
+        private readonly bool ModeSupportsDeadband => Mode == HistoryMode.ValueOrQualityChanged || Mode == HistoryMode.IntervalOrChanged || Mode == HistoryMode.IntervalExactOrChanged;
+
         public void ReadXml(XmlReader reader) {
             string m = reader["mode"];
             Mode = m switch {
@@ -224,6 +234,10 @@ namespace Ifak.Fast.Mediator
             if (off != null) {
                 Offset = Duration.Parse(off);
             }
+            string db = reader["deadband"];
+            if (db != null) {
+                Deadband = double.Parse(db, System.Globalization.CultureInfo.InvariantCulture);
+            }
             reader.Read();
         }
 
@@ -235,6 +249,9 @@ namespace Ifak.Fast.Mediator
             }
             if (Offset.HasValue && modeInterval) {
                 writer.WriteAttributeString("offset", Offset.Value.ToString());
+            }
+            if (Deadband.HasValue && ModeSupportsDeadband) {
+                writer.WriteAttributeString("deadband", Deadband.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
         }
 
@@ -250,8 +267,9 @@ namespace Ifak.Fast.Mediator
             switch (Mode) {
                 case HistoryMode.None:
                 case HistoryMode.Complete:
-                case HistoryMode.ValueOrQualityChanged:
                     return new History(Mode);
+                case HistoryMode.ValueOrQualityChanged:
+                    return new History(Mode, deadband: Deadband);
                 default:
                     return this;
             }

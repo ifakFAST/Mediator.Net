@@ -30,6 +30,7 @@ export interface History {
   Mode: HistoryMode
   Interval: Duration | null
   Offset: Duration | null
+  Deadband: number | null
 }
 
 export interface LocationInfo {
