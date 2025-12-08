@@ -235,36 +235,21 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             CheckDbOpen();
             Timestamp timeDb = Timestamp.Now;
 
-            using (var transaction = connection!.BeginTransaction()) {
+            /// The transaction will automatically rollback if not completed successfully on Dispose
+            using var transaction = connection!.BeginTransaction();
+            var errors = new List<string>();
+            var context = new SQLiteContext(timeDb, transaction);
 
-                try {
-
-                    var errors = new List<string>();
-                    var context = new SQLiteContext(timeDb, transaction);
-
-                    foreach (var action in updateActions) {
-                        string? error = action(context);
-                        if (error != null) {
-                            errors.Add(error);
-                        }
-                    }
-
-                    transaction.Commit();
-
-                    return errors.ToArray();
-                }
-                catch (Exception) {
-
-                    try {
-                        transaction.Rollback();
-                    }
-                    catch (Exception exp) {
-                        logger.Warn("BatchExecute: transaction.Rollback failed: " + exp.Message);
-                    }
-
-                    throw;
+            foreach (var action in updateActions) {
+                string? error = action(context);
+                if (error != null) {
+                    errors.Add(error);
                 }
             }
+
+            transaction.Commit();
+
+            return errors.ToArray();
         }
 
         protected void CheckDbOpen() {
