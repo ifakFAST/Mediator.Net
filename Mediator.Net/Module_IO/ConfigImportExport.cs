@@ -24,7 +24,8 @@ public static class ConfigImportExport {
         string Location,
         string ConversionRead,
         string ConversionWrite,
-        string Comment
+        string Comment,
+        string Deadband
     );
 
     public static FlatDataItem[] CreateFlatDataItemsFromExcel(byte[] excelData) {
@@ -114,7 +115,8 @@ public static class ConfigImportExport {
                 Location: str("Location"),
                 ConversionRead: str("Conversion Read"),
                 ConversionWrite: str("Conversion Write"),
-                Comment: str("Comment")
+                Comment: str("Comment"),
+                Deadband: str("Deadband")
             ));
         }
 
@@ -142,10 +144,11 @@ public static class ConfigImportExport {
         sheet.Cell(1, 11).Value = "Conversion Read";
         sheet.Cell(1, 12).Value = "Conversion Write";
         sheet.Cell(1, 13).Value = "Comment";
+        sheet.Cell(1, 14).Value = "Deadband";
 
-        sheet.Range("A1:M1").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
-        sheet.Range("A1:M1").Style.Font.SetBold(true);
-        sheet.Range("A1:M1").Style.Fill.SetBackgroundColor(XLColor.LightGray);
+        sheet.Range("A1:N1").Style.Border.SetBottomBorder(XLBorderStyleValues.Medium);
+        sheet.Range("A1:N1").Style.Font.SetBold(true);
+        sheet.Range("A1:N1").Style.Fill.SetBackgroundColor(XLColor.LightGray);
         sheet.SheetView.FreezeRows(1);
 
         // Fill in data
@@ -166,6 +169,7 @@ public static class ConfigImportExport {
             sheet.Cell(rowIdx, 11).Value = item.ConversionRead;
             sheet.Cell(rowIdx, 12).Value = item.ConversionWrite;
             sheet.Cell(rowIdx, 13).Value = item.Comment;
+            sheet.Cell(rowIdx, 14).Value = item.Deadband;
         }
 
         // Optionally, adjust columns to fit the content
@@ -207,7 +211,8 @@ public static class ConfigImportExport {
                 dataItem.LocationStringForXml,
                 dataItem.ConversionRead,
                 dataItem.ConversionWrite,
-                dataItem.Comment
+                dataItem.Comment,
+                dataItem.Deadband
             );
             flatDataItems.Add(flatItem);
         }
@@ -240,7 +245,8 @@ public static class ConfigImportExport {
                     dataItem.LocationStringForXml,
                     dataItem.ConversionRead,
                     dataItem.ConversionWrite,
-                    dataItem.Comment
+                    dataItem.Comment,
+                    dataItem.Deadband
                 ));
             }
 
@@ -381,7 +387,8 @@ public static class ConfigImportExport {
                 ConversionRead = item.ConversionRead,
                 ConversionWrite = item.ConversionWrite,
                 LocationStringForXml = item.Location,
-                Comment = item.Comment
+                Comment = item.Comment,
+                Deadband = item.Deadband
             };
 
             AddDataItem(newDataItem);
@@ -406,6 +413,7 @@ public static class ConfigImportExport {
             existingDataItem.ConversionWrite = item.ConversionWrite;
             existingDataItem.LocationStringForXml = item.Location;
             existingDataItem.Comment = item.Comment;
+            existingDataItem.Deadband = item.Deadband;
         }
     }
 
