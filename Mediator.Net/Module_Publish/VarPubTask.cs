@@ -47,12 +47,16 @@ internal class VarPubTask {
         bool enableHistoryBasedVariableUpdates = UseOnVarHistoryUpdateCyclicPublishing();
 
         string strObjects = string.Join(", ", rootObjects.Select(r => r.ToString()));
-        Console.WriteLine($"Starting variable publish task {publisher.PublisherID}: Cycle={cycle}; RootObjects={strObjects}; ChangeBasedVarUpdates={enableChangeBasedVariableUpdates}");
+        string cycleInfo = offset == Duration.Zero ? $"cycle: {cycle}" : $"cycle: {cycle}, offset: {offset}";
+        string cyclicStr = cyclicPublishing ? $"CyclicPublish with {cycleInfo}" : "ChangeBasedOnly";
+        string changeStr = enableChangeBasedVariableUpdates ? "VarValueUpdate" : (enableHistoryBasedVariableUpdates ? "VarHistoryUpdate" : "NoChangeBasedPublish");
+
+        Console.WriteLine($"Starting variable publish task {publisher.PublisherID}: RootObjects={strObjects}; {cyclicStr}; {changeStr}");
 
         async Task WaitForNextCycle() {
-            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
-            await Time.WaitUntil(t, abort: shutdown);
-        }
+                Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+                await Time.WaitUntil(t, abort: shutdown);
+            }
 
         if (!enableChangeBasedVariableUpdates && !enableHistoryBasedVariableUpdates) {
             await WaitForNextCycle();
