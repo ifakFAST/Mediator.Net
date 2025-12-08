@@ -135,6 +135,12 @@ namespace Ifak.Fast.Mediator
 
         public History History { get; set; }
 
+        /// <summary>
+        /// Only relevant if History.Mode is ValueOrQualityChanged, IntervalOrChanged, or IntervalExactOrChanged.
+        /// If not null, it overrides the deadband specified in History.
+        /// </summary>
+        public double? Deadband { get; set; } = null;
+
         public bool IsNumeric => Type.IsNumeric();
 
         public override string ToString() => Name ?? "";

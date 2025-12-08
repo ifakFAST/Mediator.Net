@@ -9,6 +9,7 @@ using System.Linq;
 using System.Xml.Serialization;
 using System.Xml;
 using System.Xml.Schema;
+using System.Globalization;
 
 namespace Ifak.Fast.Mediator.IO.Config
 {
@@ -434,6 +435,9 @@ namespace Ifak.Fast.Mediator.IO.Config
         [XmlAttribute("comment")]
         public string Comment { get; set; } = "";
 
+        [XmlAttribute("deadband")]
+        public string Deadband { get; set; } = "";
+
         public Scheduling? Scheduling { get; set; } = null;
         public History? History { get; set; } = null;
         //public DataValue? InitialValue { get; set; } = null;
@@ -481,7 +485,16 @@ namespace Ifak.Fast.Mediator.IO.Config
                     writable: this.Write,
                     syncReadable: this.Read);
 
-            return new Variable[] { variable };
+            if (!string.IsNullOrWhiteSpace(Deadband)) {
+                if (double.TryParse(Deadband, CultureInfo.InvariantCulture, out double db)) {
+                    variable.Deadband = db;
+                }
+                else {
+                    throw new Exception($"Invalid Deadband value '{Deadband}' for DataItem ID='{ID}', Name='{Name}'");
+                }
+            }
+
+            return [ variable ];
         }
 
         public DataValue GetDefaultValue() => /*InitialValue.HasValue ? this.InitialValue.Value :*/ DataValue.FromDataType(Type, Dimension);
@@ -505,6 +518,7 @@ namespace Ifak.Fast.Mediator.IO.Config
         public bool ShouldSerializeLocation() => Location.HasValue;
         public bool ShouldSerializeConversionRead() => !string.IsNullOrEmpty(ConversionRead);
         public bool ShouldSerializeConversionWrite() => !string.IsNullOrEmpty(ConversionWrite);
+        public bool ShouldSerializeDeadband() => !string.IsNullOrEmpty(Deadband);
 
         public void ValidateOrThrow() {
             if (Scheduling.HasValue) Scheduling.Value.ValidateOrThrow();

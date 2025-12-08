@@ -279,6 +279,7 @@ namespace Ifak.Fast.Mediator
                 Timestamp tNew = value.Value.T;
                 Timestamp tOld = previousValue.T;
                 History history = variable.History;
+                double? deadband = variable.Deadband ?? history.Deadband;
 
                 bool preventOutOfOrderAppend = !AllowOutOfOrder(value);
 
@@ -309,7 +310,7 @@ namespace Ifak.Fast.Mediator
                                 // Compare against last saved value (not last observed) for proper deadband behavior
                                 DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
                                 if (value.Value.Q != previousValue.Q ||
-                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband)) {
+                                    HasValueChanged(value.Value.V, compareValue, type, deadband)) {
                                     valuesToSave.Add(new StoreValue(value, type));
                                 }
                                 break;
@@ -329,7 +330,7 @@ namespace Ifak.Fast.Mediator
                                 // Compare against last saved value (not last observed) for proper deadband behavior
                                 DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
                                 if (value.Value.Q != previousValue.Q ||
-                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband) ||
+                                    HasValueChanged(value.Value.V, compareValue, type, deadband) ||
                                     IsIntervalHit(tNew, history) ||
                                     (tNew - tOld >= history.Interval) ||
                                     IsIntervalBetweenTimetamps(tOld, tNew, history)) {
@@ -350,7 +351,7 @@ namespace Ifak.Fast.Mediator
                                 // Compare against last saved value (not last observed) for proper deadband behavior
                                 DataValue compareValue = GetLastSavedOrPreviousValue(value.Variable, previousValue.V);
                                 if (value.Value.Q != previousValue.Q ||
-                                    HasValueChanged(value.Value.V, compareValue, type, history.Deadband) ||
+                                    HasValueChanged(value.Value.V, compareValue, type, deadband) ||
                                     IsIntervalHit(tNew, history)) {
                                     valuesToSave.Add(new StoreValue(value, type));
                                 }
