@@ -108,6 +108,7 @@ public class MQTT : AdapterBase {
             IgnoreCertificateRevocationErrors = c.GetOptionalBool("IgnoreCertificateRevocationErrors", false),
             IgnoreCertificateChainErrors = c.GetOptionalBool("IgnoreCertificateChainErrors", false),
             AllowUntrustedCertificates = c.GetOptionalBool("AllowUntrustedCertificates", false),
+            NoCertificateValidation = c.GetOptionalBool("NoCertificateValidation", false),
             TLS = c.GetOptionalBoolNullable("TLS", null)
         };
     }

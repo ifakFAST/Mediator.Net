@@ -85,12 +85,19 @@ public static class MQTT_Util {
 
         if (useTLS) {
             builder = builder
-             .WithTlsOptions(o => o
-                 .UseTls(true)
-                 .WithClientCertificates(certificates)
-                 .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
-                 .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
-                 .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates));
+             .WithTlsOptions(o => {
+                 o
+                  .UseTls(true)
+                  .WithClientCertificates(certificates)
+                  .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
+                  .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
+                  .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+
+                 if (config.NoCertificateValidation) {
+                     // Will accept any certificate, even if hostname/IP does not match
+                     o.WithCertificateValidationHandler(_ => true);
+                 }
+             });
         }
 
         return builder
@@ -180,6 +187,7 @@ public sealed class MqttConfig {
     public string KeyFileClient { get; set; } = "";
     public string User { get; set; } = "";
     public string Pass { get; set; } = "";
+    public bool NoCertificateValidation { get; set; } = false;
     public bool IgnoreCertificateRevocationErrors { get; set; } = false;
     public bool IgnoreCertificateChainErrors { get; set; } = false;
     public bool AllowUntrustedCertificates { get; set; } = false;
