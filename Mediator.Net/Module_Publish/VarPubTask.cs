@@ -20,13 +20,12 @@ internal class VarPubTask {
 
         bool UseCyclicPublishing() {
             if (varPub.PublishMode == PubMode.Cyclic) return true;
-            if (varPub.PublishMode == PubMode.OnVarValueUpdate && varPub.PublishInterval > Duration.Zero) return true;
+            if (varPub.PublishInterval > Duration.Zero) return true;
             return false;
         }
 
         (Duration cycle, Duration offset) GetCycleAndOffset() {
-            if (varPub.PublishMode == PubMode.Cyclic && varPub.PublishInterval > Duration.Zero) return (varPub.PublishInterval, varPub.PublishOffset);
-            if (varPub.PublishMode == PubMode.OnVarValueUpdate && varPub.PublishInterval > Duration.Zero) return (varPub.PublishInterval, varPub.PublishOffset);
+            if (varPub.PublishInterval > Duration.Zero) return (varPub.PublishInterval, varPub.PublishOffset);
             return (Duration.FromMinutes(1), Duration.Zero);
         }
 
