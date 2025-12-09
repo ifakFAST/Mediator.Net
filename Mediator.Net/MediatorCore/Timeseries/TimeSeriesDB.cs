@@ -8,7 +8,14 @@ namespace Ifak.Fast.Mediator.Timeseries
 {
     public abstract class TimeSeriesDB
     {
-        public abstract void Open(string name, string connectionString, string[]? settings = null);
+        public record OpenParams(
+            string Name, 
+            string ConnectionString, 
+            string[]? Settings = null,
+            Duration? RetentionTime = null,
+            Duration? RetentionCheckInterval = null);
+
+        public abstract void Open(OpenParams parameter);
 
         public abstract bool IsOpen { get; }
 
@@ -30,12 +37,12 @@ namespace Ifak.Fast.Mediator.Timeseries
             return (name, value);
         }
 
-        public virtual void ClearDatabase(string name, string connectionString, string[] dbSettings) {
+        public virtual void ClearDatabase(OpenParams parameter) {
             if (IsOpen) {
                 RemoveAllChannels();
             }
             else {
-                Open(name, connectionString, dbSettings);
+                Open(parameter);
                 try {
                     RemoveAllChannels();
                 }

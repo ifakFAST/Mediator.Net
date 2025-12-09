@@ -12,7 +12,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
     public class SQLiteChannel : Channel
     {
         private readonly DbConnection connection;
-        private readonly ChannelInfo info;
+        private readonly SQLiteTimeseriesDB parentDb;
         private readonly string table;
 
         private readonly PreparedStatement stmtUpdate;
@@ -38,9 +38,9 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private readonly PreparedStatement stmtCountNonBad;
         private readonly PreparedStatement stmtCountGood;
 
-        public SQLiteChannel(DbConnection connection, ChannelInfo info, string tableName) {
+        public SQLiteChannel(DbConnection connection, ChannelInfo info, string tableName, SQLiteTimeseriesDB parentDb) {
             this.connection = connection;
-            this.info = info;
+            this.parentDb = parentDb;
             this.table = "\"" + tableName + "\"";
 
             stmtUpdate          = new PreparedStatement(connection, $"UPDATE {table} SET diffDB = @1, quality = @2, data = @3 WHERE time = @4", 4);
@@ -165,6 +165,8 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 }
                 return true;
             });
+
+            parentDb.CheckAndApplyRetention();
         }
 
         public override void Upsert(VTQ[] data) {
@@ -182,6 +184,8 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 }
                 return true;
             });
+
+            parentDb.CheckAndApplyRetention();
         }
 
         public override void ReplaceAll(VTQ[] data) {

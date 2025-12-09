@@ -141,6 +141,12 @@ namespace Ifak.Fast.Mediator
         [XmlAttribute("allowOutOfOrderAppend")]
         public bool AllowOutOfOrderAppend { get; set; } = false;
 
+        [XmlAttribute("retentionTime")]
+        public string RetentionTime { get; set; } = "";
+
+        [XmlAttribute("retentionCheckInterval")]
+        public string RetentionCheckInterval { get; set; } = "1 h";
+
         public string[] Variables { get; set; } = new string[0];
 
         public string[] Settings { get; set; } = new string[0];

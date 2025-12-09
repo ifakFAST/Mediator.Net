@@ -22,9 +22,13 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public override bool IsOpen => connection != null;
 
-        public override void Open(string name, string connectionString, string[]? settings = null) {
+        public override void Open(OpenParams parameter) {
 
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
+
+            string name = parameter.Name;
+            string connectionString = parameter.ConnectionString;
+            string[]? settings = parameter.Settings;
 
             if (string.IsNullOrEmpty(connectionString)) {
                 throw new Application​Exception($"Missing ConnectionString for Postgres DB {name}");

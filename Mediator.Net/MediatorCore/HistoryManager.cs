@@ -2,12 +2,13 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ifak.Fast.Mediator.Timeseries;
+using NLog;
 
 namespace Ifak.Fast.Mediator
 {
@@ -62,10 +63,16 @@ namespace Ifak.Fast.Mediator
 
                     if (emptyDBs) {
                         var d = fCreateDB();
-                        d.ClearDatabase(db.Name, db.ConnectionString, db.Settings);
+                        d.ClearDatabase(new TimeSeriesDB.OpenParams(db.Name, db.ConnectionString, db.Settings));
                     }
 
-                    var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, fCreateDB, Notify_Append);
+                    Duration? retentionTime = null;
+                    if (!string.IsNullOrWhiteSpace(db.RetentionTime)) {
+                        retentionTime = Duration.Parse(db.RetentionTime);
+                    }
+                    Duration retentionCheckInterval = Duration.Parse(db.RetentionCheckInterval);
+
+                    var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, retentionTime, retentionCheckInterval, fCreateDB, Notify_Append);
                     var wb = new WorkerWithBuffer(worker);
 
                     workers.Add(wb);

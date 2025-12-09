@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.IO;
 using NLog;
 
@@ -17,12 +18,18 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         protected DbConnection? connection = null;
         private string tableSeparator = "$";
         private PreparedStatement? stmtSelectChannel;
+        private Duration? retentionTime = null;
+        private Duration retentionCheckInterval = Duration.FromHours(1);  // default 1 hour
+        private Timestamp lastRetentionCheck = Timestamp.Empty;
 
         public override bool IsOpen => connection != null;
 
-        public override void ClearDatabase(string name, string connectionString, string[] dbSettings) {
+        public override void ClearDatabase(OpenParams parameter) {
 
             cacheChannelEntry.Clear();
+
+            string name = parameter.Name;
+            string connectionString = parameter.ConnectionString;
 
             if (string.IsNullOrEmpty(connectionString)) {
                 logger.Warn($"ClearDatabase: ConnectionString is empty for SQLite database {name}");
@@ -50,15 +57,21 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                     }
                     catch (Exception) {
                         logger.Info($"ClearDatabase: Failed to delete SQLite DB file {file}. Reverting to default implementation.");
-                        base.ClearDatabase(name, connectionString, dbSettings);
+                        base.ClearDatabase(parameter);
                     }
                 }
             }
         }
 
-        public override void Open(string name, string connectionString, string[]? settings = null) {
+        public override void Open(OpenParams parameter) {
 
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
+
+            string name = parameter.Name;
+            string connectionString = parameter.ConnectionString;
+            string[]? settings = parameter.Settings;
+            retentionTime = parameter.RetentionTime;
+            retentionCheckInterval = parameter.RetentionCheckInterval ?? Duration.FromHours(1);
 
             try {
                 if (string.IsNullOrEmpty(connectionString)) {
@@ -134,7 +147,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             CheckDbOpen();
             ChannelEntry? entry = GetChannelDescription(objectID, variable);
             if (!entry.HasValue) throw new ArgumentException($"No channel found with obj={objectID} avr={variable}");
-            return new SQLiteChannel(connection!, entry.Value.MakeInfo(), entry.Value.DataTableName);
+            return new SQLiteChannel(connection!, entry.Value.MakeInfo(), entry.Value.DataTableName, this);
         }
 
         public override bool RemoveChannel(string objectID, string variable) {
@@ -161,14 +174,13 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             var res = new List<ChannelInfo>();
 
             using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection!)) {
-                using (var reader = command.ExecuteReader()) {
-                    while (reader.Read()) {
-                        string obj = (string)reader["obj"];
-                        string variable = (string)reader["var"];
-                        string strType = (string)reader["type"];
-                        DataType type = (DataType)Enum.Parse(typeof(DataType), strType, ignoreCase: true);
-                        res.Add(new ChannelInfo(obj, variable, type));
-                    }
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) {
+                    string obj = (string)reader["obj"];
+                    string variable = (string)reader["var"];
+                    string strType = (string)reader["type"];
+                    DataType type = (DataType)Enum.Parse(typeof(DataType), strType, ignoreCase: true);
+                    res.Add(new ChannelInfo(obj, variable, type));
                 }
             }
             return res.ToArray();
@@ -210,7 +222,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                             command.ExecuteNonQuery();
                         }
 
-                        var channel = new SQLiteChannel(connection, ch, tableName);
+                        var channel = new SQLiteChannel(connection, ch, tableName, this);
                         res.Add(channel);
                     }
 
@@ -235,7 +247,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             CheckDbOpen();
             Timestamp timeDb = Timestamp.Now;
 
-            /// The transaction will automatically rollback if not completed successfully on Dispose
+            // The transaction will automatically rollback if not completed successfully on Dispose
             using var transaction = connection!.BeginTransaction();
             var errors = new List<string>();
             var context = new SQLiteContext(timeDb, transaction);
@@ -249,7 +261,40 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
             transaction.Commit();
 
+            CheckAndApplyRetention();
+
             return errors.ToArray();
+        }
+
+        public void CheckAndApplyRetention() {
+            if (retentionTime == null || connection == null) return;
+
+            Timestamp now = Timestamp.Now;
+            if (now - lastRetentionCheck < retentionCheckInterval) return;  // Not time yet
+
+            lastRetentionCheck = now;
+            var sw = Stopwatch.StartNew();
+            ApplyRetention(now - retentionTime.Value);
+            sw.Stop();
+            logger.Info($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
+        }
+
+        private void ApplyRetention(Timestamp cutoff) {
+            // The transaction will automatically rollback if not completed successfully on Dispose
+            using var transaction = connection!.BeginTransaction();
+            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection!)) {
+                command.Transaction = transaction;
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) {
+                    string tableName = (string)reader["table_name"];
+                    string table = "\"" + tableName + "\""; ;
+                    using var cmd = Factory.MakeCommand($"DELETE FROM {table} WHERE time < @cutoff", connection!);
+                    cmd.Transaction = transaction;
+                    cmd.Parameters.Add(Factory.MakeParameter("cutoff", cutoff.JavaTicks));
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            transaction.Commit();
         }
 
         protected void CheckDbOpen() {

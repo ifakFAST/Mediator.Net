@@ -30,6 +30,8 @@ namespace Ifak.Fast.Mediator
         private readonly string[] dbSettings;
         private readonly bool prioritizeReadRequests;
         private readonly bool allowOutOfOrderAppend;
+        private readonly Duration? retentionTime;
+        private readonly Duration retentionCheckInterval;
         private readonly Func<TimeSeriesDB> dbCreator;
         private readonly Action<IEnumerable<VarHistoyChange>, bool> notifyAppend;
 
@@ -37,12 +39,24 @@ namespace Ifak.Fast.Mediator
         private volatile bool started = false;
         private volatile bool terminated = false;
 
-        public HistoryDBWorker(string dbName, string dbConnectionString, string[] dbSettings, bool prioritizeReadRequests, bool allowOutOfOrderAppend, Func<TimeSeriesDB> dbCreator, Action<IEnumerable<VarHistoyChange>, bool> notifyAppend) {
+        public HistoryDBWorker(
+                    string dbName, 
+                    string dbConnectionString, 
+                    string[] dbSettings, 
+                    bool prioritizeReadRequests, 
+                    bool allowOutOfOrderAppend, 
+                    Duration? retentionTime,
+                    Duration retentionCheckInterval,
+                    Func<TimeSeriesDB> dbCreator, 
+                    Action<IEnumerable<VarHistoyChange>, bool> notifyAppend) {
+
             this.dbName = dbName;
             this.dbConnectionString = dbConnectionString;
             this.dbSettings = dbSettings;
             this.prioritizeReadRequests = prioritizeReadRequests;
             this.allowOutOfOrderAppend = allowOutOfOrderAppend;
+            this.retentionTime = retentionTime;
+            this.retentionCheckInterval = retentionCheckInterval;
             this.dbCreator = dbCreator;
             this.notifyAppend = notifyAppend;
 
@@ -397,7 +411,13 @@ namespace Ifak.Fast.Mediator
                 else if (it is WI_Start start) {
                     try {
                         db = dbCreator();
-                        db.Open(dbName, dbConnectionString, dbSettings);
+                        var openParams = new TimeSeriesDB.OpenParams(
+                            Name: dbName,
+                            ConnectionString: dbConnectionString,
+                            Settings: dbSettings,
+                            RetentionTime: retentionTime,
+                            RetentionCheckInterval: retentionCheckInterval);
+                        db.Open(openParams);
                         start.Promise.SetResult(true);
                         started = true;
                     }
