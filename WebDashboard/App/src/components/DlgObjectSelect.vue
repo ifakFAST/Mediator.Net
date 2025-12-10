@@ -227,7 +227,9 @@ const refreshObjectsWithSelection = (modID: string, selectID: string): void => {
 
 const selectObject_OK = (): void => {
   close()
-  if (props.allowConfigVariables && objIdWithVars.value !== '') {
+  if (selected.value.length === 1) {
+    emit('onselected', selected.value[0])
+  } else if (props.allowConfigVariables && objIdWithVars.value !== '') {
     const obj: Obj = {
       Type: 'Object',
       ID: objIdWithVars.value,
@@ -236,8 +238,6 @@ const selectObject_OK = (): void => {
       Members: [],
     }
     emit('onselected', obj)
-  } else if (selected.value.length === 1) {
-    emit('onselected', selected.value[0])
   }
   objIdWithVars.value = ''
 }
