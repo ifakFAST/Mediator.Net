@@ -23,17 +23,17 @@
             <ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
             <HistoryDBs>
                 <HistoryDB name="TEST_DB" type="Postgres" prioritizeReadRequests="false">
-                    <ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=TEST_DB</ConnectionString>
+                    <ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=test_db</ConnectionString>
                 </HistoryDB>
             </HistoryDBs>
         </Module>
-
+        
         <Module id="testPostgresFlat" name="Test Postgres Flat" enabled="true" concurrentInit="false">
             <ImplAssembly>MediatorCore.dll</ImplAssembly>
             <ImplClass>Ifak.Fast.Mediator.Test.TestDB_Module</ImplClass>            
             <HistoryDBs>
                 <HistoryDB name="TEST_DB" type="PostgresFlat" prioritizeReadRequests="false">
-                    <ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=FLAT</ConnectionString>
+                    <ConnectionString>Host=localhost;Port=5432;Username=mediator;Password=mediator_pwd;Database=test_flat</ConnectionString>
                 </HistoryDB>
             </HistoryDBs>
         </Module>

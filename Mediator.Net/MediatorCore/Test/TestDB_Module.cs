@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
+using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 
 namespace Ifak.Fast.Mediator.Test
 {
@@ -47,6 +48,8 @@ namespace Ifak.Fast.Mediator.Test
                 timer.Print("Completed TestHistorianModify");
                 await TestHistorianManyVariables();
                 timer.Print("Completed TestHistorianManyVariables");
+                await TestHistorianAggregatedIntervals();
+                timer.Print("Completed TestHistorianAggregatedIntervals");
                 log.Info("Tests completed successfully");
             }
             catch (Exception exp) {
@@ -173,6 +176,154 @@ namespace Ifak.Fast.Mediator.Test
 
             timer.Print("Count test");
             // log.Info($"Not Bad: {cNoBad} Only Good: {cNonGood} All: {cNone}");
+        }
+
+        private async Task TestHistorianAggregatedIntervals() {
+
+            if (con == null) throw new Exception("con == null");
+            log.Info($"TestHistorianAggregatedIntervals");
+
+            // Use a fresh variable to avoid interference from previous tests
+            var v = GetVarRef("Variable_199");
+
+            // Clear any existing data
+            await con.HistorianModify(v, ModifyMode.ReplaceAll);
+
+            // Create test data with known values: 10, 20, 30, 40, 50
+            Timestamp tBase = Timestamp.FromISO8601("2024-01-01T00:00:00Z");
+            VTQ vtq1 = new VTQ(tBase.AddMillis(100), Quality.Good, DataValue.FromDouble(10));
+            VTQ vtq2 = new VTQ(tBase.AddMillis(200), Quality.Good, DataValue.FromDouble(20));
+            VTQ vtq3 = new VTQ(tBase.AddMillis(300), Quality.Good, DataValue.FromDouble(30));
+            VTQ vtq4 = new VTQ(tBase.AddMillis(400), Quality.Good, DataValue.FromDouble(40));
+            VTQ vtq5 = new VTQ(tBase.AddMillis(500), Quality.Good, DataValue.FromDouble(50));
+
+            await con.HistorianModify(v, ModifyMode.Insert, vtq1, vtq2, vtq3, vtq4, vtq5);
+
+            // Define interval bounds that cover all data points
+            Timestamp[] bounds = new Timestamp[] { tBase, tBase.AddMillis(600) };
+
+            // Test 1: All aggregation types with single interval
+            log.Info("Testing all aggregation types...");
+
+            VTQs avgResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Average);
+            assert(avgResult.Count == 1, "Average result count == 1");
+            assert(avgResult[0].Q == Quality.Good, "Average quality is Good");
+            assert(avgResult[0].T == tBase, "Average timestamp equals interval start");
+            assert(Math.Abs(avgResult[0].V.AsDouble()!.Value - 30.0) < 0.001, $"Average == 30, got {avgResult[0].V.AsDouble()}");
+
+            VTQs minResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Min);
+            assert(minResult.Count == 1, "Min result count == 1");
+            assert(Math.Abs(minResult[0].V.AsDouble()!.Value - 10.0) < 0.001, $"Min == 10, got {minResult[0].V.AsDouble()}");
+
+            VTQs maxResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Max);
+            assert(maxResult.Count == 1, "Max result count == 1");
+            assert(Math.Abs(maxResult[0].V.AsDouble()!.Value - 50.0) < 0.001, $"Max == 50, got {maxResult[0].V.AsDouble()}");
+
+            VTQs countResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Count);
+            assert(countResult.Count == 1, "Count result count == 1");
+            assert(Math.Abs(countResult[0].V.AsDouble()!.Value - 5.0) < 0.001, $"Count == 5, got {countResult[0].V.AsDouble()}");
+
+            VTQs sumResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Sum);
+            assert(sumResult.Count == 1, "Sum result count == 1");
+            assert(Math.Abs(sumResult[0].V.AsDouble()!.Value - 150.0) < 0.001, $"Sum == 150, got {sumResult[0].V.AsDouble()}");
+
+            VTQs firstResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.First);
+            assert(firstResult.Count == 1, "First result count == 1");
+            assert(Math.Abs(firstResult[0].V.AsDouble()!.Value - 10.0) < 0.001, $"First == 10, got {firstResult[0].V.AsDouble()}");
+
+            VTQs lastResult = await con.HistorianReadAggregatedIntervals(v, bounds, Aggregation.Last);
+            assert(lastResult.Count == 1, "Last result count == 1");
+            assert(Math.Abs(lastResult[0].V.AsDouble()!.Value - 50.0) < 0.001, $"Last == 50, got {lastResult[0].V.AsDouble()}");
+
+            // Test 2: Multiple intervals
+            log.Info("Testing multiple intervals...");
+
+            // Interval 1: [tBase, tBase+250) contains vtq1(10), vtq2(20) -> Avg=15, Count=2
+            // Interval 2: [tBase+250, tBase+450) contains vtq3(30), vtq4(40) -> Avg=35, Count=2
+            // Interval 3: [tBase+450, tBase+600) contains vtq5(50) -> Avg=50, Count=1
+            Timestamp[] multiBounds = new Timestamp[] {
+                tBase,
+                tBase.AddMillis(250),
+                tBase.AddMillis(450),
+                tBase.AddMillis(600)
+            };
+
+            VTQs multiAvg = await con.HistorianReadAggregatedIntervals(v, multiBounds, Aggregation.Average);
+            assert(multiAvg.Count == 3, $"Multiple intervals: result count == 3, got {multiAvg.Count}");
+            assert(Math.Abs(multiAvg[0].V.AsDouble()!.Value - 15.0) < 0.001, $"Interval 1 Avg == 15, got {multiAvg[0].V.AsDouble()}");
+            assert(Math.Abs(multiAvg[1].V.AsDouble()!.Value - 35.0) < 0.001, $"Interval 2 Avg == 35, got {multiAvg[1].V.AsDouble()}");
+            assert(Math.Abs(multiAvg[2].V.AsDouble()!.Value - 50.0) < 0.001, $"Interval 3 Avg == 50, got {multiAvg[2].V.AsDouble()}");
+
+            // Verify timestamps match interval starts
+            assert(multiAvg[0].T == tBase, "Interval 1 timestamp == tBase");
+            assert(multiAvg[1].T == tBase.AddMillis(250), "Interval 2 timestamp == tBase+250");
+            assert(multiAvg[2].T == tBase.AddMillis(450), "Interval 3 timestamp == tBase+450");
+
+            VTQs multiCount = await con.HistorianReadAggregatedIntervals(v, multiBounds, Aggregation.Count);
+            assert(Math.Abs(multiCount[0].V.AsDouble()!.Value - 2.0) < 0.001, $"Interval 1 Count == 2, got {multiCount[0].V.AsDouble()}");
+            assert(Math.Abs(multiCount[1].V.AsDouble()!.Value - 2.0) < 0.001, $"Interval 2 Count == 2, got {multiCount[1].V.AsDouble()}");
+            assert(Math.Abs(multiCount[2].V.AsDouble()!.Value - 1.0) < 0.001, $"Interval 3 Count == 1, got {multiCount[2].V.AsDouble()}");
+
+            // Test 3: Empty interval
+            log.Info("Testing empty interval...");
+
+            Timestamp[] emptyBounds = new Timestamp[] {
+                tBase.AddMillis(700),
+                tBase.AddMillis(800)
+            };
+
+            VTQs emptyCount = await con.HistorianReadAggregatedIntervals(v, emptyBounds, Aggregation.Count);
+            assert(emptyCount.Count == 1, "Empty interval: result count == 1");
+            assert(Math.Abs(emptyCount[0].V.AsDouble()!.Value - 0.0) < 0.001, $"Empty interval Count == 0, got {emptyCount[0].V.AsDouble()}");
+
+            VTQs emptyAvg = await con.HistorianReadAggregatedIntervals(v, emptyBounds, Aggregation.Average);
+            assert(emptyAvg.Count == 1, "Empty interval Average: result count == 1");
+            assert(emptyAvg[0].V.IsEmpty, $"Empty interval Average returns Empty value");
+
+            VTQs emptyMin = await con.HistorianReadAggregatedIntervals(v, emptyBounds, Aggregation.Min);
+            assert(emptyMin[0].V.IsEmpty, "Empty interval Min returns Empty value");
+
+            VTQs emptyMax = await con.HistorianReadAggregatedIntervals(v, emptyBounds, Aggregation.Max);
+            assert(emptyMax[0].V.IsEmpty, "Empty interval Max returns Empty value");
+
+            // Test 4: Quality filters
+            log.Info("Testing quality filters...");
+
+            // Add data with different qualities
+            var vQual = GetVarRef("Variable_198");
+            await con.HistorianModify(vQual, ModifyMode.ReplaceAll);
+
+            VTQ vtqGood1 = new VTQ(tBase.AddMillis(100), Quality.Good, DataValue.FromDouble(100));
+            VTQ vtqBad = new VTQ(tBase.AddMillis(200), Quality.Bad, DataValue.FromDouble(200));
+            VTQ vtqUncertain = new VTQ(tBase.AddMillis(300), Quality.Uncertain, DataValue.FromDouble(300));
+            VTQ vtqGood2 = new VTQ(tBase.AddMillis(400), Quality.Good, DataValue.FromDouble(400));
+
+            await con.HistorianModify(vQual, ModifyMode.Insert, vtqGood1, vtqBad, vtqUncertain, vtqGood2);
+
+            Timestamp[] qualBounds = new Timestamp[] { tBase, tBase.AddMillis(500) };
+
+            // ExcludeNone: All 4 values included -> Count=4, Sum=1000, Avg=250
+            VTQs filterNone = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Count, QualityFilter.ExcludeNone);
+            assert(Math.Abs(filterNone[0].V.AsDouble()!.Value - 4.0) < 0.001, $"ExcludeNone Count == 4, got {filterNone[0].V.AsDouble()}");
+
+            VTQs filterNoneSum = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Sum, QualityFilter.ExcludeNone);
+            assert(Math.Abs(filterNoneSum[0].V.AsDouble()!.Value - 1000.0) < 0.001, $"ExcludeNone Sum == 1000, got {filterNoneSum[0].V.AsDouble()}");
+
+            // ExcludeBad: 3 values (Good, Uncertain, Good) -> Count=3, Sum=800
+            VTQs filterBad = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Count, QualityFilter.ExcludeBad);
+            assert(Math.Abs(filterBad[0].V.AsDouble()!.Value - 3.0) < 0.001, $"ExcludeBad Count == 3, got {filterBad[0].V.AsDouble()}");
+
+            VTQs filterBadSum = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Sum, QualityFilter.ExcludeBad);
+            assert(Math.Abs(filterBadSum[0].V.AsDouble()!.Value - 800.0) < 0.001, $"ExcludeBad Sum == 800, got {filterBadSum[0].V.AsDouble()}");
+
+            // ExcludeNonGood: 2 values (Good, Good) -> Count=2, Sum=500
+            VTQs filterNonGood = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Count, QualityFilter.ExcludeNonGood);
+            assert(Math.Abs(filterNonGood[0].V.AsDouble()!.Value - 2.0) < 0.001, $"ExcludeNonGood Count == 2, got {filterNonGood[0].V.AsDouble()}");
+
+            VTQs filterNonGoodSum = await con.HistorianReadAggregatedIntervals(vQual, qualBounds, Aggregation.Sum, QualityFilter.ExcludeNonGood);
+            assert(Math.Abs(filterNonGoodSum[0].V.AsDouble()!.Value - 500.0) < 0.001, $"ExcludeNonGood Sum == 500, got {filterNonGoodSum[0].V.AsDouble()}");
+
+            log.Info("TestHistorianAggregatedIntervals completed successfully");
         }
 
         private async Task ExpectCount(VariableRef v, long c) {
