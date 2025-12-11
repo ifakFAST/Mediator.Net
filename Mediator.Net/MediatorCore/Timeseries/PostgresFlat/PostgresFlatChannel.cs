@@ -265,7 +265,91 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         public override List<VTQ> ReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
-            throw new NotImplementedException("ReadAggregatedIntervals is not yet implemented for PostgresFlatChannel");
+
+            if (intervalBounds == null || intervalBounds.Length < 2) {
+                return new List<VTQ>();
+            }
+
+            int numIntervals = intervalBounds.Length - 1;
+            var result = new List<VTQ>(numIntervals);
+
+            // Create PreparedStatement ONCE for all intervals
+            PreparedStatement stmt = CreateAggregationStatement(aggregation, filter);
+            try {
+                // Reuse the same statement for all intervals
+                for (int i = 0; i < numIntervals; i++) {
+                    Timestamp intervalStart = intervalBounds[i];
+                    Timestamp intervalEnd = intervalBounds[i + 1];
+
+                    VTQ vtq = ComputeAggregation(stmt, aggregation, intervalStart, intervalEnd);
+                    result.Add(vtq);
+                }
+            }
+            finally {
+                stmt.Reset();
+            }
+            return result;
+        }
+
+        private PreparedStatement CreateAggregationStatement(Aggregation aggregation, QualityFilter filter) {
+
+            string qualiFilter = filter switch {
+                QualityFilter.ExcludeBad => "AND quality <> 0",
+                QualityFilter.ExcludeNonGood => "AND quality = 1",
+                _ => ""
+            };
+
+            // PostgreSQL throws error on invalid cast, so filter numeric values BEFORE casting using regex
+            const string isNumeric = "data ~ '^\\s*[+-]?(\\d+(\\.\\d+)?|\\.\\d+)([eE][+-]?\\d+)?\\s*$'";
+
+            string sql;
+            if (aggregation == Aggregation.First || aggregation == Aggregation.Last) {
+                // For First/Last, no cast needed - just return the original data string
+                string whereClause = $"FROM channel_data WHERE varID = {varID} AND time >= $1 AND time < $2 {qualiFilter} AND {isNumeric}";
+                sql = aggregation == Aggregation.First
+                    ? $"SELECT data {whereClause} ORDER BY time ASC LIMIT 1"
+                    : $"SELECT data {whereClause} ORDER BY time DESC LIMIT 1";
+            }
+            else {
+                // For numeric aggregations, apply aggregation directly (no subquery needed)
+                string whereClause = $"FROM channel_data WHERE varID = {varID} AND time >= $1 AND time < $2 {qualiFilter} AND {isNumeric}";
+                sql = aggregation switch {
+                    Aggregation.Count   => $"SELECT COUNT(*)                    {whereClause}",
+                    Aggregation.Sum     => $"SELECT SUM(data::DOUBLE PRECISION) {whereClause}",
+                    Aggregation.Average => $"SELECT AVG(data::DOUBLE PRECISION) {whereClause}",
+                    Aggregation.Min     => $"SELECT MIN(data::DOUBLE PRECISION) {whereClause}",
+                    Aggregation.Max     => $"SELECT MAX(data::DOUBLE PRECISION) {whereClause}",
+                    _ => throw new ArgumentException($"Unknown aggregation type: {aggregation}")
+                };
+            }
+
+            return new PreparedStatement(connection, sql, NpgsqlDbType.Timestamp, NpgsqlDbType.Timestamp);
+        }
+
+        private static VTQ ComputeAggregation(PreparedStatement stmt, Aggregation aggregation, Timestamp start, Timestamp end) {
+            stmt[0] = start.ToDateTimeUnspecified();
+            stmt[1] = end.ToDateTimeUnspecified();
+
+            if (aggregation == Aggregation.Count) {
+                long count = (long)stmt.ExecuteScalar()!;
+                return new VTQ(start, Quality.Good, DataValue.FromLong(count));
+            }
+            else if (aggregation == Aggregation.First || aggregation == Aggregation.Last) {
+                using (var reader = stmt.ExecuteReader()) {
+                    if (reader.Read()) {
+                        string data = (string)reader["data"];
+                        return new VTQ(start, Quality.Good, DataValue.FromJSON(data));
+                    }
+                }
+                return new VTQ(start, Quality.Good, DataValue.Empty);
+            }
+            else { // Sum, Average, Min, Max
+                object? result = stmt.ExecuteScalar();
+                if (result == null || result is DBNull) {
+                    return new VTQ(start, Quality.Good, DataValue.Empty);
+                }
+                return new VTQ(start, Quality.Good, DataValue.FromDouble(Convert.ToDouble(result)));
+            }
         }
 
         public override List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
