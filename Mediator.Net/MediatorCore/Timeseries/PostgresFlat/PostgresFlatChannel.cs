@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -151,15 +151,41 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
             Timestamp timeDB = Timestamp.Now;
 
-            stmtInsert.RunTransaction(stmt => {
+            if (data.Length < 10) {
 
-                for (int i = 0; i < data.Length; ++i) {
-                    VTQ x = data[i];
-                    WriteVTQ(stmt, x, timeDB);
-                    stmt.ExecuteNonQuery();
+                stmtInsert.RunTransaction(stmt => {
+
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        WriteVTQ(stmt, x, timeDB);
+                        stmt.ExecuteNonQuery();
+                    }
+                    return true;
+                });
+
+            }
+            else {
+
+                var conn = (NpgsqlConnection)connection;
+
+                using var transaction = conn.BeginTransaction();
+
+                // COPY data directly into table using binary protocol (very fast)
+                using (var writer = conn.BeginBinaryImport($"COPY channel_data (varID, time, diffDB, quality, data) FROM STDIN (FORMAT BINARY)")) {
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        writer.StartRow();
+                        writer.Write((int)varID, NpgsqlDbType.Integer);
+                        writer.Write(x.T.ToDateTimeUnspecified(), NpgsqlDbType.Timestamp);
+                        writer.Write((int)((timeDB - x.T).TotalMilliseconds / 1000L), NpgsqlDbType.Integer);
+                        writer.Write((short)(int)x.Q, NpgsqlDbType.Smallint);
+                        writer.Write(x.V.JSON, NpgsqlDbType.Text);
+                    }
+                    writer.Complete();
                 }
-                return true;
-            });
+
+                transaction.Commit();
+            }
         }
 
         public override void Upsert(VTQ[] data) {
@@ -168,15 +194,51 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
             Timestamp timeDB = Timestamp.Now;
 
-            stmtUpsert.RunTransaction(stmt => {
+            if (data.Length < 10) {
 
-                for (int i = 0; i < data.Length; ++i) {
-                    VTQ x = data[i];
-                    WriteVTQ(stmt, x, timeDB);
-                    stmt.ExecuteNonQuery();
+                stmtUpsert.RunTransaction(stmt => {
+
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        WriteVTQ(stmt, x, timeDB);
+                        stmt.ExecuteNonQuery();
+                    }
+                    return true;
+                });
+
+            }
+            else {
+
+                var conn = (NpgsqlConnection)connection;
+                const string tempTable = "tmp_upsert";
+
+                using var transaction = conn.BeginTransaction();
+
+                using (var cmd = new NpgsqlCommand($"CREATE TEMP TABLE {tempTable} (LIKE channel_data INCLUDING DEFAULTS) ON COMMIT DROP", conn, transaction)) {
+                    cmd.ExecuteNonQuery();
                 }
-                return true;
-            });
+
+                // 2. COPY data into temp table using binary protocol (very fast)
+                using (var writer = conn.BeginBinaryImport($"COPY {tempTable} (varID, time, diffDB, quality, data) FROM STDIN (FORMAT BINARY)")) {
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        writer.StartRow();
+                        writer.Write((int)varID, NpgsqlDbType.Integer);
+                        writer.Write(x.T.ToDateTimeUnspecified(), NpgsqlDbType.Timestamp);
+                        writer.Write((int)((timeDB - x.T).TotalMilliseconds / 1000L), NpgsqlDbType.Integer);
+                        writer.Write((short)(int)x.Q, NpgsqlDbType.Smallint);
+                        writer.Write(x.V.JSON, NpgsqlDbType.Text);
+                    }
+                    writer.Complete();
+                }
+
+                // 3. Upsert from temp table to real table (single SQL statement)
+                using (var cmd = new NpgsqlCommand($"INSERT INTO channel_data SELECT * FROM {tempTable} ON CONFLICT (varID, time) DO UPDATE SET diffDB = EXCLUDED.diffDB, quality = EXCLUDED.quality, data = EXCLUDED.data", conn, transaction)) {
+                    cmd.ExecuteNonQuery();
+                }
+
+                transaction.Commit();
+            }
         }
 
         public override void ReplaceAll(VTQ[] data) {
@@ -200,24 +262,69 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         }
 
         public override void Update(VTQ[] data) {
+            if (data.Length == 0) return;
 
             Timestamp timeDB = Timestamp.Now;
 
-            stmtUpdate.RunTransaction(stmt => {
+            if (data.Length < 10) {
 
-                for (int i = 0; i < data.Length; ++i) {
-                    VTQ x = data[i];
-                    stmt[0] = (timeDB - x.T).TotalMilliseconds / 1000L;
-                    stmt[1] = (int)x.Q;
-                    stmt[2] = x.V.JSON;
-                    stmt[3] = x.T.ToDateTimeUnspecified();
-                    int updatedRows = stmt.ExecuteNonQuery();
-                    if (updatedRows != 1) {
-                        throw new Exception("Update of missing timestamp '" + x.T + "' would fail.");
+                stmtUpdate.RunTransaction(stmt => {
+
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        stmt[0] = (timeDB - x.T).TotalMilliseconds / 1000L;
+                        stmt[1] = (int)x.Q;
+                        stmt[2] = x.V.JSON;
+                        stmt[3] = x.T.ToDateTimeUnspecified();
+                        int updatedRows = stmt.ExecuteNonQuery();
+                        if (updatedRows != 1) {
+                            throw new Exception("Update of missing timestamp '" + x.T + "' would fail.");
+                        }
                     }
+                    return true;
+                });
+
+            }
+            else {
+
+                var conn = (NpgsqlConnection)connection;
+                const string tempTable = "tmp_update";
+
+                using var transaction = conn.BeginTransaction();
+
+                // 1. Create temp table
+                using (var cmd = new NpgsqlCommand($"CREATE TEMP TABLE {tempTable} (LIKE channel_data INCLUDING DEFAULTS) ON COMMIT DROP", conn, transaction)) {
+                    cmd.ExecuteNonQuery();
                 }
-                return true;
-            });
+
+                // 2. COPY data into temp table using binary protocol
+                using (var writer = conn.BeginBinaryImport($"COPY {tempTable} (varID, time, diffDB, quality, data) FROM STDIN (FORMAT BINARY)")) {
+                    for (int i = 0; i < data.Length; ++i) {
+                        VTQ x = data[i];
+                        writer.StartRow();
+                        writer.Write((int)varID, NpgsqlDbType.Integer);
+                        writer.Write(x.T.ToDateTimeUnspecified(), NpgsqlDbType.Timestamp);
+                        writer.Write((int)((timeDB - x.T).TotalMilliseconds / 1000L), NpgsqlDbType.Integer);
+                        writer.Write((short)(int)x.Q, NpgsqlDbType.Smallint);
+                        writer.Write(x.V.JSON, NpgsqlDbType.Text);
+                    }
+                    writer.Complete();
+                }
+
+                // 3. Update main table from temp table
+                int updatedRows;
+                using (var cmd = new NpgsqlCommand($"UPDATE channel_data t SET diffDB = s.diffDB, quality = s.quality, data = s.data FROM {tempTable} s WHERE t.varID = s.varID AND t.time = s.time", conn, transaction)) {
+                    updatedRows = cmd.ExecuteNonQuery();
+                }
+
+                // 4. Validate all rows were updated
+                if (updatedRows != data.Length) {
+                    transaction.Rollback();
+                    throw new Exception($"Update failed: expected {data.Length} rows but only {updatedRows} timestamps exist in the database.");
+                }
+
+                transaction.Commit();
+            }
         }
 
         public override Func<PrepareContext, string?> PrepareAppend(VTQ data, bool allowOutOfOrder) {
