@@ -67,6 +67,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
 
+            bool readOnly = parameter.ReadWriteMode == Mode.ReadOnly;
             string name = parameter.Name;
             string connectionString = parameter.ConnectionString;
             string[]? settings = parameter.Settings;
@@ -77,6 +78,12 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 if (string.IsNullOrEmpty(connectionString)) {
                     connectionString = $"Filename=\"{name}\";";
                     logger.Warn($"No ConnectionString configured for SQLite database {name}. Assuming: {connectionString}");
+                }
+                if (readOnly) {
+                    if (!connectionString.EndsWith(';')) {
+                        connectionString += ";";
+                    }
+                    connectionString += "Mode=ReadOnly;";
                 }
                 var connection = Factory.MakeConnection(connectionString);
                 connection.Open();

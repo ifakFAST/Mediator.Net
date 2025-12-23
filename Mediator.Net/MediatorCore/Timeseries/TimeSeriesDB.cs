@@ -8,9 +8,17 @@ namespace Ifak.Fast.Mediator.Timeseries
 {
     public abstract class TimeSeriesDB
     {
+
+        public enum Mode
+        {
+            ReadWrite,
+            ReadOnly
+        }
+
         public record OpenParams(
             string Name, 
-            string ConnectionString, 
+            string ConnectionString,
+            Mode ReadWriteMode,
             string[]? Settings = null,
             Duration? RetentionTime = null,
             Duration? RetentionCheckInterval = null);

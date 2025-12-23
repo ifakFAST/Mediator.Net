@@ -22,12 +22,12 @@ namespace Ifak.Fast.Mediator.Timeseries
             switch(type) {
                 case "SQLite": {
                         var db = new SQLite.SQLiteTimeseriesDB();
-                        db.Open(new TimeSeriesDB.OpenParams("SQLite", connectionString));
+                        db.Open(new TimeSeriesDB.OpenParams("SQLite", connectionString, TimeSeriesDB.Mode.ReadWrite));
                         return db;
                     }
                 case "Postgres": {
                         var db = new Postgres.PostgresTimeseriesDB();
-                        db.Open(new TimeSeriesDB.OpenParams("Postgres", connectionString));
+                        db.Open(new TimeSeriesDB.OpenParams("Postgres", connectionString, TimeSeriesDB.Mode.ReadWrite));
                         return db;
                     }
                 default: throw new Exception("Unknown database type: " + type);

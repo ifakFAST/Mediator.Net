@@ -63,7 +63,7 @@ public class HistoryManager
 
                 if (emptyDBs) {
                     var d = fCreateDB();
-                    d.ClearDatabase(new TimeSeriesDB.OpenParams(db.Name, db.ConnectionString, db.Settings));
+                    d.ClearDatabase(new TimeSeriesDB.OpenParams(db.Name, db.ConnectionString, TimeSeriesDB.Mode.ReadWrite, db.Settings));
                 }
 
                 Duration? retentionTime = null;

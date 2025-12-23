@@ -388,6 +388,7 @@ public class HistoryDBWorker
                         var openParams = new TimeSeriesDB.OpenParams(
                             Name: dbName,
                             ConnectionString: dbConnectionString,
+                            ReadWriteMode: TimeSeriesDB.Mode.ReadOnly,
                             Settings: dbSettings,
                             RetentionTime: retentionTime,
                             RetentionCheckInterval: retentionCheckInterval);
@@ -508,6 +509,7 @@ public class HistoryDBWorker
                     var openParams = new TimeSeriesDB.OpenParams(
                         Name: dbName,
                         ConnectionString: dbConnectionString,
+                        ReadWriteMode: TimeSeriesDB.Mode.ReadWrite,
                         Settings: dbSettings,
                         RetentionTime: retentionTime,
                         RetentionCheckInterval: retentionCheckInterval);
