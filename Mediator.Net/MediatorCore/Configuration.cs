@@ -147,6 +147,9 @@ namespace Ifak.Fast.Mediator
         [XmlAttribute("retentionCheckInterval")]
         public string RetentionCheckInterval { get; set; } = "1 h";
 
+        [XmlAttribute("maxConcurrentReads")]
+        public int MaxConcurrentReads { get; set; } = 0;
+
         public string[] Variables { get; set; } = new string[0];
 
         public string[] Settings { get; set; } = new string[0];
