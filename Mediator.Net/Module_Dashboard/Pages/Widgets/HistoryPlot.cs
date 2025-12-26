@@ -217,99 +217,103 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         bool SkipEmptyIntervals
     );
 
-    private async Task<List<VTTQs>> GetVariablesData(IEnumerable<VariableRefUnresolved> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null, AggregationSpec? agg = null) {
+    private async Task<List<VTTQs>> GetVariablesData(IReadOnlyList<VariableRefUnresolved> variables, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints = null, Timestamp? tStartSub = null, AggregationSpec? agg = null) {
+
+        Timestamp tStartEffective = tStartSub ?? tStartRange;
+
+        QualityFilter filter = configuration.PlotConfig.FilterByQuality;
+
+        Task<VTTQs> GetData(VariableRefUnresolved variableUnresoved) {
+            return GetVariableData(agg, tStartRange, tEndRange, maxDataPoints, tStartEffective, filter, variableUnresoved);
+        }
+
+        VTTQs[] res = await Common.TransformAsync(variables, GetData);
+
+        return res.ToList();
+    }
+
+    private async Task<VTTQs> GetVariableData(AggregationSpec? agg, Timestamp tStartRange, Timestamp tEndRange, int? maxDataPoints, Timestamp tStartEffective, QualityFilter filter, VariableRefUnresolved variableUnresoved) {
 
         VTTQs TransformData(VTTQs data) {
             if (agg == null) return data;
             return AggregateValues(data, agg);
         }
 
-        Timestamp tStartEffective = tStartSub ?? tStartRange;
+        ItemConfig itemConfig = configuration.Items.First(it => it.Variable == variableUnresoved);
+        double scaleDivisor = itemConfig.Axis == Axis.Left ? configuration.PlotConfig.LeftAxisScaleDivisor : configuration.PlotConfig.RightAxisScaleDivisor;
 
-        var listHistories = new List<VTTQs>();
-
-        QualityFilter filter = configuration.PlotConfig.FilterByQuality;
-
-        foreach (var variableUnresoved in variables) {
-
-            ItemConfig itemConfig = configuration.Items.First(it => it.Variable == variableUnresoved);
-            double scaleDivisor = itemConfig.Axis == Axis.Left ? configuration.PlotConfig.LeftAxisScaleDivisor : configuration.PlotConfig.RightAxisScaleDivisor;
-
-            VTTQs Scale(VTTQs vttqs) {
-                if (scaleDivisor == 1.0) return vttqs;
-                var res = new VTTQs(vttqs.Count);
-                foreach (VTTQ vttq in vttqs) {
-                    double? value = vttq.V.AsDouble();
-                    if (value.HasValue) {
-                        DataValue dv = DataValue.FromDouble(value.Value / scaleDivisor);
-                        res.Add(VTTQ.Make(dv, vttq.T, vttq.T_DB, vttq.Q));
-                    }
-                    else {
-                        res.Add(vttq);
-                    }
-                }
-                return res;
-            }
-
-            var variable = Context.ResolveVariableRef(variableUnresoved);
-
-            try {
-
-                DataType variableType = await GetDataTypeOrThrow(variable);
-
-                if (variableType == DataType.Timeseries) {
-
-                    VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, 1, BoundingMethod.TakeLastN, filter);
-
-                    TimeseriesEntry[] entries = [];
-
-                    if (data.Count > 0) {
-                        entries = data[0].V.Object<TimeseriesEntry[]>() ?? [];
-                    }
-
-                    VTTQs timeseries = new VTTQs(entries.Length);
-                    foreach (var entry in entries) {
-                        Timestamp t = entry.Time;
-                        if (t >= tStartEffective /* && t <= tEndRange */ && entry.Value.AsDouble().HasValue) {
-                            timeseries.Add(VTTQ.Make(entry.Value, t, t, Quality.Good));
-                        }
-                    }
-                    listHistories.Add(Scale(timeseries));
+        VTTQs Scale(VTTQs vttqs) {
+            if (scaleDivisor == 1.0) return vttqs;
+            var res = new VTTQs(vttqs.Count);
+            foreach (VTTQ vttq in vttqs) {
+                double? value = vttq.V.AsDouble();
+                if (value.HasValue) {
+                    DataValue dv = DataValue.FromDouble(value.Value / scaleDivisor);
+                    res.Add(VTTQ.Make(dv, vttq.T, vttq.T_DB, vttq.Q));
                 }
                 else {
+                    res.Add(vttq);
+                }
+            }
+            return res;
+        }
 
-                    if (maxDataPoints.HasValue) {
-                        VTTQs data = await Connection.HistorianReadRaw(variable, tStartEffective, tEndRange, maxDataPoints.Value, BoundingMethod.CompressToN, filter);
-                        listHistories.Add(Scale(data));
+        var variable = Context.ResolveVariableRef(variableUnresoved);
+
+        try {
+
+            DataType variableType = await GetDataTypeOrThrow(variable);
+
+            if (variableType == DataType.Timeseries) {
+
+                VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, 1, BoundingMethod.TakeLastN, filter);
+
+                TimeseriesEntry[] entries = [];
+
+                if (data.Count > 0) {
+                    entries = data[0].V.Object<TimeseriesEntry[]>() ?? [];
+                }
+
+                VTTQs timeseries = new VTTQs(entries.Length);
+                foreach (var entry in entries) {
+                    Timestamp t = entry.Time;
+                    if (t >= tStartEffective /* && t <= tEndRange */ && entry.Value.AsDouble().HasValue) {
+                        timeseries.Add(VTTQ.Make(entry.Value, t, t, Quality.Good));
                     }
-                    else { // Get all data in range (no compression)
+                }
+                return Scale(timeseries);
+            }
+            else {
 
-                        const int ChunckSize = 5000;
-                        VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
+                if (maxDataPoints.HasValue) {
+                    VTTQs data = await Connection.HistorianReadRaw(variable, tStartEffective, tEndRange, maxDataPoints.Value, BoundingMethod.CompressToN, filter);
+                    return Scale(data);
+                }
+                else { // Get all data in range (no compression)
 
-                        if (data.Count < ChunckSize) {
-                            listHistories.Add(Scale(TransformData(data)));
+                    const int ChunckSize = 5000;
+                    VTTQs data = await Connection.HistorianReadRaw(variable, tStartRange, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
+
+                    if (data.Count < ChunckSize) {
+                        return Scale(TransformData(data));
+                    }
+                    else {
+                        var buffer = new VTTQs(data);
+                        do {
+                            Timestamp t = data[data.Count - 1].T.AddMillis(1);
+                            data = await Connection.HistorianReadRaw(variable, t, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
+                            buffer.AddRange(data);
                         }
-                        else {
-                            var buffer = new VTTQs(data);
-                            do {
-                                Timestamp t = data[data.Count - 1].T.AddMillis(1);
-                                data = await Connection.HistorianReadRaw(variable, t, tEndRange, ChunckSize, BoundingMethod.TakeFirstN, filter);
-                                buffer.AddRange(data);
-                            }
-                            while (data.Count == ChunckSize);
+                        while (data.Count == ChunckSize);
 
-                            listHistories.Add(Scale(TransformData(buffer)));
-                        }
+                        return Scale(TransformData(buffer));
                     }
                 }
             }
-            catch (Exception) {
-                listHistories.Add([]);
-            }
         }
-
-        return listHistories;
+        catch (Exception) {
+            return [];
+        }
     }
 
     public async Task<ReqResult> UiReq_SaveItems(ItemConfig[] items) {

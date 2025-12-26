@@ -145,65 +145,65 @@ public class TimeAggregatedTable : WidgetBaseWithConfig<TimeAggregatedTableConfi
     }
 
     private async Task<double?[]> GetValuesForBucket(TimeBucket bucket) {
-        var values = new List<double?>();
-
+        
         if (configuration.DataSeries == null) {
             return [];
         }
 
-        foreach (var dataSeries in configuration.DataSeries) {
-            if (dataSeries == null) {
-                values.Add(null);
-                continue;
-            }
+        Task<double?> GetData(TimeAggregatedTableDataSeries dataSeries) {
+            return GetAggregatedValueForSeriesAsync(dataSeries, bucket);
+        }
+        double?[] values = await Common.TransformAsync(configuration.DataSeries, GetData);
 
-            VariableRefUnresolved unresolvedVar = dataSeries.Variable;
-            if (string.IsNullOrEmpty(unresolvedVar.Object.ToEncodedString()) || string.IsNullOrEmpty(unresolvedVar.Name)) {
-                values.Add(null);
-                continue;
-            }
+        return values;
+    }
 
-            VariableRef variable;
-            try {
-                variable = Context.ResolveVariableRef(unresolvedVar);
-            }
-            catch {
-                values.Add(null);
-                continue;
-            }
-
-            Timestamp[] intervalBounds = [bucket.Start, bucket.End];
-
-            Aggregation aggregation = dataSeries.Aggregation switch {
-                TableAggregation.Average => Aggregation.Average,
-                TableAggregation.Sum => Aggregation.Sum,
-                TableAggregation.Count => Aggregation.Count,
-                TableAggregation.Min => Aggregation.Min,
-                TableAggregation.Max => Aggregation.Max,
-                TableAggregation.First => Aggregation.First,
-                TableAggregation.Last => Aggregation.Last,
-                _ => throw new Exception("Unsupported aggregation type"),
-            };
-
-            VTQs aggregatedData;
-            try {
-                aggregatedData = await Connection.HistorianReadAggregatedIntervals(
-                    variable,
-                    intervalBounds,
-                    aggregation,
-                    QualityFilter.ExcludeBad
-                );
-            }
-            catch {
-                values.Add(null);
-                continue;
-            }
-
-            double? value = aggregatedData.Count > 0 ? aggregatedData[0].V.AsDouble() : null;
-            values.Add(value);
+    private async Task<double?> GetAggregatedValueForSeriesAsync(TimeAggregatedTableDataSeries? dataSeries, TimeBucket bucket) {
+        if (dataSeries == null) {
+            return null;
         }
 
-        return values.ToArray();
+        VariableRefUnresolved unresolvedVar = dataSeries.Variable;
+        if (string.IsNullOrEmpty(unresolvedVar.Object.ToEncodedString()) || string.IsNullOrEmpty(unresolvedVar.Name)) {
+            return null;
+        }
+
+        VariableRef variable;
+        try {
+            variable = Context.ResolveVariableRef(unresolvedVar);
+        }
+        catch {
+            return null;
+        }
+
+        Timestamp[] intervalBounds = [bucket.Start, bucket.End];
+
+        Aggregation aggregation = dataSeries.Aggregation switch {
+            TableAggregation.Average => Aggregation.Average,
+            TableAggregation.Sum => Aggregation.Sum,
+            TableAggregation.Count => Aggregation.Count,
+            TableAggregation.Min => Aggregation.Min,
+            TableAggregation.Max => Aggregation.Max,
+            TableAggregation.First => Aggregation.First,
+            TableAggregation.Last => Aggregation.Last,
+            _ => throw new Exception("Unsupported aggregation type"),
+        };
+
+        VTQs aggregatedData;
+        try {
+            aggregatedData = await Connection.HistorianReadAggregatedIntervals(
+                variable,
+                intervalBounds,
+                aggregation,
+                QualityFilter.ExcludeBad
+            );
+        }
+        catch {
+            return null;
+        }
+
+        double? value = aggregatedData.Count > 0 ? aggregatedData[0].V.AsDouble() : null;
+        return value;
     }
 
     private async Task<double?[]> CalculateTotalRow() {

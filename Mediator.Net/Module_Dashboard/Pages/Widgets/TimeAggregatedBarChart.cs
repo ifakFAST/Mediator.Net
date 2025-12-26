@@ -50,68 +50,11 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
 
         if (configuration.DataSeries != null && configuration.DataSeries.Length > 0 && buckets.Count > 0) {
 
-            foreach (var dataSeries in configuration.DataSeries) {
-
-                if (dataSeries == null) {
-                    continue;
-                }
-
-                VariableRefUnresolved unresolvedVar = dataSeries.Variable;
-                if (string.IsNullOrEmpty(unresolvedVar.Object.ToEncodedString()) || string.IsNullOrEmpty(unresolvedVar.Name)) {
-                    continue;
-                }
-
-                VariableRef variable;
-                try {
-                    variable = Context.ResolveVariableRef(unresolvedVar);
-                }
-                catch {
-                    continue;
-                }
-
-                // Build interval bounds array from buckets
-                Timestamp[] intervalBounds = new Timestamp[buckets.Count + 1];
-                for (int i = 0; i < buckets.Count; i++) {
-                    intervalBounds[i] = buckets[i].Start;
-                }
-                intervalBounds[buckets.Count] = buckets[buckets.Count - 1].End;
-
-                // Convert BarAggregation enum to Aggregation enum
-                Aggregation aggregation = dataSeries.Aggregation switch {
-                    BarAggregation.Average => Aggregation.Average,
-                    BarAggregation.Sum => Aggregation.Sum,
-                    BarAggregation.Count => Aggregation.Count,
-                    BarAggregation.Min => Aggregation.Min,
-                    BarAggregation.Max => Aggregation.Max,
-                    BarAggregation.First => Aggregation.First,
-                    BarAggregation.Last => Aggregation.Last,
-                    _ => throw new Exception("Unsupported aggregation type"),
-                };                  
-
-                VTQs aggregatedData;
-                try {
-                    aggregatedData = await Connection.HistorianReadAggregatedIntervals(
-                        variable,
-                        intervalBounds,
-                        aggregation,
-                        QualityFilter.ExcludeBad
-                    );
-                }
-                catch {
-                    continue;
-                }
-
-                // Extract values from VTQs
-                double?[] aggregatedValues = aggregatedData
-                    .Select(vtq => vtq.V.AsDouble())
-                    .ToArray();
-
-                seriesData.Add(new SeriesData {
-                    Name = string.IsNullOrEmpty(dataSeries.Name) ? variable.Name : dataSeries.Name,
-                    Color = string.IsNullOrEmpty(dataSeries.Color) ? "#888888" : dataSeries.Color,
-                    Values = aggregatedValues
-                });
+            Task<SeriesData?> GetData(TimeAggregatedBarChartDataSeries dataSeries) {
+                return GetSeriesDataAsync(dataSeries, buckets);
             }
+            SeriesData?[] results = await Common.TransformAsync(configuration.DataSeries, GetData);
+            seriesData.AddRange(results.Where(r => r != null)!);
         }
 
         var response = new {
@@ -122,6 +65,68 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
         };
 
         return ReqResult.OK(response);
+    }
+
+    private async Task<SeriesData?> GetSeriesDataAsync(TimeAggregatedBarChartDataSeries? dataSeries, List<TimeBucket> buckets) {
+        if (dataSeries == null) {
+            return null;
+        }
+
+        VariableRefUnresolved unresolvedVar = dataSeries.Variable;
+        if (string.IsNullOrEmpty(unresolvedVar.Object.ToEncodedString()) || string.IsNullOrEmpty(unresolvedVar.Name)) {
+            return null;
+        }
+
+        VariableRef variable;
+        try {
+            variable = Context.ResolveVariableRef(unresolvedVar);
+        }
+        catch {
+            return null;
+        }
+
+        // Build interval bounds array from buckets
+        Timestamp[] intervalBounds = new Timestamp[buckets.Count + 1];
+        for (int i = 0; i < buckets.Count; i++) {
+            intervalBounds[i] = buckets[i].Start;
+        }
+        intervalBounds[buckets.Count] = buckets[buckets.Count - 1].End;
+
+        // Convert BarAggregation enum to Aggregation enum
+        Aggregation aggregation = dataSeries.Aggregation switch {
+            BarAggregation.Average => Aggregation.Average,
+            BarAggregation.Sum => Aggregation.Sum,
+            BarAggregation.Count => Aggregation.Count,
+            BarAggregation.Min => Aggregation.Min,
+            BarAggregation.Max => Aggregation.Max,
+            BarAggregation.First => Aggregation.First,
+            BarAggregation.Last => Aggregation.Last,
+            _ => throw new Exception("Unsupported aggregation type"),
+        };
+
+        VTQs aggregatedData;
+        try {
+            aggregatedData = await Connection.HistorianReadAggregatedIntervals(
+                variable,
+                intervalBounds,
+                aggregation,
+                QualityFilter.ExcludeBad
+            );
+        }
+        catch {
+            return null;
+        }
+
+        // Extract values from VTQs
+        double?[] aggregatedValues = aggregatedData
+            .Select(vtq => vtq.V.AsDouble())
+            .ToArray();
+
+        return new SeriesData {
+            Name = string.IsNullOrEmpty(dataSeries.Name) ? variable.Name : dataSeries.Name,
+            Color = string.IsNullOrEmpty(dataSeries.Color) ? "#888888" : dataSeries.Color,
+            Values = aggregatedValues
+        };
     }
 
     private List<TimeBucket> CalculateTimeBuckets() {

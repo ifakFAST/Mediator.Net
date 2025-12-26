@@ -24,6 +24,19 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
             public string[] Variables { get; set; } = new string[0];
         }
 
+        public static async Task<Y[]> TransformAsync<X, Y>(IReadOnlyList<X> x, Func<X, Task<Y>> transform) {
+            const int BatchSize = 4;
+            int n = x.Count;
+            if (n <= BatchSize) {
+                return await Task.WhenAll(x.Select(transform));
+            }
+            else {
+                Y[] firstResults = await Task.WhenAll(x.Take(BatchSize).Select(transform));
+                Y[] restResults = await Task.WhenAll(x.Skip(BatchSize).Select(transform));
+                return firstResults.Concat(restResults).ToArray();
+            }
+        }
+
         public static Task<ReqResult> GetNumericVarItemsData(Connection connection, ObjectRef[] usedObjects) {
             return GetVarItemsData(connection, usedObjects, IsNumericOrBoolOrTimeseries);
         }
