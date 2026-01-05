@@ -85,6 +85,15 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                     }
                     connectionString += "Mode=ReadOnly;";
                 }
+
+                // Disable connection pooling 
+                if (!connectionString.Contains("Pooling=")) {
+                    if (!connectionString.EndsWith(';')) {
+                        connectionString += ";";
+                    }
+                    connectionString += "Pooling=False;";
+                }
+
                 var connection = Factory.MakeConnection(connectionString);
                 connection.Open();
                 this.connection = connection;

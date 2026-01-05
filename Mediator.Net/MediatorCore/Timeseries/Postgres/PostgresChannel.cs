@@ -374,7 +374,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         public override List<VTQ> ReadAggregatedIntervals(Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
 
             if (intervalBounds == null || intervalBounds.Length < 2) {
-                return new List<VTQ>();
+                return [];
             }
 
             int numIntervals = intervalBounds.Length - 1;
@@ -433,7 +433,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             return new PreparedStatement(connection, sql, NpgsqlDbType.Timestamp, NpgsqlDbType.Timestamp);
         }
 
-        private VTQ ComputeAggregation(PreparedStatement stmt, Aggregation aggregation, Timestamp start, Timestamp end) {
+        private static VTQ ComputeAggregation(PreparedStatement stmt, Aggregation aggregation, Timestamp start, Timestamp end) {
             stmt[0] = start.ToDateTimeUnspecified();
             stmt[1] = end.ToDateTimeUnspecified();
 
@@ -494,11 +494,6 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
                     }
                     break;
 
-                case BoundingMethod.CompressToN:
-                    if (N <= maxValues)
-                        return ReadData(startInclusive, endInclusive, maxValues, BoundingMethod.TakeFirstN, filter);
-                    else
-                        return ReadDataCompressed(startInclusive, endInclusive, maxValues, N, filter);
                 default:
                     throw new Exception($"Unknown BoundingMethod: {bounding}");
             }
@@ -523,112 +518,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             return res;
         }
 
-        private List<VTTQ> ReadDataCompressed(Timestamp startInclusive, Timestamp endInclusive, int maxValues, long count, QualityFilter filter) {
-
-            PreparedStatement statement = stmtRawFirst;
-            statement[0] = startInclusive.ToDateTimeUnspecified();
-            statement[1] = endInclusive.ToDateTimeUnspecified();
-
-            var result = new List<VTTQ>(maxValues);
-
-            int maxIntervals = maxValues / 3;
-            int itemsPerInterval = (maxValues < 6) ? (int)count : (int)Math.Ceiling(((double)count) / maxIntervals);
-            var buffer = new List<VTTQ_D>(itemsPerInterval);
-
-            var filterHelper = QualityFilterHelper.Make(filter);
-
-            using (var reader = statement.ExecuteReader()) {
-                while (reader.Read()) {
-                    VTTQ x = ReadVTTQ(reader);
-                    if (!x.V.IsEmpty) {
-                        double? value = x.V.AsDouble();
-                        if (value.HasValue && filterHelper.Include(x.Q)) {
-                            buffer.Add(new VTTQ_D(x, value.Value));
-                        }
-                    }
-                    if (buffer.Count >= itemsPerInterval) {
-                        FlushBuffer(result, buffer, maxValues);
-                    }
-                }
-            }
-
-            if (buffer.Count > 0) {
-                FlushBuffer(result, buffer, maxValues);
-            }
-
-            return result;
-        }
-
-        struct VTTQ_D
-        {
-            internal VTTQ V;
-            internal double D;
-
-            internal VTTQ_D(VTTQ x, double d) {
-                V = x;
-                D = d;
-            }
-        }
-
-        private void FlushBuffer(List<VTTQ> result, List<VTTQ_D> buffer, int maxValues) {
-            int N = buffer.Count;
-            if (N > 3) {
-                buffer.Sort(CompareVTTQs);
-                if (maxValues >= 3) {
-                    VTTQ a = buffer[0].V;
-                    VTTQ b = buffer[N / 2].V;
-                    VTTQ c = buffer[N - 1].V;
-                    AddByTime(result, a, b, c);
-                }
-                else {
-                    result.Add(buffer[N / 2].V);
-                }
-            }
-            else {
-                result.AddRange(buffer.Select(y => y.V));
-            }
-            buffer.Clear();
-        }
-
-        private static int CompareVTTQs(VTTQ_D a, VTTQ_D b) => a.D.CompareTo(b.D);
-
-        private static void AddByTime(List<VTTQ> result, VTTQ a, VTTQ b, VTTQ c) {
-            if (a.T < b.T && a.T < c.T) {
-                result.Add(a);
-                if (b.T < c.T) {
-                    result.Add(b);
-                    result.Add(c);
-                }
-                else {
-                    result.Add(c);
-                    result.Add(b);
-                }
-            }
-            else if (b.T < a.T && b.T < c.T) {
-                result.Add(b);
-                if (a.T < c.T) {
-                    result.Add(a);
-                    result.Add(c);
-                }
-                else {
-                    result.Add(c);
-                    result.Add(a);
-                }
-            }
-            else {
-                result.Add(c);
-                if (a.T < b.T) {
-                    result.Add(a);
-                    result.Add(b);
-                }
-                else {
-                    result.Add(b);
-                    result.Add(a);
-                }
-            }
-        }
-
-        private VTTQ ReadVTTQ(DbDataReader reader) {
+        private static VTTQ ReadVTTQ(DbDataReader reader) {
             Timestamp t = Timestamp.FromDateTime(DateTime.SpecifyKind((DateTime)reader["time"], DateTimeKind.Utc));
             Timestamp tDB = t + Duration.FromSeconds((int)reader["diffDB"]);
             Quality q = (Quality)(short)reader["quality"];
@@ -636,7 +526,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             return new VTTQ(t, tDB, q, DataValue.FromJSON(data));
         }
 
-        private void WriteVTQ(PreparedStatement stmt, VTQ data, Timestamp timeDB) {
+        private static void WriteVTQ(PreparedStatement stmt, VTQ data, Timestamp timeDB) {
             stmt[0] = data.T.ToDateTimeUnspecified();
             stmt[1] = (int)((timeDB - data.T).TotalMilliseconds / 1000L);
             stmt[2] = (short)(int)data.Q;

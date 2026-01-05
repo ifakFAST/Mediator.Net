@@ -150,6 +150,8 @@ namespace Ifak.Fast.Mediator
         [XmlAttribute("maxConcurrentReads")]
         public int MaxConcurrentReads { get; set; } = 0;
 
+        public string AggregationCache { get; set; } = "";
+
         public string[] Variables { get; set; } = new string[0];
 
         public string[] Settings { get; set; } = new string[0];

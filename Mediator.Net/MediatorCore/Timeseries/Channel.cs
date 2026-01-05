@@ -129,7 +129,7 @@ namespace Ifak.Fast.Mediator.Timeseries
     {
         TakeFirstN,
         TakeLastN,
-        CompressToN
+        //CompressToN
     }
 
     public enum QualityFilter

@@ -35,6 +35,7 @@ public class HistoryDBWorker
     private readonly Func<TimeSeriesDB> dbCreator;
     private readonly Action<IEnumerable<VarHistoyChange>, bool> notifyAppend;
     private readonly int maxConcurrentReads;
+    private readonly string aggregationCacheFile;
 
     private readonly AsyncQueue<WorkItem> queue = new();
     private volatile bool started = false;
@@ -46,6 +47,9 @@ public class HistoryDBWorker
     private int nextWorkerIndex = 0;
     private readonly List<Task> activeReadTasks = [];
 
+    // Aggregation cache for improved read performance
+    private HistoryAggregationCache? aggregationCache = null;
+
     public HistoryDBWorker(
                 string dbName,
                 string dbConnectionString,
@@ -56,7 +60,8 @@ public class HistoryDBWorker
                 Duration retentionCheckInterval,
                 Func<TimeSeriesDB> dbCreator,
                 Action<IEnumerable<VarHistoyChange>, bool> notifyAppend,
-                int maxConcurrentReads = 0) {
+                int maxConcurrentReads = 0,
+                string aggregationCacheFile = "") {
 
         this.dbName = dbName;
         this.dbConnectionString = dbConnectionString;
@@ -68,6 +73,7 @@ public class HistoryDBWorker
         this.dbCreator = dbCreator;
         this.notifyAppend = notifyAppend;
         this.maxConcurrentReads = maxConcurrentReads;
+        this.aggregationCacheFile = aggregationCacheFile;
 
         Thread thread = new Thread(TheThread);
         thread.IsBackground = true;
@@ -313,6 +319,7 @@ public class HistoryDBWorker
         private readonly Duration? retentionTime;
         private readonly Duration retentionCheckInterval;
         private readonly Func<TimeSeriesDB> dbCreator;
+        private readonly HistoryAggregationCache? aggregationCache;
 
         private readonly AsyncQueue<ReaderWorkItem> queue = new();
         private readonly Thread thread;
@@ -331,7 +338,8 @@ public class HistoryDBWorker
             string[] dbSettings,
             Duration? retentionTime,
             Duration retentionCheckInterval,
-            Func<TimeSeriesDB> dbCreator) {
+            Func<TimeSeriesDB> dbCreator,
+            HistoryAggregationCache? aggregationCache) {
 
             this.workerIndex = workerIndex;
             this.dbName = dbName;
@@ -340,6 +348,7 @@ public class HistoryDBWorker
             this.retentionTime = retentionTime;
             this.retentionCheckInterval = retentionCheckInterval;
             this.dbCreator = dbCreator;
+            this.aggregationCache = aggregationCache;
 
             thread = new Thread(TheThread);
             thread.IsBackground = true;
@@ -380,7 +389,7 @@ public class HistoryDBWorker
                 ReaderWorkItem it = await queue.ReceiveAsync();
 
                 if (it is RWI_ReadRequest readRequest) {
-                    HandleReadRequest(readRequest.Original, GetChannelOrNull);
+                    HandleReadRequest(readRequest.Original, GetChannelOrNull, aggregationCache);
                 }
                 else if (it is RWI_Start start) {
                     try {
@@ -499,7 +508,7 @@ public class HistoryDBWorker
                     CleanupCompletedReadTasks();
                 }
                 else {
-                    HandleReadRequest(read, GetChannelOrNull);
+                    HandleReadRequest(read, GetChannelOrNull, aggregationCache);
                 }
             }
             else if (it is WI_Start start) {
@@ -515,12 +524,17 @@ public class HistoryDBWorker
                         RetentionCheckInterval: retentionCheckInterval);
                     db.Open(openParams);
 
+                    // Initialize aggregation cache only if explicitly configured
+                    if (!string.IsNullOrWhiteSpace(aggregationCacheFile)) {
+                        aggregationCache = TryCreateAggregationCache(aggregationCacheFile);
+                    }
+
                     // Initialize read workers if concurrent reads are enabled
                     if (maxConcurrentReads > 0) {
                         readWorkers = new ReadWorker[maxConcurrentReads];
                         var startTasks = new Task[maxConcurrentReads];
                         for (int i = 0; i < maxConcurrentReads; i++) {
-                            readWorkers[i] = new ReadWorker(i, dbName, dbConnectionString, dbSettings, retentionTime, retentionCheckInterval, dbCreator);
+                            readWorkers[i] = new ReadWorker(i, dbName, dbConnectionString, dbSettings, retentionTime, retentionCheckInterval, dbCreator, aggregationCache);
                             startTasks[i] = readWorkers[i].Start();
                         }
                         await Task.WhenAll(startTasks);
@@ -542,6 +556,10 @@ public class HistoryDBWorker
                     readWorkers = null;
                 }
 
+                // Dispose aggregation cache
+                aggregationCache?.Dispose();
+                aggregationCache = null;
+
                 db?.Close();
                 terminate.Promise.SetResult(true);
                 return;
@@ -549,15 +567,15 @@ public class HistoryDBWorker
         }
     }
 
-    private static void HandleReadRequest(ReadWorkItem read, Func<VariableRef, Channel?> getChannelOrNull) {
+    private static void HandleReadRequest(ReadWorkItem read, Func<VariableRef, Channel?> getChannelOrNull, HistoryAggregationCache? cache) {
         if (read is WI_ReadRaw readRaw) {
-            DoReadRaw(readRaw, getChannelOrNull);
+            DoReadRaw(readRaw, getChannelOrNull, cache);
         }
         else if (read is WI_Count count) {
             DoCount(count, getChannelOrNull);
         }
         else if (read is WI_ReadAggregatedIntervals readAggregatedIntervals) {
-            DoReadAggregatedIntervals(readAggregatedIntervals, getChannelOrNull);
+            DoReadAggregatedIntervals(readAggregatedIntervals, getChannelOrNull, cache);
         }
         else if (read is WI_GetLatestTimestampDb getLatestTimestampDb) {
             DoGetLatestTimestampDb(getLatestTimestampDb, getChannelOrNull);
@@ -567,7 +585,7 @@ public class HistoryDBWorker
         }
     }
 
-    private static void DoReadRaw(WI_ReadRaw read, Func<VariableRef, Channel?> getChannelOrNull) {
+    private static void DoReadRaw(WI_ReadRaw read, Func<VariableRef, Channel?> getChannelOrNull, HistoryAggregationCache? cache) {
         var promise = read.Promise;
         try {
             Channel? ch = getChannelOrNull(read.Variable);
@@ -575,8 +593,24 @@ public class HistoryDBWorker
                 promise.SetResult([]);
             }
             else {
-                List<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding), Map(read.Filter));
-                promise.SetResult(res);
+
+                if (read.Bounding == BoundingMethod.TakeFirstN || read.Bounding == BoundingMethod.TakeLastN) {
+                    List<VTTQ> res = ch.ReadData(read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Bounding), Map(read.Filter));
+                    promise.SetResult(res);
+                }
+                else if (read.Bounding == BoundingMethod.CompressToN) {
+                    List<VTTQ> res;
+                    if (cache != null) {
+                        res = CompressedTimeseriesReader.ReadCompressedWithCache(ch, read.Variable, read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Filter), cache);
+                    }
+                    else {
+                        res = CompressedTimeseriesReader.ReadCompressed(ch, read.StartInclusive, read.EndInclusive, read.MaxValues, Map(read.Filter));
+                    }
+                    promise.SetResult(res);
+                }
+                else {
+                    throw new Exception("Unsupported BoundingMethod: " + read.Bounding);
+                }
             }
         }
         catch (Exception exp) {
@@ -613,7 +647,7 @@ public class HistoryDBWorker
         }
     }
 
-    private static void DoReadAggregatedIntervals(WI_ReadAggregatedIntervals req, Func<VariableRef, Channel?> getChannelOrNull) {
+    private static void DoReadAggregatedIntervals(WI_ReadAggregatedIntervals req, Func<VariableRef, Channel?> getChannelOrNull, HistoryAggregationCache? cache) {
         var promise = req.Promise;
         try {
             Channel? ch = getChannelOrNull(req.Variable);
@@ -625,13 +659,209 @@ public class HistoryDBWorker
                 Aggregation aggregation = req.Aggregation;
                 QualityFilter filter = req.Filter;
 
-                List<VTQ> result = ch.ReadAggregatedIntervals(intervalBounds, aggregation, Map(filter));
-                promise.SetResult(result);
+                // Use cache for supported aggregation types
+                if (cache != null && HistoryAggregationCache.IsCacheableAggregation(aggregation)) {
+                    List<VTQ> result = ReadAggregatedIntervalsWithCache(ch, req.Variable, intervalBounds, aggregation, filter, cache);
+                    promise.SetResult(result);
+                }
+                else {
+                    // Fall back to direct channel read for First/Last or when cache is unavailable
+                    List<VTQ> result = ch.ReadAggregatedIntervals(intervalBounds, aggregation, Map(filter));
+                    promise.SetResult(result);
+                }
             }
         }
         catch (Exception exp) {
             promise.SetException(exp);
         }
+    }
+
+    private static List<VTQ> ReadAggregatedIntervalsWithCache(
+        Channel channel,
+        VariableRef variable,
+        Timestamp[] intervalBounds,
+        Aggregation aggregation,
+        QualityFilter filter,
+        HistoryAggregationCache cache) {
+
+        if (intervalBounds.Length < 2) {
+            return [];
+        }
+
+        var result = new List<VTQ>(intervalBounds.Length - 1);
+
+        for (int i = 0; i < intervalBounds.Length - 1; i++) {
+            Timestamp intervalStart = intervalBounds[i];
+            Timestamp intervalEnd = intervalBounds[i + 1];
+
+            VTQ vtq = ComputeAggregatedInterval(channel, variable, intervalStart, intervalEnd, aggregation, filter, cache);
+            result.Add(vtq);
+        }
+
+        return result;
+    }
+
+    private static VTQ ComputeAggregatedInterval(
+        Channel channel,
+        VariableRef variable,
+        Timestamp intervalStart,
+        Timestamp intervalEnd,
+        Aggregation aggregation,
+        QualityFilter filter,
+        HistoryAggregationCache cache) {
+
+        // Find complete UTC days within this interval
+        List<Timestamp> completeDays = HistoryAggregationCache.GetCompleteDaysInRange(intervalStart, intervalEnd);
+
+        if (completeDays.Count == 0) {
+            // No complete days - compute directly from channel
+            Timestamp[] bounds = [intervalStart, intervalEnd];
+            List<VTQ> channelResult = channel.ReadAggregatedIntervals(bounds, aggregation, Map(filter));
+            return channelResult.Count > 0 ? channelResult[0] : MakeEmptyVTQ(intervalStart, aggregation);
+        }
+
+        // Collect cached values and identify days that need computation
+        var cachedDays = new List<(Timestamp Day, double Value, long? Count)>();
+        var uncachedDays = new List<Timestamp>();
+
+        Timeseries.QualityFilter tsFilter = Map(filter);
+
+        foreach (Timestamp day in completeDays) {
+            if (cache.TryGet(variable, aggregation, filter, day, out double? value, out long? count)) {
+                if (value.HasValue) {
+                    cachedDays.Add((day, value.Value, count));
+                }
+            }
+            else {
+                uncachedDays.Add(day);
+            }
+        }
+
+        // Compute and cache uncached days
+        foreach (Timestamp day in uncachedDays) {
+
+            Timestamp dayEnd = day.AddDays(1);
+            var (value, count) = ReadAggregatedValue(channel, day, dayEnd, aggregation, tsFilter);
+
+            if (value.HasValue) {
+                cachedDays.Add((day, value.Value, count));
+                cache.Set(variable, aggregation, filter, day, value.Value, count);
+            }
+            else {
+                // Empty day
+                cache.Set(variable, aggregation, filter, day, null, null);
+            }
+        }
+
+        // Handle partial intervals at start and end
+        Timestamp firstCompleteDayStart = completeDays[0];
+        Timestamp lastCompleteDayEnd = completeDays[completeDays.Count - 1].AddDays(1);
+
+        var partialResults = new List<(Timestamp IntervalStart, Timestamp IntervalEnd, double Value, long? Count)>();
+
+        // Partial interval at start (intervalStart to firstCompleteDay)
+        if (intervalStart < firstCompleteDayStart) {
+            var (value, count) = ReadAggregatedValue(channel, intervalStart, firstCompleteDayStart, aggregation, tsFilter);
+            if (value.HasValue) {
+                partialResults.Add((intervalStart, firstCompleteDayStart, value.Value, count));
+            }
+        }
+
+        // Partial interval at end (lastCompleteDayEnd to intervalEnd)
+        if (lastCompleteDayEnd < intervalEnd) {
+            var (value, count) = ReadAggregatedValue(channel, lastCompleteDayEnd, intervalEnd, aggregation, tsFilter);
+            if (value.HasValue) {
+                partialResults.Add((lastCompleteDayEnd, intervalEnd, value.Value, count));
+            }
+        }
+
+        // Combine all results
+        return CombineAggregatedResults(intervalStart, aggregation, cachedDays, partialResults);
+    }
+
+
+    /// <summary>
+    /// Reads an aggregated value from the channel for the given bounds.
+    /// For Average aggregation, also reads the count to enable proper weighted combination.
+    /// </summary>
+    private static (double? Value, long? Count) ReadAggregatedValue(
+        Channel channel,
+        Timestamp tStart,
+        Timestamp tEnd,
+        Aggregation aggregation,
+        Timeseries.QualityFilter tsFilter) {
+
+        Timestamp[] bounds = [tStart, tEnd];
+        List<VTQ> result = channel.ReadAggregatedIntervals(bounds, aggregation, tsFilter);
+        double? numericValue = result.Count > 0 ? result[0].V.AsDouble() : null;
+
+        if (!numericValue.HasValue) {
+            return (null, null);
+        }
+
+        long? count = null;
+        if (aggregation == Aggregation.Average) {
+            List<VTQ> countResult = channel.ReadAggregatedIntervals(bounds, Aggregation.Count, tsFilter);
+            if (countResult.Count > 0) {
+                double? countVal = countResult[0].V.AsDouble();
+                count = countVal.HasValue ? (long)countVal.Value : 0;
+            }
+        }
+
+        return (numericValue.Value, count);
+    }
+
+    private static VTQ CombineAggregatedResults(
+        Timestamp timestamp,
+        Aggregation aggregation,
+        List<(Timestamp Day, double Value, long? Count)> cachedDays,
+        List<(Timestamp IntervalStart, Timestamp IntervalEnd, double Value, long? Count)> partialResults) {
+
+        // The aggregations Average, Min, Max, Sum, Count can be combined from sub-intervals regardless of their time spans and order
+        // => We can simply collect all values and compute the final aggregation
+
+        List<(double Value, long? Count)> allValues = [];
+        allValues.AddRange(cachedDays.Select(d => (d.Value, d.Count)));
+        allValues.AddRange(partialResults.Select(d => (d.Value, d.Count)));
+
+        if (allValues.Count == 0) {
+            return MakeEmptyVTQ(timestamp, aggregation);
+        }
+
+        double resultValue = aggregation switch {
+            Aggregation.Average => ComputeWeightedAverage(allValues) ?? 0.0,
+            Aggregation.Min     => allValues.Min(v => v.Value),
+            Aggregation.Max     => allValues.Max(v => v.Value),
+            Aggregation.Sum     => allValues.Sum(v => v.Value),
+            Aggregation.Count   => allValues.Sum(v => v.Value),
+            _ => throw new Exception("Unsupported aggregation: " + aggregation)
+        };
+
+        return new VTQ(timestamp, Quality.Good, DataValue.FromDouble(resultValue));
+    }
+
+    private static double? ComputeWeightedAverage(List<(double Value, long? Count)> values) {
+
+        long totalCount = 0;
+        double weightedSum = 0;
+
+        foreach (var (value, count) in values) {
+            if (count is null) { // should not happen for average
+                continue;
+            }
+            long c = count.Value;
+            totalCount += c;
+            weightedSum += value * c;
+        }
+
+        return totalCount > 0 ? weightedSum / totalCount : null;
+    }
+
+    private static VTQ MakeEmptyVTQ(Timestamp timestamp, Aggregation aggregation) {
+        DataValue value = aggregation == Aggregation.Count
+            ? DataValue.FromDouble(0)
+            : DataValue.Empty;
+        return new VTQ(timestamp, Quality.Good, value);
     }
 
     private static void DoGetLatestTimestampDb(WI_GetLatestTimestampDb req, Func<VariableRef, Channel?> getChannelOrNull) {
@@ -666,9 +896,13 @@ public class HistoryDBWorker
                 long res;
                 if (start == Timestamp.Empty && end == Timestamp.Max) {
                     res = ch.DeleteAll();
+                    // Invalidate entire cache for this variable
+                    aggregationCache?.InvalidateAll(req.Variable);
                 }
                 else {
                     res = ch.DeleteData(req.StartInclusive, req.EndInclusive);
+                    // Invalidate cache for affected days
+                    aggregationCache?.InvalidateDays(req.Variable, start, end);
                 }
 
                 promise.SetResult(res);
@@ -688,6 +922,8 @@ public class HistoryDBWorker
             }
             else {
                 ch.Truncate();
+                // Invalidate entire cache for this variable
+                aggregationCache?.InvalidateAll(req.Variable);
                 promise.SetResult();
             }
         }
@@ -716,6 +952,8 @@ public class HistoryDBWorker
 
                 case ModifyMode.ReplaceAll:
                     ch.ReplaceAll(req.Data);
+                    // ReplaceAll affects entire variable - invalidate all
+                    aggregationCache?.InvalidateAll(req.Variable);
                     break;
 
                 case ModifyMode.Delete:
@@ -725,6 +963,14 @@ public class HistoryDBWorker
                 default:
                     throw new Exception("Unknown modify mode: " + req.Mode);
             }
+
+            // Invalidate cache for affected time range (except ReplaceAll which is handled above)
+            if (req.Mode != ModifyMode.ReplaceAll && req.Data.Length > 0 && aggregationCache != null) {
+                Timestamp minT = req.Data.Min(x => x.T);
+                Timestamp maxT = req.Data.Max(x => x.T);
+                aggregationCache.InvalidateDays(req.Variable, minT, maxT);
+            }
+
             promise.SetResult(true);
         }
         catch (Exception exp) {
@@ -746,9 +992,9 @@ public class HistoryDBWorker
 
     private static Timeseries.BoundingMethod Map(BoundingMethod b) {
         return b switch {
-            BoundingMethod.CompressToN => Timeseries.BoundingMethod.CompressToN,
             BoundingMethod.TakeFirstN => Timeseries.BoundingMethod.TakeFirstN,
             BoundingMethod.TakeLastN => Timeseries.BoundingMethod.TakeLastN,
+            BoundingMethod.CompressToN => throw new Exception("Unknown bounding"),
             _ => throw new Exception("Unknown bounding")
         };
     }
@@ -823,6 +1069,13 @@ public class HistoryDBWorker
                 logger.Error("Batch append actions failed ({0} of {1}): \n\t{2}", errors.Length, appendActions.Length, string.Join("\n\t", errors));
             }
 
+            // Invalidate aggregation cache for all affected variables and time ranges
+            if (aggregationCache != null) {
+                foreach (var change in set.Values) {
+                    aggregationCache.InvalidateDays(change.Var, change.Start, change.End);
+                }
+            }
+
             notifyAppend(set.Values, allowOutOfOrderAppend);
 
         }
@@ -864,6 +1117,20 @@ public class HistoryDBWorker
         mapChannels[v] = res;
         return res;
     }
+
+    #region Aggregation Cache Support
+
+    private static HistoryAggregationCache? TryCreateAggregationCache(string cacheDbPath) {
+        try {
+            return new HistoryAggregationCache(cacheDbPath);
+        }
+        catch (Exception ex) {
+            logger.Warn(ex, "Failed to create aggregation cache, continuing without caching");
+            return null;
+        }
+    }
+
+    #endregion
 
     #region Concurrent Read Support
 

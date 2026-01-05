@@ -72,7 +72,7 @@ public class HistoryManager
                 }
                 Duration retentionCheckInterval = Duration.Parse(db.RetentionCheckInterval);
 
-                var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, retentionTime, retentionCheckInterval, fCreateDB, Notify_Append, db.MaxConcurrentReads);
+                var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, retentionTime, retentionCheckInterval, fCreateDB, Notify_Append, db.MaxConcurrentReads, db.AggregationCache);
                 var wb = new WorkerWithBuffer(worker);
 
                 workers.Add(wb);
