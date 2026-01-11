@@ -25,6 +25,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         private readonly PreparedStatement stmtDelete;
         private readonly PreparedStatement stmtDeleteOne;
         private readonly PreparedStatement stmtLast;
+        private readonly PreparedStatement stmtFirst;
         private readonly PreparedStatement stmtLatestTimeDb;
 
         private readonly PreparedStatement stmtRawFirstN_AllQuality;
@@ -41,7 +42,12 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
         private readonly PreparedStatement stmtCountNonBad;
         private readonly PreparedStatement stmtCountGood;
 
+        private readonly ChannelRef channelRef;
+
+        public override ChannelRef Ref => channelRef;
+
         public PostgresChannel(DbConnection connection, ChannelInfo info, string tableName) {
+            this.channelRef = new ChannelRef(info.Object, info.Variable);
             this.connection = connection;
             this.info = info;
             this.table = "\"" + tableName + "\"";
@@ -57,6 +63,7 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
             stmtDelete          = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time BETWEEN $1 AND $2", time, time);
             stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = $1", time);
             stmtLast            = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1");
+            stmtFirst           = new PreparedStatement(connection, $"SELECT time FROM {table} ORDER BY time ASC LIMIT 1");
             stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN $1 AND $2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", time, time);
 
             stmtRawFirstN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN $1 AND $2 ORDER BY time ASC LIMIT $3", time, time, NpgsqlDbType.Integer);
@@ -119,6 +126,14 @@ namespace Ifak.Fast.Mediator.Timeseries.Postgres
                 stmt[1] = endInclusive.ToDateTimeUnspecified();
                 return stmt.ExecuteNonQuery();
             });
+        }
+
+        public override Timestamp? GetOldestTimestamp() {
+            using var reader = stmtFirst.ExecuteReader();
+            if (reader.Read()) {
+                return Timestamp.FromDateTime(DateTime.SpecifyKind((DateTime)reader["time"], DateTimeKind.Utc));
+            }
+            return null;
         }
 
         public override VTTQ? GetLatest() => GetLatest(null);

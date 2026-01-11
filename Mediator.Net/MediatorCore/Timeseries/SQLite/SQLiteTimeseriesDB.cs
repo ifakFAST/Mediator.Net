@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using NLog;
 
@@ -103,6 +104,8 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 throw new Application​Exception($"Opening SQLite database {name} failed: " + exp.Message);
             }
 
+            Update_wal_autocheckpoint();
+
             if (settings != null && settings.Length > 0) {
 
                 foreach (string setting in settings) {
@@ -113,15 +116,76 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                             break;
                         default:
                             string sql = "PRAGMA " + setting + ";";
-                            using (var command = Factory.MakeCommand(sql, connection)) {
-                                command.ExecuteNonQuery();
-                            }
+                            Execute(sql);
                             break;
                     }
                 }
             }
 
             CheckDbChannelInfoOrCreate();
+        }
+
+        public override double? FreeSpacePercent() {
+            if (connection == null) return null;
+            try {
+                long freeListCount = 0;
+                long pageCount = 0;
+
+                using (var command = Factory.MakeCommand("PRAGMA freelist_count;", connection)) {
+                    object? res = command.ExecuteScalar();
+                    if (res != null) freeListCount = Convert.ToInt64(res);
+                }
+
+                using (var command = Factory.MakeCommand("PRAGMA page_count;", connection)) {
+                    object? res = command.ExecuteScalar();
+                    if (res != null) pageCount = Convert.ToInt64(res);
+                }
+
+                if (pageCount == 0) return 0.0;
+                return (double)freeListCount / (double)pageCount * 100.0;
+            }
+            catch (Exception) {
+                return null;
+            }
+        }
+
+        public override void Vacuum() {
+            try {
+                Execute("VACUUM;");
+                Execute("PRAGMA wal_checkpoint(TRUNCATE);");
+                Update_wal_autocheckpoint();
+            }
+            catch (Exception exp) {
+                logger.Warn($"VACUUM with exception: {exp.Message}");
+            }
+        }
+
+        private void Update_wal_autocheckpoint() {
+            int channelCount = CountChannels();
+            int autoCheckpointPages = (12 * channelCount).InRange(min: 1000, max: 24000);
+            Execute($"PRAGMA wal_autocheckpoint={autoCheckpointPages.ToString(CultureInfo.InvariantCulture)};");
+        }
+
+        private void Execute(string sql) {
+            if (connection == null) { return; }
+            using var command = Factory.MakeCommand(sql, connection);
+            command.ExecuteNonQuery();
+        }
+
+        private int CountChannels() {
+            if (connection == null) { return 0; }
+            try {
+                using var command = Factory.MakeCommand($"SELECT COUNT(*) FROM channel_defs", connection);
+                using var reader = command.ExecuteReader();
+                if (reader.Read()) {
+                    return reader.GetInt32(0);
+                }
+                return 0;
+            }
+            catch (Exception) {
+                // logger.Warn($"Exception in CountChannels: {exp.Message}");
+                return 0;
+            }
         }
 
         private void CheckDbChannelInfoOrCreate() {
@@ -243,6 +307,8 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                     }
 
                     transaction.Commit();
+
+                    Update_wal_autocheckpoint();
 
                     return res.ToArray();
                 }

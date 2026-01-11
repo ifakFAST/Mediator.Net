@@ -152,9 +152,23 @@ namespace Ifak.Fast.Mediator
 
         public string AggregationCache { get; set; } = "";
 
+        public ArchiveSettings Archive { get; set; } = new ArchiveSettings();
+
         public string[] Variables { get; set; } = new string[0];
 
         public string[] Settings { get; set; } = new string[0];
+    }
+
+    public class ArchiveSettings
+    {
+        [XmlAttribute("path")]
+        public string Path { get; set; } = "";
+
+        [XmlAttribute("olderThanDays")]
+        public int OlderThanDays { get; set; } = 30;
+
+        [XmlAttribute("checkEveryHours")]
+        public int CheckEveryHours { get; set; } = 24;
     }
 
     public class UserManagement

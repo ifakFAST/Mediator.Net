@@ -79,6 +79,18 @@ namespace Ifak.Fast.Mediator.Timeseries
         * The sequence of all error messages is returned (empty list when no error).
         * */
         public abstract string[] BatchExecute(Func<PrepareContext, string?>[] updateActions);
+
+        /// <summary>
+        /// Retrieves the amount of free/unused space within the database in percent (0.0 - 100.0).
+        /// The higher this value, the more disk space will be reclaimed when running Vacuum().
+        /// </summary>
+        public virtual double? FreeSpacePercent() {
+            return null;
+        }
+
+        public virtual void Vacuum() {
+            
+        }
     }
 
     public record ChannelInfo(
@@ -88,30 +100,19 @@ namespace Ifak.Fast.Mediator.Timeseries
 
     }
 
-    public struct ChannelRef : IEquatable<ChannelRef>
+    public readonly struct ChannelRef(string objectID, string variableName) : IEquatable<ChannelRef>
     {
         public static ChannelRef Make(string objectID, string variableName) {
             return new ChannelRef(objectID, variableName);
         }
 
-        public ChannelRef(string objectID, string variableName) {
-            this.objectID = objectID;
-            this.variableName = variableName;
-        }
-
-        private readonly string objectID;
-        public readonly string variableName;
-
         public string ObjectID => objectID ?? "";
         public string VariableName => variableName ?? "";
 
-        public bool Equals(ChannelRef other) => objectID == other.objectID && variableName == other.variableName;
+        public bool Equals(ChannelRef other) => objectID == other.ObjectID && variableName == other.VariableName;
 
         public override bool Equals(object? obj) {
-            if (obj is ChannelRef) {
-                return Equals((ChannelRef)obj);
-            }
-            return false;
+            return obj is ChannelRef cRef && Equals(cRef);
         }
 
         public static bool operator ==(ChannelRef lhs, ChannelRef rhs) => lhs.Equals(rhs);

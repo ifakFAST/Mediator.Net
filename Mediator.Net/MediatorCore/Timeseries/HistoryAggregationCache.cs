@@ -515,7 +515,7 @@ public sealed class HistoryAggregationCache : IDisposable
     /// - Bits 32+   (32 bits = 4 bytes): var_id
     /// </summary>
     private static long ComputeCompressedKey(long varId, long dayNumber = 0, uint qualityFilter = 0) {
-        return (varId << 32) | (dayNumber << 8) | qualityFilter;
+        return (varId << 32) | ((dayNumber & 0xFFFFFF) << 8) | (qualityFilter & 0xFF);
     }
 
     /// <summary>

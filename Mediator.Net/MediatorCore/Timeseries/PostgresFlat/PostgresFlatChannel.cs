@@ -26,6 +26,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private readonly PreparedStatement stmtDelete;
         private readonly PreparedStatement stmtDeleteOne;
         private readonly PreparedStatement stmtLast;
+        private readonly PreparedStatement stmtFirst;
         private readonly PreparedStatement stmtLatestTimeDb;
 
         private readonly PreparedStatement stmtRawFirstN_AllQuality;
@@ -42,7 +43,12 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
         private readonly PreparedStatement stmtCountNonBad;
         private readonly PreparedStatement stmtCountGood;
 
+        private readonly ChannelRef channelRef;
+
+        public override ChannelRef Ref => channelRef;
+
         public PostgresFlatChannel(DbConnection connection, ChannelInfo info, int varID, string name) {
+            this.channelRef = new ChannelRef(info.Object, info.Variable);
             this.connection = connection;
             this.info = info;
             this.varID = varID;
@@ -59,6 +65,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             stmtDelete          = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2", time, time);
             stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM channel_data WHERE varID = {varID} AND time = $1", time);
             stmtLast            = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} ORDER BY time DESC LIMIT 1");
+            stmtFirst           = new PreparedStatement(connection, $"SELECT time FROM channel_data WHERE varID = {varID} ORDER BY time ASC LIMIT 1");
             stmtLatestTimeDb    = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", time, time);
             
             stmtRawFirstN_AllQuality = new PreparedStatement(connection, $"SELECT * FROM channel_data WHERE varID = {varID} AND time BETWEEN $1 AND $2 ORDER BY time ASC LIMIT $3", time, time, NpgsqlDbType.Integer);
@@ -116,6 +123,14 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
                 stmt[1] = endInclusive.ToDateTimeUnspecified();
                 return stmt.ExecuteNonQuery();
             });
+        }
+
+        public override Timestamp? GetOldestTimestamp() {
+            using var reader = stmtFirst.ExecuteReader();
+            if (reader.Read()) {
+                return Timestamp.FromDateTime(DateTime.SpecifyKind((DateTime)reader["time"], DateTimeKind.Utc));
+            }
+            return null;
         }
 
         public override VTTQ? GetLatest() => GetLatest(null);

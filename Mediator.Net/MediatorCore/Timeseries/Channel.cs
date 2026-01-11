@@ -10,6 +10,8 @@ namespace Ifak.Fast.Mediator.Timeseries
 {
     public abstract class Channel {
 
+        public abstract ChannelRef Ref { get; }
+
         /// <summary>
         /// update of existing data sets. if at least one data set does not exist
         /// for the key(measured time), then an exception is thrown. This check
@@ -86,6 +88,8 @@ namespace Ifak.Fast.Mediator.Timeseries
         /// <param name="allowOutOfOrder"></param>
         /// <returns></returns>
         public abstract Func<PrepareContext, string?> PrepareAppend(VTQ data, bool allowOutOfOrder);
+
+        public abstract Timestamp? GetOldestTimestamp();
 
         public abstract VTTQ? GetLatest();
 

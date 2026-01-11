@@ -2,15 +2,16 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Ifak.Fast.Mediator.Timeseries;
-using Ifak.Fast.Mediator.Util;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ifak.Fast.Mediator.Timeseries;
+using Ifak.Fast.Mediator.Timeseries.Archive;
+using Ifak.Fast.Mediator.Util;
+using NLog;
 
 namespace Ifak.Fast.Mediator;
 
@@ -60,8 +61,9 @@ public class HistoryDBWorker
                 Duration retentionCheckInterval,
                 Func<TimeSeriesDB> dbCreator,
                 Action<IEnumerable<VarHistoyChange>, bool> notifyAppend,
-                int maxConcurrentReads = 0,
-                string aggregationCacheFile = "") {
+                int maxConcurrentReads,
+                string aggregationCacheFile,
+                ArchiveSettings archiv) {
 
         this.dbName = dbName;
         this.dbConnectionString = dbConnectionString;
@@ -74,6 +76,14 @@ public class HistoryDBWorker
         this.notifyAppend = notifyAppend;
         this.maxConcurrentReads = maxConcurrentReads;
         this.aggregationCacheFile = aggregationCacheFile;
+
+        archiveSupport = string.IsNullOrWhiteSpace(archiv.Path) ? 
+                                    null :
+                                    new ArchiveSupportInfo(
+                                        ArchivePath: archiv.Path,
+                                        ArchiveOlderThanDays: archiv.OlderThanDays);
+
+        this.archiver = new Promote2Archive(archiv.OlderThanDays, archiv.CheckEveryHours, MakeArchiveChannel);
 
         Thread thread = new Thread(TheThread);
         thread.IsBackground = true;
@@ -109,6 +119,11 @@ public class HistoryDBWorker
     private class WI_Start(TaskCompletionSource<bool> promise) : WorkItem
     {
         public readonly TaskCompletionSource<bool> Promise = promise;
+        public override bool IsReadRequest => false;
+    }
+
+    private class WI_ArchiveProgress : WorkItem
+    {
         public override bool IsReadRequest => false;
     }
 
@@ -320,6 +335,7 @@ public class HistoryDBWorker
         private readonly Duration retentionCheckInterval;
         private readonly Func<TimeSeriesDB> dbCreator;
         private readonly HistoryAggregationCache? aggregationCache;
+        private readonly ArchiveSupportInfo? archiveSupport;
 
         private readonly AsyncQueue<ReaderWorkItem> queue = new();
         private readonly Thread thread;
@@ -339,7 +355,8 @@ public class HistoryDBWorker
             Duration? retentionTime,
             Duration retentionCheckInterval,
             Func<TimeSeriesDB> dbCreator,
-            HistoryAggregationCache? aggregationCache) {
+            HistoryAggregationCache? aggregationCache,
+            ArchiveSupportInfo? archiveSupport) {
 
             this.workerIndex = workerIndex;
             this.dbName = dbName;
@@ -349,6 +366,7 @@ public class HistoryDBWorker
             this.retentionCheckInterval = retentionCheckInterval;
             this.dbCreator = dbCreator;
             this.aggregationCache = aggregationCache;
+            this.archiveSupport = archiveSupport;
 
             thread = new Thread(TheThread);
             thread.IsBackground = true;
@@ -382,6 +400,8 @@ public class HistoryDBWorker
             terminated = true;
         }
 
+        private StorageBase? archiveStorage = null;
+
         private async Task Runner() {
 
             while (true) {
@@ -402,6 +422,11 @@ public class HistoryDBWorker
                             RetentionTime: retentionTime,
                             RetentionCheckInterval: retentionCheckInterval);
                         db.Open(openParams);
+
+                        if (archiveSupport != null) {
+                            archiveStorage = StorageFactory(archiveSupport, readOnly: true);
+                        }
+
                         start.Promise.SetResult(true);
                         started = true;
                     }
@@ -413,6 +438,8 @@ public class HistoryDBWorker
                 else if (it is RWI_Terminate terminate) {
                     db?.Close();
                     mapChannels.Clear();
+                    archiveStorage?.Dispose();
+                    archiveStorage = null;
                     terminate.Promise.SetResult(true);
                     return;
                 }
@@ -433,10 +460,14 @@ public class HistoryDBWorker
                 return ch;
             }
             else {
-                Channel res = GetDbOrThrow().GetChannel(v.Object.LocalObjectID, v.Name);
+                Channel res = WrapChannelForArchiveSupport(GetDbOrThrow().GetChannel(v.Object.LocalObjectID, v.Name));
                 mapChannels[v] = res;
                 return res;
             }
+        }
+
+        private Channel WrapChannelForArchiveSupport(Channel channel) {
+            return DoWrapChannelForArchiveSupport(channel, archiveSupport, archiveStorage);
         }
     }
 
@@ -466,11 +497,38 @@ public class HistoryDBWorker
         return true;
     }
 
+    public record ArchiveSupportInfo(
+        string ArchivePath,
+        int ArchiveOlderThanDays
+    );
+
     private TimeSeriesDB? db = null;
+    private readonly ArchiveSupportInfo? archiveSupport;
+
     private readonly Dictionary<VariableRef, Channel> mapChannels = new Dictionary<VariableRef, Channel>();
 
     private TimeSeriesDB GetDbOrThrow() {
         return db ?? throw new Exception("Database is closed");
+    }
+
+    private StorageBase? archiveStorage = null;
+    private readonly Promote2Archive archiver;
+
+    private static StorageBase? StorageFactory(ArchiveSupportInfo archiveSupport, bool readOnly) {
+        try {
+            string dir = archiveSupport.ArchivePath;
+            if (string.IsNullOrWhiteSpace(dir)) throw new Exception("Archive path is empty");
+            if (!readOnly) {
+                if (!System.IO.Directory.Exists(dir)) {
+                    System.IO.Directory.CreateDirectory(dir);
+                }
+            }
+            return new SQLiteStorage(dir, readOnly);
+        }
+        catch (Exception ex) {
+            logger.Error("Failed to create archive storage: " + ex.Message);
+            return null;
+        }
     }
 
     private async Task Runner() {
@@ -511,6 +569,27 @@ public class HistoryDBWorker
                     HandleReadRequest(read, GetChannelOrNull, aggregationCache);
                 }
             }
+            else if (it is WI_ArchiveProgress archive) {
+                if (db != null && !terminated) {
+                    bool neededToWait = await WaitForActiveReadsToComplete();
+                    if (neededToWait || HasNext()) {
+                        //logger.Info("Postponing next archive step");
+                        queue.Post(new WI_ArchiveProgress());
+                    }
+                    else {
+                        //logger.Info("Starting archive step");
+                        archiver.RunStepWhileIdle(db, HasNext);
+                        if (archiver.Busy) {
+                            queue.Post(new WI_ArchiveProgress());
+                        }
+                        else {
+                            _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => {
+                                if (!terminated) queue.Post(new WI_ArchiveProgress());
+                            });
+                        }
+                    }
+                }
+            }
             else if (it is WI_Start start) {
 
                 try {
@@ -529,12 +608,16 @@ public class HistoryDBWorker
                         aggregationCache = TryCreateAggregationCache(aggregationCacheFile);
                     }
 
+                    if (archiveSupport != null) {
+                        archiveStorage = StorageFactory(archiveSupport, readOnly: false);
+                    }
+
                     // Initialize read workers if concurrent reads are enabled
                     if (maxConcurrentReads > 0) {
                         readWorkers = new ReadWorker[maxConcurrentReads];
                         var startTasks = new Task[maxConcurrentReads];
                         for (int i = 0; i < maxConcurrentReads; i++) {
-                            readWorkers[i] = new ReadWorker(i, dbName, dbConnectionString, dbSettings, retentionTime, retentionCheckInterval, dbCreator, aggregationCache);
+                            readWorkers[i] = new ReadWorker(i, dbName, dbConnectionString, dbSettings, retentionTime, retentionCheckInterval, dbCreator, aggregationCache, archiveSupport);
                             startTasks[i] = readWorkers[i].Start();
                         }
                         await Task.WhenAll(startTasks);
@@ -542,6 +625,10 @@ public class HistoryDBWorker
 
                     start.Promise.SetResult(true);
                     started = true;
+
+                    if (archiveSupport != null && archiveStorage != null) {
+                        queue.Post(new WI_ArchiveProgress());
+                    }
                 }
                 catch (Exception e) {
                     start.Promise.SetException(e);
@@ -559,7 +646,18 @@ public class HistoryDBWorker
                 // Dispose aggregation cache
                 aggregationCache?.Dispose();
                 aggregationCache = null;
-
+                if (archiveStorage != null) {
+                    bool compact = archiveStorage.CanCompact();
+                    if (compact) {
+                        logger.Info("Starting archive storage compaction...");
+                        var sw = Stopwatch.StartNew();
+                        archiveStorage.Compact();
+                        sw.Stop();
+                        logger.Info($"Archive storage compaction completed in {sw.Elapsed.TotalSeconds:F1} seconds");
+                    }
+                    archiveStorage.Dispose();
+                    archiveStorage = null;
+                }
                 db?.Close();
                 terminate.Promise.SetResult(true);
                 return;
@@ -1049,7 +1147,7 @@ public class HistoryDBWorker
                 Channel[] channels = db.CreateChannels(newChannels);
                 logger.Debug("Created {0} channels completed in {1} ms", count, swCreate.ElapsedMilliseconds);
                 for (int i = 0; i < nonExisting.Count; ++i) {
-                    mapChannels[nonExisting[i].Value.Variable] = channels[i];
+                    mapChannels[nonExisting[i].Value.Variable] = WrapChannelForArchiveSupport(channels[i]);
                 }
             }
 
@@ -1102,7 +1200,7 @@ public class HistoryDBWorker
             return value;
         }
         else {
-            Channel res = GetDbOrThrow().GetChannel(v.Object.LocalObjectID, v.Name);
+            Channel res = WrapChannelForArchiveSupport(GetDbOrThrow().GetChannel(v.Object.LocalObjectID, v.Name));
             mapChannels[v] = res;
             return res;
         }
@@ -1113,9 +1211,31 @@ public class HistoryDBWorker
         if (db.ExistsChannel(v.Object.LocalObjectID, v.Name))
             return GetChannelOrThrow(v);
 
-        Channel res = db.CreateChannel(new ChannelInfo(v.Object.LocalObjectID, v.Name, varDesc.Type));
+        Channel res = WrapChannelForArchiveSupport(db.CreateChannel(new ChannelInfo(v.Object.LocalObjectID, v.Name, varDesc.Type)));
         mapChannels[v] = res;
         return res;
+    }
+
+    private Channel WrapChannelForArchiveSupport(Channel channel) {
+        return DoWrapChannelForArchiveSupport(channel, archiveSupport, archiveStorage);
+    }
+
+    private static Channel DoWrapChannelForArchiveSupport(Channel channel, ArchiveSupportInfo? archiveSupport, StorageBase? storage) {
+        if (archiveSupport == null || storage == null) {
+            return channel;
+        }
+        else {
+            return new ArchiveWrapperChannel(channel, MakeArchiveChannel(channel, storage), archiveSupport.ArchiveOlderThanDays);
+        }
+    }
+
+    private ArchiveChannel MakeArchiveChannel(Channel channel) {
+        StorageBase storage = archiveStorage ?? throw new Exception("Archive storage not initialized");
+        return MakeArchiveChannel(channel, storage);
+    }
+
+    private static ArchiveChannel MakeArchiveChannel(Channel channel, StorageBase storage) {
+        return new ArchiveChannel(channel.Ref, storage);
     }
 
     #region Aggregation Cache Support
@@ -1146,18 +1266,30 @@ public class HistoryDBWorker
         return idx;
     }
 
-    private async Task WaitForActiveReadsToComplete() {
+    private async Task<bool> WaitForActiveReadsToComplete() {
         if (activeReadTasks.Count > 0) {
             var pending = activeReadTasks.Where(t => !t.IsCompleted).ToArray();
-            if (pending.Length > 0) {
+            bool needToWait = pending.Length > 0;
+            if (needToWait) {
                 try {
+                    //var sw = Stopwatch.StartNew();
                     await Task.WhenAll(pending);
+                    //sw.Stop();
+                    //logger.Info("WaitForActiveReadsToComplete: Waited for {0} read tasks to complete in {1} ms", pending.Length, sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex) {
                     logger.Warn(ex, "One or more read operations failed while waiting for write");
                 }
             }
+            else {
+                //logger.Info("WaitForActiveReadsToComplete: All read tasks already completed.");
+            }
             activeReadTasks.Clear();
+            return needToWait;
+        }
+        else {
+            //logger.Info("WaitForActiveReadsToComplete: No active read tasks to wait for.");
+            return false;
         }
     }
 
@@ -1168,6 +1300,8 @@ public class HistoryDBWorker
     #endregion
 
     private readonly Queue<WorkItem> localQueue = new Queue<WorkItem>();
+
+    private bool HasNext() { return localQueue.Count > 0 || queue.Count > 0; }
 
     private async Task<WorkItem> ReceiveNext() {
 

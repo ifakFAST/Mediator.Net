@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Linq;
 
 namespace Ifak.Fast.Mediator.Timeseries.SQLite
 {
@@ -32,13 +31,18 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private readonly PreparedStatement stmtRawLastN_NonBad;
         private readonly PreparedStatement stmtRawLastN_Good;
 
-        private readonly PreparedStatement stmtRawFirst;
+        //private readonly PreparedStatement stmtRawFirst;
         private readonly PreparedStatement stmtCount;
         private readonly PreparedStatement stmtCountAllQuality;
         private readonly PreparedStatement stmtCountNonBad;
         private readonly PreparedStatement stmtCountGood;
 
+        private readonly ChannelRef channelRef;
+
+        public override ChannelRef Ref => channelRef;
+
         public SQLiteChannel(DbConnection connection, ChannelInfo info, string tableName, SQLiteTimeseriesDB parentDb) {
+            this.channelRef = new ChannelRef(info.Object, info.Variable);
             this.connection = connection;
             this.parentDb = parentDb;
             this.table = "\"" + tableName + "\"";
@@ -48,7 +52,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             stmtUpsert          = new PreparedStatement(connection, $"INSERT OR REPLACE INTO {table} VALUES (@1, @2, @3, @4)", 4);
             stmtDelete          = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time BETWEEN @1 AND @2", 2);
             stmtDeleteOne       = new PreparedStatement(connection, $"DELETE FROM {table} WHERE time = @1", 1);
-            stmtFirst           = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time ASC LIMIT 1", 0);
+            stmtFirst           = new PreparedStatement(connection, $"SELECT time FROM {table} ORDER BY time ASC LIMIT 1", 0);
             stmtLast            = new PreparedStatement(connection, $"SELECT * FROM {table} ORDER BY time DESC LIMIT 1", 0);
             stmtLatestTimeDb         = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY (time + 1000 * diffDB) DESC LIMIT 1", 2);
 
@@ -60,7 +64,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             stmtRawLastN_NonBad      = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0 ORDER BY time DESC LIMIT @3", 3);
             stmtRawLastN_Good        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 AND quality  = 1 ORDER BY time DESC LIMIT @3", 3);
 
-            stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC", 2);
+            //stmtRawFirst        = new PreparedStatement(connection, $"SELECT * FROM {table} WHERE time BETWEEN @1 AND @2 ORDER BY time ASC", 2);
             stmtCount           = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table}", 0);
             stmtCountAllQuality = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2", 2);
             stmtCountNonBad     = new PreparedStatement(connection, $"SELECT COUNT(*) FROM {table} WHERE time BETWEEN @1 AND @2 AND quality <> 0", 2);
@@ -109,18 +113,27 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             });
         }
 
-        public VTTQ? GetFirst() => GetFirst(null);
+        //public VTTQ? GetFirst() => GetFirst(null);
 
-        protected VTTQ? GetFirst(DbTransaction? transaction) {
+        //protected VTTQ? GetFirst(DbTransaction? transaction) {
 
-            using (var reader = stmtFirst.ExecuteReader(transaction)) {
-                if (reader.Read()) {
-                    return ReadVTTQ(reader);
-                }
-                else {
-                    return null;
-                }
-            }
+        //    using (var reader = stmtFirst.ExecuteReader(transaction)) {
+        //        if (reader.Read()) {
+        //            return ReadVTTQ(reader);
+        //        }
+        //        else {
+        //            return null;
+        //        }
+        //    }
+        //}
+
+        public override Timestamp? GetOldestTimestamp() {
+            using var reader = stmtFirst.ExecuteReader();
+            return reader.Read() ? ReadTime(reader) : null;
+        }
+
+        private static Timestamp ReadTime(DbDataReader reader) {
+            return Timestamp.FromJavaTicks((long)reader["time"]);
         }
 
         public override VTTQ? GetLatest() => GetLatest(null);
