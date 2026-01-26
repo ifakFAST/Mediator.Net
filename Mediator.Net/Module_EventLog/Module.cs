@@ -7,8 +7,6 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MimeKit;
-using MailKit.Security;
 using System.Text;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
@@ -245,27 +243,29 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     }
 
     private void NotifyAlarm(AlarmOrEvent alarm) {
-        foreach(var no in model.MailNotificationSettings.Notifications) {
+        var settings = model.MailNotificationSettings;
+        IEmailProvider provider = EmailProviderFactory.Create(settings);
+        string fromAddress = EmailProviderFactory.GetFromAddress(settings);
+
+        foreach (var no in settings.Notifications) {
             if (no.Enabled && SourceMatch(no.Sources, alarm)) {
-                _ = SendMail(alarm, no, model.MailNotificationSettings.SmtpSettings);
+                _ = SendNotification(alarm, no, provider, fromAddress);
             }
         }
     }
 
-    private static async Task SendMail(AlarmOrEvent alarm, MailNotification no, SmtpSettings settings) {
-
+    private static async Task SendNotification(AlarmOrEvent alarm, MailNotification no, IEmailProvider provider, string fromAddress) {
         try {
-
             string source = alarm.IsSystem ? "System" : alarm.ModuleName;
 
-            var msg = new StringBuilder();
-            msg.AppendLine($"Severity: {alarm.Severity}");
-            msg.AppendLine($"Message:  {alarm.Message}");
-            msg.AppendLine($"Source:   {source}");
-            msg.AppendLine($"Time UTC: {alarm.Time}");
-            msg.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
+            var body = new StringBuilder();
+            body.AppendLine($"Severity: {alarm.Severity}");
+            body.AppendLine($"Message:  {alarm.Message}");
+            body.AppendLine($"Source:   {source}");
+            body.AppendLine($"Time UTC: {alarm.Time}");
+            body.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
             if (!string.IsNullOrEmpty(alarm.Details)) {
-                msg.AppendLine($"Details:  {alarm.Details}");
+                body.AppendLine($"Details:  {alarm.Details}");
             }
 
             string subject = no.Subject
@@ -273,25 +273,14 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
                 .Replace("{message}", alarm.Message)
                 .Replace("{source}", source);
 
-            var messageToSend = new MimeMessage(
-                from: [InternetAddress.Parse(settings.From)],
-                to: InternetAddressList.Parse(no.To),
-                subject: subject,
-                body: new TextPart(MimeKit.Text.TextFormat.Plain) {
-                    Text = msg.ToString()
-                }
-            );
+            var message = new EmailMessage {
+                From = fromAddress,
+                To = no.To,
+                Subject = subject,
+                Body = body.ToString()
+            };
 
-            using var smtp = new MailKit.Net.Smtp.SmtpClient();
-            smtp.MessageSent += (sender, args) => { /* args.Response */ };
-            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
-            await smtp.ConnectAsync(settings.Server, settings.Port, (SecureSocketOptions)settings.SslOptions);
-            if (!string.IsNullOrEmpty(settings.AuthUser) || !string.IsNullOrEmpty(settings.AuthPass)) {
-                await smtp.AuthenticateAsync(settings.AuthUser, settings.AuthPass);
-            }
-            await smtp.SendAsync(messageToSend);
-            await smtp.DisconnectAsync(quit: true);
-            Console.Out.WriteLine($"Sent notification mail (to: {no.To}, subject: {subject})");
+            await provider.SendAsync(message);
         }
         catch (Exception exp) {
             Console.Error.WriteLine("Failed to send notification mail: " + exp.Message);

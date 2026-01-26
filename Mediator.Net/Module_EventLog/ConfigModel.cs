@@ -55,8 +55,12 @@ namespace Ifak.Fast.Mediator.EventLog
 
     public class MailNotificationSettings
     {
+        [XmlAttribute("provider")]
+        public EmailProviderType Provider { get; set; } = EmailProviderType.Smtp;
+
         public SmtpSettings SmtpSettings { get; set; } = new SmtpSettings();
-        public List<MailNotification> Notifications { get; set; } = new List<MailNotification>();
+        public SendGridSettings SendGridSettings { get; set; } = new SendGridSettings();
+        public List<MailNotification> Notifications { get; set; } = [];
     }
 
     public class SmtpSettings
@@ -102,5 +106,20 @@ namespace Ifak.Fast.Mediator.EventLog
         SslOnConnect = 2,
         StartTls = 3,
         StartTlsWhenAvailable = 4
+    }
+
+    public enum EmailProviderType
+    {
+        Smtp = 0,
+        SendGrid = 1
+    }
+
+    public class SendGridSettings
+    {
+        [XmlAttribute("apiKey")]
+        public string ApiKey { get; set; } = "";
+
+        [XmlAttribute("from")]
+        public string From { get; set; } = "";
     }
 }
