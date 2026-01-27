@@ -8,8 +8,8 @@ namespace Ifak.Fast.Mediator.Timeseries
     {
         public static void CopyData(string srcType, string srcConnectionString, string dstType, string dstConnectionString) {
             try {
-                TimeSeriesDB src = OpenDatabase(srcType, srcConnectionString);
-                TimeSeriesDB dst = OpenDatabase(dstType, dstConnectionString);
+                TimeSeriesDB src = OpenDatabase(srcType, srcConnectionString, TimeSeriesDB.Mode.ReadOnly);
+                TimeSeriesDB dst = OpenDatabase(dstType, dstConnectionString, TimeSeriesDB.Mode.ReadWrite);
                 CopyDatabase(source: src, dest: dst);
             }
             catch (Exception exp) {
@@ -18,16 +18,16 @@ namespace Ifak.Fast.Mediator.Timeseries
             }
         }
 
-        private static TimeSeriesDB OpenDatabase(string type, string connectionString) {
+        private static TimeSeriesDB OpenDatabase(string type, string connectionString, TimeSeriesDB.Mode mode) {
             switch(type) {
                 case "SQLite": {
                         var db = new SQLite.SQLiteTimeseriesDB();
-                        db.Open(new TimeSeriesDB.OpenParams("SQLite", connectionString, TimeSeriesDB.Mode.ReadWrite));
+                        db.Open(new TimeSeriesDB.OpenParams("SQLite", connectionString, mode));
                         return db;
                     }
                 case "Postgres": {
                         var db = new Postgres.PostgresTimeseriesDB();
-                        db.Open(new TimeSeriesDB.OpenParams("Postgres", connectionString, TimeSeriesDB.Mode.ReadWrite));
+                        db.Open(new TimeSeriesDB.OpenParams("Postgres", connectionString, mode));
                         return db;
                     }
                 default: throw new Exception("Unknown database type: " + type);
