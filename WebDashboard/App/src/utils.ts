@@ -70,6 +70,16 @@ export function getLocalDateIsoStringFromTimestamp(timestamp: number): string {
   return `${year}-${month}-${day}`
 }
 
+export function isValidObjectNameOrID(value: string | undefined | null): boolean {
+  if (value === undefined || value === null) {
+    return false
+  }
+  if (value.length === 0) {
+    return false
+  }
+  return value.trim() === value
+}
+
 export function timeWindowFromTimeRange(range: TimeRange): { left: number; right: number } {
   const Now = Math.trunc(new Date().getTime() / 1000) * 1000 + 1000
   const Day = 24 * 60 * 60 * 1000

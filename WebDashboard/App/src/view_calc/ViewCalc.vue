@@ -354,6 +354,14 @@ const prepareAddObject = (typeName: string, member: string): void => {
 }
 
 const onAddNewObject = (): void => {
+  if (!utils.isValidObjectNameOrID(addDialog.value.newID)) {
+    alert('ID must not be empty and must not start or end with whitespace.')
+    return
+  }
+  if (!utils.isValidObjectNameOrID(addDialog.value.newName)) {
+    alert('Name must not be empty and must not start or end with whitespace.')
+    return
+  }
   addDialog.value.show = false
   const info = {
     ParentObjID: editObject.value?.ID,

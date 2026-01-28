@@ -560,6 +560,7 @@ import StructArrayEditor from './StructArrayEditor.vue'
 import Confirm from '../components/Confirm.vue'
 import HistoryEditor from '../components/HistoryEditor.vue'
 import Location from './Location.vue'
+import { isValidObjectNameOrID } from '../utils'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
 
@@ -886,6 +887,14 @@ const editKeydown = (e: KeyboardEvent) => {
 }
 
 const onAddNewObject = () => {
+  if (!isValidObjectNameOrID(addDialog.value.newID)) {
+    alert('ID must not be empty and must not start or end with whitespace.')
+    return
+  }
+  if (!isValidObjectNameOrID(addDialog.value.newName)) {
+    alert('Name must not be empty and must not start or end with whitespace.')
+    return
+  }
   addDialog.value.show = false
   const info: AddObjectParams = {
     ParentObjID: props.selection!.ID,
