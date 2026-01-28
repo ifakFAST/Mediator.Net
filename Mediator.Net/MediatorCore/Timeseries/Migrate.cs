@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Diagnostics;
+using Ifak.Fast.Mediator.Timeseries.Archive;
 
 namespace Ifak.Fast.Mediator.Timeseries
 {
@@ -9,8 +10,16 @@ namespace Ifak.Fast.Mediator.Timeseries
         public static void CopyData(string srcType, string srcConnectionString, string dstType, string dstConnectionString) {
             try {
                 TimeSeriesDB src = OpenDatabase(srcType, srcConnectionString, TimeSeriesDB.Mode.ReadOnly);
-                TimeSeriesDB dst = OpenDatabase(dstType, dstConnectionString, TimeSeriesDB.Mode.ReadWrite);
-                CopyDatabase(source: src, dest: dst);
+                
+                if (dstType == "ArchiveSQLite") {
+                    // Archive destination - connection string is the base folder path
+                    using var storage = new SQLiteStorage(dstConnectionString, readOnly: false);
+                    CopyToArchive(source: src, storage: storage);
+                }
+                else {
+                    TimeSeriesDB dst = OpenDatabase(dstType, dstConnectionString, TimeSeriesDB.Mode.ReadWrite);
+                    CopyDatabase(source: src, dest: dst);
+                }
             }
             catch (Exception exp) {
                 Console.Error.WriteLine(exp.Message);
@@ -56,6 +65,31 @@ namespace Ifak.Fast.Mediator.Timeseries
                 string progress = string.Format("{0:0.0}%", 100.0 * counter / Total);
                 Console.WriteLine($"Copied {count} entries of channel {ch.Object} in {sw.ElapsedMilliseconds} ms ({progress})");
                 
+            }
+        }
+
+        public static void CopyToArchive(TimeSeriesDB source, SQLiteStorage storage) {
+
+            ChannelInfo[] sourceChannels = source.GetAllChannels();
+
+            Console.WriteLine($"CopyToArchive source db channel count: {sourceChannels.Length}.");
+
+            double Total = sourceChannels.Length;
+            double counter = 0;
+
+            foreach (ChannelInfo ch in sourceChannels) {
+                counter += 1;
+                Channel srcChannel = source.GetChannel(ch.Object, ch.Variable);
+
+                // Create ArchiveChannel with the shared SQLiteStorage
+                var channelRef = ChannelRef.Make(ch.Object, ch.Variable);
+                var dstChannel = new ArchiveChannel(channelRef, storage);
+
+                var sw = Stopwatch.StartNew();
+                long count = CopyChannel(srcChannel, dstChannel);
+                sw.Stop();
+                string progress = string.Format("{0:0.0}%", 100.0 * counter / Total);
+                Console.WriteLine($"Copied {count} entries of channel {ch.Object} in {sw.ElapsedMilliseconds} ms ({progress})");
             }
         }
 
