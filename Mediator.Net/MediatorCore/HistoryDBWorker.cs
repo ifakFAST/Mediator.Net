@@ -62,7 +62,7 @@ public class HistoryDBWorker
                 Func<TimeSeriesDB> dbCreator,
                 Action<IEnumerable<VarHistoyChange>, bool> notifyAppend,
                 int maxConcurrentReads,
-                string aggregationCacheFile,
+                AggregationCacheSettings aggregationCache,
                 ArchiveSettings archiv) {
 
         this.dbName = dbName;
@@ -75,12 +75,12 @@ public class HistoryDBWorker
         this.dbCreator = dbCreator;
         this.notifyAppend = notifyAppend;
         this.maxConcurrentReads = maxConcurrentReads;
-        this.aggregationCacheFile = aggregationCacheFile;
+        this.aggregationCacheFile = aggregationCache.Location;
 
-        archiveSupport = string.IsNullOrWhiteSpace(archiv.Path) ? 
+        archiveSupport = string.IsNullOrWhiteSpace(archiv.Location) ? 
                                     null :
                                     new ArchiveSupportInfo(
-                                        ArchivePath: archiv.Path,
+                                        ArchivePath: archiv.Location,
                                         ArchiveOlderThanDays: archiv.OlderThanDays);
 
         this.archiver = new Promote2Archive(archiv.OlderThanDays, archiv.CheckEveryHours, MakeArchiveChannel);

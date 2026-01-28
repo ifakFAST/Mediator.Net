@@ -150,7 +150,7 @@ public class HistoryDB
     [XmlAttribute("maxConcurrentReads")]
     public int MaxConcurrentReads { get; set; } = 0;
 
-    public string AggregationCache { get; set; } = "";
+    public AggregationCacheSettings AggregationCache { get; set; } = new AggregationCacheSettings();
 
     public ArchiveSettings Archive { get; set; } = new ArchiveSettings();
 
@@ -159,10 +159,22 @@ public class HistoryDB
     public string[] Settings { get; set; } = [];
 }
 
+public class AggregationCacheSettings
+{
+    [XmlAttribute("type")]
+    public string Type { get; set; } = "SQLite";
+
+    [XmlText]
+    public string Location { get; set; } = ""; // If Type is SQLite, this is the path of the cache DB file
+}
+
 public class ArchiveSettings
 {
-    [XmlAttribute("path")]
-    public string Path { get; set; } = "";
+    [XmlAttribute("type")]
+    public string Type { get; set; } = "SQLite";
+
+    [XmlText]
+    public string Location { get; set; } = ""; // If Type is SQLite, this is the path of the directory containing the archive DB files
 
     [XmlAttribute("olderThanDays")]
     public int OlderThanDays { get; set; } = 30;
