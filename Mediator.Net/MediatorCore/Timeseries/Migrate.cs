@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Diagnostics;
 using Ifak.Fast.Mediator.Timeseries.Archive;
@@ -7,18 +7,18 @@ namespace Ifak.Fast.Mediator.Timeseries
 {
     public class Migrate
     {
-        public static void CopyData(string srcType, string srcConnectionString, string dstType, string dstConnectionString) {
+        public static void CopyData(string srcType, string srcConnectionString, string dstType, string dstConnectionString, int? skipChannelsOlderThanDays = null) {
             try {
                 TimeSeriesDB src = OpenDatabase(srcType, srcConnectionString, TimeSeriesDB.Mode.ReadOnly);
                 
                 if (dstType == "ArchiveSQLite") {
                     // Archive destination - connection string is the base folder path
                     using var storage = new SQLiteStorage(dstConnectionString, readOnly: false);
-                    CopyToArchive(source: src, storage: storage);
+                    CopyToArchive(source: src, storage: storage, skipChannelsOlderThanDays: skipChannelsOlderThanDays);
                 }
                 else {
                     TimeSeriesDB dst = OpenDatabase(dstType, dstConnectionString, TimeSeriesDB.Mode.ReadWrite);
-                    CopyDatabase(source: src, dest: dst);
+                    CopyDatabase(source: src, dest: dst, skipChannelsOlderThanDays: skipChannelsOlderThanDays);
                 }
             }
             catch (Exception exp) {
@@ -43,7 +43,7 @@ namespace Ifak.Fast.Mediator.Timeseries
             }
         }
 
-        public static void CopyDatabase(TimeSeriesDB source, TimeSeriesDB dest) {
+        public static void CopyDatabase(TimeSeriesDB source, TimeSeriesDB dest, int? skipChannelsOlderThanDays = null) {
 
             ChannelInfo[] sourceChannels = source.GetAllChannels();
 
@@ -55,6 +55,11 @@ namespace Ifak.Fast.Mediator.Timeseries
             foreach (ChannelInfo ch in sourceChannels) {
                 counter += 1;
                 Channel srcChannel = source.GetChannel(ch.Object, ch.Variable);
+
+                if (ShouldSkipChannel(srcChannel, ch, skipChannelsOlderThanDays)) {
+                    continue;
+                }
+
                 Channel dstChannel = dest.ExistsChannel(ch.Object, ch.Variable) ?
                     dest.GetChannel(ch.Object, ch.Variable) :
                     dest.CreateChannel(ch);
@@ -68,7 +73,7 @@ namespace Ifak.Fast.Mediator.Timeseries
             }
         }
 
-        public static void CopyToArchive(TimeSeriesDB source, SQLiteStorage storage) {
+        public static void CopyToArchive(TimeSeriesDB source, SQLiteStorage storage, int? skipChannelsOlderThanDays = null) {
 
             ChannelInfo[] sourceChannels = source.GetAllChannels();
 
@@ -80,6 +85,10 @@ namespace Ifak.Fast.Mediator.Timeseries
             foreach (ChannelInfo ch in sourceChannels) {
                 counter += 1;
                 Channel srcChannel = source.GetChannel(ch.Object, ch.Variable);
+
+                if (ShouldSkipChannel(srcChannel, ch, skipChannelsOlderThanDays)) {
+                    continue;
+                }
 
                 // Create ArchiveChannel with the shared SQLiteStorage
                 var channelRef = ChannelRef.Make(ch.Object, ch.Variable);
@@ -111,6 +120,27 @@ namespace Ifak.Fast.Mediator.Timeseries
                 Console.WriteLine($"Wrote {vtqs.Length} entries in {sw.ElapsedMilliseconds} ms.");
                 t = vttqs.Last().T.AddMillis(1);
             }
+        }
+
+        private static bool ShouldSkipChannel(Channel srcChannel, ChannelInfo channelInfo, int? skipChannelsOlderThanDays) {
+
+            if (!skipChannelsOlderThanDays.HasValue || skipChannelsOlderThanDays.Value <= 0) {
+                return false;
+            }
+
+            VTTQ? latest = srcChannel.GetLatest();
+            if (!latest.HasValue) {
+                Console.WriteLine($"Skipping channel {channelInfo.Object}: no data.");
+                return true;
+            }
+
+            Duration age = Timestamp.Now - latest.Value.T;
+            if (age > Duration.FromDays(skipChannelsOlderThanDays.Value)) {
+                Console.WriteLine($"Skipping channel {channelInfo.Object}: latest timestamp {latest.Value.T} older than {skipChannelsOlderThanDays.Value} days.");
+                return true;
+            }
+
+            return false;
         }
     }
 }

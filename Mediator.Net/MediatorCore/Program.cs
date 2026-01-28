@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -28,13 +28,25 @@ namespace Ifak.Fast.Mediator
                 string srcConnection = args[2];
                 string dstType = args[3];
                 string dstConnection = args[4];
+                int? skipChannelsOlderThanDays = null;
+                if (args.Length > 5) {
+                    if (int.TryParse(args[5], out int days) && days > 0) {
+                        skipChannelsOlderThanDays = days;
+                        Console.WriteLine($"Skipping channels with latest timestamp older than {days} days.");
+                    }
+                    else {
+                        Console.WriteLine($"Invalid skip-days value: \"{args[5]}\". Expected positive integer.");
+                        return;
+                    }
+                }
                 Console.WriteLine($"Copy data from \"{srcConnection}\" to \"{dstConnection}\"...");
 
                 Timeseries.Migrate.CopyData(
                     srcType: srcType,
                     srcConnectionString: srcConnection,
                     dstType: dstType,
-                    dstConnectionString: dstConnection);
+                    dstConnectionString: dstConnection,
+                    skipChannelsOlderThanDays: skipChannelsOlderThanDays);
 
                 return;
             }
