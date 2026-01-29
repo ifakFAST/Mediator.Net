@@ -15,7 +15,7 @@ internal class Program {
             Error.WriteLine("Expected root folder argumnet");
             return;
         }
-        
+
         string root = Path.GetFullPath(args[0]);
         if (!Directory.Exists(root)) {
             Error.WriteLine($"Root folder '{root}' not found!");
@@ -25,7 +25,7 @@ internal class Program {
         try {
             Run(root);
         }
-        catch(Exception exp) { 
+        catch(Exception exp) {
             Error.WriteLine(exp.Message);
             Error.WriteLine(exp.StackTrace);
             return;
@@ -55,7 +55,7 @@ internal class Program {
         char mode = ReadChar();
 
         switch (mode) {
-            case '5': 
+            case '5':
                 MakeBuild(root, '1', version);
                 MakeBuild(root, '2', version);
                 MakeBuild(root, '3', version);
@@ -132,7 +132,7 @@ internal class Program {
         CopyFileToDir(Path.Combine(root, "Doc/HowTo_AdapterIO.pdf"),      docOutDir);
         CopyFileToDir(Path.Combine(root, "Doc/HowTo_DashboardViews.pdf"), docOutDir);
 
-        if (windowsOrPortable) { 
+        if (windowsOrPortable) {
             string opcSrcDir = Path.Combine(baseDir, "OPC/Adapter/bin/Release");
             string opcOutDir = EnsureDirectory(outDirMode, "Bin", "Mediator", "OPC");
             CopyFileToDir(Path.Combine(opcSrcDir, "OPC_Adapter.exe"),        opcOutDir);
@@ -142,7 +142,7 @@ internal class Program {
             CopyFileToDir(Path.Combine(opcSrcDir, "msvcp120.dll"),           opcOutDir);
             CopyFileToDir(Path.Combine(opcSrcDir, "MediatorLib.dll"),        opcOutDir);
 
-            string opcUaSrvSrcDir = arch32bit ? Path.Combine(baseDir, "OpcUaServer/Native/x86/Release"): 
+            string opcUaSrvSrcDir = arch32bit ? Path.Combine(baseDir, "OpcUaServer/Native/x86/Release"):
                                                 Path.Combine(baseDir, "OpcUaServer/Native/x64/Release");
             string opcUaSrvOutDir = EnsureDirectory(outDirMode, "Bin", "Mediator");
             CopyFileToDir(Path.Combine(opcUaSrvSrcDir, "OpcUaServerNative.dll"), opcUaSrvOutDir, overwrite: true);
@@ -172,7 +172,14 @@ internal class Program {
         string dataOutDir = EnsureDirectory(outDirMode, "Data");
         WriteToFile(Path.Combine(dataOutDir, "Var_IO.xml"), "<Module name=\"IO\" id=\"IO\" />");
         CreateEmptyFile(Path.Combine(dataOutDir, "DB_IO.db"));
+        CreateEmptyFile(Path.Combine(dataOutDir, "DB_Calc.db"));
         CreateEmptyFile(Path.Combine(dataOutDir, "DB_EventLog.db"));
+        CreateEmptyFile(Path.Combine(dataOutDir, "DB_TagMetaData.db"));
+
+        string cacheDir = EnsureDirectory(dataOutDir, "Cache");
+        CreateEmptyFile(Path.Combine(cacheDir, "DB_IO.db"));
+        CreateEmptyFile(Path.Combine(cacheDir, "DB_Calc.db"));
+        CreateEmptyFile(Path.Combine(cacheDir, "DB_TagMetaData.db"));
 
         string runCmd = mode switch {
             '1' => "dotnet ./Bin/Mediator/MediatorCore.dll --config=./Config/AppConfig.xml --title=\"ifakFAST Mediator\" --logdir=./Data --logname=\"LogFile\"",
@@ -244,7 +251,7 @@ internal class Program {
 
             TarGz(outDirMode, Path.Combine(outDir, archiveFile), printFiles: true, fileAttributes);
         }
-        
+
         WriteLine($"{archiveFile} completed.");
     }
 

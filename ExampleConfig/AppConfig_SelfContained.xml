@@ -66,13 +66,14 @@
                 <NamedValue name="adapter-assemblies" value=""/>
             </Config>
             <HistoryDBs>
-                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
+                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true" maxConcurrentReads="4">
                     <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
                     <Settings>
                         <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
+                    <AggregationCache>./Data/Cache/DB_IO.db</AggregationCache>
                 </HistoryDB>
             </HistoryDBs>
         </Module>
@@ -95,13 +96,14 @@
                 <NamedValue name="python-set-PYTHONHOME" value=""/>      <!-- Might be necessary to set for virtual envs -->
             </Config>
             <HistoryDBs>
-                <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true">
+                <HistoryDB name="Calc" type="SQLite" prioritizeReadRequests="true" maxConcurrentReads="4">
                     <ConnectionString>Filename=./Data/DB_Calc.db</ConnectionString>
                     <Settings>
-                        <string>journal_mode=WAL</string>                    
+                        <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
+                    <AggregationCache>./Data/Cache/DB_Calc.db</AggregationCache>
                 </HistoryDB>
             </HistoryDBs>
         </Module>
@@ -141,13 +143,14 @@
                 <NamedValue name="model-file-auto-reload" value="true"/>
             </Config>
             <HistoryDBs>
-                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
-                    <ConnectionString>Filename=./Data/DB_Module_TagMetaData.db</ConnectionString>
+                <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true" maxConcurrentReads="4">
+                    <ConnectionString>Filename=./Data/DB_TagMetaData.db</ConnectionString>
                     <Settings>
                         <string>journal_mode=WAL</string>
                         <string>page_size=4096</string>
                         <string>cache_size=5000</string>
                     </Settings>
+                    <AggregationCache>./Data/Cache/DB_TagMetaData.db</AggregationCache>
                 </HistoryDB>
             </HistoryDBs>
         </Module>
@@ -169,7 +172,7 @@
             <Location id="Tank05"     name="Tank02"   longName="Tank 02"   parent="South" />
             <Location id="Tank06"     name="Tank03"   longName="Tank 03"   parent="South" />
         
-        <Location id="FE"        name="FE"      longName="Final Effluent" parent="Plant" />        
+        <Location id="FE"        name="FE"      longName="Final Effluent" parent="Plant" />
       -->
     </Locations>
     
