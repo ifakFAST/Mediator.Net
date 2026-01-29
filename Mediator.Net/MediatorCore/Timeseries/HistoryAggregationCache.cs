@@ -59,7 +59,14 @@ public sealed class HistoryAggregationCache : IDisposable
         bool dbExists = File.Exists(cacheDbPath);
         if (dbExists) {
             InitializeDatabase();
-        } 
+        }
+        else {
+            // Ensure directory exists for the database file
+            string? dir = Path.GetDirectoryName(cacheDbPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+        }
     }
 
     private void InitializeDatabase() {

@@ -606,6 +606,10 @@ public class HistoryDBWorker
                     // Initialize aggregation cache only if explicitly configured
                     if (!string.IsNullOrWhiteSpace(aggregationCacheFile)) {
                         aggregationCache = TryCreateAggregationCache(aggregationCacheFile);
+                        logger.Info($"Aggregation cache initialized for timeseries db {dbName} at {aggregationCacheFile}");
+                    }
+                    else {
+                        logger.Info($"No aggregation cache configured for timeseries db {dbName}");
                     }
 
                     if (archiveSupport != null) {
