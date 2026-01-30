@@ -592,13 +592,13 @@ async function doOpenTagsEditor(block: simu.ModuleBlock, selectedTagID: string):
   const tag = tags.find((t) => t.id === selectedTagID)
   if (!tag) {
     console.error(`Tag with ID ${selectedTagID} not found in block ${block.name}`)
-    alert(`Tag with ID ${selectedTagID} not found in block ${block.name}`)
+    showError(`Tag with ID ${selectedTagID} not found in block ${block.name}`)
     return
   }
   const what = metaModel.value.Whats.find((w) => w.ID === tag.what)
   if (!what) {
     console.error(`What with ID ${tag.what} not found in MetaModel`)
-    alert(`What with ID ${tag.what} not found in MetaModel`)
+    showError(`What with ID ${tag.what} not found in MetaModel`)
     return
   }
   const dlg = dlgConfigTag.value
@@ -668,17 +668,17 @@ async function doOpenTagsEditorAtRelativePath(relativeParts: string[], selectedT
   const absParts = [...lastSelectionPath.value, ...relativeParts]
   const block = findModuleBlockByAbsolutePath(absParts)
   if (!block) {
-    alert('Module not found for row path: ' + absParts.join('/'))
+    showError('Module not found for row path: ' + absParts.join('/'))
     return
   }
   const tag = (block.tags || []).find((t) => t.id === selectedTagID)
   if (!tag) {
-    alert('Tag not found: ' + selectedTagID)
+    showError('Tag not found: ' + selectedTagID)
     return
   }
   const what = metaModel.value.Whats.find((w) => w.ID === tag.what)
   if (!what) {
-    alert('What not found: ' + tag.what)
+    showError('What not found: ' + tag.what)
     return
   }
   const dlg = dlgConfigTag.value
@@ -721,7 +721,7 @@ function onEditTagFromRow(row: TagRow): void {
   const rel = relativePathForRow(row)
   if (rel.length === 0) {
     // Should not happen, but guard against it
-    alert('Cannot resolve module path for row')
+    showError('Cannot resolve module path for row')
     return
   }
   doOpenTagsEditorAtRelativePath(rel, row.id)
@@ -755,7 +755,7 @@ async function onBlockDrop(x: simu.BlockDropEvent): Promise<void> {
     const fullPathParts = [...(diagramPath || []), blockName]
     const moduleBlock: simu.ModuleBlock | null = findModuleBlockByAbsolutePath(fullPathParts)
     if (!moduleBlock) {
-      alert('Module block not found: ' + blockName)
+      showError('Module block not found: ' + blockName)
       return
     }
 
@@ -770,7 +770,7 @@ async function onBlockDrop(x: simu.BlockDropEvent): Promise<void> {
       // Prevent assigning the same source tag twice
       for (const t of assignedTags.value) {
         if (t.sourceTag === data.id) {
-          alert(`Tag with id ${data.id} is already assigned`)
+          showError(`Tag with id ${data.id} is already assigned`)
           return
         }
       }
@@ -945,7 +945,8 @@ async function saveBlockLibrary(): Promise<void> {
     blockLibModified.value = false
   } catch (e) {
     console.error('Failed to save block library:', e)
-    alert('Failed to save block library.')
+    const message = e instanceof Error ? e.message : String(e)
+    showError('Failed to save block library: ' + message)
   } finally {
     blockLibSaving.value = false
   }
