@@ -223,18 +223,32 @@ public sealed class PortBlock() : Block(BlockType.Port)
 
 public sealed class Line
 {
+    [XmlAttribute("type")]
     public LineType Type { get; init; }
 
+    [XmlAttribute("source")]
     public string Source { get; init; } = string.Empty;
+
+    [XmlAttribute("sourceIdx")]
     public int SourceIdx { get; init; }
 
+    [XmlAttribute("dest")]
     public string Dest { get; init; } = string.Empty;
+
+    [XmlAttribute("destIdx")]
     public int DestIdx { get; init; }
 
     public List<Point> Points { get; init; } = [];
 }
 
-public readonly record struct Point(int X, int Y);
+public struct Point
+{
+    [XmlAttribute("x")]
+    public double X { get; set; }
+
+    [XmlAttribute("y")]
+    public double Y { get; set; }
+}
 
 // Drawing details ------------------------------------------------------------
 

@@ -532,7 +532,7 @@ function getChangedLines(): command.LinePoints[] {
     if (!pointsEqual(lineSimu.points, lineDraw.points)) {
       res.push({
         lineIdx: i,
-        points: lineDraw.points.map((pt) => ({ x: pt.x, y: pt.y })),
+        points: drawPointsToSimuPoints(lineDraw.points),
       })
     }
   }
@@ -634,8 +634,8 @@ function onMouseMove(e: MouseEvent) {
   const rect = canvas.getBoundingClientRect()
   const x = translateX(e.clientX - rect.left)
   const y = translateY(e.clientY - rect.top)
-  const moveX = e.movementX / props.scale
-  const moveY = e.movementY / props.scale
+  const moveX = translateX(e.movementX)
+  const moveY = translateY(e.movementY)
 
   if (drawLine.value !== null) {
     switch (moveState.value) {
@@ -702,8 +702,8 @@ function updateMouseCursor(e: MouseEvent, x: number, y: number) {
 }
 
 function moveSelectedBlocksAndLines(e: MouseEvent) {
-  const moveX = e.movementX / props.scale
-  const moveY = e.movementY / props.scale
+  const moveX = translateX(e.movementX)
+  const moveY = translateY(e.movementY)
   blockMoveDX.value += moveX
   blockMoveDY.value += moveY
   const selectedBlocks = getSelectedBlocks()
@@ -724,8 +724,8 @@ function moveSelectedBlocksAndLines(e: MouseEvent) {
 }
 
 function moveSelectedLineSegments(e: MouseEvent) {
-  const moveX = e.movementX / props.scale
-  const moveY = e.movementY / props.scale
+  const moveX = translateX(e.movementX)
+  const moveY = translateY(e.movementY)
   for (const line of getSelectedLines()) {
     const selectedPts = line.points.filter((pt) => pt.selected)
     if (selectedPts.length >= 2) {
@@ -1081,11 +1081,11 @@ function addPoint(line: draw.Line, port: draw.Port) {
 }
 
 function translateX(x: number): number {
-  return x / props.scale
+  return Math.round(x / props.scale)
 }
 
 function translateY(y: number): number {
-  return y / props.scale
+  return Math.round(y / props.scale)
 }
 
 function makeSimuBlockFromDrawBlock(block: draw.Block): simu.Block {
@@ -1183,8 +1183,8 @@ function makeSimuLineFromDrawLine(line: draw.Line): simu.Line {
 
 function drawPointsToSimuPoints(points: draw.SelectablePoint[]): simu.Point[] {
   const copyPoint = (p: draw.SelectablePoint) => {
-    const x = Math.round(p.x)
-    const y = Math.round(p.y)
+    const x = p.x
+    const y = p.y
     return { x, y }
   }
   return points.map(copyPoint)

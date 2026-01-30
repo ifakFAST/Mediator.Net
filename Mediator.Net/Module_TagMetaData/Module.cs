@@ -4,10 +4,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Ifak.Fast.Mediator.Util;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 
@@ -207,6 +209,68 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
                 await Task.Delay(5000);
                 Environment.Exit(1);
             }
+        }
+    }
+
+    protected override Config.TagMetaData_Model DeserializeModelFromString(string model) {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string transformed = TransformXml(model);
+        sw.Stop();
+        Console.WriteLine($"Transformed XML model in {sw.ElapsedMilliseconds} ms");
+        return base.DeserializeModelFromString(transformed);
+    }
+
+    private static string TransformXml(string xml) {
+
+        XDocument doc = XDocument.Parse(xml);
+        XNamespace ns = "Module_TagMetaData";
+
+        static void ConvertDoubleToIntAttribute(XElement element, string attribute) {
+            XAttribute? attr = element.Attribute(attribute);
+            if (attr != null) {
+                if (double.TryParse(attr.Value, CultureInfo.InvariantCulture, out double d)) {
+                    int i = (int)Math.Round(d);
+                    attr.SetValue(i.ToString(CultureInfo.InvariantCulture));
+                }
+            }
+        }
+
+        void RoundBlockAttributes(string blockType) {
+            foreach (var block in doc.Descendants(ns + blockType)) {
+                ConvertDoubleToIntAttribute(block, "x");
+                ConvertDoubleToIntAttribute(block, "y");
+                ConvertDoubleToIntAttribute(block, "w");
+                ConvertDoubleToIntAttribute(block, "h");
+            }
+        }
+
+        RoundBlockAttributes("ModuleBlock");
+        RoundBlockAttributes("MacroBlock");
+        RoundBlockAttributes("PortBlock");
+
+        // Transform Line and Point elements to use attributes instead of child elements:
+        foreach (var line in doc.Descendants(ns + "Line")) {
+            TransformElementToAttribute(line, "Type", "type");
+            TransformElementToAttribute(line, "Source", "source");
+            TransformElementToAttribute(line, "SourceIdx", "sourceIdx");
+            TransformElementToAttribute(line, "Dest", "dest");
+            TransformElementToAttribute(line, "DestIdx", "destIdx");
+            var points = line.Descendants(ns + "Point");
+            foreach (var point in points) {
+                TransformElementToAttribute(point, "X", "x");
+                TransformElementToAttribute(point, "Y", "y");
+            }
+        }
+
+        return doc.ToString();
+    }
+
+    private static void TransformElementToAttribute(XElement parent, string elementName, string attrName) {
+        XNamespace ns = parent.Name.Namespace;
+        XElement? child = parent.Element(ns + elementName);
+        if (child != null) {
+            parent.SetAttributeValue(attrName, child.Value);
+            child.Remove();
         }
     }
 }
