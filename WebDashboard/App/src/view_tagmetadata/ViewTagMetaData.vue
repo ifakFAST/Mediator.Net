@@ -189,6 +189,25 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <v-dialog
+    v-model="showErrorDialog"
+    max-width="500"
+  >
+    <v-card>
+      <v-card-title class="text-error">Error</v-card-title>
+      <v-card-text>{{ errorDialogMessage }}</v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn
+          variant="text"
+          @click="showErrorDialog = false"
+        >
+          OK
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -516,7 +535,8 @@ async function saveFlowModel() {
     console.log('FlowModel saved successfully:', response)
   } catch (error) {
     console.error('Failed to save FlowModel:', error)
-    // TODO: Show error notification to user
+    const message = error instanceof Error ? error.message : String(error)
+    showError(message)
   } finally {
     saving.value = false
   }
@@ -862,6 +882,15 @@ function onEditBlockLibrary() {
   blockLibModified.value = false
   blockLibSaving.value = false
   showBlockLibDialog.value = true
+}
+
+// Error dialog state
+const showErrorDialog = ref<boolean>(false)
+const errorDialogMessage = ref<string>('')
+
+function showError(message: string): void {
+  errorDialogMessage.value = message
+  showErrorDialog.value = true
 }
 
 // Block library editor state and actions
