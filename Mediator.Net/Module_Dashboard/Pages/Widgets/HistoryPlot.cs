@@ -10,7 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.Globalization;
-using OfficeOpenXml;
+using ClosedXML.Excel;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
@@ -449,16 +449,16 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                 case FileType.Spreadsheet:
 
                     contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                    using (var excel = new ExcelPackage(res)) {
+                    using (var workbook = new XLWorkbook()) {
 
                         if (simbaFormat) {
-                            WriteExcelDataSIMBA(excel, columns, listHistories, configuration.DataExport.Spreadsheet);
+                            WriteExcelDataSIMBA(workbook, columns, listHistories, configuration.DataExport.Spreadsheet);
                         }
                         else {
-                            ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
+                            IXLWorksheet sheet = workbook.Worksheets.Add("Data Export");
                             WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories, configuration.Items);
                         }
-                        excel.Save();
+                        workbook.SaveAs(res);
                     }
                     break;
 
@@ -800,13 +800,13 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
     class ExcelDataRecordArrayWriter : DataRecordArrayWriter
     {
-        private readonly ExcelWorksheet sheet;
+        private readonly IXLWorksheet sheet;
         private readonly string[] columns;
         private readonly SpreadsheetDataExport format;
         private int row = 0;
         private int col = 0;
 
-        public ExcelDataRecordArrayWriter(ExcelWorksheet sheet, IList<string> columns, SpreadsheetDataExport format) {
+        public ExcelDataRecordArrayWriter(IXLWorksheet sheet, IList<string> columns, SpreadsheetDataExport format) {
             this.sheet = sheet;
             this.columns = columns.ToArray();
             this.format = format;
@@ -814,16 +814,16 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
         public override void WriteArrayStart() {
             for (int n = 0; n < columns.Length; n++) {
-                sheet.Cells[1, n + 1].Value = columns[n];
-                sheet.Cells[1, n + 1].Style.Font.Bold = true;
-                sheet.Cells[1, n + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                sheet.Cell(1, n + 1).Value = columns[n];
+                sheet.Cell(1, n + 1).Style.Font.SetBold(true);
+                sheet.Cell(1, n + 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
             }
             row = 2;
             col = 1;
         }
 
         public override void WriteArrayEnd() {
-            sheet.Cells.AutoFitColumns();
+            sheet.Columns().AdjustToContents();
         }
 
         public override void WriteRecordStart() {
@@ -837,12 +837,12 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         public override void WriteValueEmpty() { }
 
         public override void WriteValueText(string txt) {
-            sheet.Cells[row, col].Value = txt;
+            sheet.Cell(row, col).Value = txt;
         }
 
         public override void WriteValueTimestamp(Timestamp t) {
-            sheet.Cells[row, col].Value = t.ToDateTime().ToLocalTime();
-            sheet.Cells[row, col].Style.Numberformat.Format = format.TimestampFormat;
+            sheet.Cell(row, col).Value = t.ToDateTime().ToLocalTime();
+            sheet.Cell(row, col).Style.NumberFormat.SetFormat(format.TimestampFormat);
         }
 
         public override void WriteColumSeparator() {
@@ -854,12 +854,12 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
 
         public override void WriteValueDouble(double dbl) {
-            sheet.Cells[row, col].Value = dbl;
+            sheet.Cell(row, col).Value = dbl;
         }
     }
 
     private static void WriteExcelDataSIMBA(
-        ExcelPackage excel,
+        XLWorkbook workbook,
         IList<string> columns,
         List<VTTQs> variables,
         SpreadsheetDataExport format) {
@@ -891,16 +891,16 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             string tagName = tags[i];
             VTTQs vttqs = variables[i];
 
-            ExcelWorksheet sheet = excel.Workbook.Worksheets.Add(tagName);
+            IXLWorksheet sheet = workbook.Worksheets.Add(tagName);
 
-            sheet.Cells[1, 1].Value = "Time (d)";
-            sheet.Cells[1, 1].Style.Font.Bold = true;
-            sheet.Cells[1, 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+            sheet.Cell(1, 1).Value = "Time (d)";
+            sheet.Cell(1, 1).Style.Font.SetBold(true);
+            sheet.Cell(1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
             sheet.Column(1).Width = 12;
 
-            sheet.Cells[1, 2].Value = "Value";
-            sheet.Cells[1, 2].Style.Font.Bold = true;
-            sheet.Cells[1, 2].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+            sheet.Cell(1, 2).Value = "Value";
+            sheet.Cell(1, 2).Style.Font.SetBold(true);
+            sheet.Cell(1, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
             sheet.Column(2).Width = 12;
 
             for (int j = 0; j < vttqs.Count; j++) {
@@ -909,33 +909,33 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
                 if (vOpt.HasValue) {
                     double d = (vtq.T.JavaTicks - tBase) / MillisecondsPerDay;
                     double v = vOpt.Value;
-                    sheet.Cells[2 + j, 1].Value = d;
-                    sheet.Cells[2 + j, 2].Value = v;
+                    sheet.Cell(2 + j, 1).Value = d;
+                    sheet.Cell(2 + j, 2).Value = v;
                 }
             }
         }
 
         if (tFirst != tLast) {
 
-            ExcelWorksheet sheetTime = excel.Workbook.Worksheets.Add("Time");
+            IXLWorksheet sheetTime = workbook.Worksheets.Add("Time");
 
-            sheetTime.Cells[1, 1].Value = "Time (d)";
-            sheetTime.Cells[1, 1].Style.Font.Bold = true;
-            sheetTime.Cells[1, 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+            sheetTime.Cell(1, 1).Value = "Time (d)";
+            sheetTime.Cell(1, 1).Style.Font.SetBold(true);
+            sheetTime.Cell(1, 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
             sheetTime.Column(1).Width = 12;
 
-            sheetTime.Cells[1, 2].Value = "Time Str";
-            sheetTime.Cells[1, 2].Style.Font.Bold = true;
-            sheetTime.Cells[1, 2].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+            sheetTime.Cell(1, 2).Value = "Time Str";
+            sheetTime.Cell(1, 2).Style.Font.SetBold(true);
+            sheetTime.Cell(1, 2).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
             sheetTime.Column(2).Width = 20;
 
-            sheetTime.Cells[2 + 0, 1].Value = 0;
-            sheetTime.Cells[2 + 0, 2].Value = tFirst.ToDateTime().ToLocalTime();
-            sheetTime.Cells[2 + 0, 2].Style.Numberformat.Format = format.TimestampFormat;
+            sheetTime.Cell(2 + 0, 1).Value = 0;
+            sheetTime.Cell(2 + 0, 2).Value = tFirst.ToDateTime().ToLocalTime();
+            sheetTime.Cell(2 + 0, 2).Style.NumberFormat.SetFormat(format.TimestampFormat);
 
-            sheetTime.Cells[2 + 1, 1].Value = (tLast.JavaTicks - tBase) / MillisecondsPerDay;
-            sheetTime.Cells[2 + 1, 2].Value = tLast.ToDateTime().ToLocalTime();
-            sheetTime.Cells[2 + 1, 2].Style.Numberformat.Format = format.TimestampFormat;
+            sheetTime.Cell(2 + 1, 1).Value = (tLast.JavaTicks - tBase) / MillisecondsPerDay;
+            sheetTime.Cell(2 + 1, 2).Value = tLast.ToDateTime().ToLocalTime();
+            sheetTime.Cell(2 + 1, 2).Style.NumberFormat.SetFormat(format.TimestampFormat);
         }
     }
 }

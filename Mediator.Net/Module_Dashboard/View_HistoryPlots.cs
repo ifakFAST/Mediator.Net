@@ -10,7 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.Globalization;
-using OfficeOpenXml;
+using ClosedXML.Excel;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
@@ -221,10 +221,10 @@ namespace Ifak.Fast.Mediator.Dashboard
                                 case FileType.Spreadsheet:
 
                                     contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                                    using (var excel = new ExcelPackage(res)) {
-                                        ExcelWorksheet sheet = excel.Workbook.Worksheets.Add("Data Export");
+                                    using (var workbook = new XLWorkbook()) {
+                                        IXLWorksheet sheet = workbook.Worksheets.Add("Data Export");
                                         WriteUnifiedData(new ExcelDataRecordArrayWriter(sheet, columns, configuration.DataExport.Spreadsheet), listHistories);
-                                        excel.Save();
+                                        workbook.SaveAs(res);
                                     }
                                     break;
 
@@ -697,13 +697,13 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         class ExcelDataRecordArrayWriter : DataRecordArrayWriter
         {
-            private readonly ExcelWorksheet sheet;
+            private readonly IXLWorksheet sheet;
             private readonly string[] columns;
             private readonly SpreadsheetDataExport format;
             private int row = 0;
             private int col = 0;
 
-            public ExcelDataRecordArrayWriter(ExcelWorksheet sheet, IList<string> columns, SpreadsheetDataExport format) {
+            public ExcelDataRecordArrayWriter(IXLWorksheet sheet, IList<string> columns, SpreadsheetDataExport format) {
                 this.sheet = sheet;
                 this.columns = columns.ToArray();
                 this.format = format;
@@ -711,16 +711,16 @@ namespace Ifak.Fast.Mediator.Dashboard
 
             public override void WriteArrayStart() {
                 for (int n = 0; n < columns.Length; n++) {
-                    sheet.Cells[1, n + 1].Value = columns[n];
-                    sheet.Cells[1, n + 1].Style.Font.Bold = true;
-                    sheet.Cells[1, n + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                    sheet.Cell(1, n + 1).Value = columns[n];
+                    sheet.Cell(1, n + 1).Style.Font.SetBold(true);
+                    sheet.Cell(1, n + 1).Style.Alignment.SetHorizontal(XLAlignmentHorizontalValues.Right);
                 }
                 row = 2;
                 col = 1;
             }
 
             public override void WriteArrayEnd() {
-                sheet.Cells.AutoFitColumns();
+                sheet.Columns().AdjustToContents();
             }
 
             public override void WriteRecordStart() {
@@ -734,12 +734,12 @@ namespace Ifak.Fast.Mediator.Dashboard
             public override void WriteValueEmpty() { }
 
             public override void WriteValueText(string txt) {
-                sheet.Cells[row, col].Value = txt;
+                sheet.Cell(row, col).Value = txt;
             }
 
             public override void WriteValueTimestamp(Timestamp t) {
-                sheet.Cells[row, col].Value = t.ToDateTime().ToLocalTime();
-                sheet.Cells[row, col].Style.Numberformat.Format = format.TimestampFormat;
+                sheet.Cell(row, col).Value = t.ToDateTime().ToLocalTime();
+                sheet.Cell(row, col).Style.NumberFormat.SetFormat(format.TimestampFormat);
             }
 
             public override void WriteColumSeparator() {
@@ -751,7 +751,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
 
             public override void WriteValueDouble(double dbl) {
-                sheet.Cells[row, col].Value = dbl;
+                sheet.Cell(row, col).Value = dbl;
             }
         }
 
