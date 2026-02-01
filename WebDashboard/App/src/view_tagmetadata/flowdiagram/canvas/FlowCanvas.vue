@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Painter } from './paint'
 import * as draw from './draw_model'
 import * as simu from '../model_flow.ts'
@@ -80,6 +80,7 @@ const dropDataType = ref('')
 
 const selectedBlockNames = ref<string[]>([])
 const surpressContextMenu = ref(false)
+const isTrackingMouse = ref(false)
 
 /* Helpers to access current values similar to 'this' inside methods */
 function getCanvas(): HTMLCanvasElement {
@@ -88,6 +89,20 @@ function getCanvas(): HTMLCanvasElement {
     throw new Error('Canvas ref not set')
   }
   return c
+}
+
+function startGlobalMouseTracking(): void {
+  if (isTrackingMouse.value) return
+  window.addEventListener('mousemove', onWindowMouseMove)
+  window.addEventListener('mouseup', onWindowMouseUp)
+  isTrackingMouse.value = true
+}
+
+function stopGlobalMouseTracking(): void {
+  if (!isTrackingMouse.value) return
+  window.removeEventListener('mousemove', onWindowMouseMove)
+  window.removeEventListener('mouseup', onWindowMouseUp)
+  isTrackingMouse.value = false
 }
 
 /* Redraw logic */
@@ -158,6 +173,10 @@ onMounted(() => {
       }
     }
   }
+})
+
+onUnmounted(() => {
+  stopGlobalMouseTracking()
 })
 
 /* Watches */
@@ -368,6 +387,9 @@ function getSelectedLines(): draw.Line[] {
 
 /* Mouse / keyboard handlers */
 function onMouseDown(e: MouseEvent) {
+  if (e.buttons === 1 || e.buttons === 2) {
+     startGlobalMouseTracking()
+  }
   const canvas = getCanvas()
   const rect = canvas.getBoundingClientRect()
   const x = translateX(e.clientX - rect.left)
@@ -518,6 +540,23 @@ function onMouseUp(e: MouseEvent) {
       emit('interactive', ev)
     }
   }
+  stopGlobalMouseTracking()
+}
+
+function onWindowMouseMove(e: MouseEvent): void {
+  const canvas = canvasRef.value
+  if (canvas && e.target === canvas) {
+    return
+  }
+  onMouseMove(e)
+}
+
+function onWindowMouseUp(e: MouseEvent): void {
+  const canvas = canvasRef.value
+  if (canvas && e.target === canvas) {
+    return
+  }
+  onMouseUp(e)
 }
 
 /* Helper: get changed lines since last saved diagram */
