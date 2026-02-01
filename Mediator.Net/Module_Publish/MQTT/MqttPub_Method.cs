@@ -4,7 +4,7 @@
 
 using System;
 using System.Threading.Tasks;
-using MQTTnet.Client;
+using MQTTnet;
 using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Publish.MQTT;

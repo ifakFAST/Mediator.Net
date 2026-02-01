@@ -1,6 +1,4 @@
 ﻿using MQTTnet;
-using MQTTnet.Adapter;
-using MQTTnet.Client;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -114,7 +112,7 @@ public static class MQTT_Util {
 
         const int MaxRetry = 1;
 
-        MqttFactory factory = new();
+        MqttClientFactory factory = new();
         IMqttClient client = factory.CreateMqttClient();
 
         using var cancelSourceTimeout = new CancellationTokenSource(5000);
@@ -128,12 +126,9 @@ public static class MQTT_Util {
 
             Exception e = exp.GetBaseException() ?? exp;
 
-            string? errMsg = null;
+            string? errMsg;
 
-            if (e is MqttConnectingFailedException mm && mm.Result != null) {
-                errMsg = mm.Result.ResultCode.ToString();
-            }
-            else if (e is OperationCanceledException) {
+            if (e is OperationCanceledException) {
                 if (cancellationToken.IsCancellationRequested)
                     errMsg = "Canceled";
                 else

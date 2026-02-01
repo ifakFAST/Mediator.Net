@@ -3,12 +3,13 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
-using MQTTnet.Client;
+using MQTTnet;
 using MQTTnet.Protocol;
 using MQTTnet.Packets;
 using Ifak.Fast.Mediator.Util;
@@ -106,8 +107,8 @@ public partial class MqttPublisher
 
         Console.WriteLine($"On got write req for {objID}");
 
-        ArraySegment<byte> payloadBytes = msg.PayloadSegment;
-        if (payloadBytes.Array != null && payloadBytes.Count > 0) {
+        ReadOnlySequence<byte> payloadBytes = msg.Payload;
+        if (payloadBytes.Length > 0) {
 
             string payload = Encoding.UTF8.GetString(payloadBytes);
             DataValue value = DataValue.FromJSON(payload);

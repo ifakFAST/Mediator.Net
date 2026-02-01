@@ -358,7 +358,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             var sw = Stopwatch.StartNew();
             ApplyRetention(now - retentionTime.Value);
             sw.Stop();
-            logger.Info($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
+            logger.Debug($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
         }
 
         private void ApplyRetention(Timestamp cutoff) {

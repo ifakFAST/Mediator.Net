@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Security.Cryptography.X509Certificates;
-using MQTTnet.Client;
 using MQTTnet;
 using System.Threading;
 using MQTTnet.Protocol;
@@ -60,7 +59,7 @@ public partial class MqttPublisher
 
         Close(mqttClient);
 
-        var factory = new MqttFactory();
+        var factory = new MqttClientFactory();
         var client = factory.CreateMqttClient();
 
         try {

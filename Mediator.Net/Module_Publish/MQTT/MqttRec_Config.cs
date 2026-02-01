@@ -3,15 +3,14 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MQTTnet;
-using MQTTnet.Client;
 using MQTTnet.Protocol;
 using MQTTnet.Packets;
-using MQTTnet.Server;
 using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Publish.MQTT;
@@ -112,16 +111,16 @@ public partial class MqttPublisher
         await arg.AcknowledgeAsync(CancellationToken.None);
 
         if (msg.Topic.EndsWith("/info")) {
-            reader.SetInfo(msg.PayloadSegment);
-            string payload = Encoding.UTF8.GetString(msg.PayloadSegment);
+            reader.SetInfo(msg.Payload.ToArray());
+            string payload = Encoding.UTF8.GetString(msg.Payload.ToArray());
             Console.WriteLine($"Got Info msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; QOS: {msg.QualityOfServiceLevel}; Payload: {payload}");
         }
         else {
 
             int bucket = GetBucketNumberFromTopicName(msg.Topic);
-            reader.SetBucket(bucket, msg.PayloadSegment.ToArray());
+            reader.SetBucket(bucket, msg.Payload.ToArray());
 
-            Console.WriteLine($"Got Data msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; Bucket: {bucket}; QOS: {msg.QualityOfServiceLevel}; Payload.Len: {msg.PayloadSegment.Count}");
+            Console.WriteLine($"Got Data msg! ClientID: {arg.ClientId}; Topic: {msg.Topic}; Bucket: {bucket}; QOS: {msg.QualityOfServiceLevel}; Payload.Len: {msg.Payload.Length}");
         }
 
         string? content = reader.Content();
@@ -143,13 +142,13 @@ public partial class MqttPublisher
                     Time = Timestamp.Now.ToString()
                 }, indented: true);
 
-                var msgInfo = new MqttApplicationMessage() {
-                    QualityOfServiceLevel = MqttQualityOfServiceLevel.AtLeastOnce,
-                    Retain = true,
-                    Topic = $"{topicBase}/error",
-                    PayloadFormatIndicator = MqttPayloadFormatIndicator.CharacterData,
-                    PayloadSegment = payload,
-                };
+                var msgInfo = new MqttApplicationMessageBuilder()
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithRetainFlag(true)
+                    .WithTopic($"{topicBase}/error")
+                    .WithPayloadFormatIndicator(MqttPayloadFormatIndicator.CharacterData)
+                    .WithPayload(payload)
+                    .Build();
 
                 await clientMQTT.PublishAsync(msgInfo);
             }

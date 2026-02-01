@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using MQTTnet;
-using MQTTnet.Client;
 using MQTTnet.Protocol;
 using static Ifak.Fast.Mediator.IO.Adapter_MQTT.MQTT_Util;
 
@@ -231,15 +231,15 @@ public class MQTT : AdapterBase {
 
         if (mapTopicsToItemsAndPointers.TryGetValue(topic, out List<(string id, string? jsonPointer)>? items)) {
 
-            SendAssignedValues(topic, items, Now, msg.PayloadSegment);
+            SendAssignedValues(topic, items, Now, msg.Payload);
         }
         else if(autoCreateDataItems) {
 
-            CreateNewDataItemFromTopic(topic, msg.PayloadSegment);
+            CreateNewDataItemFromTopic(topic, msg.Payload);
         }
     }
 
-    private void CreateNewDataItemFromTopic(string topic, ArraySegment<byte> payloadBytes) {
+    private void CreateNewDataItemFromTopic(string topic, ReadOnlySequence<byte> payloadBytes) {
 
         string? id = GetIdFromTopic(topic);
         if (id == null) {
@@ -298,7 +298,7 @@ public class MQTT : AdapterBase {
         return topicSuffix.Replace('/', '_').Replace(" ", "_");
     }
 
-    private void SendAssignedValues(string topic, List<(string id, string? jsonPointer)> itemsWithPointers, Timestamp now, ArraySegment<byte> payloadBytes) {
+    private void SendAssignedValues(string topic, List<(string id, string? jsonPointer)> itemsWithPointers, Timestamp now, ReadOnlySequence<byte> payloadBytes) {
 
         // First, try to parse the full payload as JSON once
         JsonNode? rootNode = null;
@@ -306,7 +306,7 @@ public class MQTT : AdapterBase {
 
         if (hasJsonPointers) {
             // We have at least one JSON pointer, so parse the payload as JSON
-            if (payloadBytes.Array != null && payloadBytes.Count > 0) {
+            if (payloadBytes.Length > 0) {
                 try {
                     string payload = Encoding.UTF8.GetString(payloadBytes);
                     var options = new JsonNodeOptions { PropertyNameCaseInsensitive = true };
@@ -345,9 +345,9 @@ public class MQTT : AdapterBase {
         }
     }
 
-    private (VTQ vtq, string unit)? ParsePayloadBytes(string topic, Timestamp now, ArraySegment<byte> payloadBytes) {
+    private (VTQ vtq, string unit)? ParsePayloadBytes(string topic, Timestamp now, ReadOnlySequence<byte> payloadBytes) {
 
-        if (payloadBytes.Array == null || payloadBytes.Count <= 0) {
+        if (payloadBytes.Length <= 0) {
             var vtq = VTQ.Make(DataValue.Empty, now, Quality.Good);
             string unit = "";
             return (vtq, unit);
@@ -358,7 +358,7 @@ public class MQTT : AdapterBase {
             payload = Encoding.UTF8.GetString(payloadBytes);
         }
         catch (Exception) {
-            string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Count} bytes.";
+            string err = $"Rejected invalid value for topic {topic}: Expected UTF8 string. Payload length: {payloadBytes.Length} bytes.";
             LogWarn("Value", err);
             return null;
         }
