@@ -325,6 +325,11 @@ public class HistoryDBWorker
         public readonly ReadWorkItem Original = original;
     }
 
+    private sealed class RWI_RemoveChannel(VariableRef variable) : ReaderWorkItem
+    {
+        public readonly VariableRef Variable = variable;
+    }
+
     private sealed class ReadWorker
     {
         private readonly int workerIndex;
@@ -390,6 +395,10 @@ public class HistoryDBWorker
             queue.Post(new RWI_ReadRequest(item));
         }
 
+        public void RemoveChannel(VariableRef variable) {
+            queue.Post(new RWI_RemoveChannel(variable));
+        }
+
         private void TheThread() {
             try {
                 SingleThreadedAsync.Run(() => Runner());
@@ -410,6 +419,9 @@ public class HistoryDBWorker
 
                 if (it is RWI_ReadRequest readRequest) {
                     HandleReadRequest(readRequest.Original, GetChannelOrNull, aggregationCache);
+                }
+                else if (it is RWI_RemoveChannel removeChannel) {
+                    mapChannels.Remove(removeChannel.Variable);
                 }
                 else if (it is RWI_Start start) {
                     try {
@@ -1086,7 +1098,28 @@ public class HistoryDBWorker
             VariableRef v = req.Variable;
             // Remove any cached aggregations/compressed values for the deleted variable
             aggregationCache?.InvalidateAll(req.Variable);
+
+            // Remove archived data if archive support is enabled
+            if (archiveSupport != null && archiveStorage != null) {
+                var chRef = ChannelRef.Make(v.Object.LocalObjectID, v.Name);
+                (int dayStart, int dayEnd)? range = archiveStorage.GetStoredDayNumberRange(chRef);
+                if (range != null) {
+                    archiveStorage.DeleteDayData(chRef, range.Value.dayStart, range.Value.dayEnd);
+                }
+            }
+            
+            archiver.RemoveChannel(v.Object.LocalObjectID, v.Name);
+
             GetDbOrThrow().RemoveChannel(v.Object.LocalObjectID, v.Name);
+
+            // Clear cached channels and affinity
+            mapChannels.Remove(v);
+            channelAffinity.Remove(v);
+            if (readWorkers != null) {
+                foreach (var w in readWorkers) {
+                    w.RemoveChannel(v);
+                }
+            }
             promise.SetResult(true);
         }
         catch (Exception exp) {

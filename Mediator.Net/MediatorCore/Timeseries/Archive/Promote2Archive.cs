@@ -12,11 +12,22 @@ public sealed class Promote2Archive(int limitDays, int checkEveryHours, Func<Cha
 
     private record ChannelPair(
         string Obj, 
+        string Var,
         Channel ChannelMain, 
         Timestamp T, 
         ArchiveChannel ChannelArchive);
 
     private readonly Queue<ChannelPair> channels = [];
+
+    public void RemoveChannel(string objectID, string variableName) {
+        if (channels.Any(c => c.Obj == objectID && c.Var == variableName)) {
+            var temp = channels.Where(c => !(c.Obj == objectID && c.Var == variableName)).ToList();
+            channels.Clear();
+            foreach (var c in temp) {
+                channels.Enqueue(c);
+            }
+        }
+    }
 
     private bool Exhausted => channels.Count == 0;
     private int Count => channels.Count;
@@ -108,7 +119,7 @@ public sealed class Promote2Archive(int limitDays, int checkEveryHours, Func<Cha
 
             if (timestampFirst.HasValue) {
                 ArchiveChannel channelArchive = makeArchiveChannel(channelMain);
-                list.Add(new ChannelPair(objec, channelMain, timestampFirst.Value, channelArchive));
+                list.Add(new ChannelPair(objec, varia, channelMain, timestampFirst.Value, channelArchive));
             }
         }
 
