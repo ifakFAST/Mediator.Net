@@ -4,16 +4,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using Workstation.ServiceModel.Ua;
-using Workstation.ServiceModel.Ua.Channels;
 using Ifak.Fast.Mediator.Util;
 using Microsoft.Extensions.Logging;
+using Workstation.ServiceModel.Ua;
+using Workstation.ServiceModel.Ua.Channels;
 
 namespace Ifak.Fast.Mediator.IO.Adapter_OPC_UA;
 
@@ -744,7 +745,12 @@ public class OPC_UA : AdapterBase
         //NodeId viewsID = ExpandedNodeId.ToNodeId(ExpandedNodeId.Parse(ObjectIds.ViewsFolder), connection.NamespaceUris);
         //var views = new BrowseNode(viewsID, new QualifiedName("Views"));
         var set = new HashSet<BrowseNode>();
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        if (logger.IsEnabled(LogLevel.Debug)) {
+            logger.LogDebug("BrowseDataItemAddress: Starting to browse entire tree from root node: {RootID} ({RootBrowseName})", objects.ID, objects.BrowseName);
+        }
+
+        var sw = Stopwatch.StartNew();
         await BrowseEntireTree(objects, result, set);
         sw.Stop();
 
@@ -763,6 +769,9 @@ public class OPC_UA : AdapterBase
             PrintLine($"Caching browse result for {CacheTimeMinutes} minutes.");
             cachedBrowseResult = ids;
             cacheTime = Timestamp.Now;
+        }
+        else {
+            PrintLine($"Completed browsing in {Math.Round(sw.Elapsed.TotalMilliseconds)} ms. No caching of browse result.");
         }
 
         return ids;
@@ -787,6 +796,10 @@ public class OPC_UA : AdapterBase
 
         var result = new List<BrowseNode>();
         var set = new HashSet<BrowseNode>();
+
+        if (logger.IsEnabled(LogLevel.Debug)) {
+            logger.LogDebug("BrowseDataItems: Starting to browse entire tree from root node: {RootID} ({RootBrowseName})", objects.ID, objects.BrowseName);
+        }
 
         await BrowseEntireTree(objects, result, set);
 
@@ -840,22 +853,68 @@ public class OPC_UA : AdapterBase
 
     private async Task BrowseEntireTree(BrowseNode parent, List<BrowseNode> result, HashSet<BrowseNode> set) {
 
+        var sw = Stopwatch.StartNew();
         var children = await BrowseTree(parent.ID);
+        sw.Stop();
+
         if (children == null || connection == null) return;
-        foreach (ReferenceDescription item in children) {
+
+        List<ReferenceDescription> allVariables = children.Where(item => item.NodeId != null && item.NodeClass == NodeClass.Variable).ToList();
+        List<ReferenceDescription> allObjects   = children.Where(item => item.NodeId != null && item.NodeClass == NodeClass.Object).ToList();
+
+        if (logger.IsEnabled(LogLevel.Debug)) {
+            logger.LogDebug(
+                "BrowseTree found {ObjectsCount} objects and {VariablesCount} variables below node: {ParentID} ({ParentBrowseName}) in {ElapsedMilliseconds} ms",
+                                  allObjects.Count, allVariables.Count, parent.ID, parent.BrowseName, Math.Round(sw.Elapsed.TotalMilliseconds));
+        }
+
+        int countExcludedVariables = 0;
+        foreach (ReferenceDescription item in allVariables) {
             if (item.NodeId == null) continue;
             NodeId id = ExpandedNodeId.ToNodeId(item.NodeId, connection.NamespaceUris);
-            if (item.NodeClass == NodeClass.Object && IncludeNode(id, item)) {
-                var nodeObject = new BrowseNode(id, item.BrowseName!, parent);
-                await BrowseEntireTree(nodeObject, result, set);
-            }
-            else if (item.NodeClass == NodeClass.Variable && IncludeNode(id, item)) {
+            if (IncludeNode(id, item)) {
                 var nodeVariable = new BrowseNode(id, item.BrowseName!, parent);
                 if (!set.Contains(nodeVariable)) {
+                    if (logger.IsEnabled(LogLevel.Trace)) {
+                        logger.LogTrace("Adding variable node: {NodeID} ({NodeBrowseName})", nodeVariable.ID, nodeVariable.BrowseName);
+                    }
                     result.Add(nodeVariable);
                     set.Add(nodeVariable);
                 }
             }
+            else {
+                countExcludedVariables++;
+                if (logger.IsEnabled(LogLevel.Trace)) {
+                    logger.LogTrace("Excluded variable node: {NodeID} ({NodeBrowseName}) due to filtering (setting ExcludeUnderscoreNodes = {excludeUnderscore})", id, item.BrowseName, excludeUnderscore);
+                }
+            }
+        }
+
+        if (logger.IsEnabled(LogLevel.Debug) && countExcludedVariables > 0) {
+            logger.LogDebug("Excluded {Count} variable nodes below node: {ParentID} ({ParentBrowseName}) due to filtering (setting ExcludeUnderscoreNodes = {excludeUnderscore})", countExcludedVariables, parent.ID, parent.BrowseName, excludeUnderscore);
+        }
+
+        int countExcludedObjects = 0;
+        foreach (ReferenceDescription item in allObjects) {
+            if (item.NodeId == null) continue;
+            NodeId id = ExpandedNodeId.ToNodeId(item.NodeId, connection.NamespaceUris);
+            if (IncludeNode(id, item)) {
+                var nodeObject = new BrowseNode(id, item.BrowseName!, parent);
+                if (logger.IsEnabled(LogLevel.Trace)) {
+                    logger.LogTrace("Browsing object node: {NodeID} ({NodeBrowseName})", nodeObject.ID, nodeObject.BrowseName);
+                }
+                await BrowseEntireTree(nodeObject, result, set);
+            }
+            else {
+                countExcludedObjects++;
+                if (logger.IsEnabled(LogLevel.Trace)) {
+                    logger.LogTrace("Excluded object node: {NodeID} ({NodeBrowseName}) due to filtering (setting ExcludeUnderscoreNodes = {excludeUnderscore})", id, item.BrowseName, excludeUnderscore);
+                }
+            }
+        }
+
+        if (logger.IsEnabled(LogLevel.Debug) && countExcludedObjects > 0) {
+            logger.LogDebug("Excluded {Count} object below node: {ParentID} ({ParentBrowseName}) due to filtering (setting ExcludeUnderscoreNodes = {excludeUnderscore})", countExcludedObjects, parent.ID, parent.BrowseName, excludeUnderscore);
         }
     }
 
