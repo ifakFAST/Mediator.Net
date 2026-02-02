@@ -1084,6 +1084,8 @@ public class HistoryDBWorker
         var promise = req.Promise;
         try {
             VariableRef v = req.Variable;
+            // Remove any cached aggregations/compressed values for the deleted variable
+            aggregationCache?.InvalidateAll(req.Variable);
             GetDbOrThrow().RemoveChannel(v.Object.LocalObjectID, v.Name);
             promise.SetResult(true);
         }
