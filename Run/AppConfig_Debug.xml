@@ -33,9 +33,9 @@
                 <NamedValue name="model-file-auto-reload" value="true"/>
                 <NamedValue name="base-dir"    value="./DashboardDist"/>
                 <NamedValue name="view-assemblies">
-                    ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net8.0/Module_EventLog.dll
-                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net8.0/Module_Calc.dll
-                    ../Mediator.Net/Module_TagMetaData/bin/{RELEASE_OR_DEBUG}/net8.0/Module_TagMetaData.dll
+                    ../Mediator.Net/Module_EventLog/bin/{RELEASE_OR_DEBUG}/net10.0/Module_EventLog.dll
+                    ../Mediator.Net/Module_Calc/bin/{RELEASE_OR_DEBUG}/net10.0/Module_Calc.dll
+                    ../Mediator.Net/Module_TagMetaData/bin/{RELEASE_OR_DEBUG}/net10.0/Module_TagMetaData.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
                 <NamedValue name="listen-port" value="8082"/>
