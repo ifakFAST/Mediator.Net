@@ -5,7 +5,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Ifak.Fast.Mediator.IO</RootNamespace>
     <StartupObject>Ifak.Fast.Mediator.IO.Program</StartupObject>
-    <LangVersion>12.0</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

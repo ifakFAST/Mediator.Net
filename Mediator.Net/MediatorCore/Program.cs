@@ -69,8 +69,8 @@ namespace Ifak.Fast.Mediator
 
             string fullLogDir = Path.GetFullPath(logDir);
             var config = LogManager.Configuration;
-            config.Variables["log-output-dir"] = fullLogDir;
-            config.Variables["log-file-name"] = logName;
+            config?.Variables["log-output-dir"] = fullLogDir;
+            config?.Variables["log-file-name"] = logName;
 
             string workingDir = Directory.GetCurrentDirectory();
             Console.Title = $"{title} - {workingDir}";

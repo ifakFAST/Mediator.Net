@@ -14,7 +14,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 {
     public class SQLiteTimeseriesDB : TimeSeriesDB
     {
-        private static Logger logger = LogManager.GetLogger("SQLiteTimeseriesDB");
+        private static readonly Logger logger = LogManager.GetLogger("SQLiteTimeseriesDB");
 
         protected DbConnection? connection = null;
         private string tableSeparator = "$";
