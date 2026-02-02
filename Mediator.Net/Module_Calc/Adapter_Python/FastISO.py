@@ -4,7 +4,7 @@ import Ifak.Fast.Mediator
 import json
 from System.Collections.Generic import List
 from System import Array
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime, timezone, timedelta
 
 
@@ -463,10 +463,13 @@ class MyOutputBase(PyOutputBase):
         raise Exception(f"Output {self.ID}: Time is not readable")
 
     @Time.setter
-    def Time(self, value: datetime) -> None:
+    def Time(self, value: Union[datetime, Timestamp]) -> None:
+        if isinstance(value, Timestamp):
+            self.SetTime(value.JavaTicks / 1000.0)
+            return
         if not isinstance(value, datetime):
             typeName = type(value).__name__
-            raise Exception(f"Output {self.ID}: Time must be a datetime but is {typeName}")
+            raise Exception(f"Output {self.ID}: Time must be a datetime or Timestamp but is {typeName}")
         self.SetTime(value.timestamp())
 
 
@@ -560,8 +563,16 @@ class OutputTimestamp(MyOutputBase):
         raise Exception(f"Output {self.ID}: Value is not readable")
 
     @Value.setter
-    def Value(self, value: Optional[datetime]) -> None:
-        _verifyOptionalDatetime(f"Output {self.ID}: Value", value)
+    def Value(self, value: Optional[Union[datetime, Timestamp]]) -> None:
+        if value is None:
+            self.SetValue(Ifak.Fast.Mediator.DataValue.Empty)
+            return
+        if isinstance(value, Timestamp):
+            self.SetValue(Ifak.Fast.Mediator.DataValue.FromTimestamp(value))
+            return
+        if not isinstance(value, datetime):
+            typeName = type(value).__name__
+            raise Exception(f"Output {self.ID}: Value must be a datetime or Timestamp or None but is {typeName}")
         self.SetValue(_optionalDatetime2DataValue(value))
 
 
