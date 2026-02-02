@@ -131,8 +131,8 @@ public partial class MqttPublisher
 
         if (config.CertFileCA != "") {
 
-            var caCert = new X509Certificate2(Path.Combine(certDir, config.CertFileCA));
-            var clientCert = new X509Certificate2(Path.Combine(certDir, config.CertFileClient), "");
+            var caCert = X509CertificateLoader.LoadCertificateFromFile(Path.Combine(certDir, config.CertFileCA));
+            var clientCert = X509CertificateLoader.LoadPkcs12FromFile(Path.Combine(certDir, config.CertFileClient), "");
 
             builder = builder
              .WithTlsOptions(o => {

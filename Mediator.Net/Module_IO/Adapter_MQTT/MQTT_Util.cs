@@ -48,7 +48,7 @@ public static class MQTT_Util {
             if (!File.Exists(certFileCA)) {
                 throw new Exception($"CA certificate file not found: {certFileCA}");
             }
-            X509Certificate2 caCert = new(certFileCA);
+            X509Certificate2 caCert = X509CertificateLoader.LoadCertificateFromFile(certFileCA);
             certificates.Add(caCert);
         }
 
@@ -73,8 +73,8 @@ public static class MQTT_Util {
             }
 
             X509Certificate2 clientCert = isPfx ?
-                new X509Certificate2(certFile, "") :
-                new X509Certificate2(X509Certificate2.CreateFromPemFile(certFile, keyFile).Export(X509ContentType.Pkcs12));
+                X509CertificateLoader.LoadPkcs12FromFile(certFile, "") :
+                X509CertificateLoader.LoadCertificate(X509Certificate2.CreateFromPemFile(certFile, keyFile).Export(X509ContentType.Pkcs12));
 
             certificates.Insert(0, clientCert);
         }

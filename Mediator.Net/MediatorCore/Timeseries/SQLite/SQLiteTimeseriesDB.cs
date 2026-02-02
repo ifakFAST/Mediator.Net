@@ -434,7 +434,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             public string DataTableName { get; set; }
             public DataType Type { get; set; }
 
-            public ChannelInfo MakeInfo() => new ChannelInfo(Object, Variable, Type);
+            public readonly ChannelInfo MakeInfo() => new(Object, Variable, Type);
         }
     }
 

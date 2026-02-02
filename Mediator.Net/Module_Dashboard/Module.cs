@@ -156,7 +156,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 throw new Exception($"Certificate file not found: {certificatePath}");
             }
             string? pwd = null;
-            certificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(certificatePath, pwd);
+            certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(certificatePath, pwd);
         }
 
         void Configure(Microsoft.AspNetCore.Server.Kestrel.Core.ListenOptions listenOptions) {

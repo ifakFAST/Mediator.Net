@@ -761,7 +761,7 @@ sealed class BufferNewDataItems {
 
     private readonly Dictionary<string, DataItemUpsert> items = new();
     private Timestamp timeLastNewAdd = Timestamp.Now;
-    private readonly object lockObj = new();
+    private readonly Lock lockObj = new();
 
     public void Add(DataItemUpsert item) {
         lock (lockObj) {
