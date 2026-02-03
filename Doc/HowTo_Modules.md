@@ -2,7 +2,7 @@
 
 ## Create project
 
-* Create a new console application project targeting .Net 7 or .Net 4.6.1 or higher
+* Create a new console application project targeting .NET 10 (`net10.0`, recommended). If you must stay on .NET Framework, target `net461` (MediatorLib ships `net461` + `netstandard2.1`).
 * Add a reference to **MediatorLib**
 
 ## Create module class
@@ -142,7 +142,7 @@ static void Main(string[] args)
     };
 
     var module = new MyModule.Module();
-    Ifak.Fast.Mediator.ExternalModuleHost.ConnectAndRunModule("localhost", port, module);
+    Ifak.Fast.Mediator.ExternalModuleHost.ConnectAndRunModule(port, module);
     Console.WriteLine("Terminated.");
 }
 ```
@@ -151,7 +151,7 @@ static void Main(string[] args)
 
 In order to use the new Module with the Mediator, you have to add a module instance description to the global Mediator configuration file (**AppConfig.xml**). There are two options of how to run a Module instance:
 
-* Inside of the Mediator process on a dedicated thread
+* Inside of the Mediator process on a dedicated thread (useful for debugging)
 * Outside of the Mediator process as a dedicated process (recommended)
 
 The second option is usually recommended because it delivers the best failure recovery, i.e. if there is a memory leak in the Module implementation, the Module process will terminate with OutOfMemory error and will be restarted automatically by the Mediator core.
@@ -160,15 +160,15 @@ Here is an example configuration for the **first option** (in process):
 
 ```XML
 <Module id="IO" name="IO" enabled="true">
-    <VariablesFileName>Var_IO.xml</VariablesFileName>
+    <VariablesFileName>./Data/Var_IO.xml</VariablesFileName>
     <ImplAssembly>Module_IO.dll</ImplAssembly>
     <ImplClass>Ifak.Fast.Mediator.IO.Module</ImplClass>
     <Config>
-        <NamedValue name="model-file" value="Model_IO.xml"/>
+        <NamedValue name="model-file" value="./Config/Model_IO.xml"/>
     </Config>
     <HistoryDBs>
         <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
-            <ConnectionString>Filename=DB_IO.db</ConnectionString>
+            <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
             <Settings>
                 <string>page_size=4096</string>
                 <string>cache_size=5000</string>
@@ -177,16 +177,37 @@ Here is an example configuration for the **first option** (in process):
     </HistoryDBs>
 </Module>
 ```
-Here is an example configuration for the **second option** (separate process):
+Here is an example configuration for the **second option** (separate process, framework-dependent):
 
 ```XML
 <Module id="IO" name="IO" enabled="true">
-    <VariablesFileName>Var_IO.xml</VariablesFileName>
-    <!-- path is relative to current working directory: -->
-    <ExternalCommand>./Bin/Module_IO/Module_IO.exe</ExternalCommand>
+    <VariablesFileName>./Data/Var_IO.xml</VariablesFileName>
+    <ExternalCommand>dotnet</ExternalCommand>
+    <ExternalArgs>./Bin/Mediator/Module_IO.dll {PORT}</ExternalArgs>
+    <Config>
+        <NamedValue name="model-file" value="./Config/Model_IO.xml"/>
+    </Config>
+    <HistoryDBs>
+        <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">
+            <ConnectionString>Filename=./Data/DB_IO.db</ConnectionString>
+            <Settings>
+                <string>page_size=4096</string>
+                <string>cache_size=5000</string>
+            </Settings>
+        </HistoryDB>
+    </HistoryDBs>
+</Module>
+```
+
+Here is an example configuration for the **second option** (separate process, self-contained publish):
+
+```XML
+<Module id="IO" name="IO" enabled="true">
+    <VariablesFileName>./Data/Var_IO.xml</VariablesFileName>
+    <ExternalCommand>./Bin/Mediator/Module_IO</ExternalCommand>
     <ExternalArgs>{PORT}</ExternalArgs>
     <Config>
-        <NamedValue name="model-file" value="Model_IO.xml"/>
+        <NamedValue name="model-file" value="./Config/Model_IO.xml"/>
     </Config>
     <HistoryDBs>
         <HistoryDB name="IO" type="SQLite" prioritizeReadRequests="true">

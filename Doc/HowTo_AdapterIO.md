@@ -2,14 +2,14 @@
 
 ## Create project
 
-* Create a new class library project targeting .Net 7
-* Add a reference to **MediatorLib** (in folder Bin\MediatorLib\netstandard2.1)
+* Create a new class library project targeting .NET 10 (`net10.0`). If you need broad compatibility, target `netstandard2.1`.
+* Add a reference to **MediatorLib** (project reference recommended; or assembly from `Bin\MediatorLib\netstandard2.1`)
 
-Note: If you need to target classic .Net (4.8 or lower) or 32 Bit architecture, you would have to create a console app instead. Each adapter instance would start a separate process of this console app. For details see last chapter.
+Note: The in-process adapter assembly must be loadable by the IO module (.NET 10). If you must use .NET Framework (net461/net48) or x86-only dependencies, build an external adapter process instead (see last chapter).
 
 ## Create adapter class
 
-An IO adapter is a class that inherits form the abstract class **Ifak.Fast.Mediator.IO.AdapterBase**.
+An IO adapter is a class that inherits from the abstract class **Ifak.Fast.Mediator.IO.AdapterBase**.
 
 The public class needs to have an attribute of type `Identify(string id)` attached. The id will be used in the Adapter configuration for the Type attribute.
 
@@ -30,6 +30,11 @@ The following methods need to be implemented:
 * Task\<string[]\> **BrowseAdapterAddress**()
 * Task\<string[]\> **BrowseDataItemAddress**(string? idOrNull)
 * Task **Shutdown**()
+
+Optional methods:
+
+* void **StartRunning**()
+* Task\<BrowseDataItemsResult\> **BrowseDataItems**()
 
 Each IO adapter instance is run on a dedicated thread. Therefore, it is possible to implement the adapter in a purely synchronous fashion, i.e. without using the asynchronous features of C# async/await.
 
@@ -58,7 +63,7 @@ This method may return an empty array of groups, when there are no independent D
 
 ### Optional: StartRunning
 
-If the adapter is not purely passive (only responds to read and write requests), you have to override the StartRunning method to know when it is save to start any background task or thread that may report data changes via `callback.Notify_DataItemsChanged`.
+If the adapter is not purely passive (only responds to read and write requests), you have to override the StartRunning method to know when it is safe to start any background task or thread that may report data changes via `callback.Notify_DataItemsChanged`.
 
 ### ReadDataItems
 
@@ -76,6 +81,10 @@ This method is called by the IO module to query possible values for the Address 
 
 This method is called by the IO module to query possible values for the Address property of a DataItem. If Browsing is not supported for DataItem.Address, return a string array of length zero (new string[0]).
 
+### Optional: BrowseDataItems
+
+This method is called by the IO module to query possible DataItems (e.g. for import tooling). If browsing is not supported, keep the default implementation (SupportsBrowsing = false).
+
 ### Shutdown
 
 Called by the IO module to shutdown this Adapter instance. All resources should be freed during shutdown.
@@ -92,6 +101,7 @@ public class Adapter
     public string Type;
     public string Address;
     public Login? Login;
+    public Duration ConnectionRetryTimeout;
     public List<NamedValue> Config;
     public List<Node> Nodes;
     public List<DataItem> DataItems;
@@ -137,20 +147,24 @@ public class DataItem
 
 If the adapter shall support event-based data reading with minimal delays (instead of just polling via ReadDataItems), the `Notify_DataItemsChanged` method of the `AdapterCallback` object can be used (passed as parameter to Initialize method). This object also allows to emit alarms and events using `Notify_AlarmOrEvent` method, e.g. in order to provide detailed information about a communication failure.
 
+Use `Notify_AdapterVarUpdate` to publish adapter timing metrics (e.g. `LastInnerReadDuration`, `LastInnerWriteDuration`). Use `UpdateConfig` to upsert nodes/data items from the adapter; the IO module will persist the changes.
+
 The `Notify_DataItemsChanged` method can also be used for batch reporting value changes, i.e. the same DataItem id but different values with different timestamps.
 
 ```csharp
 public interface AdapterCallback
 {
     void Notify_NeedRestart(string reason);
-    void Notify_DataItemsChanged(DataItemValue[] values);
     void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo);
+    void Notify_DataItemsChanged(DataItemValue[] values);
+    void Notify_AdapterVarUpdate(AdapterVar variable, VTQ value);
+    void UpdateConfig(ConfigUpdate info);
 }
 ```
 
 ## Making the Adapter available to the IO Module
 
-The IO module can only use the adapter implementation if the corresponding class can be found. Therefore, you need to add the file name of the assembly to the **adapter-assemblies** config item of the IO module in the global AppConfig.xml (several files are separated by semicolon or newline).
+The IO module can only use the adapter implementation if the corresponding class can be found. Therefore, you need to add the file name of the assembly to the **adapter-assemblies** config item of the IO module in the global AppConfig.xml (several files are separated by semicolon or newline). If an entry ends with `.cs`, it will be compiled at startup.
 
 ## Example configuration for Module IO
 
@@ -191,11 +205,11 @@ The example configuration below defines a single adapter instance for OPC DA wit
 </IO_Model>
 ```
 
-## Targeting classic .Net (4.8 or lower)
+## Targeting .NET Framework or x86-only dependencies
 
-If you need to target classic .Net (4.8 or lower) or 32 Bit architecture, you would have to create a console app instead of a class library. Each adapter instance would start a separate process of this console app.
+If you need to target .NET Framework (net461/net48) or 32-bit architecture, you have to create a console app instead of a class library. Each adapter instance starts a separate process of this console app.
 
-The following code show the Program.Main part of the console app. It connects to the parent IO module process via TCP/IP using the port number that is passed in by the IO module when starting the Adapter instance. The implementation of the MyAdapter class is the same as described above.
+The following code shows the Program.Main part of the console app. It connects to the parent IO module process via TCP/IP using the port number that is passed in by the IO module when starting the Adapter instance. The implementation of the MyAdapter class is the same as described above.
 
 ```csharp
 using System;
@@ -231,7 +245,7 @@ namespace MyConsoleApp {
 
 ```
 
-To make this external adapter known in the Mediator IO module, you need to create a simple .Net 7 class library with just one class:
+To make this external adapter known in the Mediator IO module, you need to create a simple .NET 10 class library (or `netstandard2.1`) with just one class:
 
 ```csharp
 using System;

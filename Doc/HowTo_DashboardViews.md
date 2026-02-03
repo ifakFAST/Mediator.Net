@@ -11,17 +11,21 @@ It is recommended (but not required) to implement the Web frontend using a moder
 
 ## Implementing the C# Backend
 
-Create a new public class that inherits from **Ifak.Fast.Mediator.Dashboard.ViewBase**. The project containing the class needs to have a reference to **MediatorLib** (in folder Bin\MediatorLib\netstandard2.1) and target .Net 7.
+Create a new public class that inherits from **Ifak.Fast.Mediator.Dashboard.ViewBase**. The project containing the class needs to have a reference to **MediatorLib** (project reference recommended; or assembly from `Bin\MediatorLib\netstandard2.1`) and target .NET 10 (`net10.0`) or `netstandard2.1`.
 
-You need to implement at least the methods **OnActivate** and **OnUiRequestAsync**:
+You need to implement at least **OnActivate**. Requests from the UI can be handled either by overriding **OnUiRequestAsync** or by adding methods with the prefix `UiReq_` (these are auto-dispatched by the base class):
 
 ```csharp
     using Ifak.Fast.Mediator.Dashboard;
 
-    [Identify(id: "MyView", bundle: "MyBundle", path: "index.html")]
+    [Identify(id: "MyView", bundle: "MyBundle", path: "index.html", configType: typeof(MyViewConfig), icon: "mdi-view-dashboard")]
     public class MyView : ViewBase
     {
         private MyViewConfig configuration = new MyViewConfig();
+
+        public override Task OnInit(Connection connection, ViewContext context, DataValue config) {
+            return base.OnInit(connection, context, config);
+        }
 
         public override Task OnActivate() {
             if (Config.NonEmpty) {
@@ -30,6 +34,12 @@ You need to implement at least the methods **OnActivate** and **OnUiRequestAsync
             return Task.FromResult(true);
         }
 
+        // Option A: implement a UiReq_* method (auto-dispatched)
+        private Task<ReqResult> UiReq_Init() {
+            return Task.FromResult(ReqResult.OK(new { ok = true }));
+        }
+
+        // Option B: override OnUiRequestAsync
         public override async Task<ReqResult> OnUiRequestAsync(string command,
                                                          DataValue parameters) {
             // ...
@@ -39,9 +49,9 @@ You need to implement at least the methods **OnActivate** and **OnUiRequestAsync
     public class MyViewConfig { /* TODO: Add members */}
 ```
 
-You have to attach the attribute **Ifak.Fast.Mediator.Dashboard.Identify** to the view class in order to provide additional information. The **bundle** parameter identifies the view bundle containing the web frontend implementation of the view. A view bundle is a web application that may contain multiple views, e.g. in form of separate HTML files. The **path** parameter specifies which HTML file in the view bundle to use.
+You have to attach the attribute **Ifak.Fast.Mediator.Dashboard.Identify** to the view class in order to provide additional information. The **bundle** parameter identifies the view bundle containing the web frontend implementation of the view. A view bundle is a web application that may contain multiple views, e.g. in form of separate HTML files. The **path** parameter specifies which HTML file in the view bundle to use. The optional **configType** is used for strongly-typed configuration editing, and **icon** controls the dashboard navigation icon.
 
-The method **OnActivate** is called when the view gets activated in the Dashboard, i.e. the user navigates to the view. You can use it to register for Mediator events or do other initialization steps here, e.g. reading the view instance specific configuration.
+The method **OnInit** is called once when the view instance is created and provides the `Connection` and `ViewContext`. The method **OnActivate** is called when the view gets activated in the Dashboard, i.e. the user navigates to the view. You can use it to register for Mediator events or do other initialization steps here, e.g. reading the view-instance-specific configuration.
 
 The method **OnUiRequestAsync** is called every time a request is made from the View frontend. Use the "command" parameter to check what is requested. Use "parameters" for retrieving the additional information that have been passed from the Web application side. Use the return value **ReqResult.OK(...)** to return the result data structure or **ReqResult.Bad(error_msg)** to indicate an error.
 
@@ -50,17 +60,24 @@ To do so, call **Context.SendEventToUI("EventName", eventObject);**.
 
 ## Implementing the Web Frontend
 
-The web frontend of a Dashboard view is a self contained web application that is hosted inside of an **iframe** element in the surrounding Dashboard web application.
+The web frontend of a Dashboard view is a self-contained web application that is hosted inside of an **iframe** element in the surrounding Dashboard web application.
 
 The files of the web application (JavaScript, HTML, CSS, etc.) must be contained in a directory with the name **ViewBundle_XYZ**, where **XYZ** is the name of your view bundle as specified with bundle parameter of the **Identify** class attribute. This directory must be located inside the Dashboard web root (usually called **WebRoot_Dashboard**) next to the **App** and **ViewBundle_Generic** directories.
 
-There a specific JavaScript functions available that must be used to facilitate the communication with the view backend and with the Dashboard frame application:
+There are specific JavaScript functions available that must be used to facilitate the communication with the view backend and with the Dashboard frame application:
 
 * sendViewRequest
+* sendViewRequestAsync
+* sendViewRequestBlob
 * registerViewEventListener
+* registerResizeListener
 * showTimeRangeSelector
+* showTimeRangeEndTimeOnly
 * getCurrentTimeRange
 * registerTimeRangeListener
+* setEventBurstCount
+* canUpdateViewConfig
+* getBackendUrl
 
 These methods are available in the global **dashboardApp** object, e.g.:
 
@@ -93,10 +110,19 @@ Example for sending a command 'Init':
   })
 ```
 
+### sendViewRequestAsync(request, payload, responseType?)
+
+Promise-based variant that returns parsed JSON (or a `Blob` if `responseType` is `'blob'`):
+
+```javascript
+  const dashboard = window.parent['dashboardApp']
+  const response = await dashboard.sendViewRequestAsync('Init', parameters)
+```
+
 ### registerViewEventListener(listener)
 
 This method is used to enable receiving events from the view backend (via web socket). The event must have
-been send by the view backend via **Context.SendEventToUI("MyEvent", eventObject);**.
+been sent by the view backend via **Context.SendEventToUI("MyEvent", eventObject);**.
 
 ```javascript
   const dashboard = window.parent['dashboardApp']
@@ -161,8 +187,10 @@ Dashboard module instance in the Mediator configuration (Config/AppConfig.xml):
 <Module id="Dashboard" name="Dashboard" enabled="true" concurrentInit="false">
   <!-- ... -->
   <Config>
-    <NamedValue name="view-assemblies"
-                value="./Bin/Module_EventLog/Module_EventLog.dll;./Bin/MyView/MyViewAssembly.dll"/>
+    <NamedValue name="view-assemblies">
+      ./Bin/Mediator/Module_EventLog.dll
+      ./Bin/Mediator/MyViewAssembly.dll
+    </NamedValue>
     <!-- other parameters -->
   </Config>
 </Module>
