@@ -122,3 +122,8 @@ UpgradeLog*.htm
 /WebDashboard/ViewBundle_TagMeta/Z_Delete_Nodes.bat
 /.claude/settings.local.json
 /WebDashboard/App/.claude/settings.local.json
+/Mediator.Net/Module_Calc/Properties/launchSettings.json
+/Mediator.Net/Module_EventLog/Properties/launchSettings.json
+/Mediator.Net/Module_IO/Properties/launchSettings.json
+/Mediator.Net/Module_Publish/Properties/launchSettings.json
+/Mediator.Net/Module_TagMetaData/Properties/launchSettings.json
