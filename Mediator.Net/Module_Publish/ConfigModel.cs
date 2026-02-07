@@ -4,8 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
 using System.Xml.Serialization;
 using Ifak.Fast.Mediator.Util;
 
@@ -20,9 +18,9 @@ public class Model : ModelObject {
     [XmlAttribute("name")]
     public string Name { get; set; } = "Publish_Model";
 
-    public List<MqttConfig> MQTT { get; set; } = new List<MqttConfig>();
-    public List<SQLConfig>  SQL  { get; set; } = new List<SQLConfig>();
-    public List<OpcUaConfig> OPC_UA { get; set; } = new List<OpcUaConfig>();
+    public List<MqttConfig>  MQTT { get; set; } = [];
+    public List<SQLConfig>   SQL  { get; set; } = [];
+    public List<OpcUaConfig> OPC_UA { get; set; } = [];
 
     public bool ShouldSerializeMQTT() { return MQTT.Count > 0; }
     public bool ShouldSerializeSQL()  { return SQL.Count > 0; }
@@ -34,6 +32,9 @@ public class Model : ModelObject {
         }
         foreach (var sql in SQL) {
             sql.ApplyVarConfig(vars);
+        }
+        foreach (var ua in OPC_UA) {
+            ua.ApplyVarConfig(vars);
         }
     }
 }
@@ -63,11 +64,7 @@ public class MqttConfig : ModelObject {
 
     public string TopicRoot { get; set; } = "";
 
-    public MqttVarPub? VarPublish { get; set; } = null;
-    public MqttVarReceive? VarReceive { get; set; } = null;
-    public MqttConfigPub? ConfigPublish { get; set; } = null;
-    public MqttConfigReceive? ConfigReceive { get; set; } = null;
-    public MqttMethodPub? MethodPublish { get; set; } = null;
+    public MqttVarPub VarPublish { get; set; } = new MqttVarPub() { Enabled = false };
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
@@ -78,10 +75,6 @@ public class MqttConfig : ModelObject {
             TopicRoot = TopicRoot.Replace(entry.Key, entry.Value);
         }
         VarPublish?.ApplyVarConfig(vars);
-        VarReceive?.ApplyVarConfig(vars);
-        ConfigPublish?.ApplyVarConfig(vars);
-        ConfigReceive?.ApplyVarConfig(vars);
-        MethodPublish?.ApplyVarConfig(vars);
     }
 }
 
@@ -110,15 +103,9 @@ public interface VarPubCommon {
     PubMode PublishMode { get; set; }
 }
 
-public class MqttVarPub : ModelObject, VarPubCommon {
+public class MqttVarPub : VarPubCommon {
     
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "VarPub";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var mqttConfig = (MqttConfig)parents.First();
-        return mqttConfig.ID + ".VarPub";
-    }
+    public bool Enabled { get; set; } = true;
 
     public string Topic { get; set; } = "";
     public string TopicRegistration { get; set; } = "";
@@ -179,101 +166,6 @@ public enum TopicMode {
     TopicPerVariable // One topic per variable
 }
 
-public class MqttConfigPub : ModelObject {
-    
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "ConfigPub";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var mqttConfig = (MqttConfig)parents.First();
-        return mqttConfig.ID + ".ConfigPub";
-    }
-
-    public string Topic { get; set; } = "config/reported";
-
-    public string ModuleID { get; set; } = "IO";
-    public bool PrintPayload { get; set; } = true;
-
-    public Duration PublishInterval { get; set; } = Duration.FromMinutes(5);
-    public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
-
-    public void ApplyVarConfig(Dictionary<string, string> vars) {
-        foreach (var entry in vars) {
-            Topic = Topic.Replace(entry.Key, entry.Value);
-        }
-    }
-}
-
-public class MqttVarReceive : ModelObject {
-    
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "VarReceive";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var mqttConfig = (MqttConfig)parents.First();
-        return mqttConfig.ID + ".VarReceive";
-    }
-
-    public string Topic { get; set; } = "";
-
-    public string ModuleID { get; set; } = "IO";
-
-    public void ApplyVarConfig(Dictionary<string, string> vars) {
-        foreach (var entry in vars) {
-            Topic = Topic.Replace(entry.Key, entry.Value);
-        }
-    }
-}
-
-public class MqttConfigReceive : ModelObject {
-    
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "ConfigReceive";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var mqttConfig = (MqttConfig)parents.First();
-        return mqttConfig.ID + ".ConfigReceive";
-    }
-
-    public string Topic { get; set; } = "";
-
-    public string ModuleID { get; set; } = "IO";
-
-    public int MaxBuckets { get; set; } = 100;
-
-    public void ApplyVarConfig(Dictionary<string, string> vars) {
-        foreach (var entry in vars) {
-            Topic = Topic.Replace(entry.Key, entry.Value);
-        }
-    }
-}
-
-public class MqttMethodPub : ModelObject {
-
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "MethodPub";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var mqttConfig = (MqttConfig)parents.First();
-        return mqttConfig.ID + ".MethodPub";
-    }
-
-    public string Topic { get; set; } = "method/reported";
-
-    public string ModuleID { get; set; } = "IO";
-    public string MethodName { get; set; } = "BrowseAllAdapterDataItems";
-    public bool PrintPayload { get; set; } = true;
-
-    public Duration PublishInterval { get; set; } = Duration.FromHours(1);
-    public Duration PublishOffset { get; set; } = Duration.FromSeconds(0);
-
-    public void ApplyVarConfig(Dictionary<string, string> vars) {
-        foreach (var entry in vars) {
-            Topic = Topic.Replace(entry.Key, entry.Value);
-        }
-    }
-}
-
 public class SQLConfig : ModelObject {
 
     [XmlAttribute("id")]
@@ -285,20 +177,16 @@ public class SQLConfig : ModelObject {
     public Database DatabaseType { get; set; } = Database.PostgreSQL;
 
     public string ConnectionString { get; set; } = "";
-    //public string CertFileCA { get; set; } = "";
-    //public string CertFileClient { get; set; } = "";
 
     public bool IgnoreCertificateRevocationErrors { get; set; } = false;
     public bool IgnoreCertificateChainErrors { get; set; } = false;
     public bool AllowUntrustedCertificates { get; set; } = false;
 
-    public SQLVarPub? VarPublish { get; set; } = null;
+    public SQLVarPub VarPublish { get; set; } = new SQLVarPub() { Enabled = false };
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
             ConnectionString = ConnectionString.Replace(entry.Key, entry.Value);
-            //CertFileCA = CertFileCA.Replace(entry.Key, entry.Value);
-            //CertFileClient = CertFileClient.Replace(entry.Key, entry.Value);
         }
         VarPublish?.ApplyVarConfig(vars);
     }
@@ -311,15 +199,9 @@ public enum Database {
    // SQLite
 }
 
-public class SQLVarPub : ModelObject, VarPubCommon {
+public class SQLVarPub : VarPubCommon {
 
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "VarPub";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var sqlConfig = (SQLConfig)parents.First();
-        return sqlConfig.ID + ".VarPub";
-    }
+    public bool Enabled { get; set; } = true;
 
     public string QueryTagID2Identifier { get; set; } = "";
     public string QueryRegisterTag { get; set; } = "";
@@ -366,7 +248,7 @@ public class OpcUaConfig : ModelObject {
 
     public string ServerCertificateFile { get; set; } = "";
 
-    public OpcUaVarPub? VarPublish { get; set; } = null;
+    public OpcUaVarPub VarPublish { get; set; } = new OpcUaVarPub() { Enabled = false };
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {
         foreach (var entry in vars) {
@@ -374,19 +256,13 @@ public class OpcUaConfig : ModelObject {
             LoginPass = LoginPass.Replace(entry.Key, entry.Value);
             ServerCertificateFile = ServerCertificateFile.Replace(entry.Key, entry.Value);
         }
-        VarPublish?.ApplyVarConfig(vars);
+        VarPublish.ApplyVarConfig(vars);
     }
 }
 
-public class OpcUaVarPub : ModelObject, VarPubCommon {
+public class OpcUaVarPub : VarPubCommon {
 
-    [XmlAttribute("name")]
-    public string Name { get; set; } = "VarPub";
-
-    protected override string GetID(IReadOnlyCollection<IModelObject> parents) {
-        var uaConfig = (OpcUaConfig)parents.First();
-        return uaConfig.ID + ".VarPub";
-    }
+    public bool Enabled { get; set; } = true;
 
     [XmlArrayItem("RootObject")]
     public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();

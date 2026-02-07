@@ -9,67 +9,67 @@ using Ifak.Fast.Mediator.Util;
 
 namespace Ifak.Fast.Mediator.Publish.MQTT;
 
-public partial class MqttPublisher
-{
-    public static async Task MakeMethodPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
+//public partial class MqttPublisher
+//{
+//    public static async Task MakeMethodPubTask(MqttConfig config, ModuleInitInfo info, string certDir, Func<bool> shutdown) {
 
-        var mqttOptions = MakeMqttOptions(certDir, config, "MethodPub");
-        var methodPub = config.MethodPublish!;
-        string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + methodPub.Topic;
+//        var mqttOptions = MakeMqttOptions(certDir, config, "MethodPub");
+//        var methodPub = config.MethodPublish!;
+//        string topic = (string.IsNullOrEmpty(config.TopicRoot) ? "" : config.TopicRoot + "/") + methodPub.Topic;
 
-        Connection clientFAST = await Util.EnsureConnectOrThrow(info, null);
+//        Connection clientFAST = await Util.EnsureConnectOrThrow(info, null);
 
-        Timestamp t = Time.GetNextNormalizedTimestamp(methodPub.PublishInterval, methodPub.PublishOffset);
-        await Time.WaitUntil(t, abort: shutdown);
+//        Timestamp t = Time.GetNextNormalizedTimestamp(methodPub.PublishInterval, methodPub.PublishOffset);
+//        await Time.WaitUntil(t, abort: shutdown);
 
-        IMqttClient? clientMQTT = null;
+//        IMqttClient? clientMQTT = null;
 
-        while (!shutdown()) {
+//        while (!shutdown()) {
 
-            clientFAST = await Util.EnsureConnectOrThrow(info, clientFAST);
+//            clientFAST = await Util.EnsureConnectOrThrow(info, clientFAST);
 
-            DataValue value = DataValue.Empty;
+//            DataValue value = DataValue.Empty;
 
-            try {
-                value = await clientFAST.CallMethod(methodPub.ModuleID, methodPub.MethodName);
-            }
-            catch (Exception exp) {
-                Exception e = exp.GetBaseException() ?? exp;
-                Console.Error.WriteLine($"Failed to call method {methodPub.MethodName}: {e.Message}");
-            }
+//            try {
+//                value = await clientFAST.CallMethod(methodPub.ModuleID, methodPub.MethodName);
+//            }
+//            catch (Exception exp) {
+//                Exception e = exp.GetBaseException() ?? exp;
+//                Console.Error.WriteLine($"Failed to call method {methodPub.MethodName}: {e.Message}");
+//            }
 
-            if (value.NonEmpty) {
+//            if (value.NonEmpty) {
 
-                clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
+//                clientMQTT = await EnsureConnect(mqttOptions, clientMQTT);
 
-                if (clientMQTT != null) {
+//                if (clientMQTT != null) {
 
-                    string payload = value.JSON;
+//                    string payload = value.JSON;
 
-                    var messages = MakeMessages(payload, topic, config.MaxPayloadSize);
+//                    var messages = MakeMessages(payload, topic, config.MaxPayloadSize);
 
-                    try {
+//                    try {
                         
-                        foreach (var msg in messages) {
-                            await clientMQTT.PublishAsync(msg);
-                        }
+//                        foreach (var msg in messages) {
+//                            await clientMQTT.PublishAsync(msg);
+//                        }
 
-                        if (methodPub.PrintPayload) {
-                            Console.Out.WriteLine($"PUB: {topic}: {payload}");
-                        }
-                    }
-                    catch (Exception exp) {
-                        Exception e = exp.GetBaseException() ?? exp;
-                        Console.Error.WriteLine($"Publish failed for topic {topic}: {e.Message}");
-                    }
-                }
-            }
+//                        if (methodPub.PrintPayload) {
+//                            Console.Out.WriteLine($"PUB: {topic}: {payload}");
+//                        }
+//                    }
+//                    catch (Exception exp) {
+//                        Exception e = exp.GetBaseException() ?? exp;
+//                        Console.Error.WriteLine($"Publish failed for topic {topic}: {e.Message}");
+//                    }
+//                }
+//            }
 
-            t = Time.GetNextNormalizedTimestamp(methodPub.PublishInterval, methodPub.PublishOffset);
-            await Time.WaitUntil(t, abort: shutdown);
-        }
+//            t = Time.GetNextNormalizedTimestamp(methodPub.PublishInterval, methodPub.PublishOffset);
+//            await Time.WaitUntil(t, abort: shutdown);
+//        }
 
-        await clientFAST.Close();
-        Close(clientMQTT);
-    }
-}
+//        await clientFAST.Close();
+//        Close(clientMQTT);
+//    }
+//}

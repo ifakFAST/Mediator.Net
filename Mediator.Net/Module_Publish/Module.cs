@@ -64,53 +64,53 @@ public class Module : ModelObjectModule<Model>
         var tasks = new List<Task>();
 
         Task[] tasksVarPubSql = model.SQL
-            .Where(sql => sql.VarPublish != null)
+            .Where(sql => sql.VarPublish != null && sql.VarPublish.Enabled)
             .Select(sql => SQL.VarPubTask.MakeVarPubTask(sql, info, shutdown))
             .ToArray();
 
         tasks.AddRange(tasksVarPubSql);
 
         Task[] tasksVarPubUA = model.OPC_UA
-            .Where(ua => ua.VarPublish != null)
+            .Where(ua => ua.VarPublish != null && ua.VarPublish.Enabled)
             .Select(ua => OPC_UA.VarPubTask.MakeVarPubTask(ua, info, shutdown))
             .ToArray();
 
         tasks.AddRange(tasksVarPubUA);
 
         Task[] tasksVarPubMqtt = model.MQTT
-            .Where(mqtt => mqtt.VarPublish != null)
+            .Where(mqtt => mqtt.VarPublish != null && mqtt.VarPublish.Enabled)
             .Select(mqtt => MqttPublisher.MakeVarPubTask(mqtt, info, certDir, shutdown))
             .ToArray();
 
         tasks.AddRange(tasksVarPubMqtt);
 
-        Task[] tasksConfigPub = model.MQTT
-            .Where(mqtt => mqtt.ConfigPublish != null)
-            .Select(mqtt => MqttPublisher.MakeConfigPubTask(mqtt, info, certDir, shutdown))
-            .ToArray();
+        //Task[] tasksConfigPub = model.MQTT
+        //    .Where(mqtt => mqtt.ConfigPublish != null)
+        //    .Select(mqtt => MqttPublisher.MakeConfigPubTask(mqtt, info, certDir, shutdown))
+        //    .ToArray();
 
-        tasks.AddRange(tasksConfigPub);
+        //tasks.AddRange(tasksConfigPub);
 
-        Task[] tasksVarRec = model.MQTT
-           .Where(mqtt => mqtt.VarReceive != null)
-           .Select(mqtt => MqttPublisher.MakeVarRecTask(mqtt, info, certDir, shutdown))
-           .ToArray();
+        //Task[] tasksVarRec = model.MQTT
+        //   .Where(mqtt => mqtt.VarReceive != null)
+        //   .Select(mqtt => MqttPublisher.MakeVarRecTask(mqtt, info, certDir, shutdown))
+        //   .ToArray();
 
-        tasks.AddRange(tasksVarRec);
+        //tasks.AddRange(tasksVarRec);
 
-        Task[] tasksConfigRec = model.MQTT
-           .Where(mqtt => mqtt.ConfigReceive != null)
-           .Select(mqtt => MqttPublisher.MakeConfigRecTask(mqtt, info, certDir, shutdown))
-           .ToArray();
+        //Task[] tasksConfigRec = model.MQTT
+        //   .Where(mqtt => mqtt.ConfigReceive != null)
+        //   .Select(mqtt => MqttPublisher.MakeConfigRecTask(mqtt, info, certDir, shutdown))
+        //   .ToArray();
 
-        tasks.AddRange(tasksConfigRec);
+        //tasks.AddRange(tasksConfigRec);
 
-        Task[] tasksMethodPub = model.MQTT
-          .Where(mqtt => mqtt.MethodPublish != null)
-          .Select(mqtt => MqttPublisher.MakeMethodPubTask(mqtt, info, certDir, shutdown))
-          .ToArray();
+        //Task[] tasksMethodPub = model.MQTT
+        //  .Where(mqtt => mqtt.MethodPublish != null)
+        //  .Select(mqtt => MqttPublisher.MakeMethodPubTask(mqtt, info, certDir, shutdown))
+        //  .ToArray();
 
-        tasks.AddRange(tasksMethodPub);
+        //tasks.AddRange(tasksMethodPub);
 
         _ = StartCheckForModelFileModificationTask(shutdown);
 

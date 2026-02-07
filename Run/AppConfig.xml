@@ -101,7 +101,7 @@
             </HistoryDBs>
         </Module>
         
-        <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
+        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
             <VariablesFileName>Var_Pub.xml</VariablesFileName>
             <ExternalCommand>dotnet</ExternalCommand>
             <ExternalArgs>../Mediator.Net/Module_Publish/bin/{RELEASE_OR_DEBUG}/net10.0/Module_Publish.dll {PORT}</ExternalArgs>
