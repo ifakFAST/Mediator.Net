@@ -768,6 +768,13 @@
         }
       </Config>
     </View>
+    <View id="publish" name="Publish" type="Publish" group="">
+      <Config>
+        {
+          "ModuleID": "PUB"
+        }
+      </Config>
+    </View>
     <View id="eventLog" name="EventLog" type="EventLog" group="">
       <Config>null</Config>
     </View>

@@ -1,0 +1,156 @@
+<template>
+  <div>
+    <v-tabs
+      v-model="selectedTab"
+      style="margin-top: 8px"
+      density="compact"
+    >
+      <v-tab value="General">General</v-tab>
+      <v-tab value="VarPublish">Variable Publishing</v-tab>
+    </v-tabs>
+
+    <div v-if="selectedTab === 'General'">
+      <table cellspacing="10">
+        <member-row
+          v-model="model.Name"
+          name="Name"
+          :optional="false"
+          type="String"
+        />
+        <member-row
+          v-model="model.DatabaseType"
+          :enum-values="databaseTypes"
+          name="Database Type"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-model="model.ConnectionString"
+          name="Connection String"
+          :optional="false"
+          type="Text"
+        />
+        <member-row
+          v-model="model.IgnoreCertificateRevocationErrors"
+          name="Ignore Cert Revocation Errors"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.IgnoreCertificateChainErrors"
+          name="Ignore Cert Chain Errors"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.AllowUntrustedCertificates"
+          name="Allow Untrusted Certificates"
+          :optional="false"
+          type="Boolean"
+        />
+      </table>
+    </div>
+
+    <div v-if="selectedTab === 'VarPublish'">
+      <table cellspacing="10">
+        <member-row
+          v-model="model.VarPublish.Enabled"
+          name="Enabled"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.VarPublish.QueryTagID2Identifier"
+          name="Query TagID to Identifier"
+          :optional="false"
+          type="Text"
+        />
+        <member-row
+          v-model="model.VarPublish.QueryRegisterTag"
+          name="Query Register Tag"
+          :optional="false"
+          type="Text"
+        />
+        <member-row
+          v-model="model.VarPublish.QueryPublish"
+          name="Query Publish"
+          :optional="false"
+          type="Text"
+        />
+        <root-objects-editor
+          v-model="model.VarPublish.RootObjects"
+          :modules="modules"
+        />
+        <member-row
+          v-model="model.VarPublish.BufferIfOffline"
+          name="Buffer If Offline"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.VarPublish.SimpleTagsOnly"
+          name="Simple Tags Only"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.VarPublish.NumericTagsOnly"
+          name="Numeric Tags Only"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.VarPublish.SendTagsWithNull"
+          name="Send Tags With Null"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
+          v-model="model.VarPublish.NaN_Handling"
+          :enum-values="nanHandlings"
+          name="NaN Handling"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishInterval"
+          name="Publish Interval"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishOffset"
+          name="Publish Offset"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishMode"
+          :enum-values="publishModes"
+          name="Publish Mode"
+          :optional="false"
+          type="Enum"
+        />
+      </table>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import type { SQLConfig, ModuleInfo } from './model'
+import MemberRow from '../view_calc/util/MemberRow.vue'
+import RootObjectsEditor from './RootObjectsEditor.vue'
+
+defineProps<{
+  modules: ModuleInfo[]
+}>()
+
+const model = defineModel<SQLConfig>({ required: true })
+
+const selectedTab = ref('General')
+
+const databaseTypes = ['PostgreSQL']
+const nanHandlings = ['Keep', 'ConvertToNull', 'ConvertToString', 'Remove']
+const publishModes = ['Cyclic', 'OnVarValueUpdate', 'OnVarHistoryUpdate']
+</script>

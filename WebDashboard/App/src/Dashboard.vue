@@ -432,6 +432,7 @@ import ViewGeneric from './view_generic/ViewGeneric.vue'
 import ViewCalc from './view_calc/ViewCalc.vue'
 import ViewPages from './view_pages/ViewPages.vue'
 import ViewTagMetaData from './view_tagmetadata/ViewTagMetaData.vue'
+import ViewPublish from './view_publish/ViewPublish.vue'
 
 interface Props {
   currViewID: string
@@ -927,6 +928,7 @@ const viewComponentMap: Record<string, any> = {
   EventLog: ViewEventLog,
   GenericModuleConfig: ViewGeneric,
   Calc: ViewCalc,
+  Publish: ViewPublish,
   Pages: ViewPages,
   TagMetaData: ViewTagMetaData,
 }
