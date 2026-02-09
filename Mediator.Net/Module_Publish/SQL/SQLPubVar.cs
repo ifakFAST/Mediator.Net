@@ -19,15 +19,23 @@ public abstract class SQLPubVar : BufferedVarPub {
 
     private readonly SQLConfig config;
     private readonly SQLVarPub varPub;
-    private readonly ParamInfo[] parametersStatic;
-    private readonly ParamInfo[] parametersDynamic;
+    private readonly QueryInfo queryPublish;
+    private readonly QueryInfo? queryTagID2Identifier;
+    private readonly QueryInfo? queryRegisterTag;
+    private readonly bool publishRequiresIdentifier;
+    private readonly Dictionary<VariableRef, object> mapVariable2Identifier = [];
+    private readonly HashSet<VariableRef> registeredVariables = [];
+    private readonly HashSet<VariableRef> warnedMissingIdentifier = [];
+    private bool warnedMissingLookupQuery = false;
 
     public SQLPubVar(string dataFolder, SQLConfig config) :
         base(dataFolder, config.VarPublish!.BufferIfOffline) {
         this.config = config;
         varPub = config.VarPublish!;
-        parametersStatic = GetStaticParameterFunctions(varPub.QueryPublish).ToArray();
-        parametersDynamic = GetDynamicParameterFunctions(varPub.QueryPublish).ToArray();
+        queryPublish = ParseQuery(varPub.QueryPublish);
+        queryTagID2Identifier = ParseOptionalQuery(varPub.QueryTagID2Identifier);
+        queryRegisterTag = ParseOptionalQuery(varPub.QueryRegisterTag);
+        publishRequiresIdentifier = UsesStrictIdentifier(queryPublish);
         Start();
     }
 
@@ -59,49 +67,64 @@ public abstract class SQLPubVar : BufferedVarPub {
             return true;
         }
 
-        //string id = varPub.QueryTagID2Identifier;
-        //string query = "select id from tag_meta where name = '{ID}';";
+        if (publishRequiresIdentifier && queryTagID2Identifier == null && !warnedMissingLookupQuery) {
+            warnedMissingLookupQuery = true;
+            Console.Error.WriteLine("SQLPubVar: QueryPublish uses @identifier but QueryTagID2Identifier is empty.");
+        }
 
         var sw = Stopwatch.StartNew();
 
-        bool result = await RunBatch(connection, varPub.QueryPublish, changedValues);
+        BatchResult batchResult = await RunBatch(connection, changedValues);
 
         sw.Stop();
 
-        if (result) {
-            foreach (var vv in changedValues) {
+        if (batchResult.OK) {
+            foreach (var vv in batchResult.SentValues) {
                 lastSentValues[vv.Variable] = vv.Value;
             }
         }
 
-        Console.WriteLine($"SQLPubVar: Sent {changedValues.Count} values in {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine($"SQLPubVar: Sent {batchResult.SentValues.Count} values in {sw.ElapsedMilliseconds} ms");
 
-        return result;
+        return batchResult.OK;
     }
 
-    private async Task<bool> RunBatch(DbConnection connection, string query, VariableValues changedValues) {
+    private readonly record struct BatchResult(
+        bool OK,
+        VariableValues SentValues
+    );
+
+    private async Task<BatchResult> RunBatch(DbConnection connection, VariableValues changedValues) {
         
         try {
 
             DbBatch batch = CreateBatch(connection);
+            var sentValues = new VariableValues();
 
             foreach (VariableValue vv in changedValues) {
 
                 try {
 
                     VarInfo v = GetVariableInfoOrThrow(vv.Variable);
-
-                    DbBatchCommand cmd = batch.CreateBatchCommand();
-                    cmd.CommandText = MakeQuery(query, parametersStatic, v, vv);
-
-                    for (int i = 0; i < parametersDynamic.Length; ++i) {
-                        ParamInfo param = parametersDynamic[i];
-                        string name  = param.Name;
-                        object value = param.Function(vv, v) ?? DBNull.Value;
-                        cmd.Parameters.Add(CreateParameter(name, value));
+                    object? identifier = await ResolveIdentifier(connection, vv, v);
+                    if (identifier != null) {
+                        warnedMissingIdentifier.Remove(vv.Variable);
                     }
 
+                    if (publishRequiresIdentifier && identifier == null) {
+                        if (warnedMissingIdentifier.Add(vv.Variable)) {
+                            Console.Error.WriteLine($"SQLPubVar: Skipping variable '{vv.Variable}' because no identifier could be resolved.");
+                        }
+                        continue;
+                    }
+
+                    DbBatchCommand cmd = batch.CreateBatchCommand();
+                    cmd.CommandText = MakeQuery(queryPublish, v, vv, identifier);
+
+                    AddDynamicParameters(cmd.Parameters, queryPublish.DynamicParameters, vv, v, identifier);
+
                     batch.BatchCommands.Add(cmd);
+                    sentValues.Add(vv);
                 }
                 catch (Exception exp) {
                     Console.Error.WriteLine($"Error creating command for variable '{vv.Variable}': {exp.Message}");
@@ -109,40 +132,153 @@ public abstract class SQLPubVar : BufferedVarPub {
                 }
             }
 
+            if (batch.BatchCommands.Count == 0) {
+                return new BatchResult(OK: true, SentValues: sentValues);
+            }
+
             await batch.ExecuteNonQueryAsync();
             
-            return true;
+            return new BatchResult(OK: true, SentValues: sentValues);
         }
         catch (Exception exp) {
             Console.Error.WriteLine($"SQLPubVar: Error executing batch: {exp.Message}");
             //logger.Error(ex, "Creating channels failed: " + ex.Message);
-            return false;
+            return new BatchResult(OK: false, SentValues: []);
         }
     }
 
-    private static string MakeQuery(string query, ParamInfo[] parametersStatic, VarInfo v, VariableValue vv) {
-        string result = query;
-        foreach (ParamInfo param in parametersStatic) {
+    private async Task<object?> ResolveIdentifier(DbConnection connection, VariableValue vv, VarInfo v) {
+
+        VariableRef variable = vv.Variable;
+
+        if (mapVariable2Identifier.TryGetValue(variable, out object? identifierCached)) {
+            return identifierCached;
+        }
+
+        object? identifier = null;
+
+        if (queryTagID2Identifier != null) {
+            identifier = await ExecuteScalar(connection, queryTagID2Identifier, vv, v, null);
+            if (identifier != null) {
+                mapVariable2Identifier[variable] = identifier;
+                return identifier;
+            }
+        }
+
+        if (queryRegisterTag != null && !registeredVariables.Contains(variable)) {
+            await ExecuteNonQuery(connection, queryRegisterTag, vv, v, identifier);
+            registeredVariables.Add(variable);
+            if (queryTagID2Identifier != null) {
+                identifier = await ExecuteScalar(connection, queryTagID2Identifier, vv, v, null);
+                if (identifier != null) {
+                    mapVariable2Identifier[variable] = identifier;
+                    return identifier;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<object?> ExecuteScalar(
+        DbConnection connection,
+        QueryInfo query,
+        VariableValue vv,
+        VarInfo v,
+        object? identifier) {
+
+        string cmdText = MakeQuery(query, v, vv, identifier);
+        using DbCommand cmd = CreateCommand(connection, cmdText);
+        AddDynamicParameters(cmd.Parameters, query.DynamicParameters, vv, v, identifier);
+        object? result = await cmd.ExecuteScalarAsync();
+        return result is DBNull ? null : result;
+    }
+
+    private async Task ExecuteNonQuery(
+        DbConnection connection,
+        QueryInfo query,
+        VariableValue vv,
+        VarInfo v,
+        object? identifier) {
+
+        string cmdText = MakeQuery(query, v, vv, identifier);
+        using DbCommand cmd = CreateCommand(connection, cmdText);
+        AddDynamicParameters(cmd.Parameters, query.DynamicParameters, vv, v, identifier);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private void AddDynamicParameters(
+        DbParameterCollection parameters,
+        ParamInfo[] parameterInfos,
+        VariableValue vv,
+        VarInfo v,
+        object? identifier) {
+
+        foreach (ParamInfo param in parameterInfos) {
+            string name  = param.Name;
+            object value = param.Function(vv, v, identifier) ?? DBNull.Value;
+            parameters.Add(CreateParameter(name, value));
+        }
+    }
+
+    private static string MakeQuery(QueryInfo query, VarInfo v, VariableValue vv, object? identifier) {
+        string result = query.Query;
+        foreach (ParamInfo param in query.StaticParameters) {
             string name = param.Name;
-            object value = param.Function(vv, v) ?? throw new Exception($"Static parameter '{name}' has null value");
+            object value = param.Function(vv, v, identifier) ?? throw new Exception($"Static parameter '{name}' has null value");
             result = result.Replace($"@@{name}", value.ToString());
         }
         return result;
     }
 
+    private sealed record QueryInfo(
+        string Query,
+        ParamInfo[] StaticParameters,
+        ParamInfo[] DynamicParameters
+    );
+
+    private static QueryInfo ParseQuery(string query) {
+        return new QueryInfo(
+            Query: query,
+            StaticParameters: GetStaticParameterFunctions(query).ToArray(),
+            DynamicParameters: GetDynamicParameterFunctions(query).ToArray()
+        );
+    }
+
+    private static QueryInfo? ParseOptionalQuery(string query) {
+        if (string.IsNullOrWhiteSpace(query)) {
+            return null;
+        }
+        return ParseQuery(query);
+    }
+
+    private static bool UsesStrictIdentifier(QueryInfo query) {
+        return query.DynamicParameters.Any(IsStrictIdentifierParamName)
+            || query.StaticParameters.Any(IsStrictIdentifierParamName);
+    }
+
+    private static bool IsStrictIdentifierParamName(ParamInfo p) {
+        return p.Name.Equals("identifier", StringComparison.OrdinalIgnoreCase)
+            || p.Name.Equals("identifier_numeric", StringComparison.OrdinalIgnoreCase);
+    }
+
     private record ParamInfo(
         string Name,
-        Func<VariableValue, VarInfo, object?> Function
+        Func<VariableValue, VarInfo, object?, object?> Function
     );
 
     private static List<ParamInfo> GetDynamicParameterFunctions(string queryString) {
 
         var result = new List<ParamInfo>();
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         IReadOnlyList<Match> matches = Regex.Matches(queryString, pattern: @"(?<!@)@[\w]+");
 
         foreach (Match match in matches) {
             string paramName = match.Value[1..];
+            if (!usedNames.Add(paramName)) {
+                continue;
+            }
             var function = GetFunctionFromParameterName(paramName);
             result.Add(new(paramName, function));
         }
@@ -153,11 +289,15 @@ public abstract class SQLPubVar : BufferedVarPub {
     private static List<ParamInfo> GetStaticParameterFunctions(string queryString) {
 
         var result = new List<ParamInfo>();
+        var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         IReadOnlyList<Match> matches = Regex.Matches(queryString, pattern: @"@@[\w]+");
 
         foreach (Match match in matches) {
             string paramName = match.Value[2..];
+            if (!usedNames.Add(paramName)) {
+                continue;
+            }
             var function = GetFunctionFromParameterName(paramName);
             result.Add(new(paramName, function));
         }
@@ -165,38 +305,41 @@ public abstract class SQLPubVar : BufferedVarPub {
         return result;
     }
 
-    private static Func<VariableValue, VarInfo, object?> GetFunctionFromParameterName(string paramName) {
+    private static Func<VariableValue, VarInfo, object?, object?> GetFunctionFromParameterName(string paramName) {
         return paramName.ToLowerInvariant() switch {
-            "module" => (vv, v) => vv.Variable.Object.ModuleID,
-            "variable_name" => (vv, v) => vv.Variable.Name,
-            "full_id" => (vv, v) => vv.Variable.Object.ToEncodedString(),
-            "id_string" => (vv, v) => vv.Variable.Object.LocalObjectID,
-            "id_integer" => (vv, v) => ParseNumeric(vv.Variable.Object.LocalObjectID),
-            "id_split_underscore_0" => (vv, v) => vv.Variable.Object.LocalObjectID.Split('_')[0],
-            "id_split_underscore_1" => (vv, v) => vv.Variable.Object.LocalObjectID.Split('_')[1],
-            "id_split_underscore_2" => (vv, v) => vv.Variable.Object.LocalObjectID.Split('_')[2],
-            "id_split_underscore_0_numeric" => (vv, v) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[0]),
-            "id_split_underscore_1_numeric" => (vv, v) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[1]),
-            "id_split_underscore_2_numeric" => (vv, v) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[2]),
-            "var_name" => (vv, v) => vv.Variable.Name,
-            "quality_numeric" => (vv, v) => (int)vv.Value.Q,
-            "quality_string" => (vv, v) => vv.Value.Q.ToString(),
-            "is_good" => (vv, v) => vv.Value.Q == Quality.Good,
-            "is_not_bad" => (vv, v) => vv.Value.Q != Quality.Bad,
-            "unit" => (vv, v) => v.Variable.Unit,
-            "value_numeric" => (vv, v) => vv.Value.V.AsDouble() ?? throw new Exception("value is not numeric"),
-            "value_numeric_or_null" => (vv, v) => vv.Value.V.AsDouble(),
-            "value_json" => (vv, v) => vv.Value.V.JSON,
-            "time" => (vv, v) => vv.Value.T.ToDateTime(),
-            "time_utc" => (vv, v) => vv.Value.T.ToDateTime(),
-            "time_unspecified" => (vv, v) => vv.Value.T.ToDateTimeUnspecified(),
-            "time_local" => (vv, v) => vv.Value.T.ToDateTime().ToLocalTime(),
-            "location" => (vv, v) => v.Object.Location.ToString(),
+            "module" => (vv, v, i) => vv.Variable.Object.ModuleID,
+            "variable_name" => (vv, v, i) => vv.Variable.Name,
+            "full_id" => (vv, v, i) => vv.Variable.Object.ToEncodedString(),
+            "id_string" => (vv, v, i) => vv.Variable.Object.LocalObjectID,
+            "id_integer" => (vv, v, i) => ParseNumeric(vv.Variable.Object.LocalObjectID),
+            "id_split_underscore_0" => (vv, v, i) => vv.Variable.Object.LocalObjectID.Split('_')[0],
+            "id_split_underscore_1" => (vv, v, i) => vv.Variable.Object.LocalObjectID.Split('_')[1],
+            "id_split_underscore_2" => (vv, v, i) => vv.Variable.Object.LocalObjectID.Split('_')[2],
+            "id_split_underscore_0_numeric" => (vv, v, i) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[0]),
+            "id_split_underscore_1_numeric" => (vv, v, i) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[1]),
+            "id_split_underscore_2_numeric" => (vv, v, i) => ParseNumeric(vv.Variable.Object.LocalObjectID.Split('_')[2]),
+            "var_name" => (vv, v, i) => vv.Variable.Name,
+            "quality_numeric" => (vv, v, i) => (int)vv.Value.Q,
+            "quality_string" => (vv, v, i) => vv.Value.Q.ToString(),
+            "is_good" => (vv, v, i) => vv.Value.Q == Quality.Good,
+            "is_not_bad" => (vv, v, i) => vv.Value.Q != Quality.Bad,
+            "unit" => (vv, v, i) => v.Variable.Unit,
+            "value_numeric" => (vv, v, i) => vv.Value.V.AsDouble() ?? throw new Exception("value is not numeric"),
+            "value_numeric_or_null" => (vv, v, i) => vv.Value.V.AsDouble(),
+            "value_json" => (vv, v, i) => vv.Value.V.JSON,
+            "time" => (vv, v, i) => vv.Value.T.ToDateTime(),
+            "time_utc" => (vv, v, i) => vv.Value.T.ToDateTime(),
+            "time_unspecified" => (vv, v, i) => vv.Value.T.ToDateTimeUnspecified(),
+            "time_local" => (vv, v, i) => vv.Value.T.ToDateTime().ToLocalTime(),
+            "location" => (vv, v, i) => v.Object.Location.ToString(),
+            "identifier" => (vv, v, i) => i,
+            "identifier_or_id_string" => (vv, v, i) => i ?? vv.Variable.Object.LocalObjectID,
+            "identifier_numeric" => (vv, v, i) => ParseNumericValue(i),
             _ => GetObj(paramName)
         };
     }
 
-    private static Func<VariableValue, VarInfo, object?> GetObj(string paramName) {
+    private static Func<VariableValue, VarInfo, object?, object?> GetObj(string paramName) {
 
         const string prefix = "object_member_";
 
@@ -205,11 +348,29 @@ public abstract class SQLPubVar : BufferedVarPub {
         }
 
         string member = paramName[prefix.Length..];
-        return (vv, v) => {
+        return (vv, v, i) => {
             string obj = v.ObjectValue.Value.JSON;
             Json.Linq.JToken? token = StdJson.JObjectFromString(obj).GetValue(member, StringComparison.OrdinalIgnoreCase);
             if (token is not Json.Linq.JValue jval) return null;
             return jval.Value;
+        };
+    }
+
+    private static long ParseNumericValue(object? value) {
+        if (value == null) {
+            throw new Exception("identifier is null");
+        }
+        return value switch {
+            long x => x,
+            int x => x,
+            short x => x,
+            sbyte x => x,
+            byte x => x,
+            ushort x => x,
+            uint x => checked((long)x),
+            ulong x => checked((long)x),
+            string x => ParseNumeric(x),
+            _ => Convert.ToInt64(value, CultureInfo.InvariantCulture)
         };
     }
 
@@ -248,6 +409,9 @@ public abstract class SQLPubVar : BufferedVarPub {
             dbConnection.Close();
         }
         catch (Exception) { }
+        mapVariable2Identifier.Clear();
+        registeredVariables.Clear();
+        warnedMissingIdentifier.Clear();
         dbConnection = null;
     }
 
