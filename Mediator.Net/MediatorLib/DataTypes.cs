@@ -203,6 +203,10 @@ namespace Ifak.Fast.Mediator
 
         public static Duration operator +(Duration a, Duration b) => Duration.FromMilliseconds(a.millis + b.millis);
 
+        public static Duration operator *(Duration a, double factor) => Duration.FromMilliseconds((long)(a.millis * factor));
+
+        public static Duration operator *(double factor, Duration a) => Duration.FromMilliseconds((long)(a.millis * factor));
+
         public override string ToString() {
 
             if (millis == 0) return "0 s";
