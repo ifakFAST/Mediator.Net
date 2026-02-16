@@ -137,7 +137,7 @@ namespace Ifak.Fast.Mediator.Calc
                 while (!taskAbort.IsCompleted) {
 
                     if (process.HasExited) {
-                        Console.Out.WriteLine("External adapter terminated unexpectedly during shutdown.");
+                        Console.Out.WriteLine("External adapter terminated during shutdown.");
                         break;
                     }
 
@@ -147,6 +147,11 @@ namespace Ifak.Fast.Mediator.Calc
                     }
 
                     await Task.WhenAny(taskAbort, Task.Delay(2000));
+
+                    if (process.HasExited) {
+                        Console.Out.WriteLine("External adapter terminated during shutdown.");
+                        break;
+                    }
 
                     if (!taskAbort.IsCompleted) {
                         long secondsUntilTimeout = (tStart.AddSeconds(timeout) - Timestamp.Now).TotalMilliseconds / 1000;
