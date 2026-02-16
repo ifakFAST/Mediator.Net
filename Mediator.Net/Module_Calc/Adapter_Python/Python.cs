@@ -11,9 +11,10 @@ public class Python : ExternalAdapter
 {
     protected override string GetCommand(Mediator.Config config) {
         string assemblyFile = System.Reflection.Assembly.GetExecutingAssembly().Location;
-        assemblyFile = System.IO.Path.ChangeExtension(assemblyFile, "exe");
-        // Console.WriteLine($"Assembly file: {assemblyFile}");
-        return assemblyFile;
+        if (OperatingSystem.IsWindows()) {
+            return System.IO.Path.ChangeExtension(assemblyFile, "exe");
+        }
+        return System.IO.Path.ChangeExtension(assemblyFile, null)!;
     }
 
     protected override string GetArgs(Mediator.Config config) {
