@@ -67,6 +67,7 @@
           v-model="model.VarPublish.PublishMode"
           :enum-values="publishModes"
           name="Publish Mode"
+          :tooltip="publishModeTooltip"
           :optional="false"
           type="Enum"
         />
@@ -129,6 +130,7 @@ import { ref } from 'vue'
 import type { SQLConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
+import { publishModeTooltip } from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]

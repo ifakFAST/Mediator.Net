@@ -224,6 +224,7 @@ import { ref } from 'vue'
 import type { MqttConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
+import { publishModeTooltip } from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]
@@ -237,9 +238,4 @@ const pubVarFormats = ['Array', 'Object']
 const topicModes = ['Bulk', 'TopicPerVariable']
 const nanHandlings = ['Keep', 'ConvertToNull', 'ConvertToString', 'Remove']
 const publishModes = ['Cyclic', 'OnVarValueUpdate', 'OnVarHistoryUpdate']
-const publishModeTooltip = `Cyclic: If PublishInterval = 0, publish on variable value update with an additional 1 min cycle. ELSE: Cyclic publish based on PublishInterval & PublishOffset
-
-OnVarValueUpdate: Publish on variable value update (+ additional cycle publish if PublishInterval > 0).
-
-OnVarHistoryUpdate: Publish on variable history update (+ additional cycle publish if PublishInterval > 0).`
 </script>

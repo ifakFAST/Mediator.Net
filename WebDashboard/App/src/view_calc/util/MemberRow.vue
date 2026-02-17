@@ -20,7 +20,7 @@
               mdi-help-circle-outline
             </v-icon>
           </template>
-          <div style="white-space: pre-line; max-width: 520px;">{{ tooltip }}</div>
+          <div style="white-space: pre-line; max-width: 700px;">{{ tooltip }}</div>
         </v-tooltip>
       </div>
     </td>
