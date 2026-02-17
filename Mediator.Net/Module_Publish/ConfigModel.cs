@@ -93,7 +93,6 @@ public enum PubMode {
 
 public interface VarPubCommon {
     List<ObjectRef> RootObjects { get; set; }
-    bool BufferIfOffline { get; set; }
     bool SimpleTagsOnly { get; set; }
     bool NumericTagsOnly { get; set; }
     bool SendTagsWithNull { get; set; }
@@ -266,8 +265,6 @@ public class OpcUaVarPub : VarPubCommon {
 
     [XmlArrayItem("RootObject")]
     public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
-
-    public bool BufferIfOffline { get; set; } = false;
 
     public bool LocalObjectIDsForVariables { get; set; } = false;
 

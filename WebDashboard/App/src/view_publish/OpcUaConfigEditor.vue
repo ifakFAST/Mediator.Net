@@ -82,12 +82,6 @@
           type="Boolean"
         />
         <member-row
-          v-model="model.VarPublish.BufferIfOffline"
-          name="Buffer If Offline"
-          :optional="false"
-          type="Boolean"
-        />
-        <member-row
           v-model="model.VarPublish.SimpleTagsOnly"
           name="Simple Tags Only"
           :optional="false"

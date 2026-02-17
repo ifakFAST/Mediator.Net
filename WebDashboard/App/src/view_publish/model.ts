@@ -89,7 +89,6 @@ export interface OpcUaConfig {
 export interface OpcUaVarPub {
   Enabled: boolean
   RootObjects: string[]
-  BufferIfOffline: boolean
   LocalObjectIDsForVariables: boolean
   SimpleTagsOnly: boolean
   NumericTagsOnly: boolean
