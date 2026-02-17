@@ -103,12 +103,14 @@
         <member-row
           v-model="model.VarPublish.Topic"
           name="Topic"
+          :tooltip="mqttVarTopicTooltip"
           :optional="false"
           type="String"
         />
         <member-row
           v-model="model.VarPublish.TopicRegistration"
           name="Topic Registration"
+          :tooltip="mqttVarTopicRegistrationTooltip"
           :optional="false"
           type="String"
         />
@@ -224,7 +226,7 @@ import { ref } from 'vue'
 import type { MqttConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
-import { publishModeTooltip } from './tooltips'
+import { mqttVarTopicRegistrationTooltip, mqttVarTopicTooltip, publishModeTooltip } from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]

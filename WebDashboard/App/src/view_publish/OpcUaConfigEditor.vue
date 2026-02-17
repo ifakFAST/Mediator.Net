@@ -57,6 +57,7 @@
         <member-row
           v-model="model.ServerCertificateFile"
           name="Server Certificate File"
+          :tooltip="opcUaServerCertificateFileTooltip"
           :optional="false"
           type="String"
         />
@@ -104,6 +105,7 @@
         <member-row
           v-model="model.VarPublish.LocalObjectIDsForVariables"
           name="Local Object IDs For Variables"
+          :tooltip="opcUaLocalObjectIDsForVariablesTooltip"
           :optional="false"
           type="Boolean"
         />
@@ -142,7 +144,11 @@ import { ref } from 'vue'
 import type { OpcUaConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
-import { publishModeTooltip } from './tooltips'
+import {
+  opcUaLocalObjectIDsForVariablesTooltip,
+  opcUaServerCertificateFileTooltip,
+  publishModeTooltip
+} from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]

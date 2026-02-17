@@ -27,6 +27,7 @@
         <member-row
           v-model="model.ConnectionString"
           name="Connection String"
+          :tooltip="sqlConnectionStringTooltip"
           :optional="false"
           type="Text"
         />
@@ -44,18 +45,21 @@
         <member-row
           v-model="model.VarPublish.QueryTagID2Identifier"
           name="Query TagID to Identifier"
+          :tooltip="sqlQueryTagID2IdentifierTooltip"
           :optional="false"
           type="Text"
         />
         <member-row
           v-model="model.VarPublish.QueryRegisterTag"
           name="Query Register Tag"
+          :tooltip="sqlQueryRegisterTagTooltip"
           :optional="false"
           type="Text"
         />
         <member-row
           v-model="model.VarPublish.QueryPublish"
           name="Query Publish"
+          :tooltip="sqlQueryPublishTooltip"
           :optional="false"
           type="Text"
         />
@@ -130,7 +134,13 @@ import { ref } from 'vue'
 import type { SQLConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
-import { publishModeTooltip } from './tooltips'
+import {
+  publishModeTooltip,
+  sqlConnectionStringTooltip,
+  sqlQueryPublishTooltip,
+  sqlQueryRegisterTagTooltip,
+  sqlQueryTagID2IdentifierTooltip
+} from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]
