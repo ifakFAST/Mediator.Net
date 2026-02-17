@@ -112,6 +112,27 @@ public partial class MqttPublisher
         return (host, port);
     }
 
+    private static int PortFromScheme(string endpoint, int defaulValue) {
+        
+        bool hasScheme = endpoint.Contains("://");
+
+        if (!hasScheme) {
+            return defaulValue;
+        }
+
+        try {
+            Uri uri = new(endpoint);
+            return uri.Scheme switch {
+                "mqtt" => 1883,
+                "mqtts" => 8883,
+                _ => defaulValue,
+            };
+        }
+        catch (Exception) {
+            return defaulValue;
+        }
+    }
+
     public static MqttClientOptions MakeMqttOptions(string certDir, MqttConfig config, string suffix) {
 
         string clientID = $"{config.ClientIDPrefix}_{suffix}_{TheGuid}";
@@ -129,48 +150,47 @@ public partial class MqttPublisher
             builder = builder.WithCredentials(config.User, config.Pass);
         }
 
-        if (config.CertFileCA != "") {
+        bool hasClientCertificates = config.CertFileCA != "";
 
+        bool GuessTls() {
+            if (hasClientCertificates) { return true; }
+            if (PortFromScheme(config.Endpoint, defaulValue: 0) == 8883) { return true; }
+            if (PortFromScheme(config.Endpoint, defaulValue: 0) == 1883) { return false; }
+            if (port.HasValue && port.Value == 1883) { return false; }
+            return true;
+        }
+
+        bool useTLS = config.UseTLS switch {
+            TlsUsage.Always => true,
+            TlsUsage.Never  => false,
+            _ => GuessTls(),
+        };
+
+        X509Certificate2[]? clientCertificates = null;
+        if (useTLS && hasClientCertificates) {
             var caCert = X509CertificateLoader.LoadCertificateFromFile(Path.Combine(certDir, config.CertFileCA));
             var clientCert = X509CertificateLoader.LoadPkcs12FromFile(Path.Combine(certDir, config.CertFileClient), "");
+            clientCertificates = [clientCert, caCert];
+        }
 
+        if (useTLS) {
             builder = builder
              .WithTlsOptions(o => {
                  o
                  .UseTls(true)
-                 .WithClientCertificates(new X509Certificate2[] {
-                     clientCert,
-                     caCert
-                 })
                  .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
                  .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
                  .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
+
+                 if (clientCertificates != null) {
+                     o.WithClientCertificates(clientCertificates);
+                 }
 
                  if (config.NoCertificateValidation) {
                      // Will accept any certificate, even if hostname/IP does not match
                      o.WithCertificateValidationHandler(_ => true);
                  }
-
              });
-        }
-        else {
-
-            bool useTLS = port != 1883;
-            if (useTLS) {
-                builder = builder
-                 .WithTlsOptions(o => {
-                     o
-                      .UseTls(true)
-                      .WithIgnoreCertificateRevocationErrors(config.IgnoreCertificateRevocationErrors)
-                      .WithIgnoreCertificateChainErrors(config.IgnoreCertificateChainErrors)
-                      .WithAllowUntrustedCertificates(config.AllowUntrustedCertificates);
-
-                     if (config.NoCertificateValidation) {
-                         // Will accept any certificate, even if hostname/IP does not match
-                         o.WithCertificateValidationHandler(_ => true);
-                     }
-                 });
-            }
         }
 
         return builder

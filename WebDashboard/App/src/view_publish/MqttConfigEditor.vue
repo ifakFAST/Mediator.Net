@@ -25,18 +25,28 @@
           type="String"
         />
         <member-row
+          v-model="model.UseTLS"
+          :enum-values="tlsUsageModes"
+          name="Use TLS"
+          :tooltip="mqttUseTLSTooltip"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
           v-model="model.ClientIDPrefix"
           name="Client ID Prefix"
           :optional="false"
           type="String"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.CertFileCA"
           name="Cert File CA"
           :optional="false"
           type="String"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.CertFileClient"
           name="Cert File Client"
           :optional="false"
@@ -55,24 +65,28 @@
           type="String"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.NoCertificateValidation"
           name="No Certificate Validation"
           :optional="false"
           type="Boolean"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.IgnoreCertificateRevocationErrors"
           name="Ignore Cert Revocation Errors"
           :optional="false"
           type="Boolean"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.IgnoreCertificateChainErrors"
           name="Ignore Cert Chain Errors"
           :optional="false"
           type="Boolean"
         />
         <member-row
+          v-if="model.UseTLS !== 'Never'"
           v-model="model.AllowUntrustedCertificates"
           name="Allow Untrusted Certificates"
           :optional="false"
@@ -235,6 +249,7 @@ import {
   mqttBulkPubFormatTooltip,
   mqttEndpointTooltip,
   mqttTopicRootTooltip,
+  mqttUseTLSTooltip,
   mqttVarTopicRegistrationTooltip,
   mqttVarTopicTemplateTooltip,
   mqttVarTopicTooltip,
@@ -249,6 +264,7 @@ const model = defineModel<MqttConfig>({ required: true })
 
 const selectedTab = ref('General')
 
+const tlsUsageModes = ['Auto', 'Always', 'Never']
 const pubVarFormats = ['Array', 'Object']
 const topicModes = ['Bulk', 'TopicPerVariable']
 const nanHandlings = ['Keep', 'ConvertToNull', 'ConvertToString', 'Remove']

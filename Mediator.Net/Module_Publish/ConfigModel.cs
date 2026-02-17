@@ -39,6 +39,12 @@ public class Model : ModelObject {
     }
 }
 
+public enum TlsUsage {
+    Auto, // Use TLS if CertFileCA is configured or if a port different from 1883 is configured via Endpoint
+    Always,
+    Never
+}
+
 public class MqttConfig : ModelObject {
     
     [XmlAttribute("id")]
@@ -48,6 +54,8 @@ public class MqttConfig : ModelObject {
     public string Name { get; set; } = "";
 
     public string Endpoint { get; set; } = "";
+    public TlsUsage UseTLS { get; set; } = TlsUsage.Auto;
+
     public string ClientIDPrefix { get; set; } = "";
     public string CertFileCA { get; set; } = "";
     public string CertFileClient { get; set; } = "";

@@ -10,6 +10,7 @@ export interface MqttConfig {
   ID: string
   Name: string
   Endpoint: string
+  UseTLS: 'Auto' | 'Always' | 'Never'
   ClientIDPrefix: string
   CertFileCA: string
   CertFileClient: string

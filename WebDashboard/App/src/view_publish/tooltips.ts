@@ -76,6 +76,11 @@ Examples:
 broker.local
 broker.local:1883
 mqtt://broker.local:1883
+mqtts://broker.local
 
-If no scheme is provided, mqtt:// is assumed.
-TLS is used automatically when port is not 1883.`
+TLS behavior is controlled by Use TLS.`
+
+export const mqttUseTLSTooltip = `Controls whether TLS is used for the MQTT connection.
+Auto: use TLS if CertFileCA is set OR endpoint port is not 1883
+Always: always use TLS.
+Never: never use TLS (certificate settings are ignored).`
