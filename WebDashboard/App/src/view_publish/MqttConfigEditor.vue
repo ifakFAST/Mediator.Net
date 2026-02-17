@@ -116,7 +116,7 @@
           v-model="model.VarPublish.RootObjects"
           :modules="modules"
         />
-                <member-row
+        <member-row
           v-model="model.VarPublish.PublishMode"
           :enum-values="publishModes"
           name="Publish Mode"

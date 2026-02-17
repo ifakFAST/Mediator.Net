@@ -76,6 +76,25 @@
           :modules="modules"
         />
         <member-row
+          v-model="model.VarPublish.PublishMode"
+          :enum-values="publishModes"
+          name="Publish Mode"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishInterval"
+          name="Publish Interval"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishOffset"
+          name="Publish Offset"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
           v-model="model.VarPublish.AllowClientWrites"
           name="Allow Client Writes"
           :optional="false"
@@ -109,25 +128,6 @@
           v-model="model.VarPublish.NaN_Handling"
           :enum-values="nanHandlings"
           name="NaN Handling"
-          :optional="false"
-          type="Enum"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishInterval"
-          name="Publish Interval"
-          :optional="false"
-          type="Duration"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishOffset"
-          name="Publish Offset"
-          :optional="false"
-          type="Duration"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishMode"
-          :enum-values="publishModes"
-          name="Publish Mode"
           :optional="false"
           type="Enum"
         />
