@@ -266,7 +266,9 @@ public class OpcUaVarPub : VarPubCommon {
     public bool Enabled { get; set; } = true;
 
     [XmlArrayItem("RootObject")]
-    public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
+    public List<ObjectRef> RootObjects { get; set; } = [];
+
+    public bool AllowClientWrites { get; set; } = true;
 
     public bool LocalObjectIDsForVariables { get; set; } = false;
 

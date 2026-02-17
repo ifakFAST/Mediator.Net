@@ -90,6 +90,7 @@ export interface OpcUaConfig {
 export interface OpcUaVarPub {
   Enabled: boolean
   RootObjects: string[]
+  AllowClientWrites: boolean
   LocalObjectIDsForVariables: boolean
   SimpleTagsOnly: boolean
   NumericTagsOnly: boolean

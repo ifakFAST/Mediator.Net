@@ -76,6 +76,12 @@
           :modules="modules"
         />
         <member-row
+          v-model="model.VarPublish.AllowClientWrites"
+          name="Allow Client Writes"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
           v-model="model.VarPublish.LocalObjectIDsForVariables"
           name="Local Object IDs For Variables"
           :optional="false"

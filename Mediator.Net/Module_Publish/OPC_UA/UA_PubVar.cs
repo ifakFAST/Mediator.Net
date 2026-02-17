@@ -17,6 +17,7 @@ internal class UA_PubVar : BufferedVarPub {
 
     private readonly OpcUaConfig config;
     private readonly OpcUaVarPub configVarPub;
+    private readonly bool allowClientWrites = false;
     private readonly string host = "";
     private readonly ushort port = 4840;
     private readonly bool allowAnonym = true;
@@ -30,6 +31,7 @@ internal class UA_PubVar : BufferedVarPub {
 
         this.config = config;
         this.configVarPub = config.VarPublish ?? throw new ArgumentException("VarPublish must be set in OpcUaConfig");
+        this.allowClientWrites = configVarPub.AllowClientWrites;
 
         this.host = config.Host;
         this.port = config.Port;
@@ -186,7 +188,7 @@ internal class UA_PubVar : BufferedVarPub {
             else
                 nodeID = $"ns=1;s={GetObjectId(variable)}.{variable.Name}";
 
-            bool writable = varInfo.Variable.Writable;
+            bool writable = allowClientWrites && varInfo.Variable.Writable;
 
             List<UA_Folder> folders = [];
 
