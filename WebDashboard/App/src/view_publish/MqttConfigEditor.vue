@@ -120,6 +120,7 @@
           v-model="model.VarPublish.PublishMode"
           :enum-values="publishModes"
           name="Publish Mode"
+          :tooltip="publishModeTooltip"
           :optional="false"
           type="Enum"
         />
@@ -235,4 +236,9 @@ const pubVarFormats = ['Array', 'Object']
 const topicModes = ['Bulk', 'TopicPerVariable']
 const nanHandlings = ['Keep', 'ConvertToNull', 'ConvertToString', 'Remove']
 const publishModes = ['Cyclic', 'OnVarValueUpdate', 'OnVarHistoryUpdate']
+const publishModeTooltip = `Cyclic: If PublishInterval = 0, publish on variable value update with an additional 1 min cycle. ELSE: Cyclic publish based on PublishInterval & PublishOffset
+
+OnVarValueUpdate: Publish on variable value update (+ additional cycle publish if PublishInterval > 0).
+
+OnVarHistoryUpdate: Publish on variable history update (+ additional cycle publish if PublishInterval > 0).`
 </script>

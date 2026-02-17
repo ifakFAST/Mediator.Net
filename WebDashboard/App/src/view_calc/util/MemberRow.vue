@@ -4,7 +4,25 @@
       class="FieldName"
       style="vertical-align: top"
     >
-      <div style="padding-top: 8px">{{ name }}</div>
+      <div style="padding-top: 8px; display: flex; align-items: center; gap: 6px;">
+        <span>{{ name }}</span>
+        <v-tooltip
+          v-if="tooltip"
+          location="top"
+        >
+          <template #activator="{ props: tooltipProps }">
+            <v-icon
+              size="16"
+              color="primary"
+              style="cursor: help;"
+              v-bind="tooltipProps"
+            >
+              mdi-help-circle-outline
+            </v-icon>
+          </template>
+          <div style="white-space: pre-line; max-width: 520px;">{{ tooltip }}</div>
+        </v-tooltip>
+      </div>
     </td>
 
     <td><div style="min-width: 10px">&nbsp;</div></td>
@@ -62,6 +80,7 @@ const props = defineProps<{
   type: MemberTypeEnum
   optional: boolean
   enumValues?: string[]
+  tooltip?: string
 }>()
 
 const model = defineModel<any>({ required: true })

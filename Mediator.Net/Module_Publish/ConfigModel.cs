@@ -86,7 +86,7 @@ public enum NaNHandling {
 }
 
 public enum PubMode {
-    Cyclic, // IF PublishInterval = 0 THEN: publish on variable value update with additional 1 min cycle ELSE: Cyclic publish
+    Cyclic, // IF PublishInterval = 0 THEN: publish on variable value update with additional 1 min cycle ELSE: Cyclic publish based on PublishInterval & PublishOffset
     OnVarValueUpdate,  // publish on variable value update   (+ additional cycle publish if PublishInterval > 0)
     OnVarHistoryUpdate // publish on variable history update (+ additional cycle publish if PublishInterval > 0)
 }
