@@ -39,6 +39,10 @@ public abstract class SQLPubVar : BufferedVarPub {
         Start();
     }
 
+    public override async Task OnConfigChanged() {
+        registeredVariables.Clear(); // variables will be re-registered on next send
+    }
+
     protected override string BuffDirName => "SQL_Publish";
     internal override string PublisherID => config.ID;
 
@@ -153,33 +157,28 @@ public abstract class SQLPubVar : BufferedVarPub {
 
         VariableRef variable = vv.Variable;
 
-        if (mapVariable2Identifier.TryGetValue(variable, out object? identifierCached)) {
-            return identifierCached;
-        }
+        mapVariable2Identifier.TryGetValue(variable, out object? identifier);
 
-        object? identifier = null;
-
-        if (queryTagID2Identifier != null) {
+        if (identifier == null && queryTagID2Identifier != null) {
             identifier = await ExecuteScalar(connection, queryTagID2Identifier, vv, v, null);
             if (identifier != null) {
                 mapVariable2Identifier[variable] = identifier;
-                return identifier;
             }
         }
 
         if (queryRegisterTag != null && !registeredVariables.Contains(variable)) {
             await ExecuteNonQuery(connection, queryRegisterTag, vv, v, identifier);
             registeredVariables.Add(variable);
-            if (queryTagID2Identifier != null) {
+
+            if (identifier == null && queryTagID2Identifier != null) {
                 identifier = await ExecuteScalar(connection, queryTagID2Identifier, vv, v, null);
                 if (identifier != null) {
                     mapVariable2Identifier[variable] = identifier;
-                    return identifier;
                 }
             }
         }
 
-        return null;
+        return identifier;
     }
 
     private async Task<object?> ExecuteScalar(
@@ -411,10 +410,14 @@ public abstract class SQLPubVar : BufferedVarPub {
             dbConnection.Close();
         }
         catch (Exception) { }
+        ClearPerVariableState();
+        dbConnection = null;
+    }
+
+    private void ClearPerVariableState() {
         mapVariable2Identifier.Clear();
         registeredVariables.Clear();
         warnedMissingIdentifier.Clear();
-        dbConnection = null;
     }
 
     private void PrintLine(string msg) {
