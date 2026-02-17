@@ -35,10 +35,10 @@
             />
           </v-list>
           <v-btn
-            block
-            class="mt-2"
+            class="mt-2 bg-grey-lighten-3"
             size="small"
             variant="text"
+            style="width: 120px; margin: 0 auto; display: block"
             @click="prepareAddConfig"
           >
             <v-icon start>mdi-plus</v-icon>
@@ -233,6 +233,11 @@ const isFirst = computed((): boolean => currentIndex.value <= 0)
 const isLast = computed((): boolean => currentIndex.value < 0 || currentIndex.value >= currentConfigs.value.length - 1)
 
 watch(activeProtocol, () => {
+  const firstConfig = currentConfigs.value[0]
+  if (firstConfig) {
+    selectConfig(firstConfig.ID)
+    return
+  }
   selectedConfigId.value = null
   editConfig.value = null
   editConfigOriginal.value = ''
