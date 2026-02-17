@@ -51,9 +51,6 @@ export interface SQLConfig {
   Name: string
   DatabaseType: string
   ConnectionString: string
-  IgnoreCertificateRevocationErrors: boolean
-  IgnoreCertificateChainErrors: boolean
-  AllowUntrustedCertificates: boolean
   VarPublish: SQLVarPub
 }
 

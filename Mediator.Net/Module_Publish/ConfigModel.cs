@@ -177,10 +177,6 @@ public class SQLConfig : ModelObject {
 
     public string ConnectionString { get; set; } = "";
 
-    public bool IgnoreCertificateRevocationErrors { get; set; } = false;
-    public bool IgnoreCertificateChainErrors { get; set; } = false;
-    public bool AllowUntrustedCertificates { get; set; } = false;
-
     public SQLVarPub VarPublish { get; set; } = new SQLVarPub() { Enabled = false };
 
     public void ApplyVarConfig(Dictionary<string, string> vars) {

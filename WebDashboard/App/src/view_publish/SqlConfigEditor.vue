@@ -30,24 +30,6 @@
           :optional="false"
           type="Text"
         />
-        <member-row
-          v-model="model.IgnoreCertificateRevocationErrors"
-          name="Ignore Cert Revocation Errors"
-          :optional="false"
-          type="Boolean"
-        />
-        <member-row
-          v-model="model.IgnoreCertificateChainErrors"
-          name="Ignore Cert Chain Errors"
-          :optional="false"
-          type="Boolean"
-        />
-        <member-row
-          v-model="model.AllowUntrustedCertificates"
-          name="Allow Untrusted Certificates"
-          :optional="false"
-          type="Boolean"
-        />
       </table>
     </div>
 
@@ -80,7 +62,7 @@
         <root-objects-editor
           v-model="model.VarPublish.RootObjects"
           :modules="modules"
-        />
+        />    
         <member-row
           v-model="model.VarPublish.BufferIfOffline"
           name="Buffer If Offline"
