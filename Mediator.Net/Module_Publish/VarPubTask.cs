@@ -103,13 +103,18 @@ internal class VarPubTask {
         };
 
         while (!shutdown()) {
-            Connection clientFAST = await wrapper.EnsureConnectionOrThrow();
+            Connection clientFAST = await wrapper.EnsureConnection();
+            if (clientFAST.IsClosed || shutdown()) {
+                break;
+            }
             if (cyclicPublishing) {
                 VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);
                 await PublishRelevantVariableValues(clientFAST, allValues);
             }
             await WaitForNextCycle();
         }
+
+        Console.WriteLine($"Stopping variable publish task {publisher.PublisherID}");
 
         await wrapper.Close();
         publisher.Close();

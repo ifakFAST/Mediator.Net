@@ -38,7 +38,7 @@ namespace Ifak.Fast.Mediator {
             }
         }
 
-        public async Task<Connection> EnsureConnectionOrThrow() {
+        public async Task<Connection> EnsureConnection() {
 
             if (client != null && !client.IsClosed) {
                 try {
@@ -48,7 +48,7 @@ namespace Ifak.Fast.Mediator {
                 catch (Exception) {
                     Task _ = client.Close();
                     client = null;
-                    return await EnsureConnectionOrThrow();
+                    return await EnsureConnection();
                 }
             }
 
@@ -70,7 +70,8 @@ namespace Ifak.Fast.Mediator {
                 if (!e.Message.Contains("request because system is shutting down")) {
                     Console.Error.WriteLine(msg);
                 }
-                throw new Exception(msg);
+                //throw new Exception(msg);
+                return new ClosedConnection();
             }
         }
 
