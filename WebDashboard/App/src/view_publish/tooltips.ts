@@ -39,6 +39,10 @@ export const opcUaLocalObjectIDsForVariablesTooltip = `Controls how OPC UA node 
 Enabled: uses local object IDs (shorter, local naming).
 Disabled: uses full encoded object IDs (globally unique, more stable across modules).`
 
+export const opcUaHostTooltip = `Host/interface for the OPC UA server endpoint.
+Use localhost (or 127.0.0.1) to accept only local connections.
+Leave empty or use 0.0.0.0 to listen externally on all interfaces.`
+
 export const mqttVarTopicTooltip = `Base MQTT topic for variable value messages.
 Final topic is TopicRoot + "/" + Topic (if TopicRoot is set).
 

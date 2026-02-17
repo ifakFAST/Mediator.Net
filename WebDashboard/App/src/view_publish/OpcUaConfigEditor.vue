@@ -20,6 +20,7 @@
         <member-row
           v-model="model.Host"
           name="Host"
+          :tooltip="opcUaHostTooltip"
           :optional="false"
           type="String"
         />
@@ -145,6 +146,7 @@ import type { OpcUaConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
 import {
+  opcUaHostTooltip,
   opcUaLocalObjectIDsForVariablesTooltip,
   opcUaServerCertificateFileTooltip,
   publishModeTooltip
