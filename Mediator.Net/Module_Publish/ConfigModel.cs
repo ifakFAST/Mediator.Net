@@ -126,7 +126,7 @@ public class MqttVarPub : VarPubCommon {
     public TopicMode Mode { get; set; } = TopicMode.Bulk;
     public string TopicTemplate { get; set; } = "{ID}";
 
-    public bool BufferIfOffline { get; set; } = false;
+    public bool BufferIfOffline { get; set; } = true;
 
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;

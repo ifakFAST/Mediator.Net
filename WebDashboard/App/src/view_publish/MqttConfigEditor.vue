@@ -112,15 +112,34 @@
           :optional="false"
           type="String"
         />
-        <member-row
-          v-model="model.VarPublish.PrintPayload"
-          name="Print Payload"
-          :optional="false"
-          type="Boolean"
-        />
         <root-objects-editor
           v-model="model.VarPublish.RootObjects"
           :modules="modules"
+        />
+                <member-row
+          v-model="model.VarPublish.PublishMode"
+          :enum-values="publishModes"
+          name="Publish Mode"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishInterval"
+          name="Publish Interval"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
+          v-model="model.VarPublish.PublishOffset"
+          name="Publish Offset"
+          :optional="false"
+          type="Duration"
+        />
+        <member-row
+          v-model="model.VarPublish.BufferIfOffline"
+          name="Buffer If Offline"
+          :optional="false"
+          type="Boolean"
         />
         <member-row
           v-model="model.VarPublish.PubFormat"
@@ -144,14 +163,15 @@
           type="Enum"
         />
         <member-row
+          v-if="model.VarPublish.Mode === 'TopicPerVariable'"
           v-model="model.VarPublish.TopicTemplate"
           name="Topic Template"
           :optional="false"
           type="String"
         />
         <member-row
-          v-model="model.VarPublish.BufferIfOffline"
-          name="Buffer If Offline"
+          v-model="model.VarPublish.PrintPayload"
+          name="Print Payload"
           :optional="false"
           type="Boolean"
         />
@@ -191,25 +211,6 @@
           name="Quality Numeric"
           :optional="false"
           type="Boolean"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishInterval"
-          name="Publish Interval"
-          :optional="false"
-          type="Duration"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishOffset"
-          name="Publish Offset"
-          :optional="false"
-          type="Duration"
-        />
-        <member-row
-          v-model="model.VarPublish.PublishMode"
-          :enum-values="publishModes"
-          name="Publish Mode"
-          :optional="false"
-          type="Enum"
         />
       </table>
     </div>
