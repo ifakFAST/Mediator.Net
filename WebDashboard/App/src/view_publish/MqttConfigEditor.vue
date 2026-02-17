@@ -143,9 +143,17 @@
           type="Boolean"
         />
         <member-row
+          v-model="model.VarPublish.Mode"
+          :enum-values="topicModes"
+          name="Topic Mode"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-if="model.VarPublish.Mode === 'Bulk'"
           v-model="model.VarPublish.PubFormat"
           :enum-values="pubVarFormats"
-          name="Pub Format"
+          name="Bulk Pub Format"
           :optional="false"
           type="Enum"
         />
@@ -153,13 +161,6 @@
           v-model="model.VarPublish.PubFormatReg"
           :enum-values="pubVarFormats"
           name="Pub Format Reg"
-          :optional="false"
-          type="Enum"
-        />
-        <member-row
-          v-model="model.VarPublish.Mode"
-          :enum-values="topicModes"
-          name="Topic Mode"
           :optional="false"
           type="Enum"
         />
