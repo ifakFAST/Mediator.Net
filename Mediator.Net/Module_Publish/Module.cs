@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -16,6 +16,10 @@ public class Module : ModelObjectModule<Model>
 {
 
     private ModuleInitInfo info;
+    private string certDir = ".";
+    private Func<bool> moduleShutdown = () => true;
+    private bool stopForRestart;
+    private readonly List<Task> runningTasks = [];
 
     public override async Task Init(ModuleInitInfo info,
                                     VariableValue[] restoreVariableValues,
@@ -58,80 +62,67 @@ public class Module : ModelObjectModule<Model>
         }
     }
 
+    protected override async Task OnConfigModelChanged(bool init) {
+
+        await base.OnConfigModelChanged(init);
+
+        if (init) return;
+
+        await StopAllTasks();
+        StartAllTasks();
+    }
+
     public override async Task Run(Func<bool> shutdown) {
 
-        string certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
-        var tasks = new List<Task>();
+        certDir = info.GetConfigReader().GetOptionalString("cert-dir", ".");
+        moduleShutdown = shutdown;
 
-        Task[] tasksVarPubSql = model.SQL
-            .Where(sql => sql.VarPublish != null && sql.VarPublish.Enabled)
-            .Select(sql => SQL.VarPubTask.MakeVarPubTask(sql, info, shutdown))
-            .ToArray();
-
-        tasks.AddRange(tasksVarPubSql);
-
-        Task[] tasksVarPubUA = model.OPC_UA
-            .Where(ua => ua.VarPublish != null && ua.VarPublish.Enabled)
-            .Select(ua => OPC_UA.VarPubTask.MakeVarPubTask(ua, info, shutdown))
-            .ToArray();
-
-        tasks.AddRange(tasksVarPubUA);
-
-        Task[] tasksVarPubMqtt = model.MQTT
-            .Where(mqtt => mqtt.VarPublish != null && mqtt.VarPublish.Enabled)
-            .Select(mqtt => MqttPublisher.MakeVarPubTask(mqtt, info, certDir, shutdown))
-            .ToArray();
-
-        tasks.AddRange(tasksVarPubMqtt);
-
-        //Task[] tasksConfigPub = model.MQTT
-        //    .Where(mqtt => mqtt.ConfigPublish != null)
-        //    .Select(mqtt => MqttPublisher.MakeConfigPubTask(mqtt, info, certDir, shutdown))
-        //    .ToArray();
-
-        //tasks.AddRange(tasksConfigPub);
-
-        //Task[] tasksVarRec = model.MQTT
-        //   .Where(mqtt => mqtt.VarReceive != null)
-        //   .Select(mqtt => MqttPublisher.MakeVarRecTask(mqtt, info, certDir, shutdown))
-        //   .ToArray();
-
-        //tasks.AddRange(tasksVarRec);
-
-        //Task[] tasksConfigRec = model.MQTT
-        //   .Where(mqtt => mqtt.ConfigReceive != null)
-        //   .Select(mqtt => MqttPublisher.MakeConfigRecTask(mqtt, info, certDir, shutdown))
-        //   .ToArray();
-
-        //tasks.AddRange(tasksConfigRec);
-
-        //Task[] tasksMethodPub = model.MQTT
-        //  .Where(mqtt => mqtt.MethodPublish != null)
-        //  .Select(mqtt => MqttPublisher.MakeMethodPubTask(mqtt, info, certDir, shutdown))
-        //  .ToArray();
-
-        //tasks.AddRange(tasksMethodPub);
+        StartAllTasks();
 
         _ = StartCheckForModelFileModificationTask(shutdown);
 
-        if (tasks.Count == 0) {
-
-            while (!shutdown()) {
-                await Task.Delay(100);
-            }
+        while (!shutdown()) {
+            await Task.Delay(100);
         }
-        else {
 
+        await StopAllTasks();
+    }
+
+    private void StartAllTasks() {
+
+        stopForRestart = false;
+        bool Stop() => stopForRestart || moduleShutdown();
+
+        foreach (SQLConfig sql in model.SQL) {
+            if (sql.VarPublish == null || !sql.VarPublish.Enabled) continue;
+            runningTasks.Add(SQL.VarPubTask.MakeVarPubTask(sql, info, Stop));
+        }
+
+        foreach (OpcUaConfig ua in model.OPC_UA) {
+            if (ua.VarPublish == null || !ua.VarPublish.Enabled) continue;
+            runningTasks.Add(OPC_UA.VarPubTask.MakeVarPubTask(ua, info, Stop));
+        }
+
+        foreach (MqttConfig mqtt in model.MQTT) {
+            if (mqtt.VarPublish == null || !mqtt.VarPublish.Enabled) continue;
+            runningTasks.Add(MqttPublisher.MakeVarPubTask(mqtt, info, certDir, Stop));
+        }
+    }
+
+    private async Task StopAllTasks() {
+
+        stopForRestart = true;
+
+        if (runningTasks.Count > 0) {
             try {
-                await Task.WhenAll(tasks);
+                await Task.WhenAll(runningTasks);
             }
             catch (Exception exp) {
-                if (!shutdown()) {
-                    Exception e = exp.GetBaseException() ?? exp;
-                    Console.Error.WriteLine($"Run: {e.GetType().FullName} {e.Message}");
-                    return;
-                }
+                Exception e = exp.GetBaseException() ?? exp;
+                Console.Error.WriteLine($"StopAllTasks: {e.GetType().FullName} {e.Message}");
             }
         }
+
+        runningTasks.Clear();
     }
 }
