@@ -50,3 +50,32 @@ Leave empty to disable registration publishing.
 
 Final topic is TopicRoot + "/" + TopicRegistration (if TopicRoot is set).`
 
+export const mqttVarTopicTemplateTooltip = `Template for per-variable MQTT topics (used only in TopicPerVariable mode).
+Use {ID} as placeholder for the variable ID.
+
+Example:
+devices/{ID}
+
+Final topic is TopicRoot + "/" + TopicTemplate, with {ID} URL-escaped for MQTT topic safety.`
+
+export const mqttBulkPubFormatTooltip = `Payload format for Bulk mode variable messages.
+Array: publishes a JSON array of tag objects.
+Object: publishes an object with wrapper fields:
+  { "now": "<timestamp>", "tags": [ ... ] }`
+
+export const mqttTopicRootTooltip = `Optional prefix added to all MQTT publish topics.
+If set, final topics become TopicRoot + "/" + <topic>.
+
+Example:
+TopicRoot = plant1/lineA
+Topic = telemetry
+Final topic = plant1/lineA/telemetry`
+
+export const mqttEndpointTooltip = `MQTT broker endpoint as host[:port] or URI.
+Examples:
+broker.local
+broker.local:1883
+mqtt://broker.local:1883
+
+If no scheme is provided, mqtt:// is assumed.
+TLS is used automatically when port is not 1883.`

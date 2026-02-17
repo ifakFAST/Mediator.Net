@@ -20,6 +20,7 @@
         <member-row
           v-model="model.Endpoint"
           name="Endpoint"
+          :tooltip="mqttEndpointTooltip"
           :optional="false"
           type="String"
         />
@@ -86,6 +87,7 @@
         <member-row
           v-model="model.TopicRoot"
           name="Topic Root"
+          :tooltip="mqttTopicRootTooltip"
           :optional="false"
           type="String"
         />
@@ -101,9 +103,25 @@
           type="Boolean"
         />
         <member-row
+          v-model="model.VarPublish.Mode"
+          :enum-values="topicModes"
+          name="Topic Mode"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
+          v-if="model.VarPublish.Mode === 'Bulk'"
           v-model="model.VarPublish.Topic"
           name="Topic"
           :tooltip="mqttVarTopicTooltip"
+          :optional="false"
+          type="String"
+        />
+        <member-row
+          v-if="model.VarPublish.Mode === 'TopicPerVariable'"
+          v-model="model.VarPublish.TopicTemplate"
+          name="Topic Template"
+          :tooltip="mqttVarTopicTemplateTooltip"
           :optional="false"
           type="String"
         />
@@ -145,17 +163,11 @@
           type="Boolean"
         />
         <member-row
-          v-model="model.VarPublish.Mode"
-          :enum-values="topicModes"
-          name="Topic Mode"
-          :optional="false"
-          type="Enum"
-        />
-        <member-row
           v-if="model.VarPublish.Mode === 'Bulk'"
           v-model="model.VarPublish.PubFormat"
           :enum-values="pubVarFormats"
           name="Bulk Pub Format"
+          :tooltip="mqttBulkPubFormatTooltip"
           :optional="false"
           type="Enum"
         />
@@ -165,13 +177,6 @@
           name="Pub Format Reg"
           :optional="false"
           type="Enum"
-        />
-        <member-row
-          v-if="model.VarPublish.Mode === 'TopicPerVariable'"
-          v-model="model.VarPublish.TopicTemplate"
-          name="Topic Template"
-          :optional="false"
-          type="String"
         />
         <member-row
           v-model="model.VarPublish.PrintPayload"
@@ -226,7 +231,15 @@ import { ref } from 'vue'
 import type { MqttConfig, ModuleInfo } from './model'
 import MemberRow from '../view_calc/util/MemberRow.vue'
 import RootObjectsEditor from './RootObjectsEditor.vue'
-import { mqttVarTopicRegistrationTooltip, mqttVarTopicTooltip, publishModeTooltip } from './tooltips'
+import {
+  mqttBulkPubFormatTooltip,
+  mqttEndpointTooltip,
+  mqttTopicRootTooltip,
+  mqttVarTopicRegistrationTooltip,
+  mqttVarTopicTemplateTooltip,
+  mqttVarTopicTooltip,
+  publishModeTooltip
+} from './tooltips'
 
 defineProps<{
   modules: ModuleInfo[]
