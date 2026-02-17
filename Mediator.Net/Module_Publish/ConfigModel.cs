@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -210,6 +210,8 @@ public class SQLVarPub : VarPubCommon {
     public List<ObjectRef> RootObjects { get; set; } = new List<ObjectRef>();
 
     public bool BufferIfOffline { get; set; } = false;
+
+    public bool LogWrites { get; set; } = false;
 
     public bool SimpleTagsOnly { get; set; } = true;
     public bool NumericTagsOnly { get; set; } = false;

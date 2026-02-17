@@ -88,6 +88,12 @@
           type="Boolean"
         />
         <member-row
+          v-model="model.VarPublish.LogWrites"
+          name="Log Writes"
+          :optional="false"
+          type="Boolean"
+        />
+        <member-row
           v-model="model.VarPublish.SimpleTagsOnly"
           name="Simple Tags Only"
           :optional="false"

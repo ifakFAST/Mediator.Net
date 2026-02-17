@@ -64,6 +64,7 @@ export interface SQLVarPub {
   QueryPublish: string
   RootObjects: string[]
   BufferIfOffline: boolean
+  LogWrites: boolean
   SimpleTagsOnly: boolean
   NumericTagsOnly: boolean
   SendTagsWithNull: boolean
