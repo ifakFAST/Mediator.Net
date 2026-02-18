@@ -441,6 +441,13 @@
   ]
 }</Config>
     </View>
+    <View id="publish" name="Publish" type="Publish" group="">
+      <Config>
+        {
+          "ModuleID": "PUB"
+        }
+      </Config>
+    </View>
     <!--
     <View id="tag" name="Tag Meta Data" type="TagMetaData" group="">
       <Config>

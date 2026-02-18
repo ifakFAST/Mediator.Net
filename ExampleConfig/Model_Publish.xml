@@ -1,34 +1,104 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Publish_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="Module_Publish">  
+<Publish_Model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" id="Root" name="Publish_Model" xmlns="Module_Publish">
   <MQTT>
-  <!--
-    <MqttConfig id="mqtt_io" name="MQTT_IO">
-        <Endpoint>url.of.mqtt.broker</Endpoint>
-        <ClientIDPrefix>client_id</ClientIDPrefix>
-        <CertFileCA>RootCA.pem</CertFileCA>
-        <CertFileClient>client_cert.pfx</CertFileClient>        
-        <IgnoreCertificateRevocationErrors>false</IgnoreCertificateRevocationErrors>
-        <IgnoreCertificateChainErrors>false</IgnoreCertificateChainErrors>
-        <AllowUntrustedCertificates>false</AllowUntrustedCertificates>        
-        <MaxPayloadSize>131072</MaxPayloadSize>
-        <TopicRoot>TopicRoot</TopicRoot>
-        <VarPublish>
-            <Topic>IO</Topic>
-            <TopicRegistration></TopicRegistration>
-            <ModuleID>IO</ModuleID>
-            <RootObject>Root</RootObject>
-			<BufferIfOffline>true</BufferIfOffline>
-            <SendTagsWithNull>false</SendTagsWithNull>
-			<SimpleTagsOnly>true</SimpleTagsOnly>
-			<PubFormat>Array</PubFormat>
-			<PubFormatReg>Array</PubFormatReg>
-            <PrintPayload>false</PrintPayload>
-            <TimeAsUnixMilliseconds>false</TimeAsUnixMilliseconds>
-            <QualityNumeric>true</QualityNumeric>
-            <PublishInterval>5 s</PublishInterval>
-            <PublishOffset>0 s</PublishOffset>
-        </VarPublish>
+    <MqttConfig id="MQTT" name="MQTT">
+      <Endpoint />
+      <UseTLS>Always</UseTLS>
+      <ClientIDPrefix />
+      <CertFileCA />
+      <CertFileClient />
+      <User />
+      <Pass />
+      <NoCertificateValidation>false</NoCertificateValidation>
+      <IgnoreCertificateRevocationErrors>false</IgnoreCertificateRevocationErrors>
+      <IgnoreCertificateChainErrors>false</IgnoreCertificateChainErrors>
+      <AllowUntrustedCertificates>false</AllowUntrustedCertificates>
+      <MaxPayloadSize>131072</MaxPayloadSize>
+      <TopicRoot />
+      <VarPublish>
+        <Enabled>false</Enabled>
+        <Topic />
+        <TopicRegistration />
+        <PrintPayload>false</PrintPayload>
+        <RootObjects>
+          <RootObject>IO:Root</RootObject>
+        </RootObjects>
+        <PubFormat>Array</PubFormat>
+        <PubFormatReg>Array</PubFormatReg>
+        <Mode>Bulk</Mode>
+        <TopicTemplate>{ID}</TopicTemplate>
+        <BufferIfOffline>true</BufferIfOffline>
+        <SimpleTagsOnly>true</SimpleTagsOnly>
+        <NumericTagsOnly>false</NumericTagsOnly>
+        <SendTagsWithNull>false</SendTagsWithNull>
+        <NaN_Handling>Keep</NaN_Handling>
+        <TimeAsUnixMilliseconds>false</TimeAsUnixMilliseconds>
+        <QualityNumeric>false</QualityNumeric>
+        <PublishInterval>5 s</PublishInterval>
+        <PublishOffset>0 s</PublishOffset>
+        <PublishMode>Cyclic</PublishMode>
+      </VarPublish>
     </MqttConfig>
-    -->
   </MQTT>
+  <SQL>
+    <SQLConfig id="Postgres" name="Postgres">
+      <DatabaseType>PostgreSQL</DatabaseType>
+      <ConnectionString>Host=localhost;Port=5432;Username=postgres;Password=SuperSecret82!;Database=publish</ConnectionString>
+      <VarPublish>
+        <Enabled>false</Enabled>
+        <QueryTagID2Identifier>SELECT id FROM tag_meta 
+WHERE module = @module
+  AND id_string = @id_string
+  AND var_name = @var_name;</QueryTagID2Identifier>
+        <QueryRegisterTag>INSERT INTO tag_meta (module, id_string, var_name, full_id, unit, location, updated_utc)
+VALUES (@module, @id_string, @var_name, @full_id, @object_member_name, @location, NOW())
+ON CONFLICT (module, id_string, var_name)
+DO UPDATE SET
+    full_id = EXCLUDED.full_id,
+    unit = EXCLUDED.unit,
+    location = EXCLUDED.location,
+    updated_utc = NOW();</QueryRegisterTag>
+        <QueryPublish>INSERT INTO tag_data (tag_id, time_utc, value_numeric, value_json, quality_numeric, quality_string, is_good, is_not_bad) 
+VALUES (@identifier_numeric, @time_utc, @value_numeric_or_null, CAST(@value_json AS jsonb), @quality_numeric, @quality_string, @is_good, @is_not_bad);</QueryPublish>
+        <RootObjects>
+          <RootObject>IO:Root</RootObject>
+        </RootObjects>
+        <BufferIfOffline>false</BufferIfOffline>
+        <LogWrites>true</LogWrites>
+        <SimpleTagsOnly>true</SimpleTagsOnly>
+        <NumericTagsOnly>false</NumericTagsOnly>
+        <SendTagsWithNull>false</SendTagsWithNull>
+        <NaN_Handling>Keep</NaN_Handling>
+        <PublishInterval>5 s</PublishInterval>
+        <PublishOffset>0 s</PublishOffset>
+        <PublishMode>Cyclic</PublishMode>
+      </VarPublish>
+    </SQLConfig>
+  </SQL>
+  <OPC_UA>
+    <OpcUaConfig id="OPC_UA" name="OPC_UA">
+      <Host>localhost</Host>
+      <Port>4840</Port>
+      <LogLevel>Info</LogLevel>
+      <AllowAnonym>true</AllowAnonym>
+      <LoginUser />
+      <LoginPass />
+      <ServerCertificateFile />
+      <VarPublish>
+        <Enabled>false</Enabled>
+        <RootObjects>
+          <RootObject>IO:Root</RootObject>
+        </RootObjects>
+        <AllowClientWrites>false</AllowClientWrites>
+        <LocalObjectIDsForVariables>false</LocalObjectIDsForVariables>
+        <SimpleTagsOnly>true</SimpleTagsOnly>
+        <NumericTagsOnly>false</NumericTagsOnly>
+        <SendTagsWithNull>false</SendTagsWithNull>
+        <NaN_Handling>Keep</NaN_Handling>
+        <PublishInterval>5 s</PublishInterval>
+        <PublishOffset>0 s</PublishOffset>
+        <PublishMode>Cyclic</PublishMode>
+      </VarPublish>
+    </OpcUaConfig>
+  </OPC_UA>
 </Publish_Model>

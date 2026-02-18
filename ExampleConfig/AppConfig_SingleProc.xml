@@ -36,6 +36,7 @@
                 <NamedValue name="view-assemblies">
                     ./Bin/Mediator/Module_EventLog.dll
                     ./Bin/Mediator/Module_Calc.dll
+                    ./Bin/Mediator/Module_Publish.dll
                     ./Bin/Mediator/Module_TagMetaData.dll
                 </NamedValue>
                 <NamedValue name="listen-host" value="localhost"/>
