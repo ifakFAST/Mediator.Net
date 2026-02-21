@@ -601,12 +601,18 @@ export async function loadModuleTypes(): Promise<void> {
 
     // Start with existing static module types
     const dynamicModuleTypes: ModuleBlockTypes = { ...MapOfModuleTypes }
+    const dashboardApp = (window.parent as any).dashboardApp
 
     // Load each dynamic module type
     for (const moduleTypeId of moduleTypeIds) {
       try {
         // Construct the URL for the JS module file
-        const moduleUrl = (window.parent as any).dashboardApp.getBackendUrl() + '/view_tagmetadata/moduletype/module.' + moduleTypeId + '.js'
+        const moduleUrl =
+          dashboardApp.getBackendUrl() +
+          '/view_tagmetadata/moduletype/module.' +
+          moduleTypeId +
+          '.js?' +
+          dashboardApp.getDashboardViewContext()
 
         // Import the ES module
         const moduleExport: DynamicModuleType = await import(/* @vite-ignore */ moduleUrl)

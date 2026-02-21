@@ -34,7 +34,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private ViewType[] viewTypes = [];
 
     private readonly Dictionary<string, Session> sessions = [];
-    private readonly Dictionary<string, string> getRequestMappings = [];
+    private readonly Dictionary<string, Dictionary<string, string>> getRequestMappingsBySession = [];
 
     private static SynchronizationContext? theSyncContext = null;
     private readonly WebApplication? webHost = null;
@@ -290,6 +290,7 @@ public class Module : ModelObjectModule<DashboardModel>
                         Console.WriteLine("Closing abandoned session: " + session.ID);
                         var ignored2 = session.Close();
                         sessions.Remove(session.ID);
+                        getRequestMappingsBySession.Remove(session.ID);
                     }
                 }
             }
@@ -412,34 +413,9 @@ public class Module : ModelObjectModule<DashboardModel>
                         await Respond(result);
                         return;
                     }
-                    else if (getRequestMappings.Keys.Any(k => path.StartsWith(k))) {
-
-                        string mappedPath = getRequestMappings.Keys.First(k => path.StartsWith(k));
-                        string mappedDirectory = getRequestMappings[mappedPath];
-
-                        string relativePath = path.Substring(mappedPath.Length);
-                        string fullPath = Path.Combine(mappedDirectory, relativePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-                        string contentType = Path.GetExtension(fullPath).ToLowerInvariant() switch {
-                            ".svg" => "image/svg+xml",
-                            ".js" => "application/javascript",
-                            ".png" => "image/png",
-                            ".jpg" => "image/jpeg",
-                            ".jpeg" => "image/jpeg",
-                            ".gif" => "image/gif",
-                            ".css" => "text/css",
-                            ".html" => "text/html",
-                            ".json" => "application/json",
-                            ".woff" => "font/woff",
-                            ".woff2" => "font/woff2",
-                            ".ttf" => "font/ttf",
-                            ".eot" => "application/vnd.ms-fontobject",
-                            ".otf" => "font/otf",
-                            ".mp4" => "video/mp4",
-                            _ => "application/octet-stream"
-                        };
+                    else if (TryGetMappedFileInfo(request, out string fullPath, out string contentType)) {
                         using ReqResult result = await ReqResult.OK_FromFileAsync(fullPath, contentType);
                         await Respond(result);
-
                         return;
                     }
                     else {
@@ -490,19 +466,30 @@ public class Module : ModelObjectModule<DashboardModel>
                 }
 
                 var session = new Session(configPath);
+                Dictionary<string, string> sessionMappings = new(StringComparer.Ordinal);
+                getRequestMappingsBySession[session.ID] = sessionMappings;
                 session.OnUpdateGetRequestMapping += (path, directory) => {
-                    getRequestMappings[path] = directory;
+                    string mappedPath = NormalizeMappedPath(path);
+                    string mappedDirectory = Path.GetFullPath(directory);
+                    sessionMappings[mappedPath] = mappedDirectory;
                 };
-                Connection connection;
+                Connection? connection = null;
                 try {
                     const int timeoutSeconds = 15 * 60;
                     connection = await HttpConnection.ConnectWithUserLogin("localhost", clientPort, user, pass, null, session, timeoutSeconds);
+                    await session.SetConnection(connection, model, moduleID, viewTypes);
                 }
                 catch (Exception exp) {
+                    getRequestMappingsBySession.Remove(session.ID);
+                    if (connection != null) {
+                        try {
+                            await connection.Close();
+                        }
+                        catch (Exception) { }
+                    }
                     LogWarn(exp.Message);
                     return ReqResult.Bad(exp.Message);
                 }
-                await session.SetConnection(connection, model, moduleID, viewTypes);
                 sessions[session.ID] = session;
 
                 MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
@@ -622,6 +609,7 @@ public class Module : ModelObjectModule<DashboardModel>
                     Session session = value;
                     var ignored = session.Close();
                     sessions.Remove(sessionID);
+                    getRequestMappingsBySession.Remove(sessionID);
                 }
 
                 return ReqResult.OK();
@@ -637,6 +625,122 @@ public class Module : ModelObjectModule<DashboardModel>
         catch (Exception exp) {
             LogWarn("HandlePost:", exp);
             return ReqResult.Bad(exp.Message);
+        }
+    }
+
+    private bool TryGetMappedFileInfo(HttpRequest request, out string fullPath, out string contentType) {
+
+        fullPath = "";
+        contentType = "application/octet-stream";
+
+        if (!TryGetSessionIDFromQuery(request.QueryString.ToString(), out string sessionID)) {
+            return false;
+        }
+
+        if (!sessions.ContainsKey(sessionID)) {
+            return false;
+        }
+
+        string path = request.Path;
+
+        if (!getRequestMappingsBySession.TryGetValue(sessionID, out Dictionary<string, string>? sessionMappings)) {
+            return false;
+        }
+
+        string? mappedPath = sessionMappings.Keys
+            .Where(k => path.StartsWith(k, StringComparison.Ordinal))
+            .OrderByDescending(k => k.Length)
+            .FirstOrDefault();
+
+        if (mappedPath == null) {
+            return false;
+        }
+
+        string mappedDirectory = sessionMappings[mappedPath];
+        string relativePath = path.Substring(mappedPath.Length);
+
+        if (!TryResolvePathWithinRoot(mappedDirectory, relativePath, out fullPath)) {
+            return false;
+        }
+
+        if (!File.Exists(fullPath)) {
+            return false;
+        }
+
+        contentType = Path.GetExtension(fullPath).ToLowerInvariant() switch {
+            ".svg" => "image/svg+xml",
+            ".js" => "application/javascript",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".css" => "text/css",
+            ".html" => "text/html",
+            ".json" => "application/json",
+            ".woff" => "font/woff",
+            ".woff2" => "font/woff2",
+            ".ttf" => "font/ttf",
+            ".eot" => "application/vnd.ms-fontobject",
+            ".otf" => "font/otf",
+            ".mp4" => "video/mp4",
+            _ => "application/octet-stream"
+        };
+        return true;
+    }
+
+    private static bool TryGetSessionIDFromQuery(string query, out string sessionID) {
+        sessionID = "";
+
+        int i = query.IndexOf('_');
+        if (i <= 1 || query[0] != '?') {
+            return false;
+        }
+
+        sessionID = query.Substring(1, i - 1);
+        return !string.IsNullOrEmpty(sessionID);
+    }
+
+    private static string NormalizeMappedPath(string path) {
+        string normalized = path.Replace('\\', '/');
+        if (!normalized.StartsWith('/')) {
+            normalized = "/" + normalized;
+        }
+        if (!normalized.EndsWith('/')) {
+            normalized += "/";
+        }
+        return normalized;
+    }
+
+    private static bool TryResolvePathWithinRoot(string rootDirectory, string relativeRequestPath, out string fullPath) {
+        fullPath = "";
+
+        try {
+            string fullRootDirectory = Path.GetFullPath(rootDirectory);
+            string normalizedRelativePath = relativeRequestPath
+                .TrimStart('/', '\\')
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+
+            string candidate = Path.GetFullPath(Path.Combine(fullRootDirectory, normalizedRelativePath));
+
+            StringComparison cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            if (candidate.Equals(fullRootDirectory, cmp)) {
+                return false;
+            }
+
+            string fullRootDirectoryWithSeparator = fullRootDirectory.EndsWith(Path.DirectorySeparatorChar)
+                ? fullRootDirectory
+                : fullRootDirectory + Path.DirectorySeparatorChar;
+
+            if (!candidate.StartsWith(fullRootDirectoryWithSeparator, cmp)) {
+                return false;
+            }
+
+            fullPath = candidate;
+            return true;
+        }
+        catch (Exception) {
+            return false;
         }
     }
 
