@@ -90,7 +90,7 @@
           type="Duration"
         />
         <member-row
-          v-if="isContinuous"
+          v-if="showCycleOffset"
           v-model="model.Offset"
           name="Cycle Offset"
           :optional="false"
@@ -505,6 +505,11 @@ const showDefinition = computed((): boolean => {
 const isContinuous = computed((): boolean => {
   const mode = model.value.RunMode
   return mode === undefined || mode === 'Continuous'
+})
+
+const showCycleOffset = computed((): boolean => {
+  const mode = model.value.RunMode
+  return mode === undefined || mode === 'Continuous' || mode === 'InputDriven'
 })
 
 const definitionType = computed((): MemberTypeEnum => {
