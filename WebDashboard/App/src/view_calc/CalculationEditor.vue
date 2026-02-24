@@ -47,6 +47,7 @@
           v-model="model.RunMode"
           :enum-values="runModes"
           name="RunMode"
+          :tooltip="runModeTooltip"
           :optional="false"
           type="Enum"
         />
@@ -54,6 +55,7 @@
           v-model="model.InputsRequired"
           :enum-values="inputsRequiredValues"
           name="Inputs Required"
+          :tooltip="inputsRequiredTooltip"
           :optional="false"
           type="Enum"
         />
@@ -61,12 +63,14 @@
           v-if="showInitialStartTime"
           v-model="model.InitialStartTime"
           name="Initial Start Time"
+          :tooltip="initialStartTimeTooltip"
           :optional="false"
           type="Timestamp"
         />
         <member-row
           v-model="model.MaxInputAge"
           name="Max Input Age"
+          :tooltip="maxInputAgeTooltip"
           :optional="true"
           type="Duration"
         />
@@ -444,8 +448,21 @@ const showOutputTypeColumn = computed((): boolean => {
 const adapterTypes = computed((): string[] => props.adapterTypesInfo.map((info) => info.Type))
 
 const runModes = computed((): string[] => ['Continuous', 'Triggered', 'InputDriven'])
+const runModeTooltip = `Continuous: Runs on the configured cycle (real-time).
+Triggered: Runs when explicitly triggered by another calculation.
+InputDriven: Runs when the inputs have new values. Useful to apply calculation to historic data or when input data arrives in batches. Initial Start Time is set automatically when switching to this mode.`
 
 const inputsRequiredValues = computed((): string[] => ['All', 'AtLeastOne', 'None'])
+const inputsRequiredTooltip = `All: Run only when all inputs have valid values (value is not empty and not NaN, quality is not Bad).
+AtLeastOne: Run when at least one input has a valid value.
+None: Always run, no matter what the input values are.`
+const initialStartTimeTooltip = `Used only in InputDriven mode.
+Defines the initial timestamp from which historical input processing starts.
+When switching to InputDriven, this value is set automatically and can be adjusted.
+If it is not aligned to Cycle/Offset, the next aligned timestamp is used.`
+const maxInputAgeTooltip = `Optional staleness limit for input values.
+If an input is older than this duration, it is treated as missing/invalid for the run (quality is set to Bad, value is set to null/empty).
+Can be combined with Inputs Required to skip calculation runs when inputs are too old.`
 
 const initErrorResponses = computed((): string[] => ['Fail', 'Retry', 'Stop'])
 
