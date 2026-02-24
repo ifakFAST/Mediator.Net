@@ -678,7 +678,7 @@ public class Module : ModelObjectModule<DashboardModel>
         fullPath = "";
         contentType = "application/octet-stream";
 
-        if (!TryGetSessionIDFromQuery(request.QueryString.ToString(), out string sessionID)) {
+        if (!TryGetPathContext(request.Path, out string sessionID, out string mappedRequestPath)) {
             return false;
         }
 
@@ -686,14 +686,12 @@ public class Module : ModelObjectModule<DashboardModel>
             return false;
         }
 
-        string path = request.Path;
-
         if (!getRequestMappingsBySession.TryGetValue(sessionID, out Dictionary<string, string>? sessionMappings)) {
             return false;
         }
 
         string? mappedPath = sessionMappings.Keys
-            .Where(k => path.StartsWith(k, StringComparison.Ordinal))
+            .Where(k => mappedRequestPath.StartsWith(k, StringComparison.Ordinal))
             .OrderByDescending(k => k.Length)
             .FirstOrDefault();
 
@@ -702,7 +700,7 @@ public class Module : ModelObjectModule<DashboardModel>
         }
 
         string mappedDirectory = sessionMappings[mappedPath];
-        string relativePath = path.Substring(mappedPath.Length);
+        string relativePath = mappedRequestPath.Substring(mappedPath.Length);
 
         if (!TryResolvePathWithinRoot(mappedDirectory, relativePath, out fullPath)) {
             return false;
@@ -712,7 +710,38 @@ public class Module : ModelObjectModule<DashboardModel>
             return false;
         }
 
-        contentType = Path.GetExtension(fullPath).ToLowerInvariant() switch {
+        contentType = GetContentTypeForPath(fullPath);
+        return true;
+    }
+
+    private static bool TryGetPathContext(string requestPath, out string sessionID, out string mappedRequestPath) {
+
+        sessionID = "";
+        mappedRequestPath = "";
+
+        const string Prefix = "/ctx/";
+        if (!requestPath.StartsWith(Prefix, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        string tail = requestPath.Substring(Prefix.Length);
+        int separator = tail.IndexOf('/');
+        if (separator <= 0 || separator >= tail.Length - 1) {
+            return false;
+        }
+
+        string contextToken = tail.Substring(0, separator);
+        if (!TryParseContextToken(contextToken, out string parsedSessionID, out _)) {
+            return false;
+        }
+
+        sessionID = parsedSessionID;
+        mappedRequestPath = "/" + tail.Substring(separator + 1);
+        return true;
+    }
+
+    private static string GetContentTypeForPath(string fullPath) {
+        return Path.GetExtension(fullPath).ToLowerInvariant() switch {
             ".svg" => "image/svg+xml",
             ".js" => "application/javascript",
             ".png" => "image/png",
@@ -730,19 +759,43 @@ public class Module : ModelObjectModule<DashboardModel>
             ".mp4" => "video/mp4",
             _ => "application/octet-stream"
         };
-        return true;
     }
 
-    private static bool TryGetSessionIDFromQuery(string query, out string sessionID) {
-        sessionID = "";
+    private bool TryGetContextFromQuery(string query, out string sessionID, out string viewID) {
 
-        int i = query.IndexOf('_');
-        if (i <= 1 || query[0] != '?') {
+        sessionID = "";
+        viewID = "";
+
+        if (string.IsNullOrEmpty(query) || query[0] != '?') {
             return false;
         }
 
-        sessionID = query.Substring(1, i - 1);
-        return !string.IsNullOrEmpty(sessionID);
+        string token = query.Substring(1);
+        int separator = token.IndexOf('&');
+        if (separator >= 0) {
+            token = token.Substring(0, separator);
+        }
+
+        if (!TryParseContextToken(token, out sessionID, out viewID)) {
+            return false;
+        }
+
+        return sessions.ContainsKey(sessionID);
+    }
+
+    private static bool TryParseContextToken(string token, out string sessionID, out string viewID) {
+
+        sessionID = "";
+        viewID = "";
+
+        int separator = token.IndexOf('_');
+        if (separator <= 0 || separator >= token.Length - 1) {
+            return false;
+        }
+
+        sessionID = token.Substring(0, separator);
+        viewID = token.Substring(separator + 1);
+        return true;
     }
 
     private static string NormalizeMappedPath(string path) {
@@ -757,6 +810,7 @@ public class Module : ModelObjectModule<DashboardModel>
     }
 
     private static bool TryResolvePathWithinRoot(string rootDirectory, string relativeRequestPath, out string fullPath) {
+
         fullPath = "";
 
         try {
@@ -790,16 +844,15 @@ public class Module : ModelObjectModule<DashboardModel>
     }
 
     private (Session sesssion, string viewID) GetSessionFromQuery(string query) {
-        int i = query.IndexOf('_');
-        if (i <= 0) {
-            throw new Exception("Invalid context");
+
+        if (!TryGetContextFromQuery(query, out string sessionID, out string viewID)) {
+            throw new InvalidSessionException();
         }
-        string sessionID = query.Substring(1, i - 1);
-        string viewID = query.Substring(i + 1);
 
         if (!sessions.TryGetValue(sessionID, out Session? value)) {
             throw new InvalidSessionException();
         }
+
         Session session = value;
         return (session, viewID);
     }

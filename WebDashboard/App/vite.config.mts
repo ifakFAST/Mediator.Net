@@ -67,6 +67,7 @@ export default defineConfig({
       '/moveView': 'http://localhost:8082',
       '/deleteView': 'http://localhost:8082',
       '/toggleHeader': 'http://localhost:8082',
+      '/ctx': 'http://localhost:8082',
       '/view_tagmetadata/moduletype': 'http://localhost:8082',
       '/block_images': 'http://localhost:8082',
       '/websocket': {
