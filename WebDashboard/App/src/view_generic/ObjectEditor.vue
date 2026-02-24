@@ -265,7 +265,7 @@
                     </td>
                   </tr>
                   <tr
-                    v-for="(v, idx) in row.Value"
+                    v-for="(v, idx) in asArray(row.Value)"
                     :key="row.Key + '_' + idx"
                   >
                     <td>
@@ -912,6 +912,10 @@ const removeOptional = (member: ObjectMember) => {
 
 const setOptional = (member: ObjectMember) => {
   member.Value = JSON.parse(member.DefaultValue)
+}
+
+const asArray = (value: unknown): any[] => {
+  return Array.isArray(value) ? value : []
 }
 
 const removeArrayItem = (array: any[], idx: number) => {
