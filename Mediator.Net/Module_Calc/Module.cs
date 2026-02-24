@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -935,6 +935,24 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             adapter.UpdateInputValues(inputVars, values);
 
             InputValue[] inputValues = adapter.CurrentInputValues(t);
+
+            Config.InputsRequired inputsRequired = adapter.CalcConfig.InputsRequired;
+            if (inputsRequired != Config.InputsRequired.None) {
+                int countMissing = 0;
+                int countPresent = 0;
+                foreach (InputValue iv in inputValues) {
+                    DataValue v = iv.Value.V;
+                    if (iv.Value.IsBad || v.IsEmpty || v.IsNaN) countMissing++; else countPresent++;
+                }
+                bool skip = inputsRequired == Config.InputsRequired.All
+                    ? countMissing > 0
+                    : countPresent == 0 && countMissing > 0;
+                if (skip) {
+                    (t, dt) = await runCondition.WaitForNextRun();
+                    if (t == Timestamp.Empty) break;
+                    continue;
+                }
+            }
 
             VariableValues inValues = inputValues.Select(v => VariableValue.Make(adapter.GetInputVarRef(v.InputID), v.Value.WithTime(t))).ToList();
             notifier.Notify_VariableValuesChanged(inValues);

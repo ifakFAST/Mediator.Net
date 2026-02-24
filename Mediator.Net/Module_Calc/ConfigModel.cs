@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -173,6 +173,12 @@ public enum RunMode {
     InputDriven,
 }
 
+public enum InputsRequired {
+    All,
+    AtLeastOne,
+    None,
+}
+
 public enum InitErrorResponse {
     Fail,
     Retry,
@@ -217,6 +223,8 @@ public class Calculation : ModelObject
 
     public RunMode RunMode { get; set; } = RunMode.Continuous;
 
+    public InputsRequired InputsRequired { get; set; } = InputsRequired.None;
+
     public Duration? MaxInputAge { get; set; } = null; // if input is older than this, it will be replaced with null
 
     public InitErrorResponse InitErrorResponse { get; set; } = InitErrorResponse.Retry;
@@ -251,6 +259,7 @@ public class Calculation : ModelObject
     public bool ShouldSerializeOffset() => Offset.TotalMilliseconds != 0;
     public bool ShouldSerializeIgnoreOffsetForTimestamps() => IgnoreOffsetForTimestamps;
     public bool ShouldSerializeRunMode() => RunMode != RunMode.Continuous;
+    public bool ShouldSerializeInputsRequired() => InputsRequired != InputsRequired.None;
     public bool ShouldSerializeInitErrorResponse() => InitErrorResponse != InitErrorResponse.Retry;
     public bool ShouldSerializeHistoryScope() => HistoryScope != HistoryScope.All;
 

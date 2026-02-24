@@ -51,6 +51,13 @@
           type="Enum"
         />
         <member-row
+          v-model="model.InputsRequired"
+          :enum-values="inputsRequiredValues"
+          name="Inputs Required"
+          :optional="false"
+          type="Enum"
+        />
+        <member-row
           v-if="showInitialStartTime"
           v-model="model.InitialStartTime"
           name="Initial Start Time"
@@ -437,6 +444,8 @@ const showOutputTypeColumn = computed((): boolean => {
 const adapterTypes = computed((): string[] => props.adapterTypesInfo.map((info) => info.Type))
 
 const runModes = computed((): string[] => ['Continuous', 'Triggered', 'InputDriven'])
+
+const inputsRequiredValues = computed((): string[] => ['All', 'AtLeastOne', 'None'])
 
 const initErrorResponses = computed((): string[] => ['Fail', 'Retry', 'Stop'])
 

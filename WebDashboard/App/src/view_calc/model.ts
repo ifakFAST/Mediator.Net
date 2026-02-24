@@ -33,11 +33,12 @@ export interface Calculation {
   Name: string
   Type: string // e.g. C#, SIMBA, ...
   Subtype: string
-  RunMode: string // e.g. Continuous, Triggered, InputDriven
+  RunMode: 'Continuous' | 'Triggered' | 'InputDriven'
+  InputsRequired: 'All' | 'AtLeastOne' | 'None'
   InitialStartTime: fast.Timestamp // ISO 8601 date-time string
   MaxInputAge?: fast.Duration
-  InitErrorResponse: string // e.g. Fail, Retry, Stop
-  HistoryScope: string // e.g. All, ExcludeInputs, ExcludeStates, ExcludeInputsAndStates
+  InitErrorResponse: 'Fail' | 'Retry' | 'Stop'
+  HistoryScope: 'All' | 'ExcludeInputs' | 'ExcludeStates' | 'ExcludeInputsAndStates'
   Enabled: boolean
   EnableOutputVarWrite: boolean
   History: fast.History | null
