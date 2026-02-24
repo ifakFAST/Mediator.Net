@@ -224,7 +224,7 @@ public sealed class PortBlock() : Block(BlockType.Port)
 public sealed class Line
 {
     [XmlAttribute("type")]
-    public LineType Type { get; init; }
+    public string Type { get; init; } = string.Empty;  // e.g. Air,4
 
     [XmlAttribute("source")]
     public string Source { get; init; } = string.Empty;
