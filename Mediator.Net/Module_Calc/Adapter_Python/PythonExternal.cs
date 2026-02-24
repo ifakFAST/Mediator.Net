@@ -15,6 +15,9 @@ namespace Ifak.Fast.Mediator.Calc.Adapter_Python;
 
 public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
 
+    private static readonly object pythonEngineSync = new();
+    private static bool runtimeDataFormatterConfigured = false;
+
     private InputBase[] inputs = Array.Empty<Input>();
     private OutputBase[] outputs = Array.Empty<Output>();
     private AbstractState[] states = Array.Empty<AbstractState>();
@@ -96,6 +99,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             Console.WriteLine($"Initializing Python engine with python-dll: {pythonDLL}");
             PythonEngine.DebugGIL = true;
             Runtime.PythonDLL = pythonDLL;
+            ConfigurePythonRuntimeFormatter();
 
             if (!string.IsNullOrWhiteSpace(appendPath)) {
                 string path = (Environment.GetEnvironmentVariable("PATH") ?? "");
@@ -277,17 +281,34 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             Console.Error.WriteLine("shutdownAction: " + exp.Message);
         }
 
-        try {
-            AppContext.SetSwitch("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", true);
-            PythonEngine.Shutdown();
-            AppContext.SetSwitch("System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization", false);
-        }
-        catch (Exception exp) {
-            Console.Error.WriteLine("PythonEngine.Shutdown: " + exp.Message);
-            PrintExceptionRecursive(exp);
+        if (PythonEngine.IsInitialized) {
+            try {
+                ConfigurePythonRuntimeFormatter();
+                PythonEngine.Shutdown();
+            }
+            catch (Exception exp) {
+                Console.Error.WriteLine("PythonEngine.Shutdown: " + exp.Message);
+                PrintExceptionRecursive(exp);
+            }
         }
 
         return Task.FromResult(true);
+    }
+
+    private static void ConfigurePythonRuntimeFormatter() {
+
+        if (runtimeDataFormatterConfigured) {
+            return;
+        }
+
+        lock (pythonEngineSync) {
+            if (runtimeDataFormatterConfigured) {
+                return;
+            }
+
+            RuntimeData.FormatterType = typeof(NoopFormatter);
+            runtimeDataFormatterConfigured = true;
+        }
     }
 
     public override void SignalStepAbort() {
