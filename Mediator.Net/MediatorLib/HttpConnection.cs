@@ -264,6 +264,11 @@ namespace Ifak.Fast.Mediator
             return await Post<User>(request);
         }
 
+        public override async Task<List<User>> GetAllUsers() {
+            var request = MakeSessionRequest<GetAllUsersReq>();
+            return await Post<List<User>>(request);
+        }
+
         public override async Task<ModuleInfos> GetModules() {
             var request = MakeSessionRequest<GetModulesReq>();
             return await Post<ModuleInfos>(request);

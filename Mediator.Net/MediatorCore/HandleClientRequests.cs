@@ -403,6 +403,16 @@ namespace Ifak.Fast.Mediator
                             return Result_OK(user);
                         }
 
+                    case GetAllUsersReq.ID: {
+
+                            if (info.Origin.Type != OriginType.Module) {
+                                return Result_BAD("Not a module login");
+                            }
+
+                            List<User> users = core.userManagement.Users.ToList();
+                            return Result_OK(users);
+                        }
+
                     case GetRootObjectReq.ID: {
                             var req = (GetRootObjectReq)request;
                             string moduleID = req.ModuleID ?? throw new Exception("Missing moduleID");

@@ -58,6 +58,7 @@ namespace Ifak.Fast.Mediator
         public static readonly ReqDef GetModules = ReqDef.Make<GetModulesReq>();
         public static readonly ReqDef GetLocations = ReqDef.Make<GetLocationsReq>();
         public static readonly ReqDef GetLoginUser = ReqDef.Make<GetLoginUserReq>();
+        public static readonly ReqDef GetAllUsers = ReqDef.Make<GetAllUsersReq>();
         public static readonly ReqDef GetRootObject = ReqDef.Make<GetRootObjectReq>();
         public static readonly ReqDef GetAllObjects = ReqDef.Make<GetAllObjectsReq>();
         public static readonly ReqDef GetAllObjectsOfType = ReqDef.Make<GetAllObjectsOfTypeReq>();
@@ -96,7 +97,7 @@ namespace Ifak.Fast.Mediator
             Login, Auth,
             ReadVariables, ReadVariablesIgnoreMissing, ReadVariablesSync, ReadVariablesSyncIgnoreMissing,
             WriteVariables, WriteVariablesIgnorMissing, WriteVariablesSync, WriteVariablesSyncIgnoreMissing,
-            ReadAllVariablesOfObjectTree, GetModules, GetLocations, GetLoginUser, GetRootObject, GetAllObjects,
+            ReadAllVariablesOfObjectTree, GetModules, GetLocations, GetLoginUser, GetAllUsers, GetRootObject, GetAllObjects,
             GetAllObjectsOfType, GetObjectsByID, GetChildrenOfObjects, GetChildrenOfObjectsRecursive, GetAllObjectsWithVariablesOfType,
             GetObjectValuesByID, GetMemberValues, GetParentOfObject, UpdateConfig,
             EnableVariableValueChangedEvents, EnableVariableHistoryChangedEvents, EnableConfigChangedEvents,
@@ -514,6 +515,14 @@ namespace Ifak.Fast.Mediator
 
         public override int GetID() => ID;
         public override string GetPath() => "GetLoginUser";
+    }
+
+    public class GetAllUsersReq : RequestBase
+    {
+        public const int ID = 48;
+
+        public override int GetID() => ID;
+        public override string GetPath() => "GetAllUsers";
     }
 
     public class GetRootObjectReq : RequestBase

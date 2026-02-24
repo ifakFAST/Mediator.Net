@@ -15,6 +15,7 @@ using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberVa
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
+using Users = System.Collections.Generic.List<Ifak.Fast.Mediator.User>;
 using System.Xml.Schema;
 using System.Xml;
 using System.Linq;
@@ -58,6 +59,12 @@ namespace Ifak.Fast.Mediator
         /// If the connection was created by a module via ConnectWithModuleLogin(), an exception will be thrown.
         /// </summary>
         public abstract Task<User> GetLoginUser();
+
+        /// <summary>
+        /// Returns the list of all configured users.
+        /// If the connection was not created by a module via ConnectWithModuleLogin(), an exception will be thrown.
+        /// </summary>
+        public abstract Task<Users> GetAllUsers();
 
         /// <summary>
         /// Returns the root object of a specific module.
