@@ -4,147 +4,99 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ifak*FAST* Mediator.Net is a modular platform for process monitoring and supervisory control (SCADA-like system). It uses a multi-process architecture where:
-- **MediatorCore** orchestrates all modules and provides central supervision
-- **Modules** run as separate processes for fault isolation (IO, Dashboard, EventLog, Calc, Publish, TagMetaData)
-- **MediatorLib** provides shared base classes and utilities
+Mediator.Net is a modular platform for process monitoring and supervisory control built on .NET 10.0. It follows a distributed architecture where a core orchestration engine dynamically loads independent modules at runtime.
 
-## Common Commands
+## Build Commands
 
-### Building
 ```bash
 # Build entire solution
 dotnet build Mediator.sln
 
-# Build specific project
-dotnet build MediatorCore/MediatorCore.csproj
-```
+# Build in release mode
+dotnet build Mediator.sln -c Release
 
-### Running
-```bash
-# Run from source (from working directory)
-dotnet MediatorCore/bin/Debug/net8.0/MediatorCore.dll
-
-# Run with specific config
-dotnet MediatorCore/bin/Debug/net8.0/MediatorCore.dll -c /path/to/AppConfig.xml
-
-# Access web dashboard at http://localhost:8082/
-# Default login: user 'ifak', password configured in AppConfig.xml
-```
-
-### Testing
-```bash
-# Run all tests
+# Run tests
 dotnet test MediatorLib_Test/MediatorLib_Test.csproj
 
-# Run tests with verbose output
-dotnet test MediatorLib_Test/MediatorLib_Test.csproj --verbosity normal
-
-# Run specific test class
-dotnet test MediatorLib_Test/MediatorLib_Test.csproj --filter "FullyQualifiedName~Test_VTQ"
-
-# Run integration tests (from Run directory)
-dotnet MediatorCore/bin/Debug/net8.0/MediatorCore.dll --clearDBs --config TestHistorianDBs/TestConfig.xml
+# Run a single test
+dotnet test MediatorLib_Test/MediatorLib_Test.csproj --filter "FullyQualifiedName~TestName"
 ```
 
-### Web Dashboard Development
+## Running the Application
+
 ```bash
-# Build web components (from WebDashboard directory)
-cd ../WebDashboard/App && npm run build
-cd ../ViewBundle_Generic && npm run build
+# Basic run (from MediatorCore output directory)
+MediatorCore.exe -c AppConfig.xml
 
-# Or use the provided batch file
-# cd ../WebDashboard && Build.bat
-
-# Development with hot reload
-cd ../WebDashboard/App && npm run serve
-cd ../WebDashboard/ViewBundle_Generic && npm run serve
+# Available CLI options
+MediatorCore.exe -c <config_file> -t <title> -l <log_dir> -n <log_name>
+MediatorCore.exe encrypt <text>   # Encrypt text for use in config files
 ```
 
 ## Architecture
 
-### Core Components
-- **MediatorCore**: Main orchestrator (.NET 8.0 Web SDK)
-- **MediatorLib**: Shared library (netstandard2.1 + net461 multi-targeting)
-- **Modules**: Separate console applications communicating via TCP
+### Module System
 
-### Module Development Pattern
-All modules follow this structure:
-1. Console application with `Program.cs` accepting TCP port argument
-2. Module class inheriting from `ModuleBase` or `ModelObjectModule<T>` 
-3. Connection via `ExternalModuleHost.ConnectAndRunModule(port, module)`
-4. Configuration through XML model files
+Each major subsystem is an independent module loaded by `MediatorCore` at startup. Modules run on dedicated threads and communicate with the core via a `Notifier` interface.
 
-### Key Base Classes
-- `ModuleBase`: Abstract base for all modules
-- `ModelObjectModule<T>`: Recommended base with built-in configuration support
-- `AdapterBase`: Base for IO protocol adapters
+```
+MediatorCore (orchestrator)
+├── Module_IO       — Protocol adapters (MQTT, OPC-UA, Modbus, SQL, HTTP, Modbus, etc.)
+├── Module_Calc     — C# scripting and Python-based calculations
+├── Module_Dashboard — ASP.NET Core web UI
+├── Module_EventLog — Alarm and event logging, email/MQTT notifications
+├── Module_Publish  — Data publishing (MQTT, OPC-UA)
+└── Module_TagMetaData — Tag metadata management
+```
 
-### Configuration System
-- **AppConfig.xml**: Main system configuration (modules, database, users)
-- **Model_*.xml**: Module-specific configurations (IO, Dashboard, Calc, etc.)
-- All configs located in Run directory alongside executables
+All modules inherit from `ModuleBase` (in `MediatorLib`) and implement:
+- `Init()` — module initialization with config
+- `Run(shutdown)` — main execution loop
+- `GetAllObjects()` — expose the module's object tree
+- `ReadVariables()` / `WriteVariables()` — data access
 
-### Data Flow
-- Variables represent time-stamped values with quality indicators
-- Modules communicate through variable read/write operations
-- Time series data stored in SQLite/PostgreSQL with custom compression
+### Core Data Type: VTQ
 
-## Development Guidelines
+Every variable value is represented as a `VTQ` (Value-Timestamp-Quality):
+- `V` — `DataValue` (typed: Double, Int, Bool, String, etc.)
+- `T` — `Timestamp` (when the value was recorded)
+- `Q` — `Quality` enum (Good, Bad, Uncertain)
 
-### Module Development
-- Inherit from `ModelObjectModule<ConfigClass>` for configuration support
-- Implement required methods: `Init()`, `Run()`, `ReadVariables()`, `WriteVariables()`
-- Use async patterns with `SingleThreadedAsync` base class when needed
-- Handle module lifecycle properly (Start, Stop, Restart)
+`VTTQ` is an extended variant with separate collection and transmission timestamps.
 
-### Testing
-- Unit tests use xUnit framework
-- Test projects target .NET 8.0
-- Integration tests available in `/Run/TestHistorianDBs/`
+### API / Request Handling
 
-### Protocol Adapters (IO Module)
-- Inherit from `AdapterBase` 
-- Implement protocol-specific communication
-- Handle scheduling and historization
-- See `Doc/HowTo_AdapterIO.md` for detailed guidance
+The core hosts an HTTP/WebSocket server on a configured port (path prefix `/Mediator/`). All ~80+ API endpoints are defined in `MediatorLib/RequestDefs.cs`. Requests are processed by `HandleClientRequests.cs` in `MediatorCore`. Both binary and JSON serialization are supported.
 
-### Dashboard Views
-- Vue.js + TypeScript + Vuetify
-- Single-page applications loaded dynamically
-- See `Doc/HowTo_DashboardViews.md` for view development
+### Configuration
 
-## Key Directories
+The system is configured via XML (`AppConfig.xml`). Config classes are in `MediatorLib/Config.cs`. Sensitive values in config can be encrypted using the `encrypt` CLI command and `SimpleEncryption.cs`.
 
-- `MediatorCore/`: Main application entry point
-- `MediatorLib/`: Shared library and base classes
-- `Module_*/`: Individual modules (IO, Dashboard, EventLog, Calc, Publish)
-- `../Run/`: Runtime directory with configurations and executables  
-- `../WebDashboard/`: Vue.js web applications (App + ViewBundle_Generic + ViewBundle_TagMetaData)
-- `../Doc/`: Development documentation and guides
+### History / Timeseries
 
-## Dependencies
+`HistoryManager.cs` manages time-series persistence. Supported backends: SQLite, PostgreSQL. Key classes: `TimeSeriesDB.cs`, `CompressedTimeseriesReader.cs`, `HistoryAggregationCache.cs`.
 
-### Runtime Requirements
-- .NET 8.0 runtime
-- Node.js (for web dashboard development)
+### IO Adapters (Module_IO)
 
-### Key NuGet Packages
-- NLog (logging)
-- CommandLineParser (CLI argument parsing)
-- Microsoft.Data.SQLite (time series storage)
-- Npgsql (PostgreSQL support)
+Adapters are loaded dynamically from external assemblies. Each adapter type (MQTT, OPC-UA, OPC Classic, Modbus, SQL, HTTP, PI, TextFile, FAST) implements a common adapter interface.
 
-### Protocol Libraries
-- OPC Foundation libraries (OPC UA)
-- ModbusTCP implementations
-- MQTT client libraries
-- Database providers (SQLite, PostgreSQL, MySQL, MSSQL)
+## Project Structure
 
-## Important Configuration Notes
+| Project | Purpose |
+|---|---|
+| `MediatorCore` | Main executable; orchestrates module loading, HTTP/WS server, history |
+| `MediatorLib` | Shared library (netstandard2.1 + net461); core types, interfaces, serialization |
+| `Module_IO` | I/O adapter module |
+| `Module_Calc` | C# scripting + Python calculation engine |
+| `Module_Dashboard` | Web-based monitoring dashboard |
+| `Module_EventLog` | Event/alarm logging and notifications |
+| `Module_Publish` | MQTT/OPC-UA data publishing |
+| `Module_TagMetaData` | Tag metadata management |
+| `MediatorLib_Test` | xUnit tests (serialization-focused) |
 
-- Default web dashboard port: 8082
-- Module communication via random TCP ports assigned by MediatorCore
-- Database files stored in Run directory (DB_*.db)
-- Logging configuration in NLog.config files
-- Certificate handling for OPC UA and HTTPS in Run directory
+## Code Conventions
+
+- C# 14.0, .NET 10.0, file-scoped namespaces, nullable reference types enabled
+- Coding style enforced via `.editorconfig` (369 lines) — PascalCase types, camelCase locals
+- MIT license header required on all source files (see `.editorconfig` for template)
+- Version is defined in `MediatorLib/MediatorLib.csproj` (`<Version>`)
