@@ -40,6 +40,10 @@ public class Module : ModelObjectModule<DashboardModel>
     private readonly WebApplication? webHost = null;
     private bool isRunning = false;
     private string configPath = "";
+    private ModuleInitInfo initInfo;
+    private readonly LoginAttemptProtector loginProtector = new();
+    private Timestamp lastValidUsersRefreshAttempt = Timestamp.Empty;
+    private static readonly Duration ValidUsersRefreshInterval = Duration.FromMinutes(1);
 
     private TimeRange initialTimeRange = new();
     private long initialStepSizeMS = 0; // 0 means auto
@@ -64,6 +68,7 @@ public class Module : ModelObjectModule<DashboardModel>
                                     Notifier notifier,
                                     ModuleThread moduleThread) {
 
+        initInfo = info;
         theSyncContext = SynchronizationContext.Current;
 
         await base.Init(info, restoreVariableValues, notifier, moduleThread);
@@ -282,6 +287,8 @@ public class Module : ModelObjectModule<DashboardModel>
 
         while (!fShutdown()) {
 
+            await RefreshValidUsers();
+
             bool needPurge = sessions.Values.Any(session => session.IsAbandoned);
             if (needPurge) {
                 var sessionItems = sessions.Values.ToList();
@@ -465,6 +472,10 @@ public class Module : ModelObjectModule<DashboardModel>
                     }
                 }
 
+                if (!loginProtector.TryAllowLogin(login: user, out string rejectReason)) {
+                    return ReqResult.Bad(rejectReason);
+                }
+
                 var session = new Session(configPath);
                 Dictionary<string, string> sessionMappings = new(StringComparer.Ordinal);
                 getRequestMappingsBySession[session.ID] = sessionMappings;
@@ -486,6 +497,12 @@ public class Module : ModelObjectModule<DashboardModel>
                             await connection.Close();
                         }
                         catch (Exception) { }
+                    }
+                    else {
+                        bool isBlocked = loginProtector.RegisterFailedAttempt(login: user);
+                        string ipAddress = ClientAddressResolver.GetClientAddress(request); // Just to log the client address in case of failed login attempts
+                        string blockInfo = isBlocked ? "User is now temporarily blocked." : "";
+                        LogWarn($"Failed login attempt for user '{user}' from {ipAddress}. {blockInfo}");
                     }
                     LogWarn(exp.Message);
                     return ReqResult.Bad(exp.Message);
@@ -625,6 +642,34 @@ public class Module : ModelObjectModule<DashboardModel>
         catch (Exception exp) {
             LogWarn("HandlePost:", exp);
             return ReqResult.Bad(exp.Message);
+        }
+    }
+
+    private async Task RefreshValidUsers() {
+
+        Timestamp now = Timestamp.Now;
+        if ((now - lastValidUsersRefreshAttempt) < ValidUsersRefreshInterval) {
+            return;
+        }
+
+        lastValidUsersRefreshAttempt = now;
+
+        Connection? connection = null;
+        try {
+            connection = await HttpConnection.ConnectWithModuleLogin(initInfo, timeoutSeconds: 10);
+            List<User> users = await connection.GetAllUsers();
+            loginProtector.UpdateValidUsers(users.Where(u => !u.Inactive).Select(u => u.Login));
+        }
+        catch (Exception) {
+            // Ignore exceptions, will be retried after ValidUsersRefreshInterval
+        }
+        finally {
+            if (connection != null) {
+                try {
+                    await connection.Close();
+                }
+                catch (Exception) { }
+            }
         }
     }
 

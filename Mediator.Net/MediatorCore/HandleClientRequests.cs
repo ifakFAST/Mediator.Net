@@ -196,7 +196,7 @@ namespace Ifak.Fast.Mediator
                         long myHash = ClientDefs.strHash(password + info.Challenge + password + session);
                         if (hash != myHash) {
                             sessions.Remove(session);
-                            return Result_BAD("Invalid password");
+                            return Result_BAD("Invalid login or password."); // don't reveal if login or password is wrong
                         }
 
                         if (req.SelectedBinaryVersion < 0 || req.SelectedBinaryVersion > BinSeri.Common.CurrentBinaryVersion) {
