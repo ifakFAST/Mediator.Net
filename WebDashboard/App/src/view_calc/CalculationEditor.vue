@@ -47,7 +47,7 @@
           v-model="model.RunMode"
           :enum-values="runModes"
           name="RunMode"
-          :tooltip="runModeTooltip"
+          :tooltip-html="runModeTooltip"
           :optional="false"
           type="Enum"
         />
@@ -55,7 +55,7 @@
           v-model="model.InputsRequired"
           :enum-values="inputsRequiredValues"
           name="Inputs Required"
-          :tooltip="inputsRequiredTooltip"
+          :tooltip-html="inputsRequiredTooltip"
           :optional="false"
           type="Enum"
         />
@@ -63,14 +63,14 @@
           v-if="showInitialStartTime"
           v-model="model.InitialStartTime"
           name="Initial Start Time"
-          :tooltip="initialStartTimeTooltip"
+          :tooltip-html="initialStartTimeTooltip"
           :optional="false"
           type="Timestamp"
         />
         <member-row
           v-model="model.MaxInputAge"
           name="Max Input Age"
-          :tooltip="maxInputAgeTooltip"
+          :tooltip-html="maxInputAgeTooltip"
           :optional="true"
           type="Duration"
         />
@@ -111,6 +111,7 @@
           v-if="isContinuous && model.Offset !== '0 s'"
           v-model="model.IgnoreOffsetForTimestamps"
           name="Ignore Offset For Timestamps"
+          :tooltip-html="ignoreOffsetForTimestampsTooltip"
           :optional="false"
           type="Boolean"
         />
@@ -123,6 +124,7 @@
         <member-row
           v-model="model.EnableOutputVarWrite"
           name="Enable Output Var Write"
+          :tooltip-html="enableOutputVarWriteTooltip"
           :optional="false"
           type="Boolean"
         />
@@ -448,21 +450,42 @@ const showOutputTypeColumn = computed((): boolean => {
 const adapterTypes = computed((): string[] => props.adapterTypesInfo.map((info) => info.Type))
 
 const runModes = computed((): string[] => ['Continuous', 'Triggered', 'InputDriven'])
-const runModeTooltip = `Continuous: Runs on the configured cycle (real-time).
-Triggered: Runs when explicitly triggered by another calculation.
-InputDriven: Runs when the inputs have new values. Useful to apply calculation to historic data or when input data arrives in batches. Initial Start Time is set automatically when switching to this mode.`
-
 const inputsRequiredValues = computed((): string[] => ['All', 'AtLeastOne', 'None'])
-const inputsRequiredTooltip = `All: Run only when all inputs have valid values (value is not empty and not NaN, quality is not Bad).
-AtLeastOne: Run when at least one input has a valid value.
-None: Always run, no matter what the input values are.`
-const initialStartTimeTooltip = `Used only in InputDriven mode.
-Defines the initial timestamp from which historical input processing starts.
-When switching to InputDriven, this value is set automatically and can be adjusted.
+
+const runModeTooltip = `
+<strong>Continuous</strong>:  Runs on the configured cycle (real-time).<br>
+<strong>Triggered</strong>:   Runs when explicitly triggered by another calculation.<br>
+<strong>InputDriven</strong>: Processes data from historian on Cycle/Offset-aligned timestamps. For each step, every variable input uses the value 
+                              at that timestamp or the latest value before it. If no data exists at/after the step timestamp yet, the calculation waits
+                              and continues later once new data has arrived. The cursor resumes from Last Run Timestamp + Cycle when available; 
+                              otherwise Initial Start Time is used. Best for backfilling historic data and batch input streams.`
+
+const inputsRequiredTooltip = `
+<strong>All</strong>:        Run only when all inputs have valid values (value is not empty and not NaN, quality is not Bad).<br>
+<strong>AtLeastOne</strong>: Run when at least one input has a valid value.<br>
+<strong>None</strong>:       Always run, no matter what the input values are.`
+
+const initialStartTimeTooltip = `
+Used only in InputDriven mode.<br>
+Defines the initial timestamp from which historical input processing starts.<br>
+When switching to InputDriven, this value is set automatically and can be adjusted.<br>
 If it is not aligned to Cycle/Offset, the next aligned timestamp is used.`
-const maxInputAgeTooltip = `Optional staleness limit for input values.
+
+const maxInputAgeTooltip = `
+Optional staleness limit for input values.
 If an input is older than this duration, it is treated as missing/invalid for the run (quality is set to Bad, value is set to null/empty).
 Can be combined with Inputs Required to skip calculation runs when inputs are too old.`
+
+const ignoreOffsetForTimestampsTooltip = `
+Controls the timestamp passed to the calculation in Continuous mode when Offset is non-zero.<br>
+Disabled: step timestamp equals the actual offset-aligned run time.<br>
+Enabled:  step timestamp uses cycle time without offset (timestamp = runTime - Offset).<br>
+Note: this changes timestamps (and dt), not the schedule itself.`
+const enableOutputVarWriteTooltip = `
+Controls whether calculation outputs are written to the destination variables configured in Outputs.<br>
+Enabled: mapped output variables are written after each run.<br>
+Disabled: no external output-variable write is performed (useful for test/dry-run).<br>
+Note: internal output/state values and history in the Calc object are still updated.`
 
 const initErrorResponses = computed((): string[] => ['Fail', 'Retry', 'Stop'])
 

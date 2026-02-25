@@ -7,7 +7,7 @@
       <div style="padding-top: 8px; display: flex; align-items: center; gap: 6px;">
         <span>{{ name }}</span>
         <v-tooltip
-          v-if="tooltip"
+          v-if="tooltip || tooltipHtml"
           location="top"
         >
           <template #activator="{ props: tooltipProps }">
@@ -20,7 +20,15 @@
               mdi-help-circle-outline
             </v-icon>
           </template>
-          <div style="white-space: pre-line; max-width: 700px;">{{ tooltip }}</div>
+          <div
+            :style="{ whiteSpace: tooltipHtml ? 'normal' : 'pre-line', maxWidth: '700px' }"
+          >
+            <span
+              v-if="tooltipHtml"
+              v-html="tooltipHtml"
+            />
+            <span v-else>{{ tooltip }}</span>
+          </div>
         </v-tooltip>
       </div>
     </td>
@@ -81,6 +89,7 @@ const props = defineProps<{
   optional: boolean
   enumValues?: string[]
   tooltip?: string
+  tooltipHtml?: string
 }>()
 
 const model = defineModel<any>({ required: true })
