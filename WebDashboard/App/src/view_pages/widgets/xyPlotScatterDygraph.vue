@@ -257,7 +257,7 @@ const dygraphOptions = computed(() => {
       const customDash = `<span style="color: ${originalColor}; font-weight: bold;">—</span>`
 
       return (
-        `<div style="background-color: white; display: inline;">` +
+        `<div style="background-color: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); display: inline;">` +
         `<input type=checkbox id="${id}" ${checked} onClick="window.changeVarVisibility_${grID}('${id}', ${i})">&nbsp;&nbsp;` +
         `<span style='font-weight: bold; color: ${originalColor};'>${customDash} ${label}</span>` +
         (hasData && isVisible ? ': ' + series.yHTML : '') +

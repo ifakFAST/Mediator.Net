@@ -858,7 +858,7 @@ const options = computed(() => {
       const checked = series.isVisible ? 'checked' : ''
       const label = series.labelHTML
       return (
-        `<div style="background-color: white; display: inline;">` +
+        `<div style="background-color: rgb(var(--v-theme-surface)); color: rgb(var(--v-theme-on-surface)); display: inline;">` +
         `<input type=checkbox id="${id}" ${checked} onClick="window.changeVarVisibility_${grID}('${id}', ${i})">&nbsp;&nbsp;` +
         `<span style='font-weight: bold;'>${series.dashHTML} ${label}</span>` +
         (HasData && series.isVisible ? ': ' + series.yHTML : '') +

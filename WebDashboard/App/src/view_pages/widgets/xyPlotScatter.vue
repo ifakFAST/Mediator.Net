@@ -2,7 +2,7 @@
   <svg
     :width="svgWidth"
     :height="svgHeight"
-    :style="{ border: '1px solid #ccc' }"
+    :style="{ border: '1px solid rgb(var(--v-theme-outline))' }"
   >
     <!-- Grid lines -->
     <g v-if="config.PlotConfig.ShowGrid">
@@ -13,7 +13,7 @@
         :x2="line"
         :y1="margins.top"
         :y2="svgHeight - margins.bottom"
-        stroke="#e0e0e0"
+        stroke="rgba(var(--v-theme-on-surface), 0.2)"
         stroke-width="1"
       />
       <line
@@ -23,7 +23,7 @@
         :x2="svgWidth - margins.right"
         :y1="line"
         :y2="line"
-        stroke="#e0e0e0"
+        stroke="rgba(var(--v-theme-on-surface), 0.2)"
         stroke-width="1"
       />
     </g>
@@ -47,7 +47,7 @@
       :x2="svgWidth - margins.right"
       :y1="svgHeight - margins.bottom"
       :y2="svgHeight - margins.bottom"
-      stroke="black"
+      stroke="rgb(var(--v-theme-on-surface))"
       stroke-width="2"
     />
     <line
@@ -55,7 +55,7 @@
       :x2="margins.left"
       :y1="margins.top"
       :y2="svgHeight - margins.bottom"
-      stroke="black"
+      stroke="rgb(var(--v-theme-on-surface))"
       stroke-width="2"
     />
 
@@ -63,6 +63,7 @@
     <text
       :x="(margins.left + svgWidth - margins.right) / 2"
       :y="svgHeight - 5"
+      fill="rgb(var(--v-theme-on-surface))"
       text-anchor="middle"
       font-size="12"
     >
@@ -71,6 +72,7 @@
     <text
       :x="10"
       :y="(margins.top + svgHeight - margins.bottom) / 2"
+      fill="rgb(var(--v-theme-on-surface))"
       text-anchor="middle"
       font-size="12"
       :transform="`rotate(-90, 10, ${(margins.top + svgHeight - margins.bottom) / 2})`"
@@ -85,6 +87,7 @@
         :key="'xt' + idx"
         :x="tick.pos"
         :y="svgHeight - margins.bottom + 15"
+        fill="rgb(var(--v-theme-on-surface))"
         text-anchor="middle"
         font-size="10"
       >
@@ -95,6 +98,7 @@
         :key="'yt' + idx"
         :x="margins.left - 10"
         :y="tick.pos"
+        fill="rgb(var(--v-theme-on-surface))"
         text-anchor="end"
         font-size="10"
         dominant-baseline="middle"
@@ -144,8 +148,8 @@
         :y="margins.top + 10"
         :width="legendWidth"
         :height="legendItems.length * legendEntryHeight + legendPadding * 2"
-        fill="white"
-        stroke="#ccc"
+        fill="rgb(var(--v-theme-surface))"
+        stroke="rgb(var(--v-theme-outline))"
         stroke-width="1"
         opacity="0.9"
       />
@@ -169,8 +173,8 @@
           y="5"
           width="14"
           height="14"
-          :fill="legendItem.visible ? '#fff' : '#f5f5f5'"
-          stroke="#666"
+          :fill="legendItem.visible ? 'rgb(var(--v-theme-surface))' : 'rgb(var(--v-theme-surface-variant))'"
+          stroke="rgb(var(--v-theme-outline))"
           stroke-width="1"
           rx="2"
           ry="2"
@@ -199,7 +203,7 @@
           y="12"
           font-size="12"
           dominant-baseline="middle"
-          :fill="legendItem.visible ? '#000' : '#888'"
+          :fill="legendItem.visible ? 'rgb(var(--v-theme-on-surface))' : 'rgba(var(--v-theme-on-surface), 0.6)'"
         >
           {{ legendItem.name.substring(0, 20) }}
         </text>

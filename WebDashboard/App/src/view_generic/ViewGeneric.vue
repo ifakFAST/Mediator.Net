@@ -304,27 +304,27 @@ onMounted(() => {
 
 .selectedtab {
   font-weight: bold;
-  color: black !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
   margin: 12px !important;
   text-transform: uppercase;
 }
 
 .nonselectedtab {
   font-weight: normal;
-  color: grey !important;
+  color: rgba(var(--v-theme-on-surface), 0.7) !important;
   margin: 12px !important;
   text-transform: uppercase;
 }
 
 .struct {
-  border: 1px solid grey;
+  border: 1px solid rgb(var(--v-theme-outline));
   margin: 8px;
-  background-color: rgb(228, 230, 231);
+  background-color: rgb(var(--v-theme-surface-variant));
 }
 
 .array {
-  border: 1px solid grey;
-  background-color: rgb(228, 230, 231);
+  border: 1px solid rgb(var(--v-theme-outline));
+  background-color: rgb(var(--v-theme-surface-variant));
 }
 
 .small {

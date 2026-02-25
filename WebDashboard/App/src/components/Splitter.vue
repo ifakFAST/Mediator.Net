@@ -40,7 +40,7 @@
   overflow-y: auto;
 }
 .vue-splitter .splitter {
-  background-color: #cecaca;
+  background-color: rgba(var(--v-theme-on-surface), 0.24);
 }
 </style>
 

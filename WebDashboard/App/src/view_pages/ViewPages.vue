@@ -8,7 +8,6 @@
         <v-toolbar
           v-if="!hideHeader"
           class="mb-3"
-          color="white"
           density="compact"
           flat
         >
@@ -468,13 +467,13 @@ const initVarValuesFromVarDefs = (): void => {
 <style>
 .selectedpage {
   font-weight: bold;
-  color: black !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
   margin: 12px !important;
 }
 
 .nonselectedpage {
   font-weight: normal;
-  color: grey !important;
+  color: rgba(var(--v-theme-on-surface), 0.7) !important;
   margin: 12px !important;
 }
 </style>

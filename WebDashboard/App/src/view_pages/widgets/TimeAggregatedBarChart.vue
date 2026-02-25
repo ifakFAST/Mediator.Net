@@ -61,6 +61,11 @@ import type { TimeAggregatedBarChartConfig, LoadDataResponse } from './TimeAggre
 import TimeAggregatedBarChartConfigDlg from './TimeAggregatedBarChartConfigDlg.vue'
 import { formatTimeLabel } from './dateFormatUtils'
 
+const themeColor = (varName: string, fallback: string): string => {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+  return `rgb(${value !== '' ? value : fallback})`
+}
+
 // Extend Chart.js types to include our custom plugin options
 declare module 'chart.js' {
   interface PluginOptionsByType<TType extends ChartType> {
@@ -118,7 +123,7 @@ const totalLabelPlugin: Plugin<'bar'> = {
       }
 
       ctx.save()
-      ctx.fillStyle = '#000'
+      ctx.fillStyle = themeColor('--v-theme-on-surface', '0, 0, 0')
       ctx.font = 'bold 12px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'bottom'

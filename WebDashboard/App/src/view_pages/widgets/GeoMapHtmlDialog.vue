@@ -127,13 +127,13 @@ defineExpose({ open })
 
 .html-content :deep(table th),
 .html-content :deep(table td) {
-  border: 1px solid #ddd;
+  border: 1px solid rgb(var(--v-theme-outline));
   padding: 8px;
   text-align: left;
 }
 
 .html-content :deep(table th) {
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-surface-variant));
   font-weight: bold;
 }
 

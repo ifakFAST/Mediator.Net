@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="geomap-widget">
     <div
       :id="theID"
       style="min-height: 100px"
@@ -1308,11 +1308,11 @@ onBeforeUnmount(() => {
   padding: 0px;
   padding-right: 3px;
   padding-left: 3px;
-  background-color: #ffffff;
-  border: 1px solid #fff;
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgb(var(--v-theme-outline));
   border-radius: 3px;
   font-weight: bold;
-  color: #222;
+  color: rgb(var(--v-theme-on-surface));
   line-height: 16px;
   white-space: nowrap;
   -webkit-user-select: none;
@@ -1323,13 +1323,73 @@ onBeforeUnmount(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-.leaflet-control-custom a {
-  background-color: #fff;
-  color: #444;
+.geomap-widget .leaflet-control-custom a {
+  background-color: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   cursor: pointer;
+  border-color: rgb(var(--v-theme-outline));
 }
 
-.leaflet-control-custom a:hover {
-  background-color: #f4f4f4;
+.geomap-widget .leaflet-control-custom a:hover {
+  background-color: rgb(var(--v-theme-surface-variant));
+}
+
+.geomap-widget .leaflet-bar a {
+  background-color: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom-color: rgb(var(--v-theme-outline));
+}
+
+.geomap-widget .leaflet-bar a:hover,
+.geomap-widget .leaflet-bar a:focus,
+.geomap-widget .leaflet-bar a.leaflet-disabled {
+  background-color: rgb(var(--v-theme-surface-variant));
+}
+
+.geomap-widget .leaflet-control-layers,
+.geomap-widget .leaflet-control-layers-expanded {
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.geomap-widget .leaflet-control-layers-separator {
+  border-top-color: rgb(var(--v-theme-outline));
+}
+
+.geomap-widget .leaflet-container .leaflet-control-attribution {
+  background: rgba(var(--v-theme-surface), 0.92);
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.geomap-widget .leaflet-control-scale-line {
+  background: rgba(var(--v-theme-surface), 0.92);
+  border-color: rgba(var(--v-theme-on-surface), 0.6);
+  color: rgb(var(--v-theme-on-surface));
+  text-shadow: none;
+}
+
+.geomap-widget .leaflet-popup-content-wrapper,
+.geomap-widget .leaflet-popup-tip,
+.geomap-widget .leaflet-tooltip,
+.geomap-widget .leaflet-div-icon {
+  background: rgb(var(--v-theme-surface));
+  border-color: rgb(var(--v-theme-outline));
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.geomap-widget .leaflet-tooltip-top:before {
+  border-top-color: rgb(var(--v-theme-surface));
+}
+
+.geomap-widget .leaflet-tooltip-bottom:before {
+  border-bottom-color: rgb(var(--v-theme-surface));
+}
+
+.geomap-widget .leaflet-tooltip-left:before {
+  border-left-color: rgb(var(--v-theme-surface));
+}
+
+.geomap-widget .leaflet-tooltip-right:before {
+  border-right-color: rgb(var(--v-theme-surface));
 }
 </style>
