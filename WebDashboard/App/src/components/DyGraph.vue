@@ -172,4 +172,16 @@ defineExpose({
   border-bottom-width: 12px !important;
   bottom: 0px !important;
 }
+
+.dygraph-axis-label,
+.dygraph-axis-label-x,
+.dygraph-axis-label-y,
+.dygraph-axis-label-y2,
+.dygraph-label,
+.dygraph-title,
+.dygraph-xlabel,
+.dygraph-ylabel,
+.dygraph-y2label {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
 </style>
