@@ -469,11 +469,13 @@ const initVarValuesFromVarDefs = (): void => {
   font-weight: bold;
   color: rgb(var(--v-theme-on-surface)) !important;
   margin: 12px !important;
+  cursor: pointer;
 }
 
 .nonselectedpage {
   font-weight: normal;
   color: rgba(var(--v-theme-on-surface), 0.7) !important;
   margin: 12px !important;
+  cursor: pointer;
 }
 </style>
