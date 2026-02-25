@@ -35,7 +35,7 @@ export interface Calculation {
   Subtype: string
   RunMode: 'Continuous' | 'Triggered' | 'InputDriven'
   InputsRequired: 'All' | 'AtLeastOne' | 'None'
-  InitialStartTime: fast.Timestamp // ISO 8601 date-time string
+  InitialStartTime?: fast.Timestamp | null // ISO 8601 date-time string
   MaxInputAge?: fast.Duration
   InitErrorResponse: 'Fail' | 'Retry' | 'Stop'
   HistoryScope: 'All' | 'ExcludeInputs' | 'ExcludeStates' | 'ExcludeInputsAndStates'

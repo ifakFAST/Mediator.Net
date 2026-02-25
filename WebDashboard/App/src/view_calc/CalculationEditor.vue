@@ -44,12 +44,13 @@
           type="Enum"
         />
         <member-row
-          v-model="model.RunMode"
+          :model-value="model.RunMode"
           :enum-values="runModes"
           name="RunMode"
           :tooltip-html="runModeTooltip"
           :optional="false"
           type="Enum"
+          @update:model-value="onRunModeChanged"
         />
         <member-row
           v-model="model.InputsRequired"
@@ -516,14 +517,14 @@ watch(
   },
 )
 
-watch(
-  () => model.value.RunMode,
-  (newMode, oldMode) => {
-    if (newMode === 'InputDriven' && oldMode !== 'InputDriven') {
-      model.value.InitialStartTime = nowTruncatedToHourISO()
-    }
-  },
-)
+const onRunModeChanged = (newMode: 'Continuous' | 'Triggered' | 'InputDriven'): void => {
+  const oldMode = model.value.RunMode
+  model.value.RunMode = newMode
+  const emptyInitialStartTime = !model.value.InitialStartTime || model.value.InitialStartTime === ''
+  if (newMode === 'InputDriven' && oldMode !== 'InputDriven' && emptyInitialStartTime) {
+    model.value.InitialStartTime = nowTruncatedToHourISO()
+  }
+}
 
 const showInitialStartTime = computed((): boolean => model.value.RunMode === 'InputDriven')
 
