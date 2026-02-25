@@ -12,10 +12,12 @@ import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
+const savedTheme = localStorage.getItem('theme') ?? 'light'
+
 export default createVuetify({
   components: {},
   theme: {
-    defaultTheme: 'light',
+    defaultTheme: savedTheme,
   },
   defaults: {
     VMenu: { transition: false },

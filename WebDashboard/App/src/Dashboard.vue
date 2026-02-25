@@ -253,6 +253,23 @@
         :open-delay="1000"
       >
         <template v-slot:activator="{ props }">
+          <v-btn
+            variant="text"
+            icon
+            v-bind="props"
+            @click="toggleTheme"
+          >
+            <v-icon>{{ theme.global.name.value === 'dark' ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+          </v-btn>
+        </template>
+        <span>{{ theme.global.name.value === 'dark' ? 'Switch to light mode' : 'Switch to dark mode' }}</span>
+      </v-tooltip>
+
+      <v-tooltip
+        location="bottom"
+        :open-delay="1000"
+      >
+        <template v-slot:activator="{ props }">
           <v-chip
             class="mt-1 mb-1 ml-4 mr-4"
             variant="outlined"
@@ -424,6 +441,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useTheme } from 'vuetify'
 import type { View, TimeRange } from './global'
 import globalState from './global'
 import ViewVariables from './view_variables/ViewVariables.vue'
@@ -448,6 +466,14 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const theme = useTheme()
+
+function toggleTheme() {
+  const next = theme.global.name.value === 'light' ? 'dark' : 'light'
+  theme.global.name.value = next
+  localStorage.setItem('theme', next)
+}
 
 const emit = defineEmits<{
   (e: 'logout'): void
