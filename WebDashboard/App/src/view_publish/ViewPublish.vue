@@ -48,9 +48,10 @@
       </template>
 
       <template #right-pane>
-        <div class="pl-4">
+        <div class="pl-4 d-flex flex-column h-100 overflow-hidden">
           <v-toolbar
             v-if="editConfig !== null"
+            class="flex-shrink-0"
             :elevation="4"
             density="compact"
           >
@@ -91,6 +92,7 @@
 
           <v-toolbar
             v-if="editConfig === null"
+            class="flex-shrink-0"
             :elevation="4"
             density="compact"
           >
@@ -101,16 +103,19 @@
 
           <MqttConfigEditor
             v-if="activeProtocol === 'MQTT' && editConfig !== null"
+            class="flex-grow-1"
             v-model="editConfig as MqttConfig"
             :modules="modules"
           />
           <SqlConfigEditor
             v-if="activeProtocol === 'SQL' && editConfig !== null"
+            class="flex-grow-1"
             v-model="editConfig as SQLConfig"
             :modules="modules"
           />
           <OpcUaConfigEditor
             v-if="activeProtocol === 'OPC_UA' && editConfig !== null"
+            class="flex-grow-1"
             v-model="editConfig as OpcUaConfig"
             :modules="modules"
           />

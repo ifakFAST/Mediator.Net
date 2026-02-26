@@ -1,7 +1,8 @@
 <template>
-  <div>
+  <div class="d-flex flex-column overflow-hidden">
     <v-tabs
       v-model="selectedTab"
+      class="flex-shrink-0"
       style="margin-top: 8px"
       density="compact"
     >
@@ -9,7 +10,10 @@
       <v-tab value="VarPublish">Variable Publishing</v-tab>
     </v-tabs>
 
-    <div v-if="selectedTab === 'General'">
+    <div
+      v-if="selectedTab === 'General'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <member-row
           v-model="model.Name"
@@ -65,7 +69,10 @@
       </table>
     </div>
 
-    <div v-if="selectedTab === 'VarPublish'">
+    <div
+      v-if="selectedTab === 'VarPublish'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <member-row
           v-model="model.VarPublish.Enabled"

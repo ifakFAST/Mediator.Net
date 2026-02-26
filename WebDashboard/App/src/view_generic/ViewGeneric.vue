@@ -24,10 +24,11 @@
     </template>
     <template #right-pane>
       <div
-        class="pl-4"
+        class="pl-4 d-flex flex-column h-100 overflow-hidden"
         style="max-width: 950px"
       >
         <object-editor
+          class="flex-grow-1"
           :child-types="childTypes"
           :locations="locations"
           :members="currObjectValues"

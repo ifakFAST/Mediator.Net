@@ -1,7 +1,8 @@
 <template>
-  <div>
+  <div class="d-flex flex-column overflow-hidden">
     <v-tabs
       v-model="selectedTab"
+      class="flex-shrink-0"
       style="margin-top: 8px"
       density="compact"
     >
@@ -20,7 +21,10 @@
       >
     </v-tabs>
 
-    <div v-if="selectedTab === 'Properties'">
+    <div
+      v-if="selectedTab === 'Properties'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <member-row
           v-model="model.Name"
@@ -146,7 +150,10 @@
       </table>
     </div>
 
-    <div v-if="selectedTab === 'Code'">
+    <div
+      v-if="selectedTab === 'Code'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <code-editor
         v-if="hasCode"
         v-model="model.Definition"
@@ -156,7 +163,10 @@
       />
     </div>
 
-    <div v-if="selectedTab === 'Inputs'">
+    <div
+      v-if="selectedTab === 'Inputs'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <thead>
           <tr>
@@ -251,7 +261,10 @@
       </table>
     </div>
 
-    <div v-if="selectedTab === 'Outputs'">
+    <div
+      v-if="selectedTab === 'Outputs'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <thead>
           <tr>
@@ -335,7 +348,10 @@
       </table>
     </div>
 
-    <div v-if="selectedTab === 'States'">
+    <div
+      v-if="selectedTab === 'States'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <table cellspacing="10">
         <thead>
           <tr>

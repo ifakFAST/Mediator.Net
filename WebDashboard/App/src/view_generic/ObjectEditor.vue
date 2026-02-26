@@ -1,6 +1,7 @@
 <template>
-  <div>
+  <div class="d-flex flex-column overflow-hidden h-100">
     <v-toolbar
+      class="flex-shrink-0"
       density="compact"
       :elevation="4"
       extended
@@ -82,11 +83,14 @@
       </template>
     </v-toolbar>
 
-    <div
+    <template
       v-for="cat in categoryMembers"
       :key="cat.Category"
     >
-      <div v-if="currentTab === cat.Category">
+      <div
+        v-if="currentTab === cat.Category"
+        class="flex-grow-1 overflow-y-auto"
+      >
         <form>
           <table
             cellspacing="10"
@@ -382,9 +386,12 @@
           </table>
         </form>
       </div>
-    </div>
+    </template>
 
-    <div v-if="currentTab === 'Variables'">
+    <div
+      v-if="currentTab === 'Variables'"
+      class="flex-grow-1 overflow-y-auto"
+    >
       <v-data-table
         class="elevation-1 mx-1 mt-2 mb-1"
         :headers="varHeaders"

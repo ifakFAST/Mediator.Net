@@ -18,9 +18,10 @@
       </div>
     </template>
     <template #right-pane>
-      <div class="pl-4">
+      <div class="pl-4 d-flex flex-column h-100 overflow-hidden">
         <v-toolbar
           v-if="editObject !== null"
+          class="flex-shrink-0"
           :elevation="4"
           density="compact"
         >
@@ -105,16 +106,25 @@
           </v-menu>
         </v-toolbar>
 
-        <FolderEditor
+        <div
           v-if="isFolderObject && editObject !== null"
-          v-model="editObject as calcmodel.Folder"
-        />
-        <SignalEditor
+          class="flex-grow-1 overflow-y-auto"
+        >
+          <FolderEditor
+            v-model="editObject as calcmodel.Folder"
+          />
+        </div>
+        <div
           v-if="isSignalObject && editObject !== null"
-          v-model="editObject as calcmodel.Signal"
-        />
+          class="flex-grow-1 overflow-y-auto"
+        >
+          <SignalEditor
+            v-model="editObject as calcmodel.Signal"
+          />
+        </div>
         <CalculationEditor
           v-if="isCalculationObject && editObject !== null && editObjectVariables !== null"
+          class="flex-grow-1"
           v-model="editObject as calcmodel.Calculation"
           :adapter-types-info="adapterTypesInfo"
           :variables="editObjectVariables as CalculationVariables"
