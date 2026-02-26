@@ -133,6 +133,7 @@ function openWebSocket(user: string, pass: string) {
 
     socket.onopen = () => {
       globalState.connectionState = 0
+      socket.send(globalState.sessionID)
       const doKeepAlive = () => {
         socket.send('KA')
       }

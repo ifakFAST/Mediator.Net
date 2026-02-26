@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -35,6 +35,7 @@ public class Module : ModelObjectModule<DashboardModel>
 
     private readonly Dictionary<string, Session> sessions = [];
     private readonly Dictionary<string, Dictionary<string, string>> getRequestMappingsBySession = [];
+    private string getRequestAccessToken = "";
 
     private static SynchronizationContext? theSyncContext = null;
     private readonly WebApplication? webHost = null;
@@ -74,6 +75,7 @@ public class Module : ModelObjectModule<DashboardModel>
         await base.Init(info, restoreVariableValues, notifier, moduleThread);
 
         configPath = Path.GetDirectoryName(base.modelFileName) ?? "";
+        getRequestAccessToken = Guid.NewGuid().ToString("N");
         var config = info.GetConfigReader();
 
         clientPort = info.LoginPort;
@@ -315,10 +317,45 @@ public class Module : ModelObjectModule<DashboardModel>
         }
     }
 
-    private async Task HandleClientWebSocket(WebSocket socket, Session session) {
+    private async Task HandleClientWebSocket(WebSocket socket) {
 
         try {
-            await session.ReadWebSocket(socket);
+            const int maxMessageSize = 1024;
+            byte[] receiveBuffer = new byte[maxMessageSize];
+
+            WebSocketReceiveResult receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+
+            if (receiveResult.MessageType == WebSocketMessageType.Close) {
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+            }
+            else if (receiveResult.MessageType == WebSocketMessageType.Binary) {
+                await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Cannot accept binary frame", CancellationToken.None);
+            }
+            else {
+
+                int count = receiveResult.Count;
+
+                while (!receiveResult.EndOfMessage) {
+
+                    if (count >= maxMessageSize) {
+                        string closeMessage = string.Format("Maximum message size: {0} bytes.", maxMessageSize);
+                        await socket.CloseAsync(WebSocketCloseStatus.MessageTooBig, closeMessage, CancellationToken.None);
+                        return;
+                    }
+                    receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer, count, maxMessageSize - count), CancellationToken.None);
+                    count += receiveResult.Count;
+                }
+
+                string sessionID = Encoding.UTF8.GetString(receiveBuffer, 0, count);
+
+                if (!sessions.TryGetValue(sessionID, out Session? value)) {
+                    Task ignored = socket.CloseAsync(WebSocketCloseStatus.ProtocolError, string.Empty, CancellationToken.None);
+                    throw new InvalidSessionException();
+                }
+
+                Session session = value;
+                await session.ReadWebSocket(socket);
+            }
         }
         catch (Exception exp) {
             if (exp is not InvalidSessionException) {
@@ -351,12 +388,8 @@ public class Module : ModelObjectModule<DashboardModel>
         try {
 
             if (request.Path == "/websocket/" && context.WebSockets.IsWebSocketRequest) {
-                if (!TryGetSessionFromRequest(request, out Session session)) {
-                    response.StatusCode = 401;
-                    return;
-                }
                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                await HandleClientWebSocket(webSocket, session);
+                await HandleClientWebSocket(webSocket);
                 return;
             }
 
@@ -423,6 +456,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private const string Header_ViewID = "X-Dashboard-View-ID";
     private const string Query_ViewID = "viewID";
     private const string SessionCookieNameBase = "dashboard_session";
+    private const string GetRequestCookieNameBase = "dashboard_get_auth";
 
     private async Task<ReqResult> HandlePost(HttpContext context) {
 
@@ -483,6 +517,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 }
                 sessions[session.ID] = session;
                 response.Cookies.Append(GetSessionCookieName(request), session.ID, MakeSessionCookieOptions(request));
+                response.Cookies.Append(GetRequestCookieName(request), getRequestAccessToken, MakeSessionCookieOptions(request));
 
                 MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
                 bool canUpdateViews = await connection.CanUpdateConfig(mr);
@@ -605,6 +640,15 @@ public class Module : ModelObjectModule<DashboardModel>
                     Secure = request.IsHttps,
                     SameSite = SameSiteMode.Lax
                 });
+                if (sessions.Count == 0) {
+                    getRequestAccessToken = Guid.NewGuid().ToString("N");
+                    response.Cookies.Delete(GetRequestCookieName(request), new CookieOptions {
+                        Path = "/",
+                        HttpOnly = true,
+                        Secure = request.IsHttps,
+                        SameSite = SameSiteMode.Lax
+                    });
+                }
                 return ReqResult.OK();
             }
             else {
@@ -658,15 +702,11 @@ public class Module : ModelObjectModule<DashboardModel>
             return false;
         }
 
-        if (!TryGetSessionFromRequest(request, out Session session)) {
+        if (!IsAuthorizedGetRequest(request)) {
             return false;
         }
 
-        if (!getRequestMappingsBySession.TryGetValue(session.ID, out Dictionary<string, string>? sessionMappings)) {
-            return false;
-        }
-
-        if (!TryResolveMappedPath(sessionMappings, mappedRequestPath, out string mappedDirectory, out string relativePath)) {
+        if (!TryResolveMappedPathAcrossSessions(mappedRequestPath, out string mappedDirectory, out string relativePath)) {
             return false;
         }
 
@@ -680,6 +720,26 @@ public class Module : ModelObjectModule<DashboardModel>
 
         contentType = GetContentTypeForPath(fullPath);
         return true;
+    }
+
+    private bool TryResolveMappedPathAcrossSessions(string mappedRequestPath, out string mappedDirectory, out string relativePath) {
+
+        mappedDirectory = "";
+        relativePath = "";
+        int bestMatchLength = -1;
+
+        foreach (Dictionary<string, string> sessionMappings in getRequestMappingsBySession.Values) {
+            if (TryResolveMappedPath(sessionMappings, mappedRequestPath, out string currentDirectory, out string currentRelativePath)) {
+                int currentMatchLength = mappedRequestPath.Length - currentRelativePath.Length;
+                if (currentMatchLength > bestMatchLength) {
+                    bestMatchLength = currentMatchLength;
+                    mappedDirectory = currentDirectory;
+                    relativePath = currentRelativePath;
+                }
+            }
+        }
+
+        return bestMatchLength >= 0;
     }
 
     private static bool TryResolveMappedPath(Dictionary<string, string> sessionMappings, string mappedRequestPath, out string mappedDirectory, out string relativePath) {
@@ -754,6 +814,24 @@ public class Module : ModelObjectModule<DashboardModel>
     private static string GetSessionCookieName(HttpRequest request) {
         int port = request.Host.Port ?? (request.IsHttps ? 443 : 80);
         return $"{SessionCookieNameBase}_{port}";
+    }
+
+    private static string GetRequestCookieName(HttpRequest request) {
+        int port = request.Host.Port ?? (request.IsHttps ? 443 : 80);
+        return $"{GetRequestCookieNameBase}_{port}";
+    }
+
+    private bool IsAuthorizedGetRequest(HttpRequest request) {
+        if (string.IsNullOrWhiteSpace(getRequestAccessToken)) {
+            return false;
+        }
+        if (!request.Cookies.TryGetValue(GetRequestCookieName(request), out string? cookieValue)) {
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(cookieValue)) {
+            return false;
+        }
+        return string.Equals(cookieValue, getRequestAccessToken, StringComparison.Ordinal);
     }
 
     private static bool TryGetSessionIDFromRequest(HttpRequest request, out string sessionID) {
