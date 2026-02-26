@@ -27,7 +27,7 @@
       <v-card-text class="pa-4">
         <div
           class="html-content"
-          v-html="dialogOptions.content"
+          v-html="sanitizedContent"
         ></div>
       </v-card-text>
       <v-card-actions
@@ -48,7 +48,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { sanitizeHtml } from '../../security/safeHtml'
 
 interface HtmlDialogOptions {
   title?: string
@@ -69,6 +70,8 @@ const dialogOptions = ref<HtmlDialogOptions>({
   persistent: false,
   hideActions: false,
 })
+
+const sanitizedContent = computed(() => sanitizeHtml(dialogOptions.value.content || ''))
 
 const open = (htmlDialogData: string | HtmlDialogOptions): Promise<void> => {
   // Handle both string and object formats

@@ -25,7 +25,7 @@
           >
             <span
               v-if="tooltipHtml"
-              v-html="tooltipHtml"
+              v-html="sanitizedTooltipHtml"
             />
             <span v-else>{{ tooltip }}</span>
           </div>
@@ -79,9 +79,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import TypeControl from './TypeControl.vue'
 import type { MemberTypeEnum } from './member_types'
 import { defaultValueFromMemberType } from './member_types'
+import { sanitizeHtml } from '../../security/safeHtml'
 
 const props = defineProps<{
   name: string
@@ -93,6 +95,8 @@ const props = defineProps<{
 }>()
 
 const model = defineModel<any>({ required: true })
+
+const sanitizedTooltipHtml = computed(() => sanitizeHtml(props.tooltipHtml ?? ''))
 
 const updateSetDefault = (): void => {
   model.value = defaultValueFromMemberType(props.type)

@@ -18,6 +18,7 @@
     "ace-builds": "1.43.6",
     "axios": "1.13.5",
     "chart.js": "4.5.1",
+    "dompurify": "^3.3.1",
     "dygraphs": "2.2.1",
     "geojson": "0.5.0",
     "leaflet": "1.9.4",

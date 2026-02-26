@@ -2,8 +2,8 @@
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.Extensions.Configuration;
-using System.Linq;
+using Ifak.Fast.Mediator.Dashboard.Security;
+using System;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
@@ -22,8 +22,23 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets
         }
 
         public async Task<ReqResult> UiReq_SaveConfig(string text, string mode) {
-            configuration.Text = text;
-            configuration.Mode = mode;
+            string normalizedMode;
+            if (string.Equals(mode, "HTML", StringComparison.OrdinalIgnoreCase)) {
+                normalizedMode = "HTML";
+            }
+            else if (string.Equals(mode, "Markdown", StringComparison.OrdinalIgnoreCase)) {
+                normalizedMode = "Markdown";
+            }
+            else {
+                return ReqResult.Bad("Invalid text mode.");
+            }
+
+            string safeText = normalizedMode == "HTML"
+                ? HtmlContentSanitizer.Sanitize(text)
+                : text ?? "";
+
+            configuration.Text = safeText;
+            configuration.Mode = normalizedMode;
             await Context.SaveWidgetConfiguration(configuration);
             return ReqResult.OK();
         }

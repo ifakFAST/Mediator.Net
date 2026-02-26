@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import type { TimeRange } from '../../utils'
-import { marked } from 'marked'
+import { markdownToSafeHtml, sanitizeHtml } from '../../security/safeHtml'
 
 interface Config {
   Text: string
@@ -133,16 +133,16 @@ const theHeight = computed((): string => {
 
 const theHtmlString = computed((): string => {
   if (props.config.Mode === 'HTML') {
-    return props.config.Text
+    return sanitizeHtml(props.config.Text || '')
   }
-  return marked.parse(props.config.Text || '') as string
+  return markdownToSafeHtml(props.config.Text || '')
 })
 
 const theHtmlStringEdit = computed((): string => {
   if (textMode.value === 'HTML') {
-    return text.value
+    return sanitizeHtml(text.value || '')
   }
-  return marked.parse(text.value || '') as string
+  return markdownToSafeHtml(text.value || '')
 })
 
 const onContextMenu = async (e: any): Promise<void> => {
