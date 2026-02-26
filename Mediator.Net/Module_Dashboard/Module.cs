@@ -34,7 +34,7 @@ public class Module : ModelObjectModule<DashboardModel>
     private ViewType[] viewTypes = [];
 
     private readonly Dictionary<string, Session> sessions = [];
-    private readonly Dictionary<string, Dictionary<string, string>> getRequestMappingsBySession = [];
+    private readonly Dictionary<string, string> getRequestMappings = new(StringComparer.Ordinal);
     private string getRequestAccessToken = "";
 
     private static SynchronizationContext? theSyncContext = null;
@@ -220,6 +220,16 @@ public class Module : ModelObjectModule<DashboardModel>
 
         string webAssetsDir = Path.Combine(configPath, Session.WebAssets);
 
+        app.Use(async (context, nextMiddleware) => {
+            if (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments($"/{Session.WebAssets}")) {
+                if (!IsAuthorizedGetRequest(context.Request)) {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+            }
+            await nextMiddleware();
+        });
+
         try {
             IHttpContextAccessor httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             
@@ -299,8 +309,11 @@ public class Module : ModelObjectModule<DashboardModel>
                         Console.WriteLine("Closing abandoned session: " + session.ID);
                         var ignored2 = session.Close();
                         sessions.Remove(session.ID);
-                        getRequestMappingsBySession.Remove(session.ID);
                     }
+                }
+                if (sessions.Count == 0) {
+                    getRequestMappings.Clear();
+                    getRequestAccessToken = Guid.NewGuid().ToString("N");
                 }
             }
 
@@ -485,12 +498,10 @@ public class Module : ModelObjectModule<DashboardModel>
                 }
 
                 var session = new Session(configPath);
-                Dictionary<string, string> sessionMappings = new(StringComparer.Ordinal);
-                getRequestMappingsBySession[session.ID] = sessionMappings;
                 session.OnUpdateGetRequestMapping += (path, directory) => {
                     string mappedPath = NormalizeMappedPath(path);
                     string mappedDirectory = Path.GetFullPath(directory);
-                    sessionMappings[mappedPath] = mappedDirectory;
+                    getRequestMappings[mappedPath] = mappedDirectory;
                 };
                 Connection? connection = null;
                 try {
@@ -499,7 +510,6 @@ public class Module : ModelObjectModule<DashboardModel>
                     await session.SetConnection(connection, model, moduleID, viewTypes);
                 }
                 catch (Exception exp) {
-                    getRequestMappingsBySession.Remove(session.ID);
                     if (connection != null) {
                         try {
                             await connection.Close();
@@ -631,7 +641,6 @@ public class Module : ModelObjectModule<DashboardModel>
                     string sessionID = session.ID;
                     var ignored = session.Close();
                     sessions.Remove(sessionID);
-                    getRequestMappingsBySession.Remove(sessionID);
                 }
 
                 response.Cookies.Delete(GetSessionCookieName(request), new CookieOptions {
@@ -641,6 +650,7 @@ public class Module : ModelObjectModule<DashboardModel>
                     SameSite = SameSiteMode.Lax
                 });
                 if (sessions.Count == 0) {
+                    getRequestMappings.Clear();
                     getRequestAccessToken = Guid.NewGuid().ToString("N");
                     response.Cookies.Delete(GetRequestCookieName(request), new CookieOptions {
                         Path = "/",
@@ -706,7 +716,7 @@ public class Module : ModelObjectModule<DashboardModel>
             return false;
         }
 
-        if (!TryResolveMappedPathAcrossSessions(mappedRequestPath, out string mappedDirectory, out string relativePath)) {
+        if (!TryResolveMappedPath(getRequestMappings, mappedRequestPath, out string mappedDirectory, out string relativePath)) {
             return false;
         }
 
@@ -720,26 +730,6 @@ public class Module : ModelObjectModule<DashboardModel>
 
         contentType = GetContentTypeForPath(fullPath);
         return true;
-    }
-
-    private bool TryResolveMappedPathAcrossSessions(string mappedRequestPath, out string mappedDirectory, out string relativePath) {
-
-        mappedDirectory = "";
-        relativePath = "";
-        int bestMatchLength = -1;
-
-        foreach (Dictionary<string, string> sessionMappings in getRequestMappingsBySession.Values) {
-            if (TryResolveMappedPath(sessionMappings, mappedRequestPath, out string currentDirectory, out string currentRelativePath)) {
-                int currentMatchLength = mappedRequestPath.Length - currentRelativePath.Length;
-                if (currentMatchLength > bestMatchLength) {
-                    bestMatchLength = currentMatchLength;
-                    mappedDirectory = currentDirectory;
-                    relativePath = currentRelativePath;
-                }
-            }
-        }
-
-        return bestMatchLength >= 0;
     }
 
     private static bool TryResolveMappedPath(Dictionary<string, string> sessionMappings, string mappedRequestPath, out string mappedDirectory, out string relativePath) {
