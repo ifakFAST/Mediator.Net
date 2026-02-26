@@ -51,7 +51,7 @@ WHERE module = @module
   AND id_string = @id_string
   AND var_name = @var_name;</QueryTagID2Identifier>
         <QueryRegisterTag>INSERT INTO tag_meta (module, id_string, var_name, full_id, unit, location, updated_utc)
-VALUES (@module, @id_string, @var_name, @full_id, @object_member_name, @location, NOW())
+VALUES (@module, @id_string, @var_name, @full_id, @unit, @location, NOW())
 ON CONFLICT (module, id_string, var_name)
 DO UPDATE SET
     full_id = EXCLUDED.full_id,
