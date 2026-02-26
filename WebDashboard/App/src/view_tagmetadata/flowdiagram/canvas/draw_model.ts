@@ -207,8 +207,7 @@ export function convertBlock(b: simu.Block): Block {
     img = imageCache[url]
     if (img === undefined) {
       const dashboardApp = (window.parent as any).dashboardApp
-      const dashboardContext = encodeURIComponent(dashboardApp.getDashboardViewContext())
-      const fullUrl = dashboardApp.getBackendUrl() + '/ctx/' + dashboardContext + '/block_images/' + url
+      const fullUrl = dashboardApp.getBackendUrl() + '/ctx/block_images/' + url
       if (fullUrl) {
         img = document.createElement('img')
         img.src = fullUrl

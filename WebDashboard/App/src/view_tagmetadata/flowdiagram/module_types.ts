@@ -602,7 +602,6 @@ export async function loadModuleTypes(): Promise<void> {
     // Start with existing static module types
     const dynamicModuleTypes: ModuleBlockTypes = { ...MapOfModuleTypes }
     const dashboardApp = (window.parent as any).dashboardApp
-    const dashboardContext = encodeURIComponent(dashboardApp.getDashboardViewContext())
 
     // Load each dynamic module type
     for (const moduleTypeId of moduleTypeIds) {
@@ -610,9 +609,7 @@ export async function loadModuleTypes(): Promise<void> {
         // Construct the URL for the JS module file
         const moduleUrl =
           dashboardApp.getBackendUrl() +
-          '/ctx/' +
-          dashboardContext +
-          '/view_tagmetadata/moduletype/' +
+          '/ctx/view_tagmetadata/moduletype/' +
           'module.' +
           moduleTypeId +
           '.js'

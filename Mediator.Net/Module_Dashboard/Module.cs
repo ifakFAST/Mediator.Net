@@ -315,47 +315,10 @@ public class Module : ModelObjectModule<DashboardModel>
         }
     }
 
-    private async Task HandleClientWebSocket(WebSocket socket) {
+    private async Task HandleClientWebSocket(WebSocket socket, Session session) {
 
         try {
-
-            const int maxMessageSize = 1024;
-            byte[] receiveBuffer = new byte[maxMessageSize];
-
-            WebSocketReceiveResult receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-
-            if (receiveResult.MessageType == WebSocketMessageType.Close) {
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-            }
-            else if (receiveResult.MessageType == WebSocketMessageType.Binary) {
-                await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Cannot accept binary frame", CancellationToken.None);
-            }
-            else {
-
-                int count = receiveResult.Count;
-
-                while (!receiveResult.EndOfMessage) {
-
-                    if (count >= maxMessageSize) {
-                        string closeMessage = string.Format("Maximum message size: {0} bytes.", maxMessageSize);
-                        await socket.CloseAsync(WebSocketCloseStatus.MessageTooBig, closeMessage, CancellationToken.None);
-                        return;
-                    }
-                    receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer, count, maxMessageSize - count), CancellationToken.None);
-                    count += receiveResult.Count;
-                }
-
-                var sessionID = Encoding.UTF8.GetString(receiveBuffer, 0, count);
-
-                if (!sessions.TryGetValue(sessionID, out Session? value)) {
-                    Task ignored = socket.CloseAsync(WebSocketCloseStatus.ProtocolError, string.Empty, CancellationToken.None);
-                    throw new InvalidSessionException();
-                }
-
-                Session session = value;
-
-                await session.ReadWebSocket(socket);
-            }
+            await session.ReadWebSocket(socket);
         }
         catch (Exception exp) {
             if (exp is not InvalidSessionException) {
@@ -388,8 +351,12 @@ public class Module : ModelObjectModule<DashboardModel>
         try {
 
             if (request.Path == "/websocket/" && context.WebSockets.IsWebSocketRequest) {
+                if (!TryGetSessionFromRequest(request, out Session session)) {
+                    response.StatusCode = 401;
+                    return;
+                }
                 WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                await HandleClientWebSocket(webSocket);
+                await HandleClientWebSocket(webSocket, session);
                 return;
             }
 
@@ -397,7 +364,7 @@ public class Module : ModelObjectModule<DashboardModel>
 
                 case "POST":
 
-                    using (ReqResult result = await HandlePost(request)) {
+                    using (ReqResult result = await HandlePost(context)) {
                         await Respond(result);
                     }
                     return;
@@ -415,7 +382,7 @@ public class Module : ModelObjectModule<DashboardModel>
                         var parameters = new {
                             file
                         };
-                        (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                        (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                         using ReqResult result = await session.OnViewCommand(viewID, viewRequest, DataValue.FromObject(parameters));
                         await Respond(result);
                         return;
@@ -452,8 +419,15 @@ public class Module : ModelObjectModule<DashboardModel>
     private const string Path_RenameView = "/renameView";
     private const string Path_MoveView = "/moveView";
     private const string Path_DeleteView = "/deleteView";
+    private const string Header_Authorization = "Authorization";
+    private const string Header_ViewID = "X-Dashboard-View-ID";
+    private const string Query_ViewID = "viewID";
+    private const string SessionCookieNameBase = "dashboard_session";
 
-    private async Task<ReqResult> HandlePost(HttpRequest request) {
+    private async Task<ReqResult> HandlePost(HttpContext context) {
+
+        HttpRequest request = context.Request;
+        HttpResponse response = context.Response;
 
         string path = request.Path;
 
@@ -508,6 +482,7 @@ public class Module : ModelObjectModule<DashboardModel>
                     return ReqResult.Bad(exp.Message);
                 }
                 sessions[session.ID] = session;
+                response.Cookies.Append(GetSessionCookieName(request), session.ID, MakeSessionCookieOptions(request));
 
                 MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
                 bool canUpdateViews = await connection.CanUpdateConfig(mr);
@@ -528,7 +503,7 @@ public class Module : ModelObjectModule<DashboardModel>
 
                 string viewRequest = path.Substring(Path_ViewReq.Length);
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
 
                 string content;
                 using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
@@ -538,7 +513,7 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_ActivateView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                 bool canUpdateViewConfig = await session.OnActivateView(viewID);
                 return ReqResult.OK(new {
                     canUpdateViewConfig
@@ -546,7 +521,7 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_DuplicateView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                 string newViewID = await session.OnDuplicateView(viewID);
 
                 return ReqResult.OK(new {
@@ -556,7 +531,7 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_DuplicateConvertView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                 string newViewID = await session.OnDuplicateConvertHistoryPlot(viewID);
 
                 return ReqResult.OK(new {
@@ -566,14 +541,14 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_ToggleHeader) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                 await session.OnToggleHeader(viewID);
 
                 return ReqResult.OK();
             }
             else if (path == Path_RenameView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
 
                 string? newViewName;
                 using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
@@ -592,7 +567,7 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_MoveView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
 
                 bool up = false;
                 using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
@@ -608,7 +583,7 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_DeleteView) {
 
-                (Session session, string viewID) = GetSessionFromQuery(request.QueryString.ToString());
+                (Session session, string viewID) = GetSessionAndViewFromRequest(request);
                 await session.OnDeleteView(viewID);
 
                 return ReqResult.OK(new {
@@ -617,18 +592,19 @@ public class Module : ModelObjectModule<DashboardModel>
             }
             else if (path == Path_Logout) {
 
-                string sessionID;
-                using (var reader = new StreamReader(request.Body, Encoding.UTF8)) {
-                    sessionID = await reader.ReadToEndAsync();
-                }
-
-                if (sessions.TryGetValue(sessionID, out Session? value)) {
-                    Session session = value;
+                if (TryGetSessionFromRequest(request, out Session session)) {
+                    string sessionID = session.ID;
                     var ignored = session.Close();
                     sessions.Remove(sessionID);
                     getRequestMappingsBySession.Remove(sessionID);
                 }
 
+                response.Cookies.Delete(GetSessionCookieName(request), new CookieOptions {
+                    Path = "/",
+                    HttpOnly = true,
+                    Secure = request.IsHttps,
+                    SameSite = SameSiteMode.Lax
+                });
                 return ReqResult.OK();
             }
             else {
@@ -678,29 +654,21 @@ public class Module : ModelObjectModule<DashboardModel>
         fullPath = "";
         contentType = "application/octet-stream";
 
-        if (!TryGetPathContext(request.Path, out string sessionID, out string mappedRequestPath)) {
+        if (!TryGetPathContext(request.Path, out string mappedRequestPath)) {
             return false;
         }
 
-        if (!sessions.ContainsKey(sessionID)) {
+        if (!TryGetSessionFromRequest(request, out Session session)) {
             return false;
         }
 
-        if (!getRequestMappingsBySession.TryGetValue(sessionID, out Dictionary<string, string>? sessionMappings)) {
+        if (!getRequestMappingsBySession.TryGetValue(session.ID, out Dictionary<string, string>? sessionMappings)) {
             return false;
         }
 
-        string? mappedPath = sessionMappings.Keys
-            .Where(k => mappedRequestPath.StartsWith(k, StringComparison.Ordinal))
-            .OrderByDescending(k => k.Length)
-            .FirstOrDefault();
-
-        if (mappedPath == null) {
+        if (!TryResolveMappedPath(sessionMappings, mappedRequestPath, out string mappedDirectory, out string relativePath)) {
             return false;
         }
-
-        string mappedDirectory = sessionMappings[mappedPath];
-        string relativePath = mappedRequestPath.Substring(mappedPath.Length);
 
         if (!TryResolvePathWithinRoot(mappedDirectory, relativePath, out fullPath)) {
             return false;
@@ -714,9 +682,27 @@ public class Module : ModelObjectModule<DashboardModel>
         return true;
     }
 
-    private static bool TryGetPathContext(string requestPath, out string sessionID, out string mappedRequestPath) {
+    private static bool TryResolveMappedPath(Dictionary<string, string> sessionMappings, string mappedRequestPath, out string mappedDirectory, out string relativePath) {
 
-        sessionID = "";
+        mappedDirectory = "";
+        relativePath = "";
+
+        string? mappedPath = sessionMappings.Keys
+            .Where(k => mappedRequestPath.StartsWith(k, StringComparison.Ordinal))
+            .OrderByDescending(k => k.Length)
+            .FirstOrDefault();
+
+        if (mappedPath == null) {
+            return false;
+        }
+
+        mappedDirectory = sessionMappings[mappedPath];
+        relativePath = mappedRequestPath.Substring(mappedPath.Length);
+        return true;
+    }
+
+    private static bool TryGetPathContext(string requestPath, out string mappedRequestPath) {
+
         mappedRequestPath = "";
 
         const string Prefix = "/ctx/";
@@ -724,19 +710,13 @@ public class Module : ModelObjectModule<DashboardModel>
             return false;
         }
 
-        string tail = requestPath.Substring(Prefix.Length);
-        int separator = tail.IndexOf('/');
-        if (separator <= 0 || separator >= tail.Length - 1) {
+        string tail = requestPath.Substring(Prefix.Length).TrimStart('/');
+        if (string.IsNullOrWhiteSpace(tail)) {
             return false;
         }
 
-        string contextToken = tail.Substring(0, separator);
-        if (!TryParseContextToken(contextToken, out string parsedSessionID, out _)) {
-            return false;
-        }
+        mappedRequestPath = "/" + tail;
 
-        sessionID = parsedSessionID;
-        mappedRequestPath = "/" + tail.Substring(separator + 1);
         return true;
     }
 
@@ -761,41 +741,85 @@ public class Module : ModelObjectModule<DashboardModel>
         };
     }
 
-    private bool TryGetContextFromQuery(string query, out string sessionID, out string viewID) {
-
-        sessionID = "";
-        viewID = "";
-
-        if (string.IsNullOrEmpty(query) || query[0] != '?') {
-            return false;
-        }
-
-        string token = query.Substring(1);
-        int separator = token.IndexOf('&');
-        if (separator >= 0) {
-            token = token.Substring(0, separator);
-        }
-
-        if (!TryParseContextToken(token, out sessionID, out viewID)) {
-            return false;
-        }
-
-        return sessions.ContainsKey(sessionID);
+    private static CookieOptions MakeSessionCookieOptions(HttpRequest request) {
+        return new CookieOptions {
+            Path = "/",
+            HttpOnly = true,
+            Secure = request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            IsEssential = true
+        };
     }
 
-    private static bool TryParseContextToken(string token, out string sessionID, out string viewID) {
+    private static string GetSessionCookieName(HttpRequest request) {
+        int port = request.Host.Port ?? (request.IsHttps ? 443 : 80);
+        return $"{SessionCookieNameBase}_{port}";
+    }
+
+    private static bool TryGetSessionIDFromRequest(HttpRequest request, out string sessionID) {
 
         sessionID = "";
-        viewID = "";
 
-        int separator = token.IndexOf('_');
-        if (separator <= 0 || separator >= token.Length - 1) {
+        if (request.Headers.TryGetValue(Header_Authorization, out StringValues authorizationValues)) {
+            foreach (string? rawValue in authorizationValues) {
+                if (string.IsNullOrWhiteSpace(rawValue)) {
+                    continue;
+                }
+                const string BearerPrefix = "Bearer ";
+                if (rawValue.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase)) {
+                    string token = rawValue.Substring(BearerPrefix.Length).Trim();
+                    if (!string.IsNullOrWhiteSpace(token)) {
+                        sessionID = token;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if (request.Cookies.TryGetValue(GetSessionCookieName(request), out string? cookieSessionID) && !string.IsNullOrWhiteSpace(cookieSessionID)) {
+            sessionID = cookieSessionID;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryGetSessionFromRequest(HttpRequest request, out Session session) {
+        session = null!;
+
+        if (!TryGetSessionIDFromRequest(request, out string sessionID)) {
             return false;
         }
 
-        sessionID = token.Substring(0, separator);
-        viewID = token.Substring(separator + 1);
+        if (!sessions.TryGetValue(sessionID, out Session? value) || value == null) {
+            return false;
+        }
+
+        session = value;
         return true;
+    }
+
+    private static bool TryGetViewIDFromRequest(HttpRequest request, out string viewID) {
+
+        viewID = "";
+
+        if (request.Headers.TryGetValue(Header_ViewID, out StringValues viewIDValues)) {
+            string headerViewID = viewIDValues.FirstOrDefault() ?? "";
+            if (!string.IsNullOrWhiteSpace(headerViewID)) {
+                viewID = headerViewID;
+                return true;
+            }
+        }
+
+        if (request.Query.TryGetValue(Query_ViewID, out StringValues queryViewIDValues)) {
+            string queryViewID = queryViewIDValues.FirstOrDefault() ?? "";
+            if (!string.IsNullOrWhiteSpace(queryViewID)) {
+                viewID = queryViewID;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string NormalizeMappedPath(string path) {
@@ -843,17 +867,16 @@ public class Module : ModelObjectModule<DashboardModel>
         }
     }
 
-    private (Session sesssion, string viewID) GetSessionFromQuery(string query) {
+    private (Session session, string viewID) GetSessionAndViewFromRequest(HttpRequest request) {
 
-        if (!TryGetContextFromQuery(query, out string sessionID, out string viewID)) {
+        if (!TryGetSessionFromRequest(request, out Session session)) {
             throw new InvalidSessionException();
         }
 
-        if (!sessions.TryGetValue(sessionID, out Session? value)) {
+        if (!TryGetViewIDFromRequest(request, out string viewID)) {
             throw new InvalidSessionException();
         }
 
-        Session session = value;
         return (session, viewID);
     }
 

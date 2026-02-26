@@ -38,6 +38,15 @@ import Login from './Login.vue'
 import Dashboard from './Dashboard.vue'
 import globalState, { type TimeRange } from './global'
 
+function withViewContext(viewID: string) {
+  return {
+    headers: {
+      Authorization: 'Bearer ' + globalState.sessionID,
+      'X-Dashboard-View-ID': viewID,
+    },
+  }
+}
+
 const loginRequired = computed(() => globalState.sessionID === '')
 
 const currentViewSource = computed(() => {
@@ -95,7 +104,13 @@ function logout() {
     clearInterval(globalState.intervalVar)
     globalState.intervalVar = 0
   }
-  axios.post('/logout', globalState.sessionID).catch(() => {})
+  axios
+    .post('/logout', null, {
+      headers: {
+        Authorization: 'Bearer ' + globalState.sessionID,
+      },
+    })
+    .catch(() => {})
   globalState.sessionID = ''
   globalState.user = ''
   globalState.model = { views: [] }
@@ -118,7 +133,6 @@ function openWebSocket(user: string, pass: string) {
 
     socket.onopen = () => {
       globalState.connectionState = 0
-      socket.send(globalState.sessionID)
       const doKeepAlive = () => {
         socket.send('KA')
       }
@@ -221,7 +235,7 @@ function doActivateView(viewID: string) {
   const previousEventListener = globalState.eventListener
   globalState.eventListener = () => {}
   axios
-    .post('/activateView?' + globalState.sessionID + '_' + viewID)
+    .post('/activateView', null, withViewContext(viewID))
     .then((response) => {
       globalState.eventBurstCount = 1
       globalState.currentViewID = viewID
@@ -245,7 +259,7 @@ function timeSelectChanged(timeRange: TimeRange) {
 
 function duplicateView(viewID: string) {
   axios
-    .post('/duplicateView?' + globalState.sessionID + '_' + viewID)
+    .post('/duplicateView', null, withViewContext(viewID))
     .then((response) => {
       console.info('duplicateView success.')
       const newViewID = response.data.newViewID
@@ -257,7 +271,7 @@ function duplicateView(viewID: string) {
 
 function duplicateConvertView(viewID: string) {
   axios
-    .post('/duplicateConvertView?' + globalState.sessionID + '_' + viewID)
+    .post('/duplicateConvertView', null, withViewContext(viewID))
     .then((response) => {
       console.info('duplicateConvertView success.')
       const newViewID = response.data.newViewID
@@ -269,7 +283,7 @@ function duplicateConvertView(viewID: string) {
 
 function toggleHeader(viewID: string) {
   axios
-    .post('/toggleHeader?' + globalState.sessionID + '_' + viewID)
+    .post('/toggleHeader', null, withViewContext(viewID))
     .then(() => {
       console.info('toggleHeader success.')
       globalState.currentViewID_Counter = globalState.currentViewID_Counter + 1
@@ -279,7 +293,7 @@ function toggleHeader(viewID: string) {
 
 function renameView(viewID: string, newName: string) {
   axios
-    .post('/renameView?' + globalState.sessionID + '_' + viewID, { newViewName: newName })
+    .post('/renameView', { newViewName: newName }, withViewContext(viewID))
     .then((response) => {
       console.info('renameView success.')
       globalState.model = response.data.model
@@ -289,7 +303,7 @@ function renameView(viewID: string, newName: string) {
 
 function moveUpView(viewID: string) {
   axios
-    .post('/moveView?' + globalState.sessionID + '_' + viewID, { up: true })
+    .post('/moveView', { up: true }, withViewContext(viewID))
     .then((response) => {
       console.info('moveUpView success.')
       globalState.model = response.data.model
@@ -299,7 +313,7 @@ function moveUpView(viewID: string) {
 
 function moveDownView(viewID: string) {
   axios
-    .post('/moveView?' + globalState.sessionID + '_' + viewID, { up: false })
+    .post('/moveView', { up: false }, withViewContext(viewID))
     .then((response) => {
       console.info('moveDownView success.')
       globalState.model = response.data.model
@@ -309,7 +323,7 @@ function moveDownView(viewID: string) {
 
 function deleteView(viewID: string) {
   axios
-    .post('/deleteView?' + globalState.sessionID + '_' + viewID)
+    .post('/deleteView', null, withViewContext(viewID))
     .then((response) => {
       console.info('deleteView success.')
       globalState.model = response.data.model

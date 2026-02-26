@@ -26,13 +26,15 @@ window.dashboardApp = {
   },
   sendViewRequestAsync(request: string, payload: any, responseType?: 'text' | 'blob') {
     const rspType = responseType || 'text'
+    const viewID = getDashboardViewContext()
     const config = {
       transformResponse: [(data: any) => data],
       responseType: rspType,
+      headers: getDashboardHeaders(viewID),
     }
     globalState.busy = true
     return axios
-      .post('/viewRequest/' + request + '?' + getDashboardViewContext(), payload, config as any)
+      .post('/viewRequest/' + request, payload, config as any)
       .then((response) => {
         globalState.busy = false
         if (response.data && response.data !== '' && rspType === 'text') {
@@ -112,14 +114,23 @@ window.dashboardApp = {
   },
 }
 
+function getDashboardHeaders(viewID: string) {
+  return {
+    Authorization: 'Bearer ' + globalState.sessionID,
+    'X-Dashboard-View-ID': viewID,
+  }
+}
+
 function doSendViewRequest(request: string, payload: any, successHandler: (data: any) => void, responseType: 'text' | 'blob') {
+  const viewID = getDashboardViewContext()
   const config = {
     transformResponse: [(data: any) => data],
     responseType,
+    headers: getDashboardHeaders(viewID),
   }
   globalState.busy = true
   axios
-    .post('/viewRequest/' + request + '?' + getDashboardViewContext(), payload, config as any)
+    .post('/viewRequest/' + request, payload, config as any)
     .then((response) => {
       globalState.busy = false
       successHandler(response.data)
@@ -144,5 +155,5 @@ function doSendViewRequest(request: string, payload: any, successHandler: (data:
 }
 
 function getDashboardViewContext(): string {
-  return globalState.sessionID + '_' + globalState.currentViewID
+  return globalState.currentViewID
 }
