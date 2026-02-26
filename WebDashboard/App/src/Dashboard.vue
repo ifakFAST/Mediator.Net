@@ -471,7 +471,7 @@ const theme = useTheme()
 
 function toggleTheme() {
   const next = theme.global.name.value === 'light' ? 'dark' : 'light'
-  theme.global.name.value = next
+  theme.change(next)
   localStorage.setItem('theme', next)
 }
 
