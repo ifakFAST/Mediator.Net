@@ -468,7 +468,6 @@ public class Module : ModelObjectModule<DashboardModel>
     private const string Header_Authorization = "Authorization";
     private const string Header_ViewID = "X-Dashboard-View-ID";
     private const string Query_ViewID = "viewID";
-    private const string SessionCookieNameBase = "dashboard_session";
     private const string GetRequestCookieNameBase = "dashboard_get_auth";
 
     private async Task<ReqResult> HandlePost(HttpContext context) {
@@ -526,7 +525,6 @@ public class Module : ModelObjectModule<DashboardModel>
                     return ReqResult.Bad(exp.Message);
                 }
                 sessions[session.ID] = session;
-                response.Cookies.Append(GetSessionCookieName(request), session.ID, MakeSessionCookieOptions(request));
                 response.Cookies.Append(GetRequestCookieName(request), getRequestAccessToken, MakeSessionCookieOptions(request));
 
                 MemberRef mr = MemberRef.Make(moduleID, model.ID, nameof(DashboardModel.Views));
@@ -643,12 +641,6 @@ public class Module : ModelObjectModule<DashboardModel>
                     sessions.Remove(sessionID);
                 }
 
-                response.Cookies.Delete(GetSessionCookieName(request), new CookieOptions {
-                    Path = "/",
-                    HttpOnly = true,
-                    Secure = request.IsHttps,
-                    SameSite = SameSiteMode.Lax
-                });
                 if (sessions.Count == 0) {
                     getRequestMappings.Clear();
                     getRequestAccessToken = Guid.NewGuid().ToString("N");
@@ -801,11 +793,6 @@ public class Module : ModelObjectModule<DashboardModel>
         };
     }
 
-    private static string GetSessionCookieName(HttpRequest request) {
-        int port = request.Host.Port ?? (request.IsHttps ? 443 : 80);
-        return $"{SessionCookieNameBase}_{port}";
-    }
-
     private static string GetRequestCookieName(HttpRequest request) {
         int port = request.Host.Port ?? (request.IsHttps ? 443 : 80);
         return $"{GetRequestCookieNameBase}_{port}";
@@ -842,11 +829,6 @@ public class Module : ModelObjectModule<DashboardModel>
                     }
                 }
             }
-        }
-
-        if (request.Cookies.TryGetValue(GetSessionCookieName(request), out string? cookieSessionID) && !string.IsNullOrWhiteSpace(cookieSessionID)) {
-            sessionID = cookieSessionID;
-            return true;
         }
 
         return false;
