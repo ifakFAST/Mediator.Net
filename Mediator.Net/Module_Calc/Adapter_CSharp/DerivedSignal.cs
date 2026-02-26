@@ -506,6 +506,13 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
         return api.HistorianReadAggregatedInterval(Var, startInclusive, endInclusive, aggregation, rawFilter);
     }
 
+    private static double? GetValueOrNullIfMissing(VTQ vtq) {
+        if (vtq.Q == Quality.Bad) {
+            return null;
+        }
+        return vtq.V.AsDoubleNoNaN();
+    }
+
     public double? GetValueFor(Timestamp tt, Duration interval, out bool canAbort) {
 
         canAbort = false;
@@ -525,7 +532,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
 
             if (buffer[0].T == t) {
                 bufferStartIdx = 1;
-                return buffer[0].V.AsDouble();
+                return GetValueOrNullIfMissing(buffer[0]);
             }
 
             Timestamp afterStartLastInterval = t - interval + Duration.FromMilliseconds(1);
@@ -535,7 +542,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
                 return null;
             }
 
-            return last[0].V.AsDouble();
+            return GetValueOrNullIfMissing(last[0]);
         }
 
         int idx = FindInSortedBufferIdx(t);
@@ -548,7 +555,7 @@ public record InputDef(string Name, VariableRef? VarRef = null, SiblingSignal? S
 
         Timestamp tFound = vtqFound.T;
         if (tFound > t - interval && tFound <= t) {
-            return vtqFound.V.AsDouble();
+            return GetValueOrNullIfMissing(vtqFound);
         }
 
         return null;

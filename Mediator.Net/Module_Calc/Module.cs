@@ -942,7 +942,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 int countPresent = 0;
                 foreach (InputValue iv in inputValues) {
                     DataValue v = iv.Value.V;
-                    if (iv.Value.IsBad || v.IsEmpty || v.IsNaN) countMissing++; else countPresent++;
+                    if (iv.Value.IsBad || v.IsEmpty || v.IsInfinityOrNaN) countMissing++; else countPresent++;
                 }
                 bool skip = inputsRequired == Config.InputsRequired.All
                     ? countMissing > 0
