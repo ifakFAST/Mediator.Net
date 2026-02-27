@@ -153,11 +153,11 @@ interface AnimationController {
 }
 
 // @ts-ignore
-L.Icon.Default.prototype.options.iconRetinaUrl = 'assets/images/marker-icon-2x.png'
+L.Icon.Default.prototype.options.iconRetinaUrl = 'App/assets/images/marker-icon-2x.png'
 // @ts-ignore
-L.Icon.Default.prototype.options.iconUrl = 'assets/images/marker-icon.png'
+L.Icon.Default.prototype.options.iconUrl = 'App/assets/images/marker-icon.png'
 // @ts-ignore
-L.Icon.Default.prototype.options.shadowUrl = 'assets/images/marker-shadow.png'
+L.Icon.Default.prototype.options.shadowUrl = 'App/assets/images/marker-shadow.png'
 
 // Props
 interface Props {
@@ -748,8 +748,8 @@ const loadGeoRasterModules = async (): Promise<void> => {
 
   // Load both libraries
   await Promise.all([
-    loadScript('/ViewBundle_Generic/js/georaster.browser.bundle.js'),
-    loadScript('/ViewBundle_Generic/js/georaster-layer-for-leaflet.min.js'),
+    loadScript('App/js/georaster.browser.bundle.js'),
+    loadScript('App/js/georaster-layer-for-leaflet.min.js'),
   ])
 
   // Wait for globals to be available
