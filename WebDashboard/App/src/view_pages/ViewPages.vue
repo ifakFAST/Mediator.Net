@@ -8,6 +8,7 @@
         <v-toolbar
           v-if="!hideHeader"
           class="mb-3"
+          :color="toolbarColor"
           density="compact"
           flat
         >
@@ -110,6 +111,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useTheme } from 'vuetify'
 import DlgTextInput from './DlgTextInput.vue'
 import DlgConfigVariables from './DlgConfigVariables.vue'
 import Confirm from '../components/Confirm.vue'
@@ -117,6 +119,7 @@ import Page from './Page.vue'
 import * as model from './model'
 import * as utils from '../utils'
 
+const theme = useTheme()
 const configVariableValues = ref<model.ConfigVariableValues>({ VarDefs: [], VarValues: {} })
 const hideHeader = ref(false)
 const pages = ref<model.Page[]>([])
@@ -126,6 +129,7 @@ const widgetMap = ref(new Map<string, model.Widget>())
 const editPage = ref(false)
 const dateWindow = ref<number[] | null>(null)
 const canUpdateConfig = ref(false)
+const toolbarColor = computed((): string => (theme.global.current.value.dark ? 'black' : 'white'))
 
 const confirm = ref()
 const textInput = ref()
