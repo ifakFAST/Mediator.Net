@@ -179,15 +179,20 @@ public static class CompressedTimeseriesReader
     //}
 
     /// <summary>
-    /// Returns a compressed list of numeric VTTQ values from the specified collection, limited to the specified maximum
+    /// Returns a compressed list of VTTQ values from the specified collection, limited to the specified maximum
     /// number of values.
     /// </summary>
-    /// <remarks>Non-numeric VTTQ values are excluded from the result. The method uses an internal buffer to
-    /// optimize memory usage when processing large collections.</remarks>
-    /// <param name="values">The collection of VTTQ values to process. Only values with a numeric representation are included in the result.</param>
-    /// <param name="maxValues">The maximum number of numeric values to include in the returned list. Must be greater than zero.</param>
-    /// <returns>A list of VTTQ values containing up to maxValues numeric entries. If the number of numeric values in the input
-    /// is less than or equal to maxValues, all are returned; otherwise, the result is compressed to fit the limit.</returns>
+    /// <remarks>
+    /// Values with empty payloads and values that are literal <c>NaN</c>/<c>Infinity</c>/<c>-Infinity</c> are excluded.
+    /// Remaining values are returned as-is when their count is less than or equal to <paramref name="maxValues"/>;
+    /// otherwise, a compressed representative subset is returned.
+    /// The method uses an internal pooled buffer to reduce allocations for large input sequences.
+    /// </remarks>
+    /// <param name="values">The collection of VTTQ values to process.</param>
+    /// <param name="maxValues">The maximum number of values to include in the returned list. Must be greater than zero.</param>
+    /// <returns>
+    /// A list of VTTQ values containing up to <paramref name="maxValues"/> entries after filtering.
+    /// </returns>
     public static List<VTTQ> ReadCompressed(IEnumerable<VTTQ> values, int maxValues) {
 
         VTTQ[] buffer = ArrayPool<VTTQ>.Shared.Rent(30*1440);
@@ -206,15 +211,15 @@ public static class CompressedTimeseriesReader
 
             int count = idx; // actual number of items
 
-            ArraySegment<VTTQ> numericValues = new(buffer, 0, count);
+            ArraySegment<VTTQ> filteredValues = new(buffer, 0, count);
 
             if (count <= maxValues) { // No compression needed, read all values
                 var res = new List<VTTQ>(count);
-                res.AddRange(numericValues);
+                res.AddRange(filteredValues);
                 return res;
             }
             else {
-                return ReadCompressed(numericValues, count, maxValues);
+                return ReadCompressed(filteredValues, count, maxValues);
             }
         }
         finally {
@@ -223,25 +228,26 @@ public static class CompressedTimeseriesReader
     }
 
     /// <summary>
-    /// Compresses a sequence of VTTQ values by reducing the number of numeric entries to a specified maximum,
-    /// preserving representative values such as minimum, maximum, and median where possible.
+    /// Compresses a sequence of VTTQ values to a target maximum number of samples.
     /// </summary>
-    /// <remarks>This method is useful for downsampling large numeric datasets while retaining key statistical
-    /// characteristics. The compression algorithm selects representative values from intervals, typically the minimum,
-    /// maximum, and median, to preserve the distribution of the original data. Non-numeric values are excluded from the
-    /// result.</remarks>
-    /// <param name="values">The sequence of VTTQ values to be compressed. Only values with a valid numeric representation are considered.</param>
-    /// <param name="countNumeric">The total number of numeric values present in the input sequence. Must be greater than or equal to zero.</param>
-    /// <param name="maxValues">The maximum number of numeric values to include in the compressed result. Must be greater than zero.</param>
-    /// <returns>A list of VTTQ values containing up to maxValues numeric entries selected from the input sequence. If the number
-    /// of numeric values is less than or equal to maxValues, all numeric values are returned; otherwise, a
-    /// representative subset is selected.</returns>
-    public static List<VTTQ> ReadCompressed(IEnumerable<VTTQ> values, int countNumeric, int maxValues) {
+    /// <remarks>
+    /// Values with empty payloads and values that are literal <c>NaN</c>/<c>Infinity</c>/<c>-Infinity</c> are ignored.
+    /// For numeric intervals, representative values are selected using min/median/max by value (then ordered by time).
+    /// For intervals containing only non-numeric values, only the last value of that interval is kept.
+    /// </remarks>
+    /// <param name="values">The sequence of VTTQ values to compress.</param>
+    /// <param name="count">
+    /// The caller-provided item count used to size compression intervals; typically the number of input items after basic filtering.
+    /// Must be greater than or equal to zero.
+    /// </param>
+    /// <param name="maxValues">The target maximum number of values in the compressed result. Must be greater than zero.</param>
+    /// <returns>A compressed list of representative VTTQ values derived from <paramref name="values"/>.</returns>
+    public static List<VTTQ> ReadCompressed(IEnumerable<VTTQ> values, int count, int maxValues) {
 
         List<VTTQ> res = new(maxValues);
 
-        if (countNumeric <= maxValues) {
-            // No compression needed, read all numeric values
+        if (count <= maxValues) {
+            // No compression needed, read all values
             foreach (VTTQ vttq in values) {
                 if (vttq.V.IsEmpty || vttq.V.IsInfinityOrNaN) continue;
                 res.Add(vttq);
@@ -252,7 +258,7 @@ public static class CompressedTimeseriesReader
         // count > maxValues => compression needed:
 
         int maxIntervals = maxValues / 3; // Retain 3 values per interval (min, max, median)
-        int itemsPerInterval = (maxValues < 6) ? (int)countNumeric : (int)Math.Ceiling(((double)countNumeric) / maxIntervals);
+        int itemsPerInterval = (maxValues < 6) ? (int)count : (int)Math.Ceiling(((double)count) / maxIntervals);
 
         List<VTTQ_D> buffer = new(itemsPerInterval);
         bool anyNumericInBuffer = false;
