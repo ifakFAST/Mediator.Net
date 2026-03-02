@@ -194,8 +194,7 @@ public static class CompressedTimeseriesReader
         try {
             int idx = 0;
             foreach (VTTQ vttq in values) {
-                double? d = vttq.V.AsDoubleNoNaN();
-                if (!d.HasValue) continue;
+                if (vttq.V.IsEmpty || vttq.V.IsInfinityOrNaN) continue;
                 if (idx >= buffer.Length) {
                     VTTQ[] bufferNew = ArrayPool<VTTQ>.Shared.Rent(buffer.Length * 2);
                     Array.Copy(buffer, bufferNew, buffer.Length);
@@ -205,11 +204,11 @@ public static class CompressedTimeseriesReader
                 buffer[idx++] = vttq;
             }
 
-            int count = idx; // actual number of numeric items
+            int count = idx; // actual number of items
 
             ArraySegment<VTTQ> numericValues = new(buffer, 0, count);
 
-            if (count <= maxValues) { // No compression needed, read all numeric values
+            if (count <= maxValues) { // No compression needed, read all values
                 var res = new List<VTTQ>(count);
                 res.AddRange(numericValues);
                 return res;
@@ -244,10 +243,8 @@ public static class CompressedTimeseriesReader
         if (countNumeric <= maxValues) {
             // No compression needed, read all numeric values
             foreach (VTTQ vttq in values) {
-                double? d = vttq.V.AsDoubleNoNaN();
-                if (d.HasValue) {
-                    res.Add(vttq);
-                }
+                if (vttq.V.IsEmpty || vttq.V.IsInfinityOrNaN) continue;
+                res.Add(vttq);
             }
             return res;
         }
@@ -258,31 +255,52 @@ public static class CompressedTimeseriesReader
         int itemsPerInterval = (maxValues < 6) ? (int)countNumeric : (int)Math.Ceiling(((double)countNumeric) / maxIntervals);
 
         List<VTTQ_D> buffer = new(itemsPerInterval);
+        bool anyNumericInBuffer = false;
+        bool anyNonNumericInBuffer = false;
 
         void FlushBuffer() {
-            int N = buffer.Count;
-            if (N > 3) {
-                buffer.Sort(CompareVTTQs);
-                if (maxValues >= 3) {
-                    VTTQ a = buffer[0].V;
-                    VTTQ b = buffer[N / 2].V;
-                    VTTQ c = buffer[N - 1].V;
-                    AddByTime(res, a, b, c);
+
+            if (anyNumericInBuffer && anyNonNumericInBuffer) { 
+                // remove NaN values:
+                buffer.RemoveAll(x => double.IsNaN(x.D));
+                anyNonNumericInBuffer = false; // after removing NaN, we have no non-numeric in buffer
+            }
+
+            if (anyNonNumericInBuffer) { // => all non-numeric; can not sort, only add the last item:
+                res.Add(buffer.Last().V);
+            }
+            else { // => all numeric; sort and add min, median, max:
+
+                int N = buffer.Count;
+                if (N > 3) {
+                    buffer.Sort(CompareVTTQs);
+                    if (maxValues >= 3) {
+                        VTTQ a = buffer[0].V;
+                        VTTQ b = buffer[N / 2].V;
+                        VTTQ c = buffer[N - 1].V;
+                        AddByTime(res, a, b, c);
+                    }
+                    else {
+                        res.Add(buffer[N / 2].V);
+                    }
                 }
                 else {
-                    res.Add(buffer[N / 2].V);
+                    res.AddRange(buffer.Select(y => y.V));
                 }
             }
-            else {
-                res.AddRange(buffer.Select(y => y.V));
-            }
+
             buffer.Clear();
+            anyNumericInBuffer = false;
+            anyNonNumericInBuffer = false;
         }
 
         foreach (VTTQ vttq in values) {
-            double? d = vttq.V.AsDoubleNoNaN();
-            if (!d.HasValue) continue;
-            buffer.Add(new VTTQ_D(vttq, d.Value));
+            if (vttq.V.IsEmpty || vttq.V.IsInfinityOrNaN) continue;
+            double? d = vttq.V.AsDouble();
+            anyNumericInBuffer    |=  d.HasValue;
+            anyNonNumericInBuffer |= !d.HasValue;
+            double v = d ?? double.NaN;
+            buffer.Add(new VTTQ_D(vttq, v));
             if (buffer.Count >= itemsPerInterval) {
                 FlushBuffer();
             }
