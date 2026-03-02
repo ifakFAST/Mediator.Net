@@ -35,7 +35,7 @@ namespace Ifak.Fast.Mediator.Util
 
         private static void Res_StreamCreated(object sender, string tag) {
 #if DEBUG
-            const int Warn_Limit = 12;
+            const int Warn_Limit = 20;
 #else
             const int Warn_Limit = 100;
 #endif
