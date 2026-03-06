@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -19,6 +19,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     private Timestamp latestUsedTimestamp = Timestamp.Now.AddHours(-1);
     private bool running = false;
     private readonly List<AlarmOrEvent> initBuffer = [];
+    private List<NotificationState> notificationStates = [];
     private ModuleInitInfo info;
 
     public override async Task Init(ModuleInitInfo info,
@@ -44,6 +45,15 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
         await connection.Close();
     }
 
+    protected override async Task OnConfigModelChanged(bool init) {
+        await base.OnConfigModelChanged(init);
+
+        notificationStates = model.MailNotificationSettings.Notifications
+            .Where(n => n.Enabled)
+            .Select(n => new NotificationState(n))
+            .ToList();
+    }
+
     public override async Task Run(Func<bool> shutdown) {
 
         await LoadData();
@@ -61,6 +71,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
 
         while (!shutdown()) {
             await Task.Delay(500);
+            await FlushPendingNotifications();
         }
 
         running = false;
@@ -243,35 +254,81 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     }
 
     private void NotifyAlarm(AlarmOrEvent alarm) {
-        var settings = model.MailNotificationSettings;
-        IEmailProvider provider = EmailProviderFactory.Create(settings);
-        string fromAddress = EmailProviderFactory.GetFromAddress(settings);
-
-        foreach (var no in settings.Notifications) {
-            if (no.Enabled && SourceMatch(no.Sources, alarm)) {
-                _ = SendNotification(alarm, no, provider, fromAddress);
+        foreach (var ns in notificationStates) {
+            if (SourceMatch(ns.Config.Sources, alarm)) {
+                if (ns.IsBatchingEnabled) {
+                    ns.BatchAlarm(alarm);
+                }
+                else {
+                    _ = SendNotification([alarm], ns.Config);
+                }
             }
         }
     }
 
-    private static async Task SendNotification(AlarmOrEvent alarm, MailNotification no, IEmailProvider provider, string fromAddress) {
-        try {
-            string source = alarm.IsSystem ? "System" : alarm.ModuleName;
+    private async Task FlushPendingNotifications() {
 
+        foreach (var ns in notificationStates) {
+
+            if (ns.PendingAlarms.Count == 0) continue;
+
+            Timestamp now = Timestamp.Now;
+
+            Duration sinceStart = now - ns.BatchStartTime!.Value;
+            Duration sinceSend  = now - ns.LastSendTime;
+
+            bool batchReady = sinceStart >= ns.BatchWindow;
+            bool throttleOk = sinceSend >= ns.MinDelayBetweenSends;
+
+            if (batchReady && throttleOk) {
+                var alarms = ns.PendingAlarms.ToList();
+                ns.PendingAlarms.Clear();
+                ns.BatchStartTime = null;
+                ns.LastSendTime = now;
+                _ = SendNotification(alarms, ns.Config);
+            }
+        }
+    }
+
+    private async Task SendNotification(List<AlarmOrEvent> alarms, MailNotification no) {
+
+        var settings = model.MailNotificationSettings;
+        IEmailProvider provider = EmailProviderFactory.Create(settings);
+        string fromAddress = EmailProviderFactory.GetFromAddress(settings);
+
+        try {
             var body = new StringBuilder();
-            body.AppendLine($"Severity: {alarm.Severity}");
-            body.AppendLine($"Message:  {alarm.Message}");
-            body.AppendLine($"Source:   {source}");
-            body.AppendLine($"Time UTC: {alarm.Time}");
-            body.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
-            if (!string.IsNullOrEmpty(alarm.Details)) {
-                body.AppendLine($"Details:  {alarm.Details}");
+
+            foreach (var alarm in alarms) {
+
+                if (body.Length > 0) {
+                    body.AppendLine();
+                    body.AppendLine("---");
+                    body.AppendLine();
+                }
+
+                string source = alarm.IsSystem ? "System" : alarm.ModuleName;
+                body.AppendLine($"Severity: {alarm.Severity}");
+                body.AppendLine($"Message:  {alarm.Message}");
+                body.AppendLine($"Source:   {source}");
+                body.AppendLine($"Time UTC: {alarm.Time}");
+                body.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
+                if (!string.IsNullOrEmpty(alarm.Details)) {
+                    body.AppendLine($"Details:  {alarm.Details}");
+                }
             }
 
+            AlarmOrEvent first = alarms[0];
+            string firstSource = first.IsSystem ? "System" : first.ModuleName;
+
             string subject = no.Subject
-                .Replace("{severity}", alarm.Severity.ToString())
-                .Replace("{message}", alarm.Message)
-                .Replace("{source}", source);
+                .Replace("{severity}", first.Severity.ToString())
+                .Replace("{message}", first.Message)
+                .Replace("{source}", firstSource);
+
+            if (alarms.Count > 1) {
+                subject += $" (+{alarms.Count - 1} more)";
+            }
 
             var message = new EmailMessage {
                 From = fromAddress,
@@ -410,6 +467,29 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
         }
 
         connection.HistorianModify(GetVar(), ModifyMode.Update, vtqs.ToArray());
+    }
+
+    private sealed class NotificationState(MailNotification config)
+    {
+        public MailNotification Config { get; } = config;
+        public List<AlarmOrEvent> PendingAlarms { get; } = [];
+        public Timestamp LastSendTime { get; set; } = Timestamp.Empty;
+        public Timestamp? BatchStartTime { get; set; } = null;
+
+        public Duration BatchWindow = Duration.Parse(config.BatchWindow);
+        public Duration MinDelayBetweenSends = Duration.Parse(config.MinDelayBetweenSends);
+
+        public bool IsBatchingEnabled =>
+            BatchWindow != Duration.Zero ||
+            MinDelayBetweenSends != Duration.Zero;
+
+        public void BatchAlarm(AlarmOrEvent alarm) {
+            if (PendingAlarms.Count >= 1000) {
+                return; // prevent unbounded memory growth in case of a flood of alarms and events. 
+            }
+            PendingAlarms.Add(alarm);
+            BatchStartTime ??= Timestamp.Now;
+        }
     }
 }
 

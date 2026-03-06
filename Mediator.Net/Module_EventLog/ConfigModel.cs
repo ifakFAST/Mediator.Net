@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -97,6 +97,12 @@ namespace Ifak.Fast.Mediator.EventLog
 
         [XmlAttribute("subject")]
         public string Subject { get; set; } = "";
+
+        [XmlAttribute("batchWindow")]
+        public string BatchWindow { get; set; } = "10 s";
+
+        [XmlAttribute("minDelayBetweenSends")]
+        public string MinDelayBetweenSends { get; set; } = "5 m";
     }
 
     public enum SslOptions
