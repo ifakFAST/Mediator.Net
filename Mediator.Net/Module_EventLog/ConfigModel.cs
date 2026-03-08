@@ -102,7 +102,7 @@ namespace Ifak.Fast.Mediator.EventLog
         public string BatchWindow { get; set; } = "10 s";
 
         [XmlAttribute("minDelayBetweenSends")]
-        public string MinDelayBetweenSends { get; set; } = "5 m";
+        public string MinDelayBetweenSends { get; set; } = "0 s";
     }
 
     public enum SslOptions

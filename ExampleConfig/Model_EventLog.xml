@@ -3,7 +3,7 @@
     <MailNotificationSettings>
         <SmtpSettings server="" port="25" user="" pass="" ssl="Auto" from="" />
         <Notifications>
-            <MailNotification enabled="false" sources="*" to="" subject="[FAST] {severity}: {message}" batchWindow="1 min" minDelayBetweenSends="1 h" />
+            <MailNotification enabled="false" sources="*" to="" subject="[FAST] {severity}: {message}" batchWindow="10 s" minDelayBetweenSends="0 h" />
         </Notifications>
     </MailNotificationSettings>
 </EventLog_Model>
