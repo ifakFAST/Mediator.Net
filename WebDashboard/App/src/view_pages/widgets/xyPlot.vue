@@ -44,7 +44,6 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import type { TimeRange } from '../../utils'
 import xyPlotConfigDlg from './xyPlotConfigDlg.vue'
-import xyPlotScatter from './xyPlotScatter.vue'
 import xyPlotScatterDygraph from './xyPlotScatterDygraph.vue'
 import type { ObjectMap } from './common'
 import type { XyPlotConfig, XySeriesData } from './xyPlotTypes'

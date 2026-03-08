@@ -224,7 +224,6 @@ const dygraphOptions = computed(() => {
   const axes = {
     x: {
       drawGrid: cfg.ShowGrid,
-      valueRange: xExtent,
     },
     y: {
       drawGrid: cfg.ShowGrid,
@@ -289,6 +288,7 @@ const dygraphOptions = computed(() => {
     legend: cfg.ShowLegend ? 'always' : 'never',
     series: seriesOptions,
     axes,
+    dateWindow: xExtent,
     xlabel: cfg.XAxisName,
     ylabel: cfg.YAxisName,
     visibility: seriesList.map((s) => isSeriesVisible(s.Name)),
@@ -300,7 +300,7 @@ const dygraphOptions = computed(() => {
   }
 })
 
-const calculateXExtent = (): [number, number] | null => {
+const calculateXExtent = (): [number, number] => {
   const cfg = props.config.PlotConfig
 
   if (cfg.XAxisLimitMin != null && cfg.XAxisLimitMax != null) {
@@ -319,14 +319,31 @@ const calculateXExtent = (): [number, number] | null => {
     }
   }
 
-  if (min === Infinity) return [0, 1]
-  if (cfg.XAxisStartFromZero && min > 0) min = 0
+  if (min === Infinity) {
+    min = 0
+    max = 1
+  }
 
-  const range = max - min
-  return [min - range * 0.1, max + range * 0.1]
+  if (cfg.XAxisStartFromZero) {
+    if (cfg.XAxisLimitMin == null && min > 0) min = 0
+    if (cfg.XAxisLimitMax == null && max < 0) max = 0
+  }
+
+  let span = max - min
+  if (span === 0) {
+    span = max !== 0 ? Math.abs(max) : 1
+  }
+
+  let minAxisX = min - span * 0.1
+  let maxAxisX = max + span * 0.1
+
+  if (cfg.XAxisLimitMin != null) minAxisX = cfg.XAxisLimitMin
+  if (cfg.XAxisLimitMax != null) maxAxisX = cfg.XAxisLimitMax
+
+  return [minAxisX, maxAxisX]
 }
 
-const calculateYExtent = (): [number, number] | null => {
+const calculateYExtent = (): [number, number] => {
   const cfg = props.config.PlotConfig
 
   if (cfg.YAxisLimitMin != null && cfg.YAxisLimitMax != null) {
@@ -345,18 +362,16 @@ const calculateYExtent = (): [number, number] | null => {
     }
   }
 
-  // Default to [0, 1] if no data
-  if (minY === Infinity) return [0, 1]
+  if (minY === Infinity) {
+    minY = 0
+    maxY = 1
+  }
 
   // Include zero if requested by the user
   if (cfg.YAxisStartFromZero) {
-    if (minY > 0) minY = 0
-    if (maxY < 0) maxY = 0
+    if (cfg.YAxisLimitMin == null && minY > 0) minY = 0
+    if (cfg.YAxisLimitMax == null && maxY < 0) maxY = 0
   }
-
-  // Ensure valid scale
-  if (minY === Infinity) minY = 0
-  if (maxY === -Infinity) maxY = 1
 
   let span = maxY - minY
   // Special case: if we have no sense of scale, center on the sole value
@@ -378,6 +393,9 @@ const calculateYExtent = (): [number, number] | null => {
   // Move a close-to-zero edge to zero (prevents invisible lines at edge)
   if (minAxisY < 0 && minY >= 0) minAxisY = 0
   if (maxAxisY > 0 && maxY <= 0) maxAxisY = 0
+
+  if (cfg.YAxisLimitMin != null) minAxisY = cfg.YAxisLimitMin
+  if (cfg.YAxisLimitMax != null) maxAxisY = cfg.YAxisLimitMax
 
   return [minAxisY, maxAxisY]
 }

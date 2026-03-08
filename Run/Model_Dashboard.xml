@@ -213,13 +213,13 @@
         {
           "Columns": [
             {
-              "Width": "Auto",
+              "Width": "NineOfTwelve",
               "Widgets": [
                 {
                   "ID": "W_c691",
                   "Type": "xyPlot",
-                  "Width": "400px",
-                  "Height": "300px",
+                  "Width": "",
+                  "Height": "600px",
                   "Config": {
                     "PlotConfig": {
                       "MaxDataPoints": 5000,
@@ -228,8 +228,10 @@
                       "YAxisName": "Y",
                       "XAxisStartFromZero": false,
                       "YAxisStartFromZero": false,
+                      "XAxisLimitMin": 1.0,
+                      "XAxisLimitMax": 3.1,
                       "YAxisLimitMin": 1.0,
-                      "YAxisLimitMax": 4.0,
+                      "YAxisLimitMax": 3.1,
                       "ShowGrid": true,
                       "ShowLegend": true,
                       "Show45DegreeLine": true,
@@ -250,7 +252,7 @@
                           "Name": "Value"
                         },
                         "Aggregation": "First",
-                        "Resolution": "15 min",
+                        "Resolution": "1 min",
                         "TimeHighlighting": "None",
                         "TimeHighlightingLastN": 1,
                         "TimeHighlightingColor": "black",
@@ -263,7 +265,7 @@
               ]
             },
             {
-              "Width": "Fill",
+              "Width": "ThreeOfTwelve",
               "Widgets": []
             }
           ]
