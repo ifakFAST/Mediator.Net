@@ -19,8 +19,8 @@
     <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
-    <PackageReference Include="MQTTnet" Version="5.0.1.1416" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+    <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="MySqlConnector" Version="2.5.0" />
     <PackageReference Include="Npgsql" Version="10.0.1" />
   </ItemGroup>
