@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -464,7 +464,8 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             Unit = m.Unit,
             Dimension = m.Dimension,
             Type = m.Type,
-            DefaultValue = m.GetDefaultValue()
+            DefaultValue = m.GetDefaultValue(),
+            DefaultVariable = m.GetDefaultVariable()
         };
     }
 

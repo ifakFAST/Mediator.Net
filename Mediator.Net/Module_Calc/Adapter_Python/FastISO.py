@@ -166,6 +166,11 @@ class InputFloat64(MyInputBase):
             return self.Value
         return default
 
+    @classmethod
+    def WithVariable(cls, name: str, unit: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputFloat64':
+        instance = cls(name, unit, None)
+        instance.SetDefaultVariable(variable)
+        return instance
 
 Input = InputFloat64
 
@@ -192,6 +197,12 @@ class InputFloat64Array(MyInputBase):
             return self.Value
         return default
 
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputFloat64Array':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
+
 
 class InputString(MyInputBase):
 
@@ -213,6 +224,12 @@ class InputString(MyInputBase):
             return self.Value
         return default
 
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputString':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
+
 
 class InputJson(MyInputBase):
 
@@ -228,6 +245,12 @@ class InputJson(MyInputBase):
     @property
     def Value(self) -> str:
         return self.VTQ.V.JSON
+
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputJson':
+        instance = cls(name, "null")
+        instance.SetDefaultVariable(variable)
+        return instance
 
 
 class InputTimestamp(MyInputBase):
@@ -250,6 +273,12 @@ class InputTimestamp(MyInputBase):
             return self.Value
         return default
 
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputTimestamp':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
+
 
 class InputObject(MyInputBase):
 
@@ -265,6 +294,12 @@ class InputObject(MyInputBase):
     @property
     def Value(self) -> Optional[dict]:
         return json.loads(self.VTQ.V.JSON)
+
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputObject':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
 
 
 class InputObjectArray(MyInputBase):
@@ -282,7 +317,13 @@ class InputObjectArray(MyInputBase):
     def Value(self) -> Optional[list[dict]]:
         return json.loads(self.VTQ.V.JSON)
 
-   
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputObjectArray':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
+
+
 class InputTimeseries(MyInputBase):
 
     def __init__(self, name: str, defaultValue: Optional[list[TimeseriesEntry]] = None) -> None:
@@ -314,8 +355,14 @@ class InputTimeseries(MyInputBase):
             entry["Time"] = datetime.fromtimestamp(timestamp, timezone.utc)
             result.append(TimeseriesEntry(entry["Time"], entry["Value"]))
         return result
-    
-    
+
+    @classmethod
+    def WithVariable(cls, name: str, variable: Ifak.Fast.Mediator.VariableRef) -> 'InputTimeseries':
+        instance = cls(name, None)
+        instance.SetDefaultVariable(variable)
+        return instance
+
+
 ########### States #############
 
 
