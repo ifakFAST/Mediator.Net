@@ -248,6 +248,8 @@
         </v-card>
       </v-dialog>
 
+      <span v-if="globalState.version" class="text-caption mx-2" style="opacity: 0.6">v{{ globalState.version }}</span>
+
       <v-tooltip
         location="bottom"
         :open-delay="1000"

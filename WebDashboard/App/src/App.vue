@@ -74,6 +74,7 @@ function loginSuccess(event: {
   canUpdateViews: boolean
   initialTimeRange: any
   initialStepSizeMS: number
+  version: string
   viewID: string
 }) {
   console.info('Login success')
@@ -81,6 +82,7 @@ function loginSuccess(event: {
   globalState.user = event.user
   globalState.model = event.model
   globalState.canUpdateViews = event.canUpdateViews
+  globalState.version = event.version
 
   globalState.timeRange.type = event.initialTimeRange.Type
   globalState.timeRange.lastCount = event.initialTimeRange.LastCount

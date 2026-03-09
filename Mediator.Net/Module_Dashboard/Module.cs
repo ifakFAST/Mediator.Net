@@ -48,6 +48,7 @@ public class Module : ModelObjectModule<DashboardModel>
 
     private TimeRange initialTimeRange = new();
     private long initialStepSizeMS = 0; // 0 means auto
+    private string versionString = "";
 
     public override IModelObject? UnnestConfig(IModelObject parent, object? obj) {
         if (obj is DataValue dv && parent is View view) {
@@ -95,6 +96,17 @@ public class Module : ModelObjectModule<DashboardModel>
         }
         else {
             this.initialStepSizeMS = Duration.Parse(initialStepSize).TotalMilliseconds;
+        }
+
+        string showVersion = config.GetOptionalString("show-version", "true");
+        if (showVersion.Equals("true", StringComparison.OrdinalIgnoreCase)) {
+            versionString = Util.VersionInfo.ifakFAST_Str();
+        }
+        else if (showVersion.Equals("false", StringComparison.OrdinalIgnoreCase)) {
+            versionString = "";
+        }
+        else {
+            versionString = showVersion;
         }
 
         string strViewAssemblies = config.GetString("view-assemblies");
@@ -540,6 +552,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 result["canUpdateViews"] = canUpdateViews;
                 result["initialTimeRange"] = new JRaw(StdJson.ObjectToString(initialTimeRange));
                 result["initialStepSizeMS"] = initialStepSizeMS;
+                result["version"] = versionString;
                 return ReqResult.OK(result);
             }
             else if (path.StartsWith(Path_ViewReq)) {

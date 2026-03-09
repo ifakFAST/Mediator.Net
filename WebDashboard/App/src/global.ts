@@ -44,6 +44,7 @@ export interface GlobalState {
   eventBurstCount: number
   eventACKCounter: number
   eventACKTime: number
+  version: string
 }
 
 export const globalState = reactive<GlobalState>({
@@ -75,6 +76,7 @@ export const globalState = reactive<GlobalState>({
   eventBurstCount: 1,
   eventACKCounter: 0,
   eventACKTime: 0,
+  version: '',
 })
 
 export default globalState

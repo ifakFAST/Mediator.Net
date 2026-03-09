@@ -73,6 +73,7 @@ interface LoginSuccessEvent {
   canUpdateViews: boolean
   initialTimeRange: any
   initialStepSizeMS: number
+  version: string
 }
 
 const emit = defineEmits<{
@@ -119,6 +120,7 @@ function login() {
         canUpdateViews: response.data.canUpdateViews,
         initialTimeRange: response.data.initialTimeRange,
         initialStepSizeMS: response.data.initialStepSizeMS,
+        version: response.data.version ?? '',
       })
       loginPass.value = ''
     })

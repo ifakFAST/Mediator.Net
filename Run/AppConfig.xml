@@ -45,6 +45,7 @@
                 <NamedValue name="initial-time-range" value="Last 6 hours"/>
                 <NamedValue name="header" value="Dashboard"/>
                 <NamedValue name="favicon" value=""/>
+                <NamedValue name="show-version" value="false"/>
             </Config>
             <HistoryDBs>
                 <HistoryDB name="Dashboard" type="SQLite" prioritizeReadRequests="true">
