@@ -15,6 +15,7 @@ namespace Ifak.Fast.Mediator.Dashboard
     {
         Task SendEventToUI(string eventName, object payload);
         Task SaveViewConfiguration(DataValue newConfig);
+        void NotifyRefreshConcurrentViews();
         Task<string> SaveWebAsset(string fileExtension, byte[] data);
         void SetGetRequestMapping(string path, string directory);
     }
@@ -35,6 +36,10 @@ namespace Ifak.Fast.Mediator.Dashboard
 
         public void SetGetRequestMapping(string path, string directory) {
             throw new InvalidOperationException("SetGetRequestMapping on empty ViewContext");
+        }
+
+        public void NotifyRefreshConcurrentViews() {
+            throw new InvalidOperationException("NotifyRefreshConcurrentViews on empty ViewContext");
         }
     }
 

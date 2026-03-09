@@ -50,7 +50,7 @@ public class View_Publish : ViewBase
                         .Select(entry => MakeMemberValue(objID, entry))
                         .ToArray();
                     await Connection.UpdateConfig(members);
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -58,7 +58,7 @@ public class View_Publish : ViewBase
 
                     ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString() ?? "");
                     await Connection.UpdateConfig(ObjectValue.Make(obj, DataValue.Empty));
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -71,7 +71,7 @@ public class View_Publish : ViewBase
                     });
                     var element = AddArrayElement.Make(RootID, addParams.ParentMember, dataValue);
                     await Connection.UpdateConfig(element);
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -110,7 +110,7 @@ public class View_Publish : ViewBase
                             }
                         }
                     }
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 

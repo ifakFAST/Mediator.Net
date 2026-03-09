@@ -181,6 +181,7 @@ public class View_TagMetaData : ViewBase
             DataValue dataValue = DataValue.FromObject(model);
             ObjectValue objValue = ObjectValue.Make(GetRootID(), dataValue);
             await Connection.UpdateConfig(objValue);
+            Context.NotifyRefreshConcurrentViews();
             return ReqResult.OK("Model saved successfully");
         }
         catch (Exception ex) {
@@ -217,6 +218,7 @@ public class View_TagMetaData : ViewBase
             modelJson = MakeJsonWithCamelCase(model, indented: true);
 
             await SetBlockLib(modelJson);
+            Context.NotifyRefreshConcurrentViews();
             return ReqResult.OK("Block library saved successfully");
         }
         catch (Exception ex) {

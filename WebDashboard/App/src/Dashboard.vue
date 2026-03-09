@@ -427,6 +427,24 @@
     </v-navigation-drawer>
 
     <v-main>
+      <v-alert
+        v-if="globalState.viewConfigStale"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mx-4 mt-2 mb-0"
+      >
+        This view was updated by another session.
+        <v-btn
+          class="ml-4"
+          variant="text"
+          color="primary"
+          size="small"
+          @click="emit('refreshView')"
+        >
+          Refresh
+        </v-btn>
+      </v-alert>
       <component
         v-if="currentViewComponent !== null"
         :is="currentViewComponent"
@@ -488,6 +506,7 @@ const emit = defineEmits<{
   (e: 'moveUp', viewID: string): void
   (e: 'moveDown', viewID: string): void
   (e: 'delete', viewID: string): void
+  (e: 'refreshView'): void
 }>()
 
 const OneSecond = 1000

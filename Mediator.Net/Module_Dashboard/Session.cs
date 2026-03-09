@@ -34,6 +34,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         private readonly string configPath;
 
         public event Action<string, string>? OnUpdateGetRequestMapping;
+        public event Action<string, string>? OnViewNeedsRefreshing; // (viewID, changingSessionID)
 
         public Session(string configPath) {
             ID = Guid.NewGuid().ToString().Replace("-", "");
@@ -119,6 +120,13 @@ namespace Ifak.Fast.Mediator.Dashboard
             lastActivity = Timestamp.Now;
 
             ViewBase view = views[viewID];
+
+            // Refresh config from shared model to pick up changes from other sessions
+            View? modelView = model.Views.Find(v => v.ID == viewID);
+            if (modelView != null) {
+                view.Config = modelView.Config;
+            }
+
             await view.OnActivate();
             currentView = view;
 
@@ -207,6 +215,8 @@ namespace Ifak.Fast.Mediator.Dashboard
             await theView.OnDeactivate();
             theView.Config = newConfig;
             await theView.OnActivate();
+
+            OnViewNeedsRefreshing?.Invoke(viewID, ID);
         }
 
         public async Task OnDeleteView(string viewID) {
@@ -367,6 +377,14 @@ namespace Ifak.Fast.Mediator.Dashboard
             return Task.FromResult(true);
         }
 
+        public Task NotifyViewNeedsRefreshing(string viewID) {
+            if (closed) return Task.CompletedTask;
+            if (currentView != null && currentView.ID.LocalObjectID == viewID) {
+                return SendEventToUI("ViewNeedsRefreshing", new { viewID });
+            }
+            return Task.CompletedTask;
+        }
+
         public Task SendEventToUI(string eventName, object payload) {
             if (WebSocket == null || WebSocket.State != WebSocketState.Open) return Task.FromResult(true);
             return SendWebSocket(WebSocket, "{ \"event\": \"" + eventName + "\", \"payload\": ", payload);
@@ -381,6 +399,14 @@ namespace Ifak.Fast.Mediator.Dashboard
             MemberValue member = MemberValue.Make(view.ID, nameof(View.Config), dv);
             await connection.UpdateConfig(member);
             view.Config = newConfig;
+
+            OnViewNeedsRefreshing?.Invoke(view.ID.LocalObjectID, ID);
+        }
+
+        void ViewContext.NotifyRefreshConcurrentViews() {
+            ViewBase? view = currentView;
+            if (view == null) return;
+            OnViewNeedsRefreshing?.Invoke(view.ID.LocalObjectID, ID);
         }
 
         private readonly static Encoding UTF8_NoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);

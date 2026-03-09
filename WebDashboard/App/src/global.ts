@@ -42,6 +42,7 @@ export interface GlobalState {
   diffStepSizeMS: number // 0 means auto
   timeRange: TimeRange
   timeRangeListener: (timeRange: TimeRange) => void
+  viewConfigStale: boolean
   eventBurstCount: number
   eventACKCounter: number
   eventACKTime: number
@@ -75,6 +76,7 @@ export const globalState = reactive<GlobalState>({
     rangeEnd: '',
   },
   timeRangeListener: () => {},
+  viewConfigStale: false,
   eventBurstCount: 1,
   eventACKCounter: 0,
   eventACKTime: 0,

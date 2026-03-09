@@ -26,6 +26,7 @@
         @moveUp="moveUpView"
         @moveDown="moveDownView"
         @delete="deleteView"
+        @refreshView="refreshView"
       ></Dashboard>
     </template>
   </div>
@@ -148,6 +149,8 @@ function openWebSocket(user: string, pass: string) {
       const parsedData = JSON.parse(wsEvent.data)
       if (parsedData.event === 'NaviAugmentation') {
         handleViewAugmentation(parsedData.payload)
+      } else if (parsedData.event === 'ViewNeedsRefreshing') {
+        handleViewNeedsRefreshing(parsedData.payload)
       } else {
         globalState.eventListener(parsedData.event, parsedData.payload)
       }
@@ -203,6 +206,24 @@ function handleViewAugmentation(eventPayload: { viewID: string; iconColor: strin
   }
 }
 
+function handleViewNeedsRefreshing(eventPayload: { viewID: string }) {
+  if (globalState.currentViewID === eventPayload.viewID) {
+    globalState.viewConfigStale = true
+  }
+}
+
+function refreshView() {
+  const viewID = globalState.currentViewID
+  if (!viewID) return
+  if (globalState.dirtyChecker()) {
+    if (!window.confirm('You have unsaved changes. Discard changes and refresh?')) {
+      return
+    }
+  }
+  globalState.currentViewID = ''
+  doActivateView(viewID)
+}
+
 function tryReLogin(user: string, pass: string) {
   if (globalState.sessionID === '') {
     console.info('Abort relogin because of logout.')
@@ -240,6 +261,7 @@ function activateView(viewID: string) {
 }
 
 function doActivateView(viewID: string) {
+  globalState.viewConfigStale = false
   globalState.dirtyChecker = () => false
   const previousEventListener = globalState.eventListener
   globalState.eventListener = () => {}

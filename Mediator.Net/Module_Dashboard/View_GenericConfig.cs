@@ -139,6 +139,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         TreeNode node = TransformModel(objects);
 
                         var values = await GetObjectMembers(saveParams.ID, saveParams.Type);
+                        Context.NotifyRefreshConcurrentViews();
                         return ReqResult.OK(new {
                             ObjectValues = values,
                             ObjectTree = node
@@ -152,6 +153,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         objects = await Connection.GetAllObjects(moduleID);
                         TreeNode node = TransformModel(objects);
+                        Context.NotifyRefreshConcurrentViews();
                         return ReqResult.OK(node);
                     }
 
@@ -174,6 +176,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         }
 
                         TreeNode node = TransformModel(objects);
+                        Context.NotifyRefreshConcurrentViews();
                         return ReqResult.OK(new {
                             ObjectID = ObjectRef.Make(moduleID, addParams.NewObjID),
                             Tree = node
@@ -197,6 +200,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         objects = await Connection.GetAllObjects(moduleID);
                         TreeNode node = TransformModel(objects);
+                        Context.NotifyRefreshConcurrentViews();
                         return ReqResult.OK(node);
                     }
 
@@ -243,7 +247,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                                 }
                             }
                         }
-
+                        Context.NotifyRefreshConcurrentViews();
                         objects = await Connection.GetAllObjects(moduleID);
                         TreeNode node = TransformModel(objects);
                         return ReqResult.OK(node);
@@ -280,6 +284,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         var nv1 = new NamedValue("objID", importFile.ObjID);
                         var nv2 = new NamedValue("data", StdJson.ObjectToString(importFile.Data));
                         await Connection.CallMethod(moduleID, "ImportObjectAsFile", nv1, nv2);
+                        Context.NotifyRefreshConcurrentViews();
                         return ReqResult.OK();
                     }
 

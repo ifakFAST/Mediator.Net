@@ -514,6 +514,13 @@ public class Module : ModelObjectModule<DashboardModel>
                     string mappedDirectory = Path.GetFullPath(directory);
                     getRequestMappings[mappedPath] = mappedDirectory;
                 };
+                session.OnViewNeedsRefreshing += (viewID, changingSessionID) => {
+                    foreach (var kvp in sessions) {
+                        if (kvp.Key != changingSessionID) {
+                            _ = kvp.Value.NotifyViewNeedsRefreshing(viewID);
+                        }
+                    }
+                };
                 Connection? connection = null;
                 try {
                     const int timeoutSeconds = 15 * 60;

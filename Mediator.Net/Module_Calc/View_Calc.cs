@@ -54,7 +54,7 @@ public class View_Calc : ViewBase
                         .Select(entry => MakeMemberValue(objID, entry))
                         .ToArray();
                     await Connection.UpdateConfig(members);
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -62,7 +62,7 @@ public class View_Calc : ViewBase
 
                     ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString() ?? "");
                     await Connection.UpdateConfig(ObjectValue.Make(obj, DataValue.Empty));
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -83,7 +83,7 @@ public class View_Calc : ViewBase
                     });
                     var element = AddArrayElement.Make(objParent, addParams.ParentMember, dataValue);
                     await Connection.UpdateConfig(element);
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
@@ -122,7 +122,7 @@ public class View_Calc : ViewBase
                             }
                         }
                     }
-
+                    Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
                 }
 
