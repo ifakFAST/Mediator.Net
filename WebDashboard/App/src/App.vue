@@ -231,10 +231,16 @@ function tryReLogin(user: string, pass: string) {
 
 function activateView(viewID: string) {
   if (globalState.currentViewID === viewID) return
+  if (globalState.dirtyChecker()) {
+    if (!window.confirm('You have unsaved changes. Discard changes and navigate away?')) {
+      return
+    }
+  }
   doActivateView(viewID)
 }
 
 function doActivateView(viewID: string) {
+  globalState.dirtyChecker = () => false
   const previousEventListener = globalState.eventListener
   globalState.eventListener = () => {}
   axios

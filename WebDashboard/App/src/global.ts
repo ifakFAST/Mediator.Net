@@ -34,6 +34,7 @@ export interface GlobalState {
   busy: boolean
   loggedOut: boolean
   connectionState: number // 0 = ok, 1 = trying to reconnect, 2 = connection lost
+  dirtyChecker: () => boolean
   eventListener: (eventName: string, eventPayload: any) => void
   resizeListener: () => void
   showTimeRangeSelector: boolean
@@ -60,6 +61,7 @@ export const globalState = reactive<GlobalState>({
   busy: false,
   loggedOut: false,
   connectionState: 0,
+  dirtyChecker: () => false,
   eventListener: () => {},
   resizeListener: () => {},
   showTimeRangeSelector: false,

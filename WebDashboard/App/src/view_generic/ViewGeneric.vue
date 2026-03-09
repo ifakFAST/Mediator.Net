@@ -55,6 +55,7 @@ import ObjectEditor from './ObjectEditor.vue'
 import Splitter from '../components/Splitter.vue'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, ObjectMap, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
+import globalState from '../global'
 
 const objectTree = ref<TreeNode | null>(null)
 const selectedObjectID = ref('')
@@ -63,6 +64,10 @@ const childTypes = ref<ChildType[]>([])
 const typeInfo = ref<TypeMap>({})
 const objectMap = ref<ObjectMap>({})
 const locations = ref<LocationInfo[]>([])
+
+const isDirty = computed(() => {
+  return currObjectValues.value.some((m) => JSON.stringify(m.ValueOriginal) !== JSON.stringify(m.Value))
+})
 
 const selectedObject = computed((): TreeNode | null => {
   if (selectedObjectID.value === '') {
@@ -135,6 +140,11 @@ const onObjectSelected = (selectObject: TreeNode | null) => {
   if (selectObject === null) {
     console.error('onObjectSelected: selectObject == null')
     return
+  }
+  if (isDirty.value && selectObject.ID !== selectedObjectID.value) {
+    if (!window.confirm('You have unsaved changes. Discard changes and switch object?')) {
+      return
+    }
   }
   const parameter = { ID: selectObject.ID, Type: selectObject.Type }
   ;(window.parent as any)['dashboardApp'].sendViewRequest('GetObject', parameter, (strResponse: string) => {
@@ -283,6 +293,7 @@ const onEvent_VarChange = (entries: any[]) => {
 }
 
 onMounted(() => {
+  globalState.dirtyChecker = () => isDirty.value
   refreshAll()
   ;(window.parent as any)['dashboardApp'].registerViewEventListener((eventName: string, eventPayload: any) => {
     if (eventName === 'VarChange') {

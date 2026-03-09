@@ -75,14 +75,14 @@
             </v-btn>
 
             <v-btn
-              :disabled="isFirst"
+              :disabled="isFirst || isObjectDirty"
               icon
               @click="moveConfig(true)"
             >
               <v-icon>mdi-arrow-up</v-icon>
             </v-btn>
             <v-btn
-              :disabled="isLast"
+              :disabled="isLast || isObjectDirty"
               icon
               @click="moveConfig(false)"
             >
@@ -170,9 +170,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import type { PublishModel, MqttConfig, SQLConfig, OpcUaConfig, ModuleInfo } from './model'
 import * as utils from '../utils'
+import globalState from '../global'
 import MqttConfigEditor from './MqttConfigEditor.vue'
 import SqlConfigEditor from './SqlConfigEditor.vue'
 import OpcUaConfigEditor from './OpcUaConfigEditor.vue'
@@ -237,10 +238,25 @@ const currentIndex = computed((): number => {
 const isFirst = computed((): boolean => currentIndex.value <= 0)
 const isLast = computed((): boolean => currentIndex.value < 0 || currentIndex.value >= currentConfigs.value.length - 1)
 
-watch(activeProtocol, () => {
+const restoringProtocol = ref(false)
+
+watch(activeProtocol, (newVal, oldVal) => {
+  if (restoringProtocol.value) {
+    restoringProtocol.value = false
+    return
+  }
+  if (isObjectDirty.value) {
+    if (!window.confirm('You have unsaved changes. Discard changes and switch tab?')) {
+      restoringProtocol.value = true
+      nextTick(() => {
+        activeProtocol.value = oldVal
+      })
+      return
+    }
+  }
   const firstConfig = currentConfigs.value[0]
   if (firstConfig) {
-    selectConfig(firstConfig.ID)
+    selectConfig(firstConfig.ID, true)
     return
   }
   selectedConfigId.value = null
@@ -248,7 +264,12 @@ watch(activeProtocol, () => {
   editConfigOriginal.value = ''
 })
 
-const selectConfig = (id: string): void => {
+const selectConfig = (id: string, skipDirtyCheck = false): void => {
+  if (!skipDirtyCheck && isObjectDirty.value && id !== selectedConfigId.value) {
+    if (!window.confirm('You have unsaved changes. Discard changes and switch object?')) {
+      return
+    }
+  }
   selectedConfigId.value = id
   const config = currentConfigs.value.find((c) => c.ID === id)
   if (config) {
@@ -309,6 +330,11 @@ const moveConfig = (up: boolean): void => {
 }
 
 const prepareAddConfig = (): void => {
+  if (isObjectDirty.value) {
+    if (!window.confirm('You have unsaved changes. Discard changes and add new config?')) {
+      return
+    }
+  }
   let typeName: string
   let parentMember: string
   switch (activeProtocol.value) {
@@ -371,7 +397,7 @@ const initModel = (strResponse: string, activeItemID?: string): void => {
   if (activeItemID) {
     const config = currentConfigs.value.find((c) => c.ID === activeItemID)
     if (config) {
-      selectConfig(activeItemID)
+      selectConfig(activeItemID, true)
     } else {
       selectedConfigId.value = null
       editConfig.value = null
@@ -395,6 +421,7 @@ const getAllIDs = (): Set<string> => {
 }
 
 onMounted(() => {
+  globalState.dirtyChecker = () => isObjectDirty.value
   // @ts-ignore
   const dashboard = window.parent['dashboardApp']
   dashboard.sendViewRequest('GetModel', {}, (strResponse: string) => {

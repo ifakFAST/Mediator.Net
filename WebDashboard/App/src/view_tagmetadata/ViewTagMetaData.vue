@@ -219,6 +219,7 @@ import * as command from './flowdiagram/commands'
 import * as meta from './metamodel'
 import * as model from './model_tags'
 import * as modules from './flowdiagram/module_types'
+import globalState from '../global'
 import FlowEditor from './flowdiagram/FlowEditor.vue'
 import DlgConfigTag, { type DialogResult } from './DlgConfigTag.vue'
 
@@ -376,6 +377,7 @@ async function loadInitData() {
 }
 
 onMounted(() => {
+  globalState.dirtyChecker = () => modelModified.value
   loadInitData()
 })
 

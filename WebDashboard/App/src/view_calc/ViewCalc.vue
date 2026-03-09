@@ -179,9 +179,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import * as calcmodel from './model'
 import * as global from './global'
+import globalState from '../global'
 import * as fast from '../fast_types'
 import * as utils from '../utils'
 import type { TreeItem, ObjType, SignalVariables, CalculationVariables } from './conversion'
@@ -200,6 +201,7 @@ interface EventEntry {
 }
 
 const selectedNode = ref<Node | null>(null)
+const restoringSelection = ref(false)
 const treeRoot = ref<TreeItem | null>(null)
 
 const selectedItem = ref<TreeItem | null>(null)
@@ -261,7 +263,20 @@ const isObjectDeletable = computed((): boolean => {
   return selectedItem.value.parentID !== null
 })
 
-watch(selectedNode, (newNode: Node | null) => {
+watch(selectedNode, (newNode: Node | null, oldNode: Node | null) => {
+  if (restoringSelection.value) {
+    restoringSelection.value = false
+    return
+  }
+  if (isObjectDirty.value) {
+    if (!window.confirm('You have unsaved changes. Discard changes and switch object?')) {
+      restoringSelection.value = true
+      nextTick(() => {
+        selectedNode.value = oldNode
+      })
+      return
+    }
+  }
   if (newNode) {
     console.info(`selectedNode is ${newNode.title}`)
     const activeItem: TreeItem = newNode as unknown as TreeItem
@@ -492,6 +507,7 @@ const getAllIDsFromTree = (root: TreeItem, resSet: Set<string>): void => {
 }
 
 onMounted(() => {
+  globalState.dirtyChecker = () => isObjectDirty.value
   // @ts-ignore
   const dashboard = window.parent['dashboardApp']
   dashboard.sendViewRequest('GetModel', {}, (strResponse: string) => {

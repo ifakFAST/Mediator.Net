@@ -102,7 +102,7 @@
             </HistoryDBs>
         </Module>
         
-        <Module id="PUB" name="Publish" enabled="false" concurrentInit="false">
+        <Module id="PUB" name="Publish" enabled="true" concurrentInit="false">
             <VariablesFileName>Var_Pub.xml</VariablesFileName>
             <ImplAssembly>Module_Publish.dll</ImplAssembly>
             <ImplClass>Ifak.Fast.Mediator.Publish.Module</ImplClass>

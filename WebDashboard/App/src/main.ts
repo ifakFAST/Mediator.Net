@@ -112,6 +112,9 @@ window.dashboardApp = {
   canUpdateViewConfig() {
     return globalState.canUpdateViewConfig
   },
+  registerDirtyChecker(checker: () => boolean) {
+    globalState.dirtyChecker = checker
+  },
 }
 
 function getDashboardHeaders(viewID: string) {
