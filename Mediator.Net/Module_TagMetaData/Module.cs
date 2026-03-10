@@ -22,6 +22,7 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
 
     private MetaModel metaModel = new();
     private DataValue metaModelDataValue = DataValue.Empty;
+    private readonly Dictionary<string, Unit> unitsByID = new(StringComparer.Ordinal);
 
     private DataValue blockLibraryDataValue = DataValue.Empty;
     private DataValue imagePathDataValue = DataValue.Empty;
@@ -57,6 +58,10 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
         blockLibraryDataValue = DataValue.FromJSON(jsonBlockLib);
 
         metaModel = Xml.FromXmlFile<MetaModel>(metaModelFile);
+        unitsByID.Clear();
+        foreach (Unit unit in metaModel.Units) {
+            unitsByID[unit.ID] = unit;
+        }
         metaModelDataValue = DataValue.FromObject(metaModel);
     }
 
@@ -78,7 +83,7 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
 
         await connection.DisableChangeEvents();
         await connection.EnableVariableValueChangedEvents(
-            SubOptions.OnlyValueAndQualityChanges(sendValueWithEvent: true), 
+            SubOptions.AllUpdates(sendValueWithEvent: true), 
             variables);
     }
 
@@ -167,8 +172,37 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
     }
 
     private DataValue UnitConversion(Config.Tag tag, double value, DataValue dv) {
-        // TODO: Implement unit conversion logic based on tag.Unit and tag.UnitSource
-        return dv;
+
+        string sourceUnitID = tag.UnitSource.Trim();
+        if (string.IsNullOrEmpty(sourceUnitID)) {
+            return dv;
+        }
+
+        string targetUnitID = tag.Unit.Trim();
+        if (string.IsNullOrEmpty(targetUnitID)) {
+            What? what = metaModel.Whats.FirstOrDefault(w => w.ID == tag.What);
+            targetUnitID = what?.RefUnit ?? "";
+            if (string.IsNullOrEmpty(targetUnitID)) {
+                return dv;
+            }
+        }
+
+        if (sourceUnitID == targetUnitID) {
+            return dv;
+        }
+
+        bool hasFromUnit = unitsByID.TryGetValue(sourceUnitID, out Unit? fromUnit);
+        bool hasToUnit = unitsByID.TryGetValue(targetUnitID, out Unit? toUnit);
+        if (!hasFromUnit || !hasToUnit) {
+            return dv;
+        }
+
+        if (fromUnit!.UnitGroup != toUnit!.UnitGroup) {
+            return dv;
+        }
+
+        double converted = Unit.ConvertUnits(fromUnit, toUnit, value);
+        return DataValue.FromDouble(converted);
     }
 
     private void SetVariableValues(VariableValues vv) {
