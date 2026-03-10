@@ -268,7 +268,7 @@ watch(selectedNode, (newNode: Node | null, oldNode: Node | null) => {
     restoringSelection.value = false
     return
   }
-  if (isObjectDirty.value) {
+  if (isObjectDirty.value && newNode?.id !== oldNode?.id) {
     if (!window.confirm('You have unsaved changes. Discard changes and switch object?')) {
       restoringSelection.value = true
       nextTick(() => {
