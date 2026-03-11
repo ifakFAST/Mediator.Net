@@ -384,6 +384,51 @@ def MakeSignalRefs(ids):
           <Output id="Y" name="Y" unit="m³/d" />
         </Outputs>
       </Calculation>
+      <Calculation id="ControlCharts" name="ControlCharts" type="CSharp" enabled="false">
+        <RunMode>InputDriven</RunMode>
+        <InputsRequired>All</InputsRequired>
+        <MaxInputAge>1 min</MaxInputAge>
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <InitialStartTime>2026-03-01T00:00:00Z</InitialStartTime>
+        <Cycle>1 min</Cycle>
+        <Definition>using StdLib.ControlCharts;
+
+class Script {
+    
+    ControlChart cc1 = new("ControlChart1",
+        variable:     DataItemRef("Data_001"), 
+        chartType:    ChartType.TwoSided, 
+        trainingData: [
+            new Interval("2026-02-01T00:00Z", "2026-02-28T00:00Z")
+        ],
+        resolution:   "5 min");
+    
+    public void Step(Timestamp t, Duration dt) {    
+        cc1.Step(t);
+        
+    }
+    
+    public static VariableRef DataItemRef(string id) {
+        return VariableRef.Make("IO", id, "Value");
+    }
+}
+</Definition>
+        <Inputs>
+          <Input id="cc1.x" name="cc1.X">
+            <Variable object="IO:Data_001" name="Value" />
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="cc1.output" name="cc1.Output" type="Struct" />
+        </Outputs>
+        <States>
+          <State id="cc1.trainingParameter" name="cc1.TrainingParameter" type="Struct" default="null" />
+          <State id="cc1.trainingResult" name="cc1.TrainingResult" type="Struct" default="null" />
+          <State id="cc1.lastStepRun" name="cc1.LastStepRun" type="Timestamp" default="null" />
+          <State id="cc1.lastSampleTime" name="cc1.LastSampleTime" type="Timestamp" default="null" />
+          <State id="cc1.alarm" name="cc1.Alarm" type="Byte" />
+        </States>
+      </Calculation>
     </Calculations>
   </RootFolder>
 </Calc_Model>

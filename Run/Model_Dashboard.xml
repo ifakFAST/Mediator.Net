@@ -802,7 +802,7 @@
                   "Config": {
                     "PlotConfig": {
                       "MaxDataPoints": 9000,
-                      "FilterByQuality": "ExcludeBad",
+                      "FilterByQuality": "ExcludeNonGood",
                       "LeftAxisName": "Measurements",
                       "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
@@ -812,39 +812,188 @@
                     },
                     "Items": [
                       {
-                        "Name": "SO",
-                        "Color": "#1BA1E2",
+                        "Name": "Value Raw",
+                        "Color": "#A2C139",
                         "Size": 3.0,
                         "SeriesType": "Scatter",
                         "Axis": "Left",
-                        "Checked": true,
+                        "Checked": false,
                         "Variable": {
                           "Object": "IO:Data_001",
                           "Name": "Value"
                         }
                       },
                       {
-                        "Name": "NH",
+                        "Name": "UB_A",
+                        "Color": "#E51400",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "UB_A",
+                          "ShowLabel": true,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "UB_W",
+                        "Color": "#F09609",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "UB_W",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "CL",
+                        "Color": "#CCCCCC",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "CL",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "LB_W",
+                        "Color": "#F09609",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "LB_W",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "LB_A",
+                        "Color": "#E51400",
+                        "Size": 3.0,
+                        "SeriesType": "Line",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "LB_A",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "Value",
+                        "Color": "#339933",
+                        "Size": 5.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "SampleY",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      }
+                    ],
+                    "DataExport": {
+                      "CSV": {
+                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                        "ColumnSeparator": ","
+                      },
+                      "Spreadsheet": {
+                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
+                      }
+                    }
+                  }
+                },
+                {
+                  "ID": "W_8e38",
+                  "Type": "HistoryPlot",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "PlotConfig": {
+                      "MaxDataPoints": 8000,
+                      "FilterByQuality": "ExcludeBad",
+                      "LeftAxisName": "",
+                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "RightAxisName": "",
+                      "RightAxisStartFromZero": true,
+                      "RightAxisScaleDivisor": 1.0
+                    },
+                    "Items": [
+                      {
+                        "Name": "Status",
+                        "Color": "#1BA1E2",
+                        "Size": 3.0,
+                        "SeriesType": "Scatter",
+                        "Axis": "Left",
+                        "Checked": true,
+                        "Variable": {
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
+                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "Status",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
+                        }
+                      },
+                      {
+                        "Name": "Rule",
                         "Color": "#A05000",
                         "Size": 3.0,
                         "SeriesType": "Scatter",
                         "Axis": "Left",
                         "Checked": true,
                         "Variable": {
-                          "Object": "IO:Data_002",
+                          "Object": "CALC:ControlCharts.Out.cc1.output",
                           "Name": "Value"
-                        }
-                      },
-                      {
-                        "Name": "Setpoint",
-                        "Color": "#339933",
-                        "Size": 3.0,
-                        "SeriesType": "Scatter",
-                        "Axis": "Right",
-                        "Checked": true,
-                        "Variable": {
-                          "Object": "IO:Data_004",
-                          "Name": "Value"
+                        },
+                        "ObjectConfig": {
+                          "KeyValue": "Rule",
+                          "ShowLabel": false,
+                          "KeyLabel": "",
+                          "KeyTooltip": ""
                         }
                       }
                     ],
