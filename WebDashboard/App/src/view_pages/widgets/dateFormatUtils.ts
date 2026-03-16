@@ -10,6 +10,7 @@ export function getUserLocale(): string {
 /**
  * Calculate ISO 8601 week number respecting configured week start day
  * Uses FirstFourDayWeek rule similar to C# CalendarWeekRule.FirstFourDayWeek
+ * All date operations use UTC to match backend bucket boundaries.
  */
 function getWeekNumber(date: Date, weekStart: WeekStartOption): number {
   // Map WeekStartOption to JavaScript day number (0=Sunday, 1=Monday, etc.)
@@ -29,12 +30,12 @@ function getWeekNumber(date: Date, weekStart: WeekStartOption): number {
   const target = new Date(date.getTime())
 
   // Adjust to the start of the week
-  const dayNum = target.getDay()
+  const dayNum = target.getUTCDay()
   const diff = (dayNum + 7 - firstDayOfWeek) % 7
-  target.setDate(target.getDate() - diff)
+  target.setUTCDate(target.getUTCDate() - diff)
 
   // Get first day of year
-  const yearStart = new Date(target.getFullYear(), 0, 1)
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1))
 
   // Calculate week number using FirstFourDayWeek rule
   // This matches the C# CalendarWeekRule.FirstFourDayWeek behavior
@@ -59,17 +60,17 @@ export function formatTimeLabel(
   weekStart: WeekStartOption = 'Monday',
   locale?: string,
 ): string {
+  
   const date = new Date(startTime)
   const userLocale = locale || getUserLocale()
-  console.log('navigator.language', navigator.language)
 
   switch (granularity) {
     case 'Yearly':
-      return new Intl.DateTimeFormat(userLocale, { year: 'numeric' }).format(date)
+      return new Intl.DateTimeFormat(userLocale, { year: 'numeric', timeZone: 'UTC' }).format(date)
 
     case 'Quarterly': {
-      const quarter = Math.floor(date.getMonth() / 3) + 1
-      const year = date.getFullYear()
+      const quarter = Math.floor(date.getUTCMonth() / 3) + 1
+      const year = date.getUTCFullYear()
       return `Q${quarter} ${year}`
     }
 
@@ -79,17 +80,19 @@ export function formatTimeLabel(
         return new Intl.DateTimeFormat(userLocale, {
           month: 'long',
           year: 'numeric',
+          timeZone: 'UTC',
         }).format(date)
       } else {
         // Abbreviated: "January"
         return new Intl.DateTimeFormat(userLocale, {
           month: 'long',
+          timeZone: 'UTC',
         }).format(date)
       }
 
     case 'Weekly': {
       const weekNum = getWeekNumber(date, weekStart)
-      const year = date.getFullYear()
+      const year = date.getUTCFullYear()
       return `Week ${weekNum.toString().padStart(2, '0')} ${year}`
     }
 
@@ -98,9 +101,10 @@ export function formatTimeLabel(
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
+        timeZone: 'UTC',
       }).format(date)
 
     default:
-      return date.toLocaleDateString(userLocale)
+      return new Intl.DateTimeFormat(userLocale, { timeZone: 'UTC' }).format(date)
   }
 }

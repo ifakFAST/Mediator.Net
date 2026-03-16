@@ -1073,5 +1073,89 @@
   ]
 }</Config>
     </View>
+    <View id="09ORza" name="Aggreagtes" type="Pages" group="">
+      <Config>{
+  "HideHeader": true,
+  "ConfigVariables": [],
+  "Pages": [
+    {
+      "ID": "Control",
+      "Name": "Control",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_2584",
+                  "Type": "TimeAggregatedTable",
+                  "Width": "100%",
+                  "Height": "400px",
+                  "Config": {
+                    "TableConfig": {
+                      "StartTime": "2025-01-01T00:00:00Z",
+                      "TimeGranularity": "Yearly",
+                      "WeekStart": "Monday",
+                      "ShowTotalRow": true,
+                      "ShowTotalColumn": false,
+                      "TotalColumnAggregation": "Sum",
+                      "FractionDigits": 2
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "Test CNT",
+                        "Variable": {
+                          "Object": "CALC:Test",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Count"
+                      },
+                      {
+                        "Name": "Test AVG",
+                        "Variable": {
+                          "Object": "CALC:Test",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "ID": "W_b11c",
+                  "Type": "TimeAggregatedBarChart",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "ChartConfig": {
+                      "StartTime": "2025-01-01T00:00:00Z",
+                      "TimeGranularity": "Monthly",
+                      "WeekStart": "Monday",
+                      "ShowSumOverBars": true,
+                      "SumFractionDigits": 1
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "Test",
+                        "Color": "#1BA1E2",
+                        "Variable": {
+                          "Object": "CALC:Test",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</Config>
+    </View>
   </Views>
 </Dashboard_Model>

@@ -3,7 +3,11 @@
   <RootFolder id="root" name="RootFolder">
     <History mode="Interval" interval="10 s" />
     <Folders>
-      <Folder id="Folder_4b8a88" name="Other" />
+      <Folder id="Folder_4b8a88" name="Other">
+        <Signals>
+          <Signal id="Test" name="Test" />
+        </Signals>
+      </Folder>
       <Folder id="subF" name="Signals">
         <Signals>
           <Signal id="signal_001" name="DO" unit="mg/L" dimension="3" />
