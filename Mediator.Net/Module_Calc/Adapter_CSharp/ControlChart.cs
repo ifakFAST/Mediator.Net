@@ -84,7 +84,6 @@ public class ControlChart( string       name,
     
     readonly StateClass<TrainingParameter> trainingParameter = new("TrainingParameter", null);
     readonly StateClass<TrainingResult>    trainingResult    = new("TrainingResult",    null);
-    readonly StateTimestamp                lastStepRun       = new("LastStepRun",       null);
     readonly StateTimestamp                lastSampleTime    = new("LastSampleTime",    null);
 
     readonly OutputClass<ChartOutput> output = new("Output");
@@ -157,7 +156,6 @@ public class ControlChart( string       name,
         }
 
         output.Value = res;
-        lastStepRun.Value = t;
 
         if (res.IsAlarm()) {
             alarm.Set(Level.Alarm, $"{name}: {res.Msg}");
@@ -187,17 +185,7 @@ public class ControlChart( string       name,
             throw new System.ArgumentException("ControlChart resolution must be greater than zero.");
         }
 
-        Timestamp? previousRun = lastStepRun.ValueOrNull;
-        if (!previousRun.HasValue) {
-            return false;
-        }
-
-        Duration elapsed = t - previousRun.Value;
-        if (elapsed < Duration.Zero || elapsed >= interval) {
-            return false;
-        }
-
-        return true;
+        return t != t.Truncate(interval);
     }
 
     private static ControlLimits CalculateControlLimits(TrainingResult limits, WarnLevel warnLevel) {

@@ -405,7 +405,6 @@ class Script {
     
     public void Step(Timestamp t, Duration dt) {    
         cc1.Step(t);
-        
     }
     
     public static VariableRef DataItemRef(string id) {
@@ -424,7 +423,6 @@ class Script {
         <States>
           <State id="cc1.trainingParameter" name="cc1.TrainingParameter" type="Struct" default="null" />
           <State id="cc1.trainingResult" name="cc1.TrainingResult" type="Struct" default="null" />
-          <State id="cc1.lastStepRun" name="cc1.LastStepRun" type="Timestamp" default="null" />
           <State id="cc1.lastSampleTime" name="cc1.LastSampleTime" type="Timestamp" default="null" />
           <State id="cc1.alarm" name="cc1.Alarm" type="Byte" />
         </States>
