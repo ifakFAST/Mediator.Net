@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -778,8 +778,9 @@ namespace Ifak.Fast.Mediator
                             int maxValues = req.MaxValues;
                             BoundingMethod bounding = req.Bounding;
                             QualityFilter filter = req.Filter;
+                            bool priority = info.Origin.Type == OriginType.User;
 
-                            VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter);
+                            VTTQs vttqs = await core.history.HistorianReadRaw(variable, tStart, tEnd, maxValues, bounding, filter, priority);
 
                             Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
@@ -797,8 +798,9 @@ namespace Ifak.Fast.Mediator
                             Timestamp[] intervalBounds = req.IntervalBounds;
                             Aggregation aggregation = req.Aggregation;
                             QualityFilter filter = req.Filter;
+                            bool priority = info.Origin.Type == OriginType.User;
 
-                            VTQs vtqs = await core.history.HistorianReadAggregatedIntervals(variable, intervalBounds, aggregation, filter);
+                            VTQs vtqs = await core.history.HistorianReadAggregatedIntervals(variable, intervalBounds, aggregation, filter, priority);
 
                             Action<object, Stream>? serializer = null;
                             if (req.ReturnBinaryResponse) {
@@ -816,8 +818,9 @@ namespace Ifak.Fast.Mediator
                             Timestamp tStart = req.StartInclusive;
                             Timestamp tEnd = req.EndInclusive;
                             QualityFilter filter = req.Filter;
+                            bool priority = info.Origin.Type == OriginType.User;
 
-                            long count = await core.history.HistorianCount(variable, tStart, tEnd, filter);
+                            long count = await core.history.HistorianCount(variable, tStart, tEnd, filter, priority);
                             return Result_OK(count);
                         }
                     case HistorianDeleteIntervalReq.ID: {
@@ -906,8 +909,9 @@ namespace Ifak.Fast.Mediator
                             VariableRef variable = req.Variable;
                             Timestamp tStart = req.StartInclusive;
                             Timestamp tEnd = req.EndInclusive;
+                            bool priority = info.Origin.Type == OriginType.User;
 
-                            VTTQ? res = await core.history.HistorianGetLatestTimestampDb(variable, tStart, tEnd);
+                            VTTQ? res = await core.history.HistorianGetLatestTimestampDb(variable, tStart, tEnd, priority);
                             return Result_OK(res);
                         }
 

@@ -138,6 +138,9 @@ public class HistoryDB
     [XmlAttribute("prioritizeReadRequests")]
     public bool PrioritizeReadRequests { get; set; } = true;
 
+    [XmlAttribute("prioritizeUserReadRequests")]
+    public bool PrioritizeUserReadRequests { get; set; } = true;
+
     [XmlAttribute("allowOutOfOrderAppend")]
     public bool AllowOutOfOrderAppend { get; set; } = false;
 

@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -30,6 +30,7 @@ public class HistoryDBWorker
     private readonly string dbConnectionString;
     private readonly string[] dbSettings;
     private readonly bool prioritizeReadRequests;
+    private readonly bool prioritizeUserReadRequests;
     private readonly bool allowOutOfOrderAppend;
     private readonly Duration? retentionTime;
     private readonly Duration retentionCheckInterval;
@@ -56,6 +57,7 @@ public class HistoryDBWorker
                 string dbConnectionString,
                 string[] dbSettings,
                 bool prioritizeReadRequests,
+                bool prioritizeUserReadRequests,
                 bool allowOutOfOrderAppend,
                 Duration? retentionTime,
                 Duration retentionCheckInterval,
@@ -69,6 +71,7 @@ public class HistoryDBWorker
         this.dbConnectionString = dbConnectionString;
         this.dbSettings = dbSettings;
         this.prioritizeReadRequests = prioritizeReadRequests;
+        this.prioritizeUserReadRequests = prioritizeUserReadRequests;
         this.allowOutOfOrderAppend = allowOutOfOrderAppend;
         this.retentionTime = retentionTime;
         this.retentionCheckInterval = retentionCheckInterval;
@@ -104,6 +107,7 @@ public class HistoryDBWorker
 
     private abstract class WorkItem {
         public abstract bool IsReadRequest { get; }
+        public virtual bool IsPriorityReadRequest { get; } = false;
     }
 
     private abstract class ReadWorkItem : WorkItem {
@@ -161,15 +165,15 @@ public class HistoryDBWorker
         public readonly IList<StoreValue> Values = values;
     }
 
-    public Task<List<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
+    public Task<List<VTTQ>> ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, bool priority) {
         var promise = new TaskCompletionSource<List<VTTQ>>();
         if (CheckPrecondition(promise)) {
-            queue.Post(new WI_ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter, promise));
+            queue.Post(new WI_ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter, promise, prioritizeUserReadRequests && priority));
         }
         return promise.Task;
     }
 
-    private class WI_ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, TaskCompletionSource<List<VTTQ>> promise) : ReadWorkItem
+    private class WI_ReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, TaskCompletionSource<List<VTTQ>> promise, bool priority) : ReadWorkItem
     {
         public readonly VariableRef Variable = variable;
         public readonly Timestamp StartInclusive = startInclusive;
@@ -181,17 +185,18 @@ public class HistoryDBWorker
         public readonly TaskCompletionSource<List<VTTQ>> Promise = promise;
         public override Task GetTask() => Promise.Task;
         public override VariableRef GetVariableRef() => Variable;
+        public override bool IsPriorityReadRequest => priority;
     }
 
-    public Task<long> Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
+    public Task<long> Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter, bool priority) {
         var promise = new TaskCompletionSource<long>();
         if (CheckPrecondition(promise)) {
-            queue.Post(new WI_Count(variable, startInclusive, endInclusive, filter, promise));
+            queue.Post(new WI_Count(variable, startInclusive, endInclusive, filter, promise, prioritizeUserReadRequests && priority));
         }
         return promise.Task;
     }
 
-    private class WI_Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter, TaskCompletionSource<long> promise) : ReadWorkItem
+    private class WI_Count(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter, TaskCompletionSource<long> promise, bool priority) : ReadWorkItem
     {
         public readonly VariableRef Variable = variable;
         public readonly Timestamp StartInclusive = startInclusive;
@@ -201,17 +206,18 @@ public class HistoryDBWorker
         public readonly TaskCompletionSource<long> Promise = promise;
         public override Task GetTask() => Promise.Task;
         public override VariableRef GetVariableRef() => Variable;
+        public override bool IsPriorityReadRequest => priority;
     }
 
-    public Task<List<VTQ>> ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+    public Task<List<VTQ>> ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter, bool priority) {
         var promise = new TaskCompletionSource<List<VTQ>>();
         if (CheckPrecondition(promise)) {
-            queue.Post(new WI_ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter, promise));
+            queue.Post(new WI_ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter, promise, prioritizeUserReadRequests && priority));
         }
         return promise.Task;
     }
 
-    private class WI_ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter, TaskCompletionSource<List<VTQ>> promise) : ReadWorkItem
+    private class WI_ReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter, TaskCompletionSource<List<VTQ>> promise, bool priority) : ReadWorkItem
     {
         public readonly VariableRef Variable = variable;
         public readonly Timestamp[] IntervalBounds = intervalBounds;
@@ -221,6 +227,7 @@ public class HistoryDBWorker
         public readonly TaskCompletionSource<List<VTQ>> Promise = promise;
         public override Task GetTask() => Promise.Task;
         public override VariableRef GetVariableRef() => Variable;
+        public override bool IsPriorityReadRequest => priority;
     }
 
     public Task<long> DeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
@@ -254,15 +261,15 @@ public class HistoryDBWorker
         public readonly TaskCompletionSource Promise = promise;
     }
 
-    public Task<VTTQ?> GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+    public Task<VTTQ?> GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, bool priority) {
         var promise = new TaskCompletionSource<VTTQ?>();
         if (CheckPrecondition(promise)) {
-            queue.Post(new WI_GetLatestTimestampDb(variable, startInclusive, endInclusive, promise));
+            queue.Post(new WI_GetLatestTimestampDb(variable, startInclusive, endInclusive, promise, prioritizeUserReadRequests && priority));
         }
         return promise.Task;
     }
 
-    private class WI_GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, TaskCompletionSource<VTTQ?> promise) : ReadWorkItem
+    private class WI_GetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, TaskCompletionSource<VTTQ?> promise, bool priority) : ReadWorkItem
     {
         public readonly VariableRef Variable = variable;
         public readonly Timestamp StartInclusive = startInclusive;
@@ -271,6 +278,7 @@ public class HistoryDBWorker
         public readonly TaskCompletionSource<VTTQ?> Promise = promise;
         public override Task GetTask() => Promise.Task;
         public override VariableRef GetVariableRef() => Variable;
+        public override bool IsPriorityReadRequest => priority;
     }
 
     public Task Modify(VariableRef variable, Variable varDesc, VTQ[] data, ModifyMode mode) {
@@ -1338,7 +1346,7 @@ public class HistoryDBWorker
 
     #endregion
 
-    private readonly Queue<WorkItem> localQueue = new Queue<WorkItem>();
+    private readonly Queue<WorkItem> localQueue = [];
 
     private bool HasNext() { return localQueue.Count > 0 || queue.Count > 0; }
 
@@ -1369,6 +1377,16 @@ public class HistoryDBWorker
 
         WorkItem front = localQueue.Peek();
 
+        if (front.IsPriorityReadRequest) {
+            return;
+        }
+
+        WorkItem? priorityRead = localQueue.FirstOrDefault(x => x.IsPriorityReadRequest);
+        if (priorityRead != null) {
+            MoveToFront(priorityRead);
+            return;
+        }
+
         if (prioritizeReadRequests) {
 
             if (front.IsReadRequest) {
@@ -1377,12 +1395,7 @@ public class HistoryDBWorker
             else {
                 WorkItem? readReq = localQueue.FirstOrDefault(x => x.IsReadRequest);
                 if (readReq != null) {
-                    WorkItem[] other = localQueue.Where(x => x != readReq).ToArray();
-                    localQueue.Clear();
-                    localQueue.Enqueue(readReq);
-                    foreach (WorkItem it in other) {
-                        localQueue.Enqueue(it);
-                    }
+                    MoveToFront(readReq);
                     return;
                 }
             }
@@ -1403,6 +1416,15 @@ public class HistoryDBWorker
             }
 
             return;
+        }
+    }
+
+    private void MoveToFront(WorkItem item) {
+        WorkItem[] other = localQueue.Where(x => x != item).ToArray();
+        localQueue.Clear();
+        localQueue.Enqueue(item);
+        foreach (WorkItem it in other) {
+            localQueue.Enqueue(it);
         }
     }
 }

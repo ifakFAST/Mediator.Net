@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -72,7 +72,7 @@ public class HistoryManager
                 }
                 Duration retentionCheckInterval = Duration.Parse(db.RetentionCheckInterval);
 
-                var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.AllowOutOfOrderAppend, retentionTime, retentionCheckInterval, fCreateDB, Notify_Append, db.MaxConcurrentReads, db.AggregationCache, db.Archive);
+                var worker = new HistoryDBWorker(db.Name, db.ConnectionString, db.Settings, db.PrioritizeReadRequests, db.PrioritizeUserReadRequests, db.AllowOutOfOrderAppend, retentionTime, retentionCheckInterval, fCreateDB, Notify_Append, db.MaxConcurrentReads, db.AggregationCache, db.Archive);
                 var wb = new WorkerWithBuffer(worker);
 
                 workers.Add(wb);
@@ -115,25 +115,25 @@ public class HistoryManager
         return Task.WhenAll(terminateTasks);
     }
 
-    public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
+    public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, bool priority) {
 
         HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
         CheckExistingVariable(variable);
-        return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter);
+        return await worker.ReadRaw(variable, startInclusive, endInclusive, maxValues, bounding, filter, priority);
     }
 
-    public async Task<List<VTQ>> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter) {
+    public async Task<List<VTQ>> HistorianReadAggregatedIntervals(VariableRef variable, Timestamp[] intervalBounds, Aggregation aggregation, QualityFilter filter, bool priority) {
 
         HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
         CheckExistingVariable(variable);
-        return await worker.ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter);
+        return await worker.ReadAggregatedIntervals(variable, intervalBounds, aggregation, filter, priority);
     }
 
-    public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter) {
+    public async Task<long> HistorianCount(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, QualityFilter filter, bool priority) {
 
         HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
         CheckExistingVariable(variable);
-        return await worker.Count(variable, startInclusive, endInclusive, filter);
+        return await worker.Count(variable, startInclusive, endInclusive, filter, priority);
     }
 
     public async Task<long> HistorianDeleteInterval(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
@@ -153,11 +153,11 @@ public class HistoryManager
         NotifyChange(variable, Timestamp.Empty, Timestamp.Max, HistoryChangeType.Delete);
     }
 
-    public async Task<VTTQ?> HistorianGetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive) {
+    public async Task<VTTQ?> HistorianGetLatestTimestampDb(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, bool priority) {
 
         HistoryDBWorker worker = WorkerByVarRef(variable) ?? throw new Exception("Failed to find DB worker for variable " + variable);
         CheckExistingVariable(variable);
-        return await worker.GetLatestTimestampDb(variable, startInclusive, endInclusive);
+        return await worker.GetLatestTimestampDb(variable, startInclusive, endInclusive, priority);
     }
 
     public async Task HistorianModify(VariableRef variable, VTQ[] data, ModifyMode mode) {
