@@ -314,7 +314,7 @@ const styleRow = computed((): StyleValue => {
   if (props.editPage) {
     return {
       'min-height': '90px',
-      'background-color': 'grey',
+      'background-color': 'rgba(var(--v-theme-on-surface), 0.08)',
       'padding-bottom': '3px',
     }
   } else {
@@ -328,7 +328,9 @@ const styleRow = computed((): StyleValue => {
 const getStyleCol = (j: number): StyleValue => {
   if (props.editPage) {
     return {
-      'background-color': j % 2 === 1 ? '#e6e6e6' : '#F8F8F8',
+      'background-color': j % 2 === 1 ? 
+          'rgba(var(--v-theme-on-surface), 0.06)' : 
+          'rgba(var(--v-theme-on-surface), 0.0)',
     }
   } else {
     return {}
