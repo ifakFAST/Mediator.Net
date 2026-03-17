@@ -67,6 +67,7 @@ public class HistoryDBWorker
                 AggregationCacheSettings aggregationCache,
                 ArchiveSettings archiv) {
 
+        this.localQueue = new(prioritizeReadRequests);
         this.dbName = dbName;
         this.dbConnectionString = dbConnectionString;
         this.dbSettings = dbSettings;
@@ -1346,19 +1347,20 @@ public class HistoryDBWorker
 
     #endregion
 
-    private readonly Queue<WorkItem> localQueue = [];
+    private readonly PrioritizedWorkQueue localQueue;
 
-    private bool HasNext() { return localQueue.Count > 0 || queue.Count > 0; }
+    private bool HasNext() { return localQueue.NonEmpty || queue.Count > 0; }
 
     private async Task<WorkItem> ReceiveNext() {
 
         int N = queue.Count;
+        bool queueIsEmpty = N == 0;
 
-        if (localQueue.Count > 0 && N == 0) {
-            return localQueue.Dequeue();
+        if (localQueue.NonEmpty && queueIsEmpty) {
+            return localQueue.DequeueWithAggregation();
         }
 
-        if (localQueue.Count == 0 && N == 0) {
+        if (localQueue.IsEmpty && queueIsEmpty) {
             localQueue.Enqueue(await queue.ReceiveAsync());
             return await ReceiveNext();
         }
@@ -1368,63 +1370,49 @@ public class HistoryDBWorker
             localQueue.Enqueue(item);
         }
 
-        PrioritizeAndCompressLocalQueue();
-
-        return localQueue.Dequeue();
+        return localQueue.DequeueWithAggregation();
     }
 
-    private void PrioritizeAndCompressLocalQueue() {
+    sealed class PrioritizedWorkQueue(bool prioritizeReadRequests)
+    {
+        private readonly Queue<WorkItem> prio1 = new(64);
+        private readonly Queue<WorkItem> prio2 = new(64);
+        private readonly Queue<WorkItem> prio3 = new(64);
 
-        WorkItem front = localQueue.Peek();
-
-        if (front.IsPriorityReadRequest) {
-            return;
-        }
-
-        WorkItem? priorityRead = localQueue.FirstOrDefault(x => x.IsPriorityReadRequest);
-        if (priorityRead != null) {
-            MoveToFront(priorityRead);
-            return;
-        }
-
-        if (prioritizeReadRequests) {
-
-            if (front.IsReadRequest) {
-                return;
+        public void Enqueue(WorkItem work) {
+            if (work.IsPriorityReadRequest) {
+                prio1.Enqueue(work);
+            }
+            else if (prioritizeReadRequests && work.IsReadRequest) {
+                prio2.Enqueue(work);
             }
             else {
-                WorkItem? readReq = localQueue.FirstOrDefault(x => x.IsReadRequest);
-                if (readReq != null) {
-                    MoveToFront(readReq);
-                    return;
+                prio3.Enqueue(work);
+            }
+        }
+        /// <summary>
+        /// Dequeues a work item from the priority queues, prioritizing items from higher to lower priority. If the
+        /// dequeued item is a batch append, it aggregates subsequent batch append items into a single batch.
+        /// </summary>
+        public WorkItem DequeueWithAggregation() {
+            if (prio1.Count > 0) return prio1.Dequeue();
+            if (prio2.Count > 0) return prio2.Dequeue();
+            if (prio3.Count == 0) throw new InvalidOperationException("Queue is empty");
+            WorkItem front = prio3.Dequeue();
+            if (front is WI_BatchAppend ba && prio3.Count > 0 && prio3.Peek() is WI_BatchAppend) {
+                var values = new List<StoreValue>(ba.Values);
+                while (prio3.Count > 0 && prio3.Peek() is WI_BatchAppend) {
+                    WI_BatchAppend batchAppend = (WI_BatchAppend)prio3.Dequeue();
+                    values.AddRange(batchAppend.Values);
                 }
+                return new WI_BatchAppend(values);
+            }
+            else {
+                return front;
             }
         }
 
-        if (front is WI_BatchAppend && localQueue.Count > 1) {
-
-            WI_BatchAppend[] appends = localQueue.TakeWhile(wi => wi is WI_BatchAppend).Cast<WI_BatchAppend>().ToArray();
-            if (appends.Length > 1) {
-                StoreValue[] values = appends.SelectMany(app => app.Values).ToArray();
-                WI_BatchAppend frontAppend = new WI_BatchAppend(values);
-                WorkItem[] other = localQueue.Skip(appends.Length).ToArray();
-                localQueue.Clear();
-                localQueue.Enqueue(frontAppend);
-                foreach (WorkItem it in other) {
-                    localQueue.Enqueue(it);
-                }
-            }
-
-            return;
-        }
-    }
-
-    private void MoveToFront(WorkItem item) {
-        WorkItem[] other = localQueue.Where(x => x != item).ToArray();
-        localQueue.Clear();
-        localQueue.Enqueue(item);
-        foreach (WorkItem it in other) {
-            localQueue.Enqueue(it);
-        }
+        public bool IsEmpty  => prio1.Count == 0 && prio2.Count == 0 && prio3.Count == 0;
+        public bool NonEmpty => !IsEmpty;
     }
 }
