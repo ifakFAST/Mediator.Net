@@ -11,6 +11,7 @@
         :busy="busy"
         :connectionState="connectionState"
         :currViewID="currentViewID"
+        :currViewKey="currentViewKey"
         :currViewSrc="currentViewSource"
         :timeRangeSelected="timeRange"
         :showTime="showTimeRangeSelector"
@@ -62,6 +63,7 @@ const model = computed(() => globalState.model)
 const busy = computed(() => globalState.busy)
 const connectionState = computed(() => globalState.connectionState)
 const currentViewID = computed(() => globalState.currentViewID)
+const currentViewKey = computed(() => `${globalState.currentViewID}:${globalState.currentViewID_Counter}`)
 const timeRange = computed(() => globalState.timeRange)
 const showTimeRangeSelector = computed(() => globalState.showTimeRangeSelector)
 const showTimeRangeEndTimeOnly = computed(() => globalState.showTimeRangeEndTimeOnly)

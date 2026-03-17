@@ -448,7 +448,7 @@
       <component
         v-if="currentViewComponent !== null"
         :is="currentViewComponent"
-        :key="currViewID"
+        :key="currViewKey"
       />
       <iframe
         v-else
@@ -474,6 +474,7 @@ import ViewPublish from './view_publish/ViewPublish.vue'
 
 interface Props {
   currViewID: string
+  currViewKey: string
   currViewSrc: string
   user: string
   views: View[]
