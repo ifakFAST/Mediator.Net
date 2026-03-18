@@ -476,7 +476,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
 
         public override List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
-            long N = CountData(startInclusive, endInclusive, filter);
+            //long N = CountData(startInclusive, endInclusive, filter);
 
             PreparedStatement statement;
 
@@ -517,7 +517,7 @@ namespace Ifak.Fast.Mediator.Timeseries.PostgresFlat
             statement[1] = endInclusive.ToDateTimeUnspecified();
             statement[2] = maxValues;
 
-            int initSize = N < maxValues ? (int)N : maxValues;
+            int initSize = Math.Min(maxValues, 4 * 1024);
             var res = new List<VTTQ>(initSize);
             using (var reader = statement.ExecuteReader()) {
                 while (reader.Read()) {

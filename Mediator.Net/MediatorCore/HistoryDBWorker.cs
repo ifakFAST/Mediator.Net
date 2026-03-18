@@ -29,7 +29,6 @@ public class HistoryDBWorker
     private readonly string dbName;
     private readonly string dbConnectionString;
     private readonly string[] dbSettings;
-    private readonly bool prioritizeReadRequests;
     private readonly bool prioritizeUserReadRequests;
     private readonly bool allowOutOfOrderAppend;
     private readonly Duration? retentionTime;
@@ -71,7 +70,6 @@ public class HistoryDBWorker
         this.dbName = dbName;
         this.dbConnectionString = dbConnectionString;
         this.dbSettings = dbSettings;
-        this.prioritizeReadRequests = prioritizeReadRequests;
         this.prioritizeUserReadRequests = prioritizeUserReadRequests;
         this.allowOutOfOrderAppend = allowOutOfOrderAppend;
         this.retentionTime = retentionTime;

@@ -289,7 +289,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
         public override List<VTTQ> ReadData(Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter) {
 
-            long N = CountData(startInclusive, endInclusive, filter);
+            //long N = CountData(startInclusive, endInclusive, filter);
 
             //double millis = (endInclusive - startInclusive).TotalMilliseconds + 1;
             //double avgInterval_MS = millis / N;
@@ -342,7 +342,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             statement[1] = endInclusive.JavaTicks;
             statement[2] = maxValues;
 
-            int initSize = N < maxValues ? (int)N : maxValues;
+            int initSize = Math.Min(maxValues, 4*1024);
             var res = new List<VTTQ>(initSize);
             using (var reader = statement.ExecuteReader()) {
                 while (reader.Read()) {
