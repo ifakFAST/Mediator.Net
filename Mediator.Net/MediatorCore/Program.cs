@@ -73,7 +73,7 @@ namespace Ifak.Fast.Mediator
             config?.Variables["log-file-name"] = logName;
 
             string workingDir = Directory.GetCurrentDirectory();
-            Console.Title = $"{title} - {workingDir}";
+            try { Console.Title = $"{title} - {workingDir}"; } catch { }
 
             Logger logger = LogManager.GetLogger("Mediator.Prog");
 
