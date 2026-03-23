@@ -396,6 +396,8 @@ public class EventLog : EventProvider
 
 public class Api
 {
+    public bool AbortStep => abortStep;
+
     internal bool abortStep { get; set; } = false;
 
     internal string moduleID { get; set; } = "";
