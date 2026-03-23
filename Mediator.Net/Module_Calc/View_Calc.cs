@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -151,6 +151,33 @@ public class View_Calc : ViewBase
                     });
                 }
 
+            case "ReadSignalHistory": {
+
+                    var pars = parameters.Object<ReadSignalHistoryParams>() ?? throw new Exception("ReadSignalHistoryParams is null");
+                    ObjectRef obj = ObjectRef.Make(moduleID, pars.SignalID);
+                    VariableRef varRef = VariableRef.Make(obj, "Value");
+                    Timestamp tStart = Timestamp.FromJavaTicks(pars.StartJavaTicks);
+                    Timestamp tEnd = pars.EndJavaTicks <= 0 ? Timestamp.Max : Timestamp.FromJavaTicks(pars.EndJavaTicks);
+                    BoundingMethod bounding = pars.Mode == "Last" ? BoundingMethod.TakeLastN : BoundingMethod.TakeFirstN;
+                    var data = await Connection.HistorianReadRaw(varRef, tStart, tEnd, pars.Count, bounding);
+                    var rows = data.Select(d => new {
+                        T = FormatTimestampFull(d.T),
+                        TJ = d.T.JavaTicks,
+                        Q = d.Q.ToString(),
+                        V = d.V.JSON
+                    }).ToArray();
+                    return ReqResult.OK(rows);
+                }
+
+            case "CountSignalHistory": {
+
+                    string signalID = parameters.GetString() ?? "";
+                    ObjectRef obj = ObjectRef.Make(moduleID, signalID);
+                    VariableRef varRef = VariableRef.Make(obj, "Value");
+                    long count = await Connection.HistorianCount(varRef, Timestamp.Empty, Timestamp.Max);
+                    return ReqResult.OK(new { Count = count });
+                }
+
             default:
                 return ReqResult.Bad("Unknown command: " + command);
         }
@@ -271,6 +298,14 @@ public class View_Calc : ViewBase
             return tLocal.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture);
     }
 
+    private static string FormatTimestampFull(Timestamp t) {
+        DateTime tLocal = t.ToDateTime().ToLocalTime();
+        if (tLocal.Millisecond != 0)
+            return tLocal.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture);
+        else
+            return tLocal.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss", CultureInfo.InvariantCulture);
+    }
+
     public class ViewConfig
     {
         public string ModuleID { get; set; } = "";
@@ -309,6 +344,15 @@ public class View_Calc : ViewBase
     {
         public string ModuleID { get; set; } = "";
         public DataType ForType { get; set; } = DataType.Float64;
+    }
+
+    public class ReadSignalHistoryParams
+    {
+        public string SignalID { get; set; } = "";
+        public int Count { get; set; } = 20;
+        public string Mode { get; set; } = "First";
+        public long StartJavaTicks { get; set; } = 0;
+        public long EndJavaTicks { get; set; } = 0;
     }
 
     public class EventEntry
