@@ -19,6 +19,7 @@
         value="States"
         >States</v-tab
       >
+      <v-tab value="History">History</v-tab>
     </v-tabs>
 
     <div
@@ -390,6 +391,41 @@
       </table>
     </div>
 
+    <div
+      v-if="selectedTab === 'History'"
+      class="flex-grow-1 overflow-y-auto pa-2"
+    >
+      <v-select
+        v-model="selectedHistoryVarId"
+        :items="historyVarItems"
+        density="compact"
+        hide-details
+        label="Variable"
+        style="max-width: 400px; margin-bottom: 12px"
+      >
+        <template #item="{ item, props }">
+          <v-list-item v-bind="props" :prepend-icon="item.raw.icon" :title="item.raw.title" />
+        </template>
+        <template #selection="{ item }">
+          <v-icon
+            :icon="item.raw.icon"
+            class="mr-1"
+            size="small"
+          />{{ item.raw.title }}
+        </template>
+      </v-select>
+      <keep-alive>
+        <VarHistoryTable
+          v-if="selectedHistoryVarId && selectedHistoryVar"
+          :key="selectedHistoryVarId"
+          :object-id="selectedHistoryVar.objectId"
+          :variable-name="selectedHistoryVar.varName"
+          :data-type="selectedHistoryVar.type"
+          :dimension="selectedHistoryVar.dimension"
+        />
+      </keep-alive>
+    </div>
+
     <dlg-object-select
       v-model="selectObject.show"
       :module-id="selectObject.selectedModuleID"
@@ -406,12 +442,23 @@ import { ref, computed, watch } from 'vue'
 import * as calcmodel from './model'
 import MemberRow from './util/MemberRow.vue'
 import ValueDisplay from './util/ValueDisplay.vue'
+import VarHistoryTable from './VarHistoryTable.vue'
 import * as global from './global'
 import * as fast from '../fast_types'
 import type { CalculationVariables, IoVar } from './conversion'
 import type { MemberTypeEnum } from './util/member_types'
 
 type AssignState = 'Unassigned' | 'Constant' | 'Variable'
+
+interface HistoryVarItem {
+  title: string
+  icon: string
+  value: string
+  objectId: string
+  varName?: string
+  type: fast.DataType
+  dimension: number
+}
 
 interface SelectObject {
   show: boolean
@@ -436,6 +483,17 @@ const props = defineProps<{
 }>()
 
 const selectedTab = ref('')
+const selectedHistoryVarId = ref<string>('')
+
+const historyVarItems = computed((): HistoryVarItem[] => [
+  ...model.value.Inputs.map((i) =>  ({ title: i.Name, icon: 'mdi-login-variant',    value: `${model.value.ID}.In.${i.ID}`,    objectId: `${model.value.ID}.In.${i.ID}`,    type: i.Type, dimension: i.Dimension })),
+  ...model.value.Outputs.map((o) => ({ title: o.Name, icon: 'mdi-logout-variant',   value: `${model.value.ID}.Out.${o.ID}`,   objectId: `${model.value.ID}.Out.${o.ID}`,   type: o.Type, dimension: o.Dimension })),
+  ...model.value.States.map((s) =>  ({ title: s.Name, icon: 'mdi-database-outline', value: `${model.value.ID}.State.${s.ID}`, objectId: `${model.value.ID}.State.${s.ID}`, type: s.Type, dimension: s.Dimension })),
+                                     { title: 'LastRunDuration',  icon: 'mdi-timer-outline',    value: 'calc:LastRunDuration',  objectId: model.value.ID, varName: 'LastRunDuration',  type: 'Float64',   dimension: 1 },
+                                     { title: 'LastRunTimestamp', icon: 'mdi-clock-outline',    value: 'calc:LastRunTimestamp', objectId: model.value.ID, varName: 'LastRunTimestamp', type: 'Timestamp', dimension: 1 },
+])
+
+const selectedHistoryVar = computed(() => historyVarItems.value.find((v) => v.value === selectedHistoryVarId.value))
 const selectObject = ref<SelectObject>({
   show: false,
   modules: [],
