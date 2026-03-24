@@ -151,11 +151,11 @@ public class View_Calc : ViewBase
                     });
                 }
 
-            case "ReadSignalHistory": {
+            case "ReadVariableHistory": {
 
-                    var pars = parameters.Object<ReadSignalHistoryParams>() ?? throw new Exception("ReadSignalHistoryParams is null");
-                    ObjectRef obj = ObjectRef.Make(moduleID, pars.SignalID);
-                    VariableRef varRef = VariableRef.Make(obj, "Value");
+                    var pars = parameters.Object<ReadVariableHistoryParams>() ?? throw new Exception("ReadVariableHistoryParams is null");
+                    ObjectRef obj = ObjectRef.Make(moduleID, pars.ObjectID);
+                    VariableRef varRef = VariableRef.Make(obj, pars.VariableName);
                     Timestamp tStart = Timestamp.FromJavaTicks(pars.StartJavaTicks);
                     Timestamp tEnd = pars.EndJavaTicks <= 0 ? Timestamp.Max : Timestamp.FromJavaTicks(pars.EndJavaTicks);
                     BoundingMethod bounding = pars.Mode == "Last" ? BoundingMethod.TakeLastN : BoundingMethod.TakeFirstN;
@@ -169,11 +169,11 @@ public class View_Calc : ViewBase
                     return ReqResult.OK(rows);
                 }
 
-            case "CountSignalHistory": {
+            case "CountVariableHistory": {
 
-                    string signalID = parameters.GetString() ?? "";
-                    ObjectRef obj = ObjectRef.Make(moduleID, signalID);
-                    VariableRef varRef = VariableRef.Make(obj, "Value");
+                    var pars = parameters.Object<CountVariableHistoryParams>() ?? throw new Exception("CountVariableHistoryParams is null");
+                    ObjectRef obj = ObjectRef.Make(moduleID, pars.ObjectID);
+                    VariableRef varRef = VariableRef.Make(obj, pars.VariableName);
                     long count = await Connection.HistorianCount(varRef, Timestamp.Empty, Timestamp.Max);
                     return ReqResult.OK(new { Count = count });
                 }
@@ -346,13 +346,20 @@ public class View_Calc : ViewBase
         public DataType ForType { get; set; } = DataType.Float64;
     }
 
-    public class ReadSignalHistoryParams
+    public class ReadVariableHistoryParams
     {
-        public string SignalID { get; set; } = "";
+        public string ObjectID { get; set; } = "";
+        public string VariableName { get; set; } = "Value";
         public int Count { get; set; } = 20;
         public string Mode { get; set; } = "First";
         public long StartJavaTicks { get; set; } = 0;
         public long EndJavaTicks { get; set; } = 0;
+    }
+
+    public class CountVariableHistoryParams
+    {
+        public string ObjectID { get; set; } = "";
+        public string VariableName { get; set; } = "Value";
     }
 
     public class EventEntry
