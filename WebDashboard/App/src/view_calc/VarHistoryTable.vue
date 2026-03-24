@@ -10,28 +10,28 @@
           title="Latest values (descending)"
           @click="latestDesc"
         >
-          <v-icon>mdi-arrow-collapse-down</v-icon>
+          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-arrow-collapse-down</v-icon>
         </v-btn>
         <v-btn
           :disabled="historyLoading"
           title="Oldest values (ascending)"
           @click="oldestAsc"
         >
-          <v-icon>mdi-arrow-collapse-up</v-icon>
+          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-arrow-collapse-up</v-icon>
         </v-btn>
         <v-btn
           :disabled="historyLoading || historyRows.length === 0"
           title="Move down"
           @click="moveDown"
         >
-          <v-icon>mdi-chevron-down</v-icon>
+          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-chevron-down</v-icon>
         </v-btn>
         <v-btn
           :disabled="historyLoading || historyRows.length === 0"
           title="Move up"
           @click="moveUp"
         >
-          <v-icon>mdi-chevron-up</v-icon>
+          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-chevron-up</v-icon>
         </v-btn>
       </v-btn-group>
 
@@ -55,6 +55,16 @@
         <v-icon>{{ showRawJson ? 'mdi-table' : 'mdi-code-json' }}</v-icon>
       </v-btn>
 
+      <v-btn
+        v-if="!isStruct"
+        :title="viewMode === 'plot' ? 'Show as table' : 'Show as plot'"
+        density="compact"
+        variant="outlined"
+        @click="viewMode = viewMode === 'plot' ? 'table' : 'plot'"
+      >
+        <v-icon>{{ viewMode === 'plot' ? 'mdi-table' : 'mdi-chart-line' }}</v-icon>
+      </v-btn>
+
       <v-spacer />
 
       <span
@@ -72,58 +82,66 @@
       </v-btn>
     </div>
 
-    <div
-      v-if="historyRows.length > 0"
-      style="overflow-x: auto"
-    >
-      <v-table density="compact">
-        <thead>
-          <tr>
-            <th>Timestamp {{ sortDesc ? '▼' : '▲' }}</th>
-            <th>Quality</th>
-            <template v-if="showStructColumns">
-              <th
-                v-for="member in structMembers"
-                :key="member"
-              >
-                {{ member }}
+    <template v-if="historyRows.length > 0">
+      <div
+        v-if="viewMode === 'table'"
+        style="overflow-x: auto"
+      >
+        <v-table density="compact">
+          <thead>
+            <tr>
+              <th>Timestamp {{ sortDesc ? '▼' : '▲' }}</th>
+              <th>Quality</th>
+              <template v-if="showStructColumns">
+                <th
+                  v-for="member in structMembers"
+                  :key="member"
+                >
+                  {{ member }}
+                </th>
+              </template>
+              <th v-else>
+                Value
               </th>
-            </template>
-            <th v-else>
-              Value
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(row, idx) in displayedRows"
-            :key="idx"
-          >
-            <td class="text-no-wrap">
-              {{ row.T }}
-            </td>
-            <td>{{ row.Q }}</td>
-            <template v-if="showStructColumns">
-              <td
-                v-for="member in structMembers"
-                :key="member"
-              >
-                {{ getStructMemberValue(row.V, member) }}
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(row, idx) in displayedRows"
+              :key="idx"
+            >
+              <td class="text-no-wrap">
+                {{ row.T }}
               </td>
-            </template>
-            <td v-else-if="showStructPerRow">
-              <StructView
-                :value="row.V"
-                :vertical="true"
-              />
-            </td>
-            <td v-else>
-              {{ row.V }}
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-    </div>
+              <td>{{ row.Q }}</td>
+              <template v-if="showStructColumns">
+                <td
+                  v-for="member in structMembers"
+                  :key="member"
+                >
+                  {{ getStructMemberValue(row.V, member) }}
+                </td>
+              </template>
+              <td v-else-if="showStructPerRow">
+                <StructView
+                  :value="row.V"
+                  :vertical="true"
+                />
+              </td>
+              <td v-else>
+                {{ row.V }}
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+      <DyGraph
+        v-else
+        :graph-data="graphData"
+        :graph-options="graphOptions"
+        :graph-style="{ width: '100%', height: '500px' }"
+      />
+    </template>
 
     <div
       v-else-if="!historyLoading"
@@ -174,6 +192,7 @@ const countLoading = ref(false)
 const totalCount = ref<number | null>(null)
 const showRawJson = ref(false)
 const sortDesc = ref(true)
+const viewMode = ref<'table' | 'plot'>('table')
 
 const displayedRows = computed(() => {
   if (sortDesc.value) {
@@ -191,6 +210,22 @@ const showStructColumns = computed(
 const showStructPerRow = computed(
   () => isStruct.value && props.dimension !== 1 && !showRawJson.value,
 )
+
+const graphData = computed(() => {
+  if (viewMode.value !== 'plot') return []
+  return historyRows.value.map((row) => {
+    const val = parseFloat(row.V)
+    return [new Date(row.TJ), isNaN(val) ? null : val]
+  })
+})
+
+const graphOptions = computed(() => ({
+  labels: ['Date', props.variableName],
+  legend: 'always',
+  drawPoints: true,
+  strokeWidth: 0,
+  pointSize: 3,
+}))
 
 const structMembers = computed(() => {
   if (!showStructColumns.value) return []
@@ -296,6 +331,7 @@ function getStructMemberValue(v: string, member: string): string {
 function reset(): void {
   historyRows.value = []
   totalCount.value = null
+  viewMode.value = 'table'
 }
 
 function refresh(): void {
