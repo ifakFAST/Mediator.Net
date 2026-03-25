@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -62,7 +62,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             static string AsLocalDateTimeString(string date) {
                 bool isUTC = date.EndsWith("Z", StringComparison.OrdinalIgnoreCase);
                 if (isUTC) {
-                    string s = Timestamp.FromISO8601(date).ToDateTime().ToLocalTime().ToString("yyyy-MM-ddTHH:mm:ss");
+                    string s = AppTimeZone.ConvertToLocalTime(Timestamp.FromISO8601(date)).ToString("yyyy-MM-ddTHH:mm:ss");
                     if (s.EndsWith(":00")) {
                         s = s.Substring(0, s.Length - 3);
                     }

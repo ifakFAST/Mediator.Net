@@ -290,7 +290,7 @@ public class View_Calc : ViewBase
     }
 
     private static string FormatTime(Timestamp t) {
-        DateTime tLocal = t.ToDateTime().ToLocalTime();
+        DateTime tLocal = AppTimeZone.ConvertToLocalTime(t);
         int millis = tLocal.Millisecond;
         if (millis != 0)
             return tLocal.ToString("HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture);
@@ -299,7 +299,7 @@ public class View_Calc : ViewBase
     }
 
     private static string FormatTimestampFull(Timestamp t) {
-        DateTime tLocal = t.ToDateTime().ToLocalTime();
+        DateTime tLocal = AppTimeZone.ConvertToLocalTime(t);
         if (tLocal.Millisecond != 0)
             return tLocal.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture);
         else

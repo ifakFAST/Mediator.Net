@@ -312,7 +312,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
                 body.AppendLine($"Message:  {alarm.Message}");
                 body.AppendLine($"Source:   {source}");
                 body.AppendLine($"Time UTC: {alarm.Time}");
-                body.AppendLine($"Time:     {alarm.Time.ToDateTime().ToLocalTime()}");
+                body.AppendLine($"Time:     {AppTimeZone.ConvertToLocalTime(alarm.Time)}");
                 if (!string.IsNullOrEmpty(alarm.Details)) {
                     body.AppendLine($"Details:  {alarm.Details}");
                 }

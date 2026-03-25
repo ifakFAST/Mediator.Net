@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -183,8 +183,8 @@ namespace Ifak.Fast.Mediator
                 return;
             }
 
-            string now = Timestamp.Now.ToDateTime().ToLocalTime().ToString("HH':'mm':'ss'.'fff", System.Globalization.CultureInfo.InvariantCulture);
-            string at = tLogin.ToDateTime().ToLocalTime().ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture);
+            string now = AppTimeZone.ConvertToLocalTime(Timestamp.Now).ToString("HH':'mm':'ss'.'fff", System.Globalization.CultureInfo.InvariantCulture);
+            string at  = AppTimeZone.ConvertToLocalTime(tLogin).ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", System.Globalization.CultureInfo.InvariantCulture);
             string s = $"{now}: ConnectionBroken in {context}; Login: {login} at {at}";
             if (exp != null) {
                 s += Environment.NewLine;

@@ -331,7 +331,7 @@ public abstract class SQLPubVar : BufferedVarPub {
             "time" => (vv, v, i) => vv.Value.T.ToDateTime(),
             "time_utc" => (vv, v, i) => vv.Value.T.ToDateTime(),
             "time_unspecified" => (vv, v, i) => vv.Value.T.ToDateTimeUnspecified(),
-            "time_local" => (vv, v, i) => vv.Value.T.ToDateTime().ToLocalTime(),
+            "time_local" => (vv, v, i) => AppTimeZone.ConvertToLocalTime(vv.Value.T),
             "location" => (vv, v, i) => v.Object.Location.ToString(),
             "identifier" => (vv, v, i) => i,
             "identifier_or_id_string" => (vv, v, i) => i ?? vv.Variable.Object.LocalObjectID,

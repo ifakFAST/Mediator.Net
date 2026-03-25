@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -786,7 +786,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         public override void WriteValueText(string txt) => writer.Write(txt);
 
         public override void WriteValueTimestamp(Timestamp t) {
-            DateTime dt = t.ToDateTime().ToLocalTime();
+            DateTime dt = AppTimeZone.ConvertToLocalTime(t);
             string s = dt.ToString(format.TimestampFormat, CultureInfo.InvariantCulture);
             writer.Write(s);
         }
@@ -841,7 +841,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
 
         public override void WriteValueTimestamp(Timestamp t) {
-            sheet.Cell(row, col).Value = t.ToDateTime().ToLocalTime();
+            sheet.Cell(row, col).Value = AppTimeZone.ConvertToLocalTime(t);
             sheet.Cell(row, col).Style.NumberFormat.SetFormat(format.TimestampFormat);
         }
 
@@ -930,11 +930,11 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             sheetTime.Column(2).Width = 20;
 
             sheetTime.Cell(2 + 0, 1).Value = 0;
-            sheetTime.Cell(2 + 0, 2).Value = tFirst.ToDateTime().ToLocalTime();
+            sheetTime.Cell(2 + 0, 2).Value = AppTimeZone.ConvertToLocalTime(tFirst);
             sheetTime.Cell(2 + 0, 2).Style.NumberFormat.SetFormat(format.TimestampFormat);
 
             sheetTime.Cell(2 + 1, 1).Value = (tLast.JavaTicks - tBase) / MillisecondsPerDay;
-            sheetTime.Cell(2 + 1, 2).Value = tLast.ToDateTime().ToLocalTime();
+            sheetTime.Cell(2 + 1, 2).Value = AppTimeZone.ConvertToLocalTime(tLast);
             sheetTime.Cell(2 + 1, 2).Style.NumberFormat.SetFormat(format.TimestampFormat);
         }
     }

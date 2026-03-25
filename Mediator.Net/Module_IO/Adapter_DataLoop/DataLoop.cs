@@ -20,7 +20,7 @@ public class DataLoop : AdapterBase {
     private TimeSpan cycleLen = TimeSpan.Zero;
     private DateTime[] rowTimestamps = Array.Empty<DateTime>();
 
-    private DateTime dtAnchor = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Local);
+    private DateTime dtAnchor = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
     private TimeUnit timeUnit = TimeUnit.Day;
     private TimeSpan cycleLenConfig = TimeSpan.Zero;
 
@@ -333,7 +333,11 @@ public class DataLoop : AdapterBase {
     private static DateTime MapNow2EffectiveTimeinCsv(Row firstRow, TimeSpan cycleLength, out DateTime now) {
         
         DateTime tStart = firstRow.Time;
-        now = tStart.Kind == DateTimeKind.Utc ? DateTime.UtcNow : DateTime.Now;
+
+        now = tStart.Kind == DateTimeKind.Utc ? 
+            DateTime.UtcNow : 
+            AppTimeZone.ConvertToLocalTimeFromUtcDateTime(DateTime.UtcNow);
+
         // truncate now to seconds:
         now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, now.Kind);
 

@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -683,7 +683,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             public override void WriteValueText(string txt) => writer.Write(txt);
 
             public override void WriteValueTimestamp(Timestamp t) {
-                DateTime dt = t.ToDateTime().ToLocalTime();
+                DateTime dt = AppTimeZone.ConvertToLocalTime(t);
                 string s = dt.ToString(format.TimestampFormat, CultureInfo.InvariantCulture);
                 writer.Write(s);
             }
@@ -738,7 +738,7 @@ namespace Ifak.Fast.Mediator.Dashboard
             }
 
             public override void WriteValueTimestamp(Timestamp t) {
-                sheet.Cell(row, col).Value = t.ToDateTime().ToLocalTime();
+                sheet.Cell(row, col).Value = AppTimeZone.ConvertToLocalTime(t);
                 sheet.Cell(row, col).Style.NumberFormat.SetFormat(format.TimestampFormat);
             }
 

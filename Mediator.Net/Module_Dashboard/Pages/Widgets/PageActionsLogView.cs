@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -58,7 +58,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
         public static LogEntry Make(LogAction log) {
 
-            string time = log.Time.ToDateTime().ToLocalTime().ToString("yyyy'-'MM'-'dd\u00A0HH':'mm", CultureInfo.InvariantCulture);
+            string time = AppTimeZone.ConvertToLocalTime(log.Time).ToString("yyyy'-'MM'-'dd\u00A0HH':'mm", CultureInfo.InvariantCulture);
 
             return new LogEntry() {
                 Timestamp = log.Time.JavaTicks,

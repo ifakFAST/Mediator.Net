@@ -20,6 +20,9 @@ public static class AppTimeZone
             : TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
     }
 
-    public static DateTime ConvertFromUtc(DateTime utcDateTime) =>
+    public static DateTime ConvertToLocalTimeFromUtcDateTime(DateTime utcDateTime) =>
         TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, zone);
+
+    public static DateTime ConvertToLocalTime(Timestamp t) =>
+        TimeZoneInfo.ConvertTimeFromUtc(t.ToDateTime(), zone);
 }

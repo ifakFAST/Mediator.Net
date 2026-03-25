@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -187,7 +187,7 @@ public class View_EventLog : ViewBase
     }
 
     private static string MakeLocal(Timestamp t) {
-        return t.ToDateTime().ToLocalTime().ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", CultureInfo.InvariantCulture);
+        return AppTimeZone.ConvertToLocalTime(t).ToString("yyyy'-'MM'-'dd\u00A0HH':'mm':'ss", CultureInfo.InvariantCulture);
     }
 }
 

@@ -110,9 +110,9 @@ public static class CSV {
     public static bool TryParseDateTime(string s, out DateTime t) {
         bool ok = DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out t);
         if (!ok) return false;
-        if (t.Kind == DateTimeKind.Unspecified) {
-            t = DateTime.SpecifyKind(t, DateTimeKind.Local);
-        }
+        //if (t.Kind == DateTimeKind.Unspecified) {
+        //    t = DateTime.SpecifyKind(t, DateTimeKind.Local);
+        //}
         return true;
     }
 }
