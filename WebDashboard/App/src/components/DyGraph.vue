@@ -35,13 +35,19 @@ const needFullUpdate = ref(false)
 const id = ref('')
 
 // Methods
-const deepCopy = (obj: any) => {
-  const str = JSON.stringify(obj)
-  const copy = JSON.parse(str)
-  copy.legendFormatter = obj.legendFormatter
-  copy.zoomCallback = obj.zoomCallback
-  copy.underlayCallback = obj.underlayCallback
-  copy.drawPointCallback = obj.drawPointCallback
+const deepCopy = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => deepCopy(item))
+  }
+
+  const copy: Record<string, any> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    copy[key] = deepCopy(value)
+  }
   return copy
 }
 
