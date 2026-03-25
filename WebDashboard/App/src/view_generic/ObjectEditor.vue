@@ -399,6 +399,16 @@
         :items="selection?.Variables || []"
         no-data-text="No variables"
       >
+        <template #header.T="{}">
+          <v-tooltip location="top">
+            <template #activator="{ props }">
+              <span v-bind="props">Timestamp</span>
+            </template>
+            <div>{{ globalState.timeZoneIanaId }}</div>
+            <div>{{ globalState.timeZoneDisplayName }}</div>
+          </v-tooltip>
+        </template>
+
         <template #item="{ item }">
           <tr>
             <td style="vertical-align: top">{{ item.Name }}</td>
@@ -570,6 +580,7 @@ import Location from './Location.vue'
 import { isValidObjectNameOrID } from '../utils'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
+import { globalState } from '../global'
 
 interface BrowseItem {
   it: string

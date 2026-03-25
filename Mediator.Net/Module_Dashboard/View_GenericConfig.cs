@@ -4,12 +4,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Ifak.Fast.Json.Linq;
-using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 using Ifak.Fast.Mediator.Util;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Dashboard
 {
@@ -310,11 +311,18 @@ namespace Ifak.Fast.Mediator.Dashboard
                     ObjectID = vv.Variable.Object.ToString(),
                     VarName = vv.Variable.Name,
                     V = vv.Value.V,
-                    T = vv.Value.T,
+                    T = Timestamp2Str(vv.Value.T),
                     Q = vv.Value.Q
                 });
             }
             await Context.SendEventToUI("VarChange", changes);
+        }
+
+        private static string Timestamp2Str(Timestamp t) {
+            DateTime d = AppTimeZone.ConvertToLocalTime(t);
+            return d.Ticks % 1000 != 0
+                ? d.ToString("yyyy'-'MM'-'dd'\u00A0'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture)
+                : d.ToString("yyyy'-'MM'-'dd'\u00A0'HH':'mm':'ss", CultureInfo.InvariantCulture);
         }
 
         private async Task<List<ObjectMember>> GetObjectMembers(string id, string type) {
@@ -593,7 +601,7 @@ namespace Ifak.Fast.Mediator.Dashboard
                         Struct = v.Type == DataType.Struct,
                         Dim = v.Dimension,
                         V = vtq.V,
-                        T = vtq.T,
+                        T = Timestamp2Str(vtq.T),
                         Q = vtq.Q
                     });
                 }
@@ -665,7 +673,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public bool Struct { get; set; }
         public int Dim { get; set; }
         public DataValue V { get; set; }
-        public Timestamp T { get; set; }
+        public string T { get; set; } = "";
         public Quality   Q { get; set; }
     }
 
@@ -674,7 +682,7 @@ namespace Ifak.Fast.Mediator.Dashboard
         public string ObjectID { get; set; } = "";
         public string VarName { get; set; } = "";
         public DataValue V { get; set; }
-        public Timestamp T { get; set; }
+        public string T { get; set; } = "";
         public Quality Q { get; set; }
     }
 }
