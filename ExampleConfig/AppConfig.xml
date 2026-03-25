@@ -2,6 +2,7 @@
 <Configuration>
 
     <ClientListenPort>8081</ClientListenPort>
+    <TimeZone></TimeZone> <!-- IANA timezone ID, e.g. "Europe/Berlin". Empty = OS local timezone. -->
     
     <Modules>
 

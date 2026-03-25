@@ -4,6 +4,7 @@
     <!-- This configuration starts all modules as in-process threads (in order to simplify debugging) -->
 
     <ClientListenPort>8081</ClientListenPort>
+    <TimeZone></TimeZone> <!-- IANA timezone ID, e.g. "Europe/Berlin". Empty = OS local timezone. -->
     
     <Modules>
 

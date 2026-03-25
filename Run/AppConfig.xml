@@ -4,6 +4,7 @@
     <!-- This configuration starts each module as a separate process (in order to increase failure recovery) -->
     
     <ClientListenPort>8081</ClientListenPort>
+    <TimeZone></TimeZone> <!-- IANA timezone ID, e.g. "Europe/Berlin". Empty = OS local timezone. -->
     
     <Modules>
 
