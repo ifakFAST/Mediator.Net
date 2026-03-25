@@ -559,6 +559,9 @@ public class Module : ModelObjectModule<DashboardModel>
                 result["canUpdateViews"] = canUpdateViews;
                 result["initialTimeRange"] = new JRaw(StdJson.ObjectToString(initialTimeRange));
                 result["initialStepSizeMS"] = initialStepSizeMS;
+                result["timeZoneIanaId"] = AppTimeZone.IanaId;
+                result["timeZoneDisplayName"] = AppTimeZone.DisplayName;
+
                 result["version"] = versionString;
                 return ReqResult.OK(result);
             }

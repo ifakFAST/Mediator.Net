@@ -73,6 +73,8 @@ interface LoginSuccessEvent {
   canUpdateViews: boolean
   initialTimeRange: any
   initialStepSizeMS: number
+  timeZoneIanaId: string
+  timeZoneDisplayName: string
   version: string
 }
 
@@ -120,6 +122,8 @@ function login() {
         canUpdateViews: response.data.canUpdateViews,
         initialTimeRange: response.data.initialTimeRange,
         initialStepSizeMS: response.data.initialStepSizeMS,
+        timeZoneIanaId: response.data.timeZoneIanaId ?? '',
+        timeZoneDisplayName: response.data.timeZoneDisplayName ?? '',
         version: response.data.version ?? '',
       })
       loginPass.value = ''

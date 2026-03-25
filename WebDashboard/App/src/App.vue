@@ -77,6 +77,8 @@ function loginSuccess(event: {
   canUpdateViews: boolean
   initialTimeRange: any
   initialStepSizeMS: number
+  timeZoneIanaId: string
+  timeZoneDisplayName: string
   version: string
   viewID: string
 }) {
@@ -85,6 +87,8 @@ function loginSuccess(event: {
   globalState.user = event.user
   globalState.model = event.model
   globalState.canUpdateViews = event.canUpdateViews
+  globalState.timeZoneIanaId = event.timeZoneIanaId
+  globalState.timeZoneDisplayName = event.timeZoneDisplayName
   globalState.version = event.version
 
   globalState.timeRange.type = event.initialTimeRange.Type

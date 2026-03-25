@@ -46,6 +46,8 @@ export interface GlobalState {
   eventBurstCount: number
   eventACKCounter: number
   eventACKTime: number
+  timeZoneIanaId: string
+  timeZoneDisplayName: string
   version: string
 }
 
@@ -80,6 +82,8 @@ export const globalState = reactive<GlobalState>({
   eventBurstCount: 1,
   eventACKCounter: 0,
   eventACKTime: 0,
+  timeZoneIanaId: '',
+  timeZoneDisplayName: '',
   version: '',
 })
 
