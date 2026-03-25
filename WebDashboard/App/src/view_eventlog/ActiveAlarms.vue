@@ -41,6 +41,26 @@
       show-select
       :sort-by="[{ key: 'T', order: 'desc' }]"
     >
+      <template #header.TimeFirstLocal="{}">
+        <v-tooltip location="top">
+          <template #activator="{ props }">
+            <span v-bind="props">First</span>
+          </template>
+          <div>{{ globalState.timeZoneIanaId }}</div>
+          <div>{{ globalState.timeZoneDisplayName }}</div>
+        </v-tooltip>
+      </template>
+
+      <template #header.TimeLastLocal="{}">
+        <v-tooltip location="top">
+          <template #activator="{ props }">
+            <span v-bind="props">Last</span>
+          </template>
+          <div>{{ globalState.timeZoneIanaId }}</div>
+          <div>{{ globalState.timeZoneDisplayName }}</div>
+        </v-tooltip>
+      </template>
+
       <template #item.TimeFirstLocal="{ item }">
         <span :class="classObject(item)">{{ item.TimeFirstLocal }}</span>
       </template>
@@ -186,6 +206,7 @@
 import { ref, computed } from 'vue'
 import type { Alarm } from './types'
 import type { DataTableHeader } from '@/utils'
+import { globalState } from '../global'
 
 const props = defineProps<{
   alarms: Alarm[]

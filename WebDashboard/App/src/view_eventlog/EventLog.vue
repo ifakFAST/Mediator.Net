@@ -39,6 +39,16 @@
       :search="search"
       :sort-by="[{ key: 'T', order: 'desc' }]"
     >
+      <template #header.T="{}">
+        <v-tooltip location="top">
+          <template #activator="{ props }">
+            <span v-bind="props">Time (Local)</span>
+          </template>
+          <div>{{ globalState.timeZoneIanaId }}</div>
+          <div>{{ globalState.timeZoneDisplayName }}</div>
+        </v-tooltip>
+      </template>
+
       <template #item="{ item }">
         <tr>
           <td
@@ -153,6 +163,7 @@
 import { ref, computed } from 'vue'
 import type { Alarm } from './types'
 import type { DataTableHeader } from '@/utils'
+import { globalState } from '../global'
 
 const props = defineProps<{
   events: Alarm[]
