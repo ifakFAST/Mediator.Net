@@ -180,7 +180,15 @@
               Type
             </th>
             <th class="align-left">Value</th>
-            <th class="align-left">Time</th>
+            <th class="align-left">
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <span v-bind="props">Time (Local)</span>
+                </template>
+                <div>{{ globalState.timeZoneIanaId }}</div>
+                <div>{{ globalState.timeZoneDisplayName }}</div>
+              </v-tooltip>
+            </th>
             <th class="align-left">Value Source</th>
             <th class="align-left">Object / Constant</th>
             <th class="align-left">&nbsp;</th>
@@ -278,7 +286,15 @@
               Type
             </th>
             <th class="align-left">Value</th>
-            <th class="align-left">Time</th>
+            <th class="align-left">
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <span v-bind="props">Time (Local)</span>
+                </template>
+                <div>{{ globalState.timeZoneIanaId }}</div>
+                <div>{{ globalState.timeZoneDisplayName }}</div>
+              </v-tooltip>
+            </th>
             <th class="align-left">Value Destination</th>
             <th class="align-left">Object</th>
             <th class="align-left">&nbsp;</th>
@@ -360,7 +376,15 @@
             <th class="align-left">Unit</th>
             <th class="align-left">Type</th>
             <th class="align-left">Value</th>
-            <th class="align-left">Value Time</th>
+            <th class="align-left">
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <span v-bind="props">Value Time (Local)</span>
+                </template>
+                <div>{{ globalState.timeZoneIanaId }}</div>
+                <div>{{ globalState.timeZoneDisplayName }}</div>
+              </v-tooltip>
+            </th>
           </tr>
         </thead>
 
@@ -447,6 +471,7 @@ import * as global from './global'
 import * as fast from '../fast_types'
 import type { CalculationVariables, IoVar } from './conversion'
 import type { MemberTypeEnum } from './util/member_types'
+import { globalState } from '../global'
 
 type AssignState = 'Unassigned' | 'Constant' | 'Variable'
 

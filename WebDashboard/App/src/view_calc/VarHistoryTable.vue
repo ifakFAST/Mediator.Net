@@ -90,7 +90,15 @@
         <v-table density="compact">
           <thead>
             <tr>
-              <th>Timestamp {{ sortDesc ? '▼' : '▲' }}</th>
+              <th>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <span v-bind="props">Timestamp (Local) {{ sortDesc ? '▼' : '▲' }}</span>
+                  </template>
+                  <div>{{ globalState.timeZoneIanaId }}</div>
+                  <div>{{ globalState.timeZoneDisplayName }}</div>
+                </v-tooltip>
+              </th>
               <th>Quality</th>
               <template v-if="showStructColumns">
                 <th
@@ -166,6 +174,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import StructView from '../components/StructView.vue'
+import { globalState } from '../global'
 
 interface HistoryRow {
   T: string
