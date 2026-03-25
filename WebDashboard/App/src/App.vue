@@ -244,6 +244,8 @@ function tryReLogin(user: string, pass: string) {
       globalState.currentViewID = ''
       globalState.sessionID = response.data.sessionID
       globalState.model = response.data.model
+      globalState.timeZoneIanaId = response.data.timeZoneIanaId ?? globalState.timeZoneIanaId
+      globalState.timeZoneDisplayName = response.data.timeZoneDisplayName ?? globalState.timeZoneDisplayName
       openWebSocket(user, pass)
       doActivateView(viewID)
     })

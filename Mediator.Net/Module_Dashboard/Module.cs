@@ -559,7 +559,7 @@ public class Module : ModelObjectModule<DashboardModel>
                 result["canUpdateViews"] = canUpdateViews;
                 result["initialTimeRange"] = new JRaw(StdJson.ObjectToString(initialTimeRange));
                 result["initialStepSizeMS"] = initialStepSizeMS;
-                result["timeZoneIanaId"] = AppTimeZone.IanaId;
+                result["timeZoneIanaId"] = GetIanaTimeZoneId();
                 result["timeZoneDisplayName"] = AppTimeZone.DisplayName;
 
                 result["version"] = versionString;
@@ -951,6 +951,11 @@ public class Module : ModelObjectModule<DashboardModel>
         }
 
         return (session, viewID);
+    }
+
+    private static string GetIanaTimeZoneId() {
+        string id = AppTimeZone.TimeZone.Id;
+        return TimeZoneInfo.TryConvertWindowsIdToIanaId(id, out string? ianaId) ? ianaId : id;
     }
 
     private static ViewType[] ReadAvailableViewTypes(string absoluteBaseDir, string bundlesPrefx, string[] viewAssemblies) {

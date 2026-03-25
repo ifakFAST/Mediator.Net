@@ -48,6 +48,11 @@ namespace Ifak.Fast.Mediator
             requestShutdown = true;
         }
 
+        private static string GetIanaTimeZoneId() {
+            string id = AppTimeZone.Id;
+            return TimeZoneInfo.TryConvertWindowsIdToIanaId(id, out string? ianaId) ? ianaId : id;
+        }
+
         internal async Task Run(string configFileName, bool clearDBs, string fileStartComplete) {
 
             theSyncContext = SynchronizationContext.Current;
@@ -61,7 +66,16 @@ namespace Ifak.Fast.Mediator
             config.Normalize(configFileName, logger);
 
             AppTimeZone.Initialize(config.TimeZone);
-            logger.Info($"Timezone: {AppTimeZone.IanaId}");
+
+            string tzID = AppTimeZone.Id;
+            string tsID_Iana = GetIanaTimeZoneId();
+
+            if (tzID != tsID_Iana) {
+                logger.Info($"Timezone '{tzID}' <=> IANA timezone '{tsID_Iana}'");
+            }
+            else {
+                logger.Info($"Timezone: {tzID}");
+            }
 
             userManagement = config.UserManagement;
             locations = config.Locations;

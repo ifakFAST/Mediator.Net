@@ -12,8 +12,7 @@ public static class AppTimeZone
 
     public static TimeZoneInfo TimeZone => zone;
 
-    public static string IanaId => zone.Id;
-
+    public static string Id => zone.Id;
     public static string DisplayName => zone.DisplayName;
 
     public static void Initialize(string timeZoneId) {
