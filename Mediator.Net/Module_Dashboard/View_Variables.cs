@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -161,8 +162,11 @@ namespace Ifak.Fast.Mediator.Dashboard
             };
         }
 
-        private string Timestamp2Str(Timestamp t) {
-            return t.ToString().Replace('T', '\u00A0');
+        private static string Timestamp2Str(Timestamp t) {
+            DateTime d = AppTimeZone.ConvertToLocalTime(t);
+            return d.Ticks % 1000 != 0
+                ? d.ToString("yyyy'-'MM'-'dd'\u00A0'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture)
+                : d.ToString("yyyy'-'MM'-'dd'\u00A0'HH':'mm':'ss", CultureInfo.InvariantCulture);
         }
 
         public class ReadModuleVariables_Params

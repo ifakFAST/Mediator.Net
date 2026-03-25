@@ -58,6 +58,16 @@
           show-expand
           :single-expand="false"
         >
+          <template #header.T="{}">
+            <v-tooltip location="top">
+              <template #activator="{ props }">
+                <span v-bind="props">Timestamp</span>
+              </template>
+              <div>{{ globalState.timeZoneIanaId }}</div>
+              <div>{{ globalState.timeZoneDisplayName }}</div>
+            </v-tooltip>
+          </template>
+
           <template #header.V="{}">
             <span>{{ 'Value' }}</span>
             <v-icon
@@ -186,6 +196,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import * as fast from '../fast_types'
+import { globalState } from '../global'
 import type { DataTableHeader } from '@/utils'
 
 interface VarEntry {
