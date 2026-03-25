@@ -575,17 +575,17 @@ namespace Ifak.Fast.Mediator
         public static LocalDateTime FromDateAndTime(LocalDate date, LocalTime time) => date + time;
 
         public static LocalDateTime FromComponents(int year, int month, int day) {
-            var dt = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Local);
+            var dt = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Unspecified);
             return FromDateTime(dt);
         }
 
         public static LocalDateTime FromComponents(int year, int month, int day, int hour, int minute, int second) {
-            var dt = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Local);
+            var dt = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Unspecified);
             return FromDateTime(dt);
         }
 
         public static LocalDateTime FromComponents(int year, int month, int day, int hour, int minute, int second, int millisecond) {
-            var dt = new DateTime(year, month, day, hour, minute, second, millisecond, DateTimeKind.Local);
+            var dt = new DateTime(year, month, day, hour, minute, second, millisecond, DateTimeKind.Unspecified);
             return FromDateTime(dt);
         }
 
@@ -595,26 +595,21 @@ namespace Ifak.Fast.Mediator
 
         public static LocalDateTime Now => FromDotNetTicks(DateTime.Now.Ticks);
 
-        public long DotNetTicks => (ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH;
+        public readonly long DotNetTicks => (ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH;
 
-        public long JavaTicks => ticks;
+        public readonly long JavaTicks => ticks;
 
-        public LocalDateTime TruncateMilliseconds() => new LocalDateTime((ticks / 1000L) * 1000L);
+        public readonly LocalDateTime TruncateMilliseconds() => new LocalDateTime((ticks / 1000L) * 1000L);
 
-        public LocalDateTime TruncateSeconds() => new LocalDateTime((ticks / 60000L) * 60000L);
+        public readonly LocalDateTime TruncateSeconds() => new LocalDateTime((ticks / 60000L) * 60000L);
 
-        public DateTime ToDateTime() => new DateTime(DotNetTicks, DateTimeKind.Local);
+        public readonly DateTime ToDateTime() => new DateTime(DotNetTicks, DateTimeKind.Unspecified);
 
-        public LocalTime ToLocalTime() => LocalTime.FromDateTime(ToDateTime());
+        public readonly LocalTime ToLocalTime() => LocalTime.FromDateTime(ToDateTime());
 
-        public bool Equals(LocalDateTime other) => ticks == other.ticks;
+        public readonly bool Equals(LocalDateTime other) => ticks == other.ticks;
 
-        public override bool Equals(object obj) {
-            if (obj is LocalDateTime) {
-                return Equals((LocalDateTime)obj);
-            }
-            return false;
-        }
+        public readonly override bool Equals(object obj) => obj is LocalDateTime lt && Equals(lt);
 
         public static bool operator ==(LocalDateTime lhs, LocalDateTime rhs) => lhs.Equals(rhs);
 
@@ -632,18 +627,18 @@ namespace Ifak.Fast.Mediator
 
         public static LocalDateTime operator -(LocalDateTime t, Duration duration) => t.AddDuration(duration.Negate());
 
-        public LocalDateTime AddDuration(Duration duration) => new LocalDateTime(ticks + duration.TotalMilliseconds);
+        public readonly LocalDateTime AddDuration(Duration duration) => new LocalDateTime(ticks + duration.TotalMilliseconds);
 
-        public override string ToString() {
+        public readonly override string ToString() {
             var d = ToDateTime();
             if (ticks % 1000 != 0) return d.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture);
             if (ticks % 60000 != 0) return d.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss", CultureInfo.InvariantCulture);
             return d.ToString("yyyy'-'MM'-'dd'T'HH':'mm", CultureInfo.InvariantCulture);
         }
 
-        public override int GetHashCode() => (int)ticks;
+        public readonly override int GetHashCode() => (int)ticks;
 
-        public int CompareTo(LocalDateTime other) {
+        public readonly int CompareTo(LocalDateTime other) {
             long a = ticks;
             long b = other.ticks;
             if (a < b) return -1;
@@ -654,7 +649,7 @@ namespace Ifak.Fast.Mediator
         private const long TICKS_AT_EPOCH = 621355968000000000L;
         private const long TICKS_PER_MILLISECOND = 10000;
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteString(ToString());
         }
 
@@ -663,7 +658,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -679,12 +674,12 @@ namespace Ifak.Fast.Mediator
 
         public static LocalDate FromJavaTicks(long ticks) => FromDotNetTicks((ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH);
 
-        public static LocalDate FromDotNetTicks(long ticks) => FromDateTime(new DateTime(ticks, DateTimeKind.Local));
+        public static LocalDate FromDotNetTicks(long ticks) => FromDateTime(new DateTime(ticks, DateTimeKind.Unspecified));
 
         public static LocalDate FromDateTime(DateTime dateTime) => new LocalDate((dateTime.Date.Ticks - TICKS_AT_EPOCH) / TICKS_PER_MILLISECOND);
 
         public static LocalDate FromComponents(int year, int month, int day) {
-            var dt = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Local);
+            var dt = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Unspecified);
             return FromDateTime(dt);
         }
 
@@ -694,20 +689,15 @@ namespace Ifak.Fast.Mediator
 
         public static LocalDate Today => FromDateTime(DateTime.Today);
 
-        public long DotNetTicks => (ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH;
+        public readonly long DotNetTicks => (ticks * TICKS_PER_MILLISECOND) + TICKS_AT_EPOCH;
 
-        public long JavaTicks => ticks;
+        public readonly long JavaTicks => ticks;
 
-        public DateTime ToDateTime() => new DateTime(DotNetTicks, DateTimeKind.Local);
+        public readonly DateTime ToDateTime() => new DateTime(DotNetTicks, DateTimeKind.Unspecified);
 
-        public bool Equals(LocalDate other) => ticks == other.ticks;
+        public readonly bool Equals(LocalDate other) => ticks == other.ticks;
 
-        public override bool Equals(object obj) {
-            if (obj is LocalDate) {
-                return Equals((LocalDate)obj);
-            }
-            return false;
-        }
+        public readonly override bool Equals(object obj) => obj is LocalDate lt && Equals(lt);
 
         public static bool operator ==(LocalDate lhs, LocalDate rhs) => lhs.Equals(rhs);
 
@@ -727,13 +717,13 @@ namespace Ifak.Fast.Mediator
 
         public static LocalDate operator -(LocalDate t, Duration duration) => t.AddDuration(duration.Negate());
 
-        public LocalDate AddDuration(Duration duration) => FromJavaTicks(ticks + duration.TotalMilliseconds);
+        public readonly LocalDate AddDuration(Duration duration) => FromJavaTicks(ticks + duration.TotalMilliseconds);
 
-        public override string ToString() => ToDateTime().ToString("yyyy'-'MM'-'dd", CultureInfo.InvariantCulture);
+        public readonly override string ToString() => ToDateTime().ToString("yyyy'-'MM'-'dd", CultureInfo.InvariantCulture);
 
-        public override int GetHashCode() => (int)ticks;
+        public readonly override int GetHashCode() => (int)ticks;
 
-        public int CompareTo(LocalDate other) {
+        public readonly int CompareTo(LocalDate other) {
             long a = ticks;
             long b = other.ticks;
             if (a < b) return -1;
@@ -744,7 +734,7 @@ namespace Ifak.Fast.Mediator
         private const long TICKS_AT_EPOCH = 621355968000000000L;
         private const long TICKS_PER_MILLISECOND = 10000;
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteString(ToString());
         }
 
@@ -753,7 +743,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -793,22 +783,17 @@ namespace Ifak.Fast.Mediator
 
         public static LocalTime UtcNow => FromDateTime(DateTime.UtcNow);
 
-        public int Milliseconds => msOfDay;
+        public readonly int Milliseconds => msOfDay;
 
-        public LocalTime TruncateMilliseconds() => new LocalTime((msOfDay / 1000) * 1000);
+        public readonly LocalTime TruncateMilliseconds() => new LocalTime((msOfDay / 1000) * 1000);
 
-        public LocalTime TruncateSeconds() => new LocalTime((msOfDay / 60000) * 60000);
+        public readonly LocalTime TruncateSeconds() => new LocalTime((msOfDay / 60000) * 60000);
 
-        public TimeSpan ToTimeSpan() => TimeSpan.FromMilliseconds(msOfDay);
+        public readonly TimeSpan ToTimeSpan() => TimeSpan.FromMilliseconds(msOfDay);
 
-        public bool Equals(LocalTime other) => msOfDay == other.msOfDay;
+        public readonly bool Equals(LocalTime other) => msOfDay == other.msOfDay;
 
-        public override bool Equals(object obj) {
-            if (obj is LocalTime) {
-                return Equals((LocalTime)obj);
-            }
-            return false;
-        }
+        public readonly override bool Equals(object obj) => obj is LocalTime lt && Equals(lt);
 
         public static bool operator ==(LocalTime lhs, LocalTime rhs) => lhs.Equals(rhs);
 
@@ -830,21 +815,21 @@ namespace Ifak.Fast.Mediator
 
         public static LocalTime operator -(LocalTime t, Duration duration) => t.AddDuration(duration.Negate());
 
-        public LocalTime AddDuration(Duration duration) {
+        public readonly LocalTime AddDuration(Duration duration) {
             long ms = duration.TotalMilliseconds % MS_PerDayL;
             return new LocalTime((int)((MS_PerDayL + msOfDay + ms) % MS_PerDayL));
         }
 
-        public override string ToString() {
-            var dt = new DateTime(msOfDay * TimeSpan.TicksPerMillisecond, DateTimeKind.Local);
+        public readonly override string ToString() {
+            var dt = new DateTime(msOfDay * TimeSpan.TicksPerMillisecond, DateTimeKind.Unspecified);
             if (msOfDay % 1000 != 0) return dt.ToString("HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture);
             if (msOfDay % 60000 != 0) return dt.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture);
             return dt.ToString("HH':'mm", CultureInfo.InvariantCulture);
         }
 
-        public override int GetHashCode() => msOfDay;
+        public readonly override int GetHashCode() => msOfDay;
 
-        public int CompareTo(LocalTime other) {
+        public readonly int CompareTo(LocalTime other) {
             long a = msOfDay;
             long b = other.msOfDay;
             if (a < b) return -1;
@@ -858,7 +843,7 @@ namespace Ifak.Fast.Mediator
         private const int MS_PerDay = 24 * MS_PerHour;
         private const long MS_PerDayL = 24L * MS_PerHour;
 
-        public void WriteXml(XmlWriter writer) {
+        public readonly void WriteXml(XmlWriter writer) {
             writer.WriteString(ToString());
         }
 
@@ -867,7 +852,7 @@ namespace Ifak.Fast.Mediator
             reader.Read();
         }
 
-        public XmlSchema? GetSchema() => null;
+        public readonly XmlSchema? GetSchema() => null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
