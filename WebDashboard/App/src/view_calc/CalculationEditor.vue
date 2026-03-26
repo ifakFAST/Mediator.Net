@@ -441,7 +441,6 @@
       <keep-alive>
         <VarHistoryTable
           v-if="selectedHistoryVarId && selectedHistoryVar"
-          :key="selectedHistoryVarId"
           :object-id="selectedHistoryVar.objectId"
           :variable-name="selectedHistoryVar.varName"
           :data-type="selectedHistoryVar.type"

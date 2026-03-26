@@ -1,69 +1,131 @@
 <template>
   <div class="pa-2">
     <div class="d-flex align-center ga-2 mb-2 flex-wrap">
-      <v-btn-group
-        density="compact"
-        variant="outlined"
-      >
-        <v-btn
-          :disabled="historyLoading"
-          title="Latest values (descending)"
-          @click="latestDesc"
-        >
-          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-arrow-collapse-down</v-icon>
-        </v-btn>
-        <v-btn
-          :disabled="historyLoading"
-          title="Oldest values (ascending)"
-          @click="oldestAsc"
-        >
-          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-arrow-collapse-up</v-icon>
-        </v-btn>
-        <v-btn
-          :disabled="historyLoading || historyRows.length === 0"
-          title="Move down"
-          @click="moveDown"
-        >
-          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-chevron-down</v-icon>
-        </v-btn>
-        <v-btn
-          :disabled="historyLoading || historyRows.length === 0"
-          title="Move up"
-          @click="moveUp"
-        >
-          <v-icon :style="viewMode === 'plot' ? 'transform: rotate(-90deg)' : ''">mdi-chevron-up</v-icon>
-        </v-btn>
-      </v-btn-group>
 
-      <v-text-field
-        v-model.number="pageSize"
-        density="compact"
-        hide-details
-        max="10000"
-        min="1"
-        style="max-width: 110px"
-        type="number"
-      />
+      <template v-if="viewMode === 'table'">
+        <v-btn
+          v-if="!isStruct"
+          title="Show as plot"
+          density="compact"
+          variant="outlined"
+          @click="viewMode = 'plot'"
+        >
+          <v-icon>mdi-chart-line</v-icon>
+        </v-btn>
 
-      <v-btn
-        v-if="isStruct"
-        :title="showRawJson ? 'Show as table' : 'Show as JSON'"
-        density="compact"
-        variant="outlined"
-        @click="showRawJson = !showRawJson"
-      >
-        <v-icon>{{ showRawJson ? 'mdi-table' : 'mdi-code-json' }}</v-icon>
-      </v-btn>
+        <v-btn-group
+          density="compact"
+          variant="outlined"
+        >
+          <v-btn
+            :disabled="historyLoading"
+            title="Latest values (descending)"
+            @click="latestDesc"
+          >
+            <v-icon>mdi-arrow-collapse-down</v-icon>
+          </v-btn>
+          <v-btn
+            :disabled="historyLoading"
+            title="Oldest values (ascending)"
+            @click="oldestAsc"
+          >
+            <v-icon>mdi-arrow-collapse-up</v-icon>
+          </v-btn>
+          <v-btn
+            :disabled="historyLoading || historyRows.length === 0"
+            title="Move down"
+            @click="moveDown"
+          >
+            <v-icon>mdi-chevron-down</v-icon>
+          </v-btn>
+          <v-btn
+            :disabled="historyLoading || historyRows.length === 0"
+            title="Move up"
+            @click="moveUp"
+          >
+            <v-icon>mdi-chevron-up</v-icon>
+          </v-btn>
+        </v-btn-group>
 
-      <v-btn
-        v-if="!isStruct"
-        :title="viewMode === 'plot' ? 'Show as table' : 'Show as plot'"
-        density="compact"
-        variant="outlined"
-        @click="viewMode = viewMode === 'plot' ? 'table' : 'plot'"
-      >
-        <v-icon>{{ viewMode === 'plot' ? 'mdi-table' : 'mdi-chart-line' }}</v-icon>
-      </v-btn>
+        <v-text-field
+          v-model.number="pageSize"
+          label="Rows"
+          density="compact"
+          hide-details
+          max="10000"
+          min="1"
+          style="max-width: 120px"
+          type="number"
+        />
+
+        <v-btn
+          v-if="isStruct"
+          :title="showRawJson ? 'Show as table' : 'Show as JSON'"
+          density="compact"
+          variant="outlined"
+          @click="showRawJson = !showRawJson"
+        >
+          <v-icon>{{ showRawJson ? 'mdi-table' : 'mdi-code-json' }}</v-icon>
+        </v-btn>
+      </template>
+
+      <template v-else>
+        <v-btn
+          title="Show as table"
+          density="compact"
+          variant="outlined"
+          @click="viewMode = 'table'"
+        >
+          <v-icon>mdi-table</v-icon>
+        </v-btn>
+
+        <v-btn-group
+          density="compact"
+          variant="outlined"
+        >          
+          <v-btn
+            :disabled="historyLoading"
+            title="Oldest values"
+            @click="oldestAsc"
+          >
+            <v-icon>mdi-arrow-collapse-left</v-icon>
+          </v-btn>
+          <v-btn
+            :disabled="historyLoading || historyRows.length === 0"
+            title="Move left"
+            @click="moveLeft"
+          >
+            <v-icon>mdi-chevron-left</v-icon>
+          </v-btn>
+          <v-btn
+            :disabled="historyLoading || historyRows.length === 0"
+            title="Move right"
+            @click="moveRight"
+          >
+            <v-icon>mdi-chevron-right</v-icon>
+          </v-btn>
+
+          <v-btn
+            :disabled="historyLoading"
+            title="Latest values"
+            @click="latestDesc"
+          >
+            <v-icon>mdi-arrow-collapse-right</v-icon>
+          </v-btn>
+
+        </v-btn-group>
+
+        <v-text-field
+          v-model.number="plotPointCount"
+          label="Points"
+          density="compact"
+          hide-details
+          max="10000"
+          min="1"
+          style="max-width: 120px"
+          type="number"
+        />
+      </template>
 
       <v-spacer />
 
@@ -121,7 +183,9 @@
               <td class="text-no-wrap">
                 {{ row.T }}
               </td>
-              <td>{{ row.Q }}</td>
+              <td :style="{ color: qualityColor(row.Q) }">
+                {{ row.Q }}
+              </td>
               <template v-if="showStructColumns">
                 <td
                   v-for="member in structMembers"
@@ -195,6 +259,7 @@ const props = withDefaults(defineProps<{
 })
 
 const pageSize = ref(12)
+const plotPointCount = ref(1500)
 const historyRows = ref<HistoryRow[]>([])
 const historyLoading = ref(false)
 const countLoading = ref(false)
@@ -269,6 +334,16 @@ function oldestAsc(): void {
   loadHistory('First', 0, 0)
 }
 
+function moveLeft(): void {
+  if (historyRows.value.length === 0) return
+  loadHistory('Last', 0, historyRows.value[0].TJ - 1, true)
+}
+
+function moveRight(): void {
+  if (historyRows.value.length === 0) return
+  loadHistory('First', historyRows.value[historyRows.value.length - 1].TJ + 1, 0, true)
+}
+
 function moveDown(): void {
   if (historyRows.value.length === 0) return
   if (sortDesc.value) {
@@ -287,12 +362,21 @@ function moveUp(): void {
   }
 }
 
+function clampHistoryCount(raw: number, fallback: number): number {
+  if (!Number.isFinite(raw) || raw < 1) return fallback
+  return Math.min(100000, Math.floor(raw))
+}
+
 function loadHistory(mode: string, startJavaTicks: number, endJavaTicks: number, keepIfEmpty = false): void {
   historyLoading.value = true
+  const count =
+    viewMode.value === 'plot'
+      ? clampHistoryCount(plotPointCount.value, 1500)
+      : clampHistoryCount(pageSize.value, 12)
   const params = {
     ObjectID: props.objectId,
     VariableName: props.variableName,
-    Count: pageSize.value,
+    Count: count,
     Mode: mode,
     StartJavaTicks: startJavaTicks,
     EndJavaTicks: endJavaTicks,
@@ -337,10 +421,14 @@ function getStructMemberValue(v: string, member: string): string {
   }
 }
 
-function reset(): void {
-  historyRows.value = []
-  totalCount.value = null
-  viewMode.value = 'table'
+function qualityColor(q: string): string {
+  if (q === 'Good') {
+    return 'green'
+  }
+  if (q === 'Uncertain') {
+    return 'orange'
+  }
+  return 'red'
 }
 
 function refresh(): void {
@@ -358,10 +446,19 @@ onMounted(() => {
 watch(
   () => props.objectId,
   () => {
-    reset()
-    refresh()
+    refresh()    
   },
 )
 
-defineExpose({ reset, refresh, latestDesc, oldestAsc })
+watch(
+  () => props.variableName,
+  () => {
+    refresh()    
+  },
+)
+
+watch(viewMode, () => {
+  refresh()
+})
+
 </script>
