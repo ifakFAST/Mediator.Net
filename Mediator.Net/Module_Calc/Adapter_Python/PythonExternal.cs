@@ -252,6 +252,11 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         }
     }
 
+    private static bool IsCalcComposite(PyObject obj) {
+        PyObject? marker = GetAttrOrNull(obj, "_calc_composite");
+        return marker != null && marker.IsTrue();
+    }
+
     private static string FirstLine(string s) {
         int pos = s.IndexOfAny(new char[] { '\r', '\n' });
         if (pos >= 0) {
@@ -383,7 +388,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
                 x.Name = idChain + name;
                 result.Add(x);
             }
-            else if (!isIdentifiable) {
+            else if (!isIdentifiable && IsCalcComposite(f.Value)) {
                 result.AddRange(GetIdentifiableMembers<T>(f.Value, idChain + id + "."));
             }
         }
@@ -399,7 +404,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             if (isEventProvider) {
                 result.Add(x!);
             }
-            else if (!isIdentifiable) {
+            else if (!isIdentifiable && IsCalcComposite(f.Value)) {
                 result.AddRange(GetEventProviderMembers(f.Value));
             }
         }
@@ -415,7 +420,7 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
             if (isApi && api != null) {
                 result.Add(api);
             }
-            else if (!isIdentifiable) {
+            else if (!isIdentifiable && IsCalcComposite(f.Value)) {
                 result.AddRange(GetApiMembers(f.Value));
             }
         }
@@ -434,6 +439,8 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
                 if (type.Length == 0 || !char.IsUpper(type[0])) continue;
                 if (type == "NoneType") continue;
                 if (type == "CLRMetatype") continue;
+                if (type == "Pandas") continue;
+                if (type == "DataFrame") continue;
                 results.Add(new MemberInfo(name, value));
             }
             catch (Exception) { }

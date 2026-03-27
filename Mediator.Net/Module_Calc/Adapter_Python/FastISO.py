@@ -8,6 +8,11 @@ from typing import Optional, Union
 from datetime import datetime, timezone, timedelta
 
 
+def calc_composite(cls):
+    cls._calc_composite = True
+    return cls
+
+
 def _wrapStepCall(step, _t, _dt):
     t = datetime.fromtimestamp(_t, timezone.utc)
     dt = timedelta(seconds=_dt)

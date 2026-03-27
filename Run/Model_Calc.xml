@@ -431,6 +431,206 @@ class Script {
           <State id="cc1.alarm" name="cc1.Alarm" type="Byte" />
         </States>
       </Calculation>
+      <Calculation id="MemPy" name="MemPy" type="Python" enabled="false">
+        <EnableOutputVarWrite>true</EnableOutputVarWrite>
+        <Cycle>10 s</Cycle>
+        <Definition># Calculation for ifakFAST Version 2.0
+# ========================
+#
+# N2O Signal Router for IfakFast
+# Author: matthew.chan1@jacobs.com
+#
+# Copyright: Jacobs Solutions Inc. 2026
+#
+
+"""
+IFAK FAST Python block — N2O Signal Router
+
+Function:
+- Given a .csv file for which sensor reading (or average) to use per location, 
+  return a signal per location with the correct n2o readings.
+- Read tbl_emissions_sensors.csv at import time using pandas.
+- Build per-location inclusive interval routing:
+      ("sensor", k) or ("average", None)
+- Declare inputs:  "Sensor 1", "Sensor 2", ..., dynamically based on CSV.
+- Declare outputs: "&lt;Location&gt;_N2O_parsed"
+- At runtime step(t, dt):
+      Use the interval that contains t, or if none match,
+      use the LAST row (most recent config) for that location.
+
+Constraints:
+- No print() or error handling as requested.
+- Pandas deleted after import-time processing.
+- Constant datetime format.
+"""
+
+from datetime import datetime, timedelta
+import os
+import sys
+import re
+import math
+from math import nan as NAN
+
+# -------------------------------------------------------------------------
+# Config paths
+# -------------------------------------------------------------------------
+str_file_path_tables = 'D:/Projekte/Jacobs/PythonMemoryIssue/'
+str_fname_extension  = '.csv'
+
+# Only tbl_emissions_sensors.csv is needed for this block
+_mapping_path = os.path.join(str_file_path_tables, 'tbl_emissions_sensors' + str_fname_extension)
+
+# Constant datetime format for CSV timestamps
+# Adjust format string as needed for your CSV
+STR_DTFMT = "%m/%d/%Y %H:%M"
+
+# -------------------------------------------------------------------------
+# IMPORT-TIME: Read CSV with pandas, build routing table, purge pandas.
+# -------------------------------------------------------------------------
+import pandas as pd
+
+_df_map = pd.read_csv(_mapping_path)
+
+# First two columns are dates, remaining are location names
+_date_from_col = _df_map.columns[0]
+_date_to_col   = _df_map.columns[1]
+_location_cols = list(_df_map.columns[2:])
+
+# Parse dates using the constant format
+_df_map[_date_from_col] = pd.to_datetime(_df_map[_date_from_col], format=STR_DTFMT)
+_df_map[_date_to_col]   = pd.to_datetime(_df_map[_date_to_col],   format=STR_DTFMT)
+
+# Melt to long format while preserving row order
+_df_long = _df_map.melt(
+    id_vars=[_date_from_col, _date_to_col],
+    value_vars=_location_cols,
+    var_name="location",
+    value_name="selection"
+)
+
+# Normalize selection and drop empty
+_df_long["selection"] = _df_long["selection"].astype(str).str.strip()
+_df_long = _df_long.replace({"selection": {"": None, "nan": None, "NaN": None}})
+_df_long = _df_long.dropna(subset=["selection"])
+
+# Regex for "Sensor k"
+_sensor_re = re.compile(r'^\s*sensor\s*(\d+)\s*$', re.IGNORECASE)
+
+ROUTE_BY_LOCATION = {}
+SENSORS_SET = set()
+
+for row in _df_long.itertuples(index=False):
+    loc      = getattr(row, "location")
+    sel_raw  = getattr(row, "selection")
+    start_dt = getattr(row, _date_from_col).to_pydatetime()
+    end_dt   = getattr(row, _date_to_col).to_pydatetime()
+
+    s = sel_raw.strip().lower()
+    if s == "average":
+        sel = ("average", None)
+    else:
+        m = _sensor_re.match(sel_raw)
+        k = int(m.group(1))
+        sel = ("sensor", k)
+        SENSORS_SET.add(k)
+
+    if loc not in ROUTE_BY_LOCATION:
+        ROUTE_BY_LOCATION[loc] = []
+    ROUTE_BY_LOCATION[loc].append((start_dt, end_dt, sel))
+
+# Clean up pandas and dataframes
+#del _df_map
+#del _df_long
+#del pd
+#if "pandas" in sys.modules:
+#    del sys.modules["pandas"]
+
+# -------------------------------------------------------------------------
+# DECLARE INPUTS &amp; OUTPUTS
+# -------------------------------------------------------------------------
+
+# Declare sensor inputs dynamically: "Sensor 1", "Sensor 2", ...
+SENSORS_LIST = sorted(SENSORS_SET)
+for k in SENSORS_LIST:
+    globals()[f"Sensor {k}"] = Input(f"Sensor {k}", unit="", defaultValue=NAN)
+
+# Declare outputs: "&lt;Location&gt;_N2O_parsed"
+LOCATION_NAMES = list(_location_cols)
+for loc in LOCATION_NAMES:
+    globals()[f"{loc}_N2O_parsed"] = Output(f"{loc}_N2O_parsed", unit="")
+
+@calc_composite
+class Test:
+    a = Output("a")
+    b = Output("b")
+
+
+test = Test()
+
+# -------------------------------------------------------------------------
+# RUNTIME FUNCTIONS
+# -------------------------------------------------------------------------
+def initialize(initParams):
+    pass
+
+def step(t: datetime, dt: timedelta):
+
+    t = t.replace(tzinfo=None)
+    test.a.Value = 42
+    for loc in LOCATION_NAMES:
+
+        routes = ROUTE_BY_LOCATION.get(loc, ())
+        chosen = None
+
+        # Try to match the interval inclusive: start &lt;= t &lt;= end
+        for (sdt, edt, sel) in routes:
+            if sdt &lt;= t &lt;= edt:
+                chosen = sel  # last match wins
+
+        # Fallback: if nothing matched, use LAST row's configuration
+        if chosen is None and len(routes) &gt; 0:
+            chosen = routes[-1][2]  # (mode, k)
+
+        out_obj = globals()[f"{loc}_N2O_parsed"]
+
+        if chosen is None:
+            out_obj.Value = NAN
+        else:
+            mode, k = chosen
+            if mode == "sensor":
+                v = globals()[f"Sensor {k}"].Value
+                out_obj.Value = v if (isinstance(v, (int, float)) and not math.isnan(v)) else NAN
+            else:  
+                # Average across all sensors
+                total = 0.0
+                count = 0
+                for kk in SENSORS_LIST:
+                    vv = globals()[f"Sensor {kk}"].Value
+                    if isinstance(vv, (int, float)) and not math.isnan(vv):
+                        total += vv
+                        count += 1
+                out_obj.Value = (total / count) if count &gt; 0 else NAN
+                
+                
+</Definition>
+        <Inputs>
+          <Input id="Sensor 1" name="Sensor 1">
+            <Constant>1</Constant>
+          </Input>
+          <Input id="Sensor 2" name="Sensor 2">
+            <Constant>2</Constant>
+          </Input>
+        </Inputs>
+        <Outputs>
+          <Output id="RA 1_N2O_parsed" name="RA 1_N2O_parsed" />
+          <Output id="SCT 2_N2O_parsed" name="SCT 2_N2O_parsed" />
+          <Output id="SCT 3_N2O_parsed" name="SCT 3_N2O_parsed" />
+          <Output id="SCT 4_N2O_parsed" name="SCT 4_N2O_parsed" />
+          <Output id="SCT 5_N2O_parsed" name="SCT 5_N2O_parsed" />
+          <Output id="test.a" name="test.a" />
+          <Output id="test.b" name="test.b" />
+        </Outputs>
+      </Calculation>
     </Calculations>
   </RootFolder>
 </Calc_Model>

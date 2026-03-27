@@ -152,7 +152,7 @@
     </div>
 
     <div
-      v-if="selectedTab === 'Code'"
+      v-show="selectedTab === 'Code'"
       class="flex-grow-1 overflow-y-auto"
     >
       <code-editor
