@@ -203,6 +203,7 @@ namespace Ifak.Fast.Mediator
                     LoginServer = "localhost",
                     LoginPort = listenPort,
                     DataFolder = GetDataFolder(module.Config),
+                    LogFilePath = AppLog.LogFilePath,
                     Configuration = [.. configItems],
                     InProcApi = reqHandler,
                 };

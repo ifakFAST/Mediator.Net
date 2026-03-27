@@ -4,6 +4,7 @@
 
 using Ifak.Fast.Mediator.Dashboard;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Globalization;
@@ -22,8 +23,19 @@ public class View_EventLog : ViewBase
     private ActiveError[] lastEvents = [];
     private TimeRange lastTimeRange = new();
 
+    private bool polling = false;
+    private long logFilePosition = -1;
+
     public override Task OnActivate() {
         Connection.EnableVariableHistoryChangedEvents(Var);
+        logFilePosition = -1;
+        polling = true;
+        _ = PollLogFile();
+        return Task.FromResult(true);
+    }
+
+    public override Task OnDeactivate() {
+        polling = false;
         return Task.FromResult(true);
     }
 
@@ -85,6 +97,28 @@ public class View_EventLog : ViewBase
                         Alarms = alarms,
                         Events = events
                     });
+                }
+
+            case "LoadLogfile": {
+
+                    LoadLogfileParams? para = parameters.Object<LoadLogfileParams>();
+                    int maxLines = para?.MaxLines ?? 500;
+                    string[] lines = ReadLastNLines(AppLog.LogFilePath, maxLines, out long filePos);
+                    logFilePosition = filePos;
+                    return ReqResult.OK(new { Lines = lines });
+                }
+
+            case "DownloadLogfile": {
+
+                    string filePath = AppLog.LogFilePath;
+                    if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) {
+                        return ReqResult.OK("", contentType: "text/plain");
+                    }
+                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    var mem = new MemoryStream();
+                    fs.CopyTo(mem);
+                    mem.Seek(0, SeekOrigin.Begin);
+                    return new ReqResult(200, mem, "text/plain");
                 }
 
             default:
@@ -149,6 +183,56 @@ public class View_EventLog : ViewBase
                 RemovedAlarms = removedAlarms,
             });
         }
+    }
+
+    private async Task PollLogFile() {
+        while (polling) {
+            try { await Task.Delay(1000); } catch (Exception) { }
+            if (!polling) break;
+            if (logFilePosition < 0) continue;
+            try {
+                string filePath = AppLog.LogFilePath;
+                if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) continue;
+
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                long currentLength = fs.Length;
+                if (currentLength < logFilePosition) {
+                    logFilePosition = 0;
+                }
+                if (currentLength <= logFilePosition) continue;
+
+                fs.Seek(logFilePosition, SeekOrigin.Begin);
+                using var reader = new StreamReader(fs, System.Text.Encoding.UTF8);
+                var newLines = new List<string>();
+                string? line;
+                while ((line = reader.ReadLine()) != null) {
+                    newLines.Add(line);
+                }
+                logFilePosition = fs.Length;
+
+                if (newLines.Count > 0) {
+                    await Context.SendEventToUI("LogfileEvent", new { Lines = newLines.ToArray() });
+                }
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private static string[] ReadLastNLines(string filePath, int n, out long filePosition) {
+        filePosition = 0;
+        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return [];
+
+        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(fs, System.Text.Encoding.UTF8);
+        var allLines = new List<string>();
+        string? line;
+        while ((line = reader.ReadLine()) != null) {
+            allLines.Add(line);
+        }
+        filePosition = fs.Length;
+
+        if (allLines.Count <= n) return [.. allLines];
+        return [.. allLines.Skip(allLines.Count - n)];
     }
 
     private static ActiveError Transform(AggregatedEvent ev) {
@@ -229,4 +313,9 @@ public class AckResetParams
     public string Comment { get; set; } = "";
     public long[] Timestamps { get; set; } = Array.Empty<long>();
     public TimeRange TimeRange { get; set; } = new TimeRange();
+}
+
+public class LoadLogfileParams
+{
+    public int MaxLines { get; set; } = 500;
 }

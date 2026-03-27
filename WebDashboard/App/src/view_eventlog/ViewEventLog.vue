@@ -11,6 +11,7 @@
         >
           <v-tab :value="0">Active Alarms</v-tab>
           <v-tab :value="1">Event Log</v-tab>
+          <v-tab :value="2">Logfile</v-tab>
         </v-tabs>
 
         <active-alarms
@@ -26,6 +27,12 @@
           :events="events"
           :time-range="timeRange"
         />
+
+        <log-file
+          v-if="currentTab === 2"
+          ref="logFileRef"
+          class="px-1 py-1"
+        />
       </v-col>
     </v-row>
   </v-container>
@@ -36,8 +43,10 @@ import { ref, onMounted, watch } from 'vue'
 import type { Alarm } from './types'
 import ActiveAlarms from './ActiveAlarms.vue'
 import EventLog from './EventLog.vue'
+import LogFile from './LogFile.vue'
 
 const currentTab = ref(0)
+const logFileRef = ref<InstanceType<typeof LogFile> | null>(null)
 const alarms = ref<Alarm[]>([])
 const events = ref<any[]>([])
 const timeRange = ref({
@@ -91,7 +100,10 @@ onMounted(() => {
 
   // @ts-ignore
   window.parent['dashboardApp'].registerViewEventListener((eventName: string, eventPayload: any) => {
-    if (eventName === 'Event') {
+    if (eventName === 'LogfileEvent') {
+      logFileRef.value?.appendLines(eventPayload.Lines)
+    }
+    else if (eventName === 'Event') {
       const fUpdate = (list: any[], newOrChanged: any[]): void => {
         const len = newOrChanged.length
         for (let i = 0; i < len; i++) {

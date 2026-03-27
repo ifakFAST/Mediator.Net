@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -35,6 +35,9 @@ namespace Ifak.Fast.Mediator.Util
             this.moduleID = info.ModuleID;
             this.moduleName = info.ModuleName;
             this.notifier = notifier;
+            if (!string.IsNullOrEmpty(info.LogFilePath)) {
+                AppLog.LogFilePath = info.LogFilePath;
+            }
             var config = info.GetConfigReader();
             modelFileAutoReload = config.GetOptionalBool("model-file-auto-reload", defaultValue: false);
             modelFileName = Path.GetFullPath(config.GetString("model-file"));

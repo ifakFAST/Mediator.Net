@@ -72,6 +72,11 @@ namespace Ifak.Fast.Mediator
             config?.Variables["log-output-dir"] = fullLogDir;
             config?.Variables["log-file-name"] = logName;
 
+            var fileTarget = LogManager.Configuration?.FindTargetByName<NLog.Targets.FileTarget>("file");
+            if (fileTarget != null) {
+                AppLog.LogFilePath = fileTarget.FileName.Render(NLog.LogEventInfo.CreateNullEvent());
+            }
+
             string workingDir = Directory.GetCurrentDirectory();
             try { Console.Title = $"{title} - {workingDir}"; } catch { }
 
