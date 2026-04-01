@@ -1259,7 +1259,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             Severity = eventInfo.Severity,
             Type = eventInfo.Type,
             ReturnToNormal = eventInfo.ReturnToNormal,
-            Message = adapter.Name + ": " + eventInfo.Message,
+            Message = $"[{adapter.Name}] {eventInfo.Message}",
             Details = eventInfo.Details,
             AffectedObjects = eventInfo.AffectedObjects.Select(obj => ObjectRef.Make(moduleID, obj)).ToArray(),
             Initiator = null

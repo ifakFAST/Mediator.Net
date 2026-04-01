@@ -1,4 +1,5 @@
 from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase, PyLogger
+from Ifak.Fast.Mediator.Calc.Adapter_CSharp import Alarm, EventLog, Level
 from Ifak.Fast.Mediator import Quality, Duration, Timestamp, QualityFilter, Aggregation, BoundingMethod
 import Ifak.Fast.Mediator
 import json
