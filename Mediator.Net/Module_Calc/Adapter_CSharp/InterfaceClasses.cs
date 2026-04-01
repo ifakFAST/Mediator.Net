@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -392,6 +392,14 @@ public class EventLog : EventProvider
         Console.Error.WriteLine("Invalid EventLog object: Needs to be defined on class level!");
         return true;
     }
+}
+
+public class Logger {
+    internal Action<string, LogLevel>? logAction;
+
+    public void Info(string message)  => logAction?.Invoke(message, LogLevel.Info);
+    public void Warn(string message)  => logAction?.Invoke(message, LogLevel.Warning);
+    public void Error(string message) => logAction?.Invoke(message, LogLevel.Error);
 }
 
 public class Api

@@ -434,16 +434,7 @@ class Script {
       <Calculation id="MemPy" name="MemPy" type="Python" enabled="false">
         <EnableOutputVarWrite>true</EnableOutputVarWrite>
         <Cycle>10 s</Cycle>
-        <Definition># Calculation for ifakFAST Version 2.0
-# ========================
-#
-# N2O Signal Router for IfakFast
-# Author: matthew.chan1@jacobs.com
-#
-# Copyright: Jacobs Solutions Inc. 2026
-#
-
-"""
+        <Definition>"""
 IFAK FAST Python block — N2O Signal Router
 
 Function:
@@ -549,6 +540,8 @@ for row in _df_long.itertuples(index=False):
 # DECLARE INPUTS &amp; OUTPUTS
 # -------------------------------------------------------------------------
 
+logger = Logger()
+
 # Declare sensor inputs dynamically: "Sensor 1", "Sensor 2", ...
 SENSORS_LIST = sorted(SENSORS_SET)
 for k in SENSORS_LIST:
@@ -575,6 +568,8 @@ def initialize(initParams):
 
 def step(t: datetime, dt: timedelta):
 
+    logger.info("Test\nLauf")
+    
     t = t.replace(tzinfo=None)
     test.a.Value = 42
     for loc in LOCATION_NAMES:

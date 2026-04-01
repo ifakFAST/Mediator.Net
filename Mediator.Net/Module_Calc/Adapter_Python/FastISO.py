@@ -1,4 +1,4 @@
-from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase
+from Ifak.Fast.Mediator.Calc.Adapter_Python import PyInputBase, PyOutputBase, PyStateBase, PyLogger
 from Ifak.Fast.Mediator import Quality, Duration, Timestamp, QualityFilter, Aggregation, BoundingMethod
 import Ifak.Fast.Mediator
 import json
@@ -119,7 +119,18 @@ def _verifyOptionalListOfTimeseriesEntry(name: str, value: Optional[list[Timeser
         for i in range(len(value)):
             if not isinstance(value[i], TimeseriesEntry):
                 raise Exception(f"{name}[{i}] must be a TimeseriesEntry but is {type(value[i]).__name__}")
-    
+
+class Logger(PyLogger):
+
+    def info(self, message: str) -> None:
+        self.Info(message)
+
+    def warn(self, message: str) -> None:
+        self.Warn(message)
+
+    def error(self, message: str) -> None:
+        self.Error(message)
+
 ########### Inputs #############
 
 class MyInputBase(PyInputBase):

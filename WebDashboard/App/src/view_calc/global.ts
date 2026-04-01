@@ -22,3 +22,14 @@ export interface AdapterInfo {
   CodeLang: string
   Subtypes: string[]
 }
+
+export interface CalcLogEvent {
+  CalcID: string
+  Entries: CalcLogEntry[]
+}
+
+export interface CalcLogEntry {
+  ID: number
+  Line: string
+  Level: 'Info' | 'Warning' | 'Error'
+}

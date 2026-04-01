@@ -70,3 +70,5 @@ public class PyStateBase : AbstractState {
 }
 
 public class PyApi : Api { }
+
+public class PyLogger : Logger {}

@@ -21,10 +21,20 @@ public class View_Calc : ViewBase
     private ObjectRef RootID;
     private string moduleID = "";
 
+    private uint calclog_SinceCounter = 0;
+    private int calclog_Generation = 0;
+    private bool calclog_Polling = false;
+
     public override Task OnActivate() {
         if (Config.NonEmpty) {
             configuration = Config.Object<ViewConfig>() ?? new ViewConfig();
         }
+        return Task.FromResult(true);
+    }
+
+    public override Task OnDeactivate() {
+        calclog_Generation++;
+        calclog_Polling = false;
         return Task.FromResult(true);
     }
 
@@ -178,6 +188,40 @@ public class View_Calc : ViewBase
                     return ReqResult.OK(new { Count = count });
                 }
 
+            case "StartCalcLogWatch": {
+                    var pars = parameters.Object<StartCalcLogWatchParams>() ?? throw new Exception("StartCalcLogWatchParams is null");
+                    calclog_Polling = false;
+                    calclog_Generation++;
+                    int currentGeneration = calclog_Generation;
+                    DataValue result = await Connection.CallMethod(moduleID, "GetCalcLog", new NamedValue("CalcID", pars.CalcID));
+                    if (currentGeneration != calclog_Generation) {
+                        return ReqResult.OK(Array.Empty<LogEntry>()); // A new watch was started in the meantime, so we ignore this result
+                    }
+                    LogEntry[] entries = result.Object<LogEntry[]>() ?? [];
+                    calclog_SinceCounter = entries.Length > 0 ? entries[^1].ID : 0;
+                    calclog_Polling = true;
+                    _ = PollCalcLog(pars.CalcID, currentGeneration);
+                    return ReqResult.OK(entries);
+                }
+
+            case "StopCalcLogWatch": {
+                    calclog_Generation++;
+                    calclog_Polling = false;
+                    return ReqResult.OK();
+                }
+
+            case "GetCalcLog": {
+                    var pars = parameters.Object<GetCalcLogParams>() ?? throw new Exception("GetCalcLogParams is null");
+                    DataValue result = await Connection.CallMethod(moduleID, "GetCalcLog", new NamedValue("CalcID", pars.CalcID));
+                    return ReqResult.OK(result);
+                }
+
+            case "ClearCalcLog": {
+                    var pars = parameters.Object<ClearCalcLogParams>() ?? throw new Exception("ClearCalcLogParams is null");
+                    await Connection.CallMethod(moduleID, "ClearCalcLog", new NamedValue("CalcID", pars.CalcID));
+                    return ReqResult.OK();
+                }
+
             default:
                 return ReqResult.Bad("Unknown command: " + command);
         }
@@ -276,7 +320,30 @@ public class View_Calc : ViewBase
         await Context.SendEventToUI("VarChange", changes);
     }
 
-    private static IList<EventEntry> VarValsToEventEntries(List<VariableValue> variables) {
+    private async Task PollCalcLog(string calcID, int generation) {
+        while (calclog_Polling && calclog_Generation == generation) {
+            try { await Task.Delay(2000); } catch (Exception) { }
+            if (!calclog_Polling || calclog_Generation != generation) break;
+            try {
+                DataValue result = await Connection.CallMethod(moduleID, "GetCalcLog",
+                    new NamedValue("CalcID", calcID),
+                    new NamedValue("SinceCounter", calclog_SinceCounter.ToString()));
+                if (!calclog_Polling || calclog_Generation != generation) break;
+                LogEntry[] entries = result.Object<LogEntry[]>() ?? [];
+                if (entries.Length > 0) {
+                    calclog_SinceCounter = entries[^1].ID;
+                    var eventPayload = new {
+                        CalcID = calcID,
+                        Entries = entries
+                    };
+                    await Context.SendEventToUI("CalcLogUpdate", eventPayload);
+                }
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private static List<EventEntry> VarValsToEventEntries(List<VariableValue> variables) {
         var changes = new List<EventEntry>(variables.Count);
         for (int n = 0; n < variables.Count; ++n) {
             VariableValue vv = variables[n];
@@ -360,6 +427,21 @@ public class View_Calc : ViewBase
     {
         public string ObjectID { get; set; } = "";
         public string VariableName { get; set; } = "Value";
+    }
+
+    public class GetCalcLogParams
+    {
+        public string CalcID { get; set; } = "";
+    }
+
+    public class ClearCalcLogParams
+    {
+        public string CalcID { get; set; } = "";
+    }
+
+    public class StartCalcLogWatchParams
+    {
+        public string CalcID { get; set; } = "";
     }
 
     public class EventEntry

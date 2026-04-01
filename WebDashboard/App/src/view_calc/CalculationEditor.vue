@@ -20,6 +20,7 @@
         >States</v-tab
       >
       <v-tab value="History">History</v-tab>
+      <v-tab value="Log">Log</v-tab>
     </v-tabs>
 
     <div
@@ -449,6 +450,17 @@
       </keep-alive>
     </div>
 
+    <div
+      v-show="selectedTab === 'Log'"
+      class="flex-grow-1 overflow-y-auto pa-2"
+      >
+        <CalcLog
+          class="flex-grow-1"
+          :calc-id="model.ID"
+          :active="selectedTab === 'Log'"
+          :newCalcLogEvent="newCalcLogEvent"
+        />
+    </div>
     <dlg-object-select
       v-model="selectObject.show"
       :module-id="selectObject.selectedModuleID"
@@ -466,6 +478,7 @@ import * as calcmodel from './model'
 import MemberRow from './util/MemberRow.vue'
 import ValueDisplay from './util/ValueDisplay.vue'
 import VarHistoryTable from './VarHistoryTable.vue'
+import CalcLog from './CalcLog.vue'
 import * as global from './global'
 import * as fast from '../fast_types'
 import type { CalculationVariables, IoVar } from './conversion'
@@ -504,6 +517,7 @@ const model = defineModel<calcmodel.Calculation>({ required: true })
 const props = defineProps<{
   variables: CalculationVariables
   adapterTypesInfo: global.AdapterInfo[]
+  newCalcLogEvent: global.CalcLogEvent | null
 }>()
 
 const selectedTab = ref('')

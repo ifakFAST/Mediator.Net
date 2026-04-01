@@ -150,7 +150,7 @@ public sealed class DerivedSignal : Identifiable
             StateFloat64 state = new(name, defaultValue: defaultValue) {
                 ID = name
             };
-            Console.WriteLine($"Adding state {state.ID} with default value {state.DefaultValue}");
+            logger.Info($"Adding state {state.ID} with default value {state.DefaultValue}");
             ParamStates.Add(state);
         }
 
@@ -267,17 +267,17 @@ public sealed class DerivedSignal : Identifiable
                 return sibling.VarRefSelf ?? throw new ArgumentException($"Sibling signal {siblingID} not initialized yet.");
             }
 
-            string calculationName = signal.api.calculationName;
             var sw = Stopwatch.StartNew();
             signal.Update(tEnd, GetSiblingWithLocalID);
             sw.Stop();
             string strDuration = sw.Elapsed > TimeSpan.FromSeconds(10) ?
                 sw.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture) + " s" :
                 sw.Elapsed.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture) + " ms";
-            Console.WriteLine($"[{calculationName}] Finished update of derived signal {signal.ID} ({i + 1} of {derivedSignals.Count}) in {strDuration}");
+            signal.logger.Info($"Finished update of derived signal {signal.ID} ({i + 1} of {derivedSignals.Count}) in {strDuration}");
         }
     }
 
+    readonly Logger logger = new();
     readonly Api api = new();
 
     private (string path, string localID) SplitId() {
@@ -293,7 +293,7 @@ public sealed class DerivedSignal : Identifiable
         if (Inputs.Length == 0) return;
 
         if (api.abortStep) {
-            Console.WriteLine($"Calculation aborted for {ID}");
+            logger.Info($"Calculation aborted for {ID}");
             return;
         }
 
@@ -344,7 +344,7 @@ public sealed class DerivedSignal : Identifiable
                 }
 
                 if (!oldestTime.HasValue) {
-                    Console.WriteLine($"No data found for any input of signal {ID}");
+                    logger.Info($"No data found for any input of signal {ID}");
                     return;
                 }
 
@@ -354,7 +354,7 @@ public sealed class DerivedSignal : Identifiable
             foreach (InputDef input in Inputs) {
                 // reset state values:
                 if (input.PT1TimeConstant.HasValue) {
-                    Console.WriteLine($"Resetting PT1 state values for {input.Name}");
+                    logger.Info($"Resetting PT1 state values for {input.Name}");
                     StateFloat64 stateValue = (StateFloat64)InputStates[input.IndexPT1StateValue];
                     StateTimestamp stateTime = (StateTimestamp)InputStates[input.IndexPT1StateTime];
                     stateValue.ValueOrNull = stateValue.DefaultValue;
@@ -442,7 +442,7 @@ public sealed class DerivedSignal : Identifiable
             if (buffer.Count >= ChunkSize) {
                 DrainBuffer();
                 if (api.abortStep) {
-                    Console.WriteLine($"Calculation aborted for {ID} after DrainBuffer()");
+                    logger.Info($"Calculation aborted for {ID} after DrainBuffer()");
                     return;
                 }
             }

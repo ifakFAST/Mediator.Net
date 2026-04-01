@@ -170,10 +170,15 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
                 provider.EventSinkRef = this;
             }
 
-            apis = GetApiMembers(module);
+            apis = GetMembers<Api>(module);
             foreach (Api api in apis) {
                 api.moduleID = parameter.ModuleID;
                 api.connectionGetter = retriever;
+            }
+
+            var loggers = GetMembers<Logger>(module);
+            foreach (Logger logger in loggers) {
+                logger.logAction = (line, logLevel) => callback?.Notify_LogOutput(line, logLevel);
             }
 
             PyObject stepWrap = GetAttrOrNull(moduleOuter, "_wrapStepCall") ?? throw new Exception("Helper function _wrapStepCall not found");
@@ -411,17 +416,17 @@ public class PythonExternal : CalculationBase, EventSink, ConnectionConsumer {
         return result;
     }
 
-    private static List<Api> GetApiMembers(PyObject obj) {
-        List<Api> result = new();
+    private static List<T> GetMembers<T>(PyObject obj) where T : class {
+        List<T> result = [];
         MemberInfo[] fields = GetPyObjectMember(obj);
         foreach (MemberInfo f in fields) {
             bool isIdentifiable = f.TryConvertTo(out Identifiable? _);
-            bool isApi = f.TryConvertTo(out Api? api);
-            if (isApi && api != null) {
-                result.Add(api);
+            bool isT = f.TryConvertTo(out T? t);
+            if (isT && t != null) {
+                result.Add(t);
             }
             else if (!isIdentifiable && IsCalcComposite(f.Value)) {
-                result.AddRange(GetApiMembers(f.Value));
+                result.AddRange(GetMembers<T>(f.Value));
             }
         }
         return result;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Calc
@@ -122,6 +122,14 @@ namespace Ifak.Fast.Mediator.Calc
     {
         void Notify_NeedRestart(string reason);
         void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo);
+        void Notify_LogOutput(string line, LogLevel level);
+    }
+
+    public enum LogLevel
+    {
+        Info,
+        Warning,
+        Error
     }
 
     public class AdapterAlarmOrEvent

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -175,6 +175,13 @@ namespace Ifak.Fast.Mediator.Calc
                     }
                     break;
 
+                case AdapterMsg.ID_Event_LogOutput:
+                    var logOutput = StdJson.ObjectFromUtf8Stream<LogOutputEvent>(evt.Payload);
+                    if (logOutput != null) {
+                        callback?.Notify_LogOutput(logOutput.Line, logOutput.Level);
+                    }
+                    break;
+
                 default:
                     Console.Error.WriteLine("Unknown event code: " + evt.Code);
                     break;
@@ -216,10 +223,10 @@ namespace Ifak.Fast.Mediator.Calc
             process.Start();
 
             StartStreamReadThread(process.StandardOutput, (line) => {
-                Console.Out.WriteLine(line);
+                callback?.Notify_LogOutput(line, LogLevel.Info);
             });
             StartStreamReadThread(process.StandardError, (line) => {
-                Console.Error.WriteLine(line);
+                callback?.Notify_LogOutput(line, LogLevel.Error);
             });
 
             return process;
@@ -255,6 +262,7 @@ namespace Ifak.Fast.Mediator.Calc
     internal abstract class AdapterMsg
     {
         public const byte ID_Event_AlarmOrEvent = 1;
+        public const byte ID_Event_LogOutput = 2;
 
         public const byte ID_ParentInfo = 99;
         public const byte ID_Initialize = 1;
@@ -262,6 +270,12 @@ namespace Ifak.Fast.Mediator.Calc
         public const byte ID_Shutdown = 3;
 
         public abstract byte GetMessageCode();
+    }
+
+    internal class LogOutputEvent
+    {
+        public string Line { get; set; } = "";
+        public LogLevel Level { get; set; } = LogLevel.Info;
     }
 
     internal class ParentInfoMsg : AdapterMsg

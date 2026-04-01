@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -224,6 +224,10 @@ namespace Ifak.Fast.Mediator.Calc
 
             public void Notify_NeedRestart(string reason) {
 				Environment.Exit(1);
+            }
+
+            public void Notify_LogOutput(string line, LogLevel logLevel) {
+                connector.SendEvent(AdapterMsg.ID_Event_LogOutput, s => StdJson.ObjectToStream(new LogOutputEvent { Line = line, Level = logLevel }, s));
             }
         }
     }

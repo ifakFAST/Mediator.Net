@@ -128,6 +128,7 @@
           v-model="editObject as calcmodel.Calculation"
           :adapter-types-info="adapterTypesInfo"
           :variables="editObjectVariables as CalculationVariables"
+          :newCalcLogEvent="newCalcLogEvent"
         />
       </div>
     </template>
@@ -210,7 +211,7 @@ const editObjectOriginal = ref('')
 const editObject = ref<calcmodel.Folder | calcmodel.Signal | calcmodel.Calculation | null>(null)
 const editObjectType = ref<ObjType>('Folder')
 const editObjectVariables = ref<SignalVariables | CalculationVariables | null>(null)
-
+const newCalcLogEvent = ref<global.CalcLogEvent | null>(null)
 const dlgConfirm = ref(null)
 
 const addDialog = ref({
@@ -514,9 +515,12 @@ onMounted(() => {
     initModel(strResponse)
   })
 
-  dashboard.registerViewEventListener((eventName: string, eventPayload: EventEntry[]) => {
+  dashboard.registerViewEventListener((eventName: string, eventPayload: any) => {
     if (eventName === 'VarChange') {
-      processEventEntries(eventPayload)
+      processEventEntries(eventPayload as EventEntry[])
+    } 
+    else if (eventName === 'CalcLogUpdate') {
+      newCalcLogEvent.value = eventPayload as global.CalcLogEvent
     }
   })
 })

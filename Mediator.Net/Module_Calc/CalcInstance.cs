@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -14,6 +14,8 @@ public class CalcInstance
 {
     private readonly string moduleID;
     internal readonly Trigger_M_outof_N triggerDurationWarning = new Trigger_M_outof_N(m: 6, n: 60);
+
+    public CalcLogBuffer LogBuffer { get; } = new CalcLogBuffer(capacity: 1000);
 
     public CalcInstance(Config.Calculation a, string moduleID) {
         SetConfig(a);

@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -143,6 +144,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             Config.Calculation config = enabledAdapters.First(x => x.ID == adapter.CalcConfig.ID);
             bool changed = adapter.SetConfig(config);
             if (changed) {
+                adapter.LogBuffer.Clear();
                 restartAdapters.Add(adapter);
             }
 
@@ -214,7 +216,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 ModuleInitInfo = initInfo
             };
             adapter.State = State.InitStarted;
-            InitResult res = await adapter.Instance.Initialize(initParams, new Wrapper(this, info));
+            InitResult res = await adapter.Instance.Initialize(initParams, new Wrapper(this, info, adapter));
             if (adapter.State == State.InitStarted) {
 
                 Config.Input[] newInputs = res.Inputs.Select(ip => MakeInput(ip, adapter.CalcConfig)).ToArray();
@@ -466,13 +468,33 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
     public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 
-        if (methodName == "GetAdapterInfo") {
-            DataValue dv = DataValue.FromObject(adapterTypesAttribute);
-            return Task.FromResult(Result<DataValue>.OK(dv));
+        switch (methodName) {
 
-        }
-        else {
-            return base.OnMethodCall(origin, methodName, parameters);
+            case "GetAdapterInfo": {
+                DataValue dv = DataValue.FromObject(adapterTypesAttribute);
+                return Task.FromResult(Result<DataValue>.OK(dv));
+            }
+
+            case "GetCalcLog": {
+                string calcID = parameters.FirstOrDefault(p => p.Name == "CalcID").Value ?? "";
+                uint sinceCounter = uint.TryParse(parameters.FirstOrDefault(p => p.Name == "SinceCounter").Value, out uint sc) ? sc : 0;
+                CalcInstance? inst = adapters.FirstOrDefault(a => a.CalcConfig.ID == calcID);
+                if (inst == null) {
+                    return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(Array.Empty<LogEntry>())));
+                }
+                IReadOnlyList<LogEntry> entries = inst.LogBuffer.GetLinesSince(sinceCounter);
+                return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(entries)));
+            }
+
+            case "ClearCalcLog": {
+                string calcID = parameters.FirstOrDefault(p => p.Name == "CalcID").Value ?? "";
+                CalcInstance? inst = adapters.FirstOrDefault(a => a.CalcConfig.ID == calcID);
+                inst?.LogBuffer.Clear();
+                return Task.FromResult(Result<DataValue>.OK(DataValue.Empty));
+            }
+
+            default:
+                return base.OnMethodCall(origin, methodName, parameters);
         }
     }
 
@@ -962,7 +984,13 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 break;
             }
 
+            var swStep = System.Diagnostics.Stopwatch.StartNew();
             StepResult result = await instance.Step(t, dt, inputValues);
+            swStep.Stop();
+            string stepDurationStr = swStep.ElapsedMilliseconds < 1000
+                ? swStep.Elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms"
+                : swStep.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s";
+            adapter.LogBuffer.AddWithTimestamp($"Step completed in {stepDurationStr}", LogLevel.Info);
 
             OutputValue[] outValues = result.Output ?? [];
             StateValue[] stateValues = result.State ?? [];
@@ -1220,11 +1248,11 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     }
 
     // This will be called from a different Thread, therefore post it to the main thread!
-    public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter) {
-        moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter);
+    public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter, CalcInstance inst) {
+        moduleThread?.Post(Do_Notify_AlarmOrEvent, eventInfo, adapter, inst);
     }
 
-    private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter) {
+    private void Do_Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo, Calculation adapter, CalcInstance inst) {
 
         var ae = new AlarmOrEventInfo() {
             Time = eventInfo.Time,
@@ -1238,20 +1266,39 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         };
 
         notifier!.Notify_AlarmOrEvent(ae);
+
+        LogLevel level = ae.Severity switch {
+            Severity.Info => LogLevel.Info,
+            Severity.Warning => LogLevel.Warning,
+            Severity.Alarm => LogLevel.Error,
+            _ => LogLevel.Info
+        };
+        inst.LogBuffer.AddWithTimestamp(eventInfo.Message, level);
     }
 }
 
-sealed class Wrapper(Module m, Calculation a) : AdapterCallback
+sealed class Wrapper(Module m, Calculation a, CalcInstance inst) : AdapterCallback
 {
     private readonly Module m = m;
     private readonly Calculation a = a;
 
     public void Notify_AlarmOrEvent(AdapterAlarmOrEvent eventInfo) {
-        m.Notify_AlarmOrEvent(eventInfo, a);
+        m.Notify_AlarmOrEvent(eventInfo, a, inst);
     }
 
     public void Notify_NeedRestart(string reason) {
         m.Notify_NeedRestart(reason, a);
+    }
+
+    public void Notify_LogOutput(string line, LogLevel logLevel) {
+        string lineWithCalcName = $"[{a.Name}] {line}";
+        if (logLevel == LogLevel.Error) {
+            Console.Error.WriteLine(lineWithCalcName);
+        }
+        else {
+            Console.Out.WriteLine(lineWithCalcName);
+        }
+        inst.LogBuffer.AddWithTimestamp(line, logLevel);
     }
 }
 

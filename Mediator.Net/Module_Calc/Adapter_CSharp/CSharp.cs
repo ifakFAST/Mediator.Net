@@ -1,4 +1,4 @@
-﻿// Licensed to ifak e.V. under one or more agreements.
+// Licensed to ifak e.V. under one or more agreements.
 // ifak e.V. licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -122,6 +122,11 @@ public class CSharp : CalculationBase, EventSink, ConnectionConsumer {
             api.moduleID = parameter.ModuleID;
             api.calculationName = parameter.Calculation.Name;
             api.connectionGetter = retriever;
+        }
+
+        var loggers = GetMembers<Logger>(obj, recursive: true, []);
+        foreach (Logger logger in loggers) {
+            logger.logAction = (line, logLevel) => callback?.Notify_LogOutput(line, logLevel);
         }
 
         Type type = obj.GetType();
