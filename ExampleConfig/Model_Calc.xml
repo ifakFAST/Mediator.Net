@@ -23,17 +23,18 @@
 
 x = Input("X", unit = "mg/L", defaultValue = 21.0)
 y = Output("Y") 
+log = Logger()
 
 def initialize(initParams):
     name = initParams.Calculation.Name
-    print("initialize " + name)
+    log.info("initialize " + name)
 
 def step(t: datetime, dt: timedelta):
-    print(x.Value)
+    log.info(x.Value)
     y.Value = 2 * x.Value
 
 def shutdown():
-    print("shutdown")</Definition>
+    log.info("shutdown")</Definition>
             <Inputs>
               <Input id="x" name="X" unit="mg/L">
                 <Variable object="IO:Measurement_SO" name="Value" />
@@ -55,11 +56,12 @@ def shutdown():
 # Y = Output("Y", "m³/d", roundDigits=3)
 
 api = Api()
+log = Logger()
 
 def step(t, dt):
     
-    #variables = MakeSignalRefs(["signal_001", "signal_002"])
-    #variables = Api.MakeVariableRefs([x1, x2, x3])
+    # variables = MakeSignalRefs(["signal_001", "signal_002"])
+    # variables = Api.MakeVariableRefs([x1, x2, x3])
     variables = GetSignalRefsBelowFolder(["Signals"])
     for itt in variables:
         print(itt)
@@ -71,19 +73,19 @@ def step(t, dt):
     tStart = tEnd.AddMinutes(-2);
     dataTime = api.ReadVariablesHistory(variables, tStart, tEnd)
     matrixTime = AggregationUtils.ExportToMatrix(dataTime)
-    matrixTime.Print(numDigits=3)
+    log.info(matrixTime.ToString(numDigits=3))
     # matrixTime.TimestampsPosixSeconds may be used to convert to Python datetime
     # numpy_array = np.array(matrixTime.Values)
-    #print(numpy_array[0])
+    # log.info(numpy_array[0])
     
     count = 20
     dataRaw = api.ReadVariablesHistoryLastN(variables, count)
     matrixRaw = AggregationUtils.ExportToMatrix(dataRaw)
-    #matrixRaw.Print(numDigits=2)
+    # log.info(matrixRaw.ToString(numDigits=2))
     
     dataAggregated = AggregationUtils.Aggregate(dataRaw, Aggregation.First, Duration.FromMinutes(1), False)
     matrixAggregated = AggregationUtils.ExportToMatrix(dataAggregated)
-    #matrixAggregated.Print(numDigits=2)
+    # log.info(matrixAggregated.ToString(numDigits=2))
 
 def MakeSignalRefs(ids):
     objRefs = ["CALC:" + id for id in ids]
@@ -115,10 +117,16 @@ class Script {
     
     PT1 pt_1 = new PT1(K: 1, T: Duration.FromSeconds(20));
     PT1 pt_2 = new PT1(K: 1, T: Duration.FromSeconds(20));
+
+    // You need to use Logger instead of Console for the output to show up in the log window of this calculation
+    Logger log = new Logger(); 
     
     public void Step(Timestamp t, Duration dt) {
         Y1.Value = pt_1.Step(u: X1, dt: dt);
         Y2.Value = pt_2.Step(u: X2, dt: dt);
+        // log.Info("Info...");
+        // log.Warn("Warning...");
+        // log.Error("Error...");
     }
 }
 </Definition>
@@ -184,8 +192,8 @@ class Script {
     
     Input X = new Input(name: "X", unit: "mg/L", defaultValue: 0);
     
-    EventLog log = new EventLog(messagePrefix: "");
-    
+    EventLog eventlog = new EventLog(messagePrefix: "");
+
     public void Step(Timestamp t, Duration dt) {
 
         try {
@@ -197,8 +205,8 @@ class Script {
             }
         }
         catch (Exception exp) {
-            // log.Warn(id: "AlarmExp", message: "Exception: " + exp.Message);
-            log.Alarm(id: "AlarmExp", message: "Exception: " + exp.Message);
+            // eventlog.Warn(id: "AlarmExp", message: "Exception: " + exp.Message);
+            eventlog.Alarm(id: "AlarmExp", message: "Exception: " + exp.Message);
         }
     }
 }
