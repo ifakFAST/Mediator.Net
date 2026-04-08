@@ -4,7 +4,7 @@
 
 using CommandLine;
 using NLog;
-using NLog.LayoutRenderers;
+using NLog.Time;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -15,6 +15,8 @@ namespace Ifak.Fast.Mediator
     class Program
     {
         static void Main(string[] args) {
+
+            TimeSource.Current = new AppTimeZoneTimeSource();
 
             if (args.Length > 1 && args[0] == "encrypt") {
                 string text = args[1];
@@ -80,6 +82,8 @@ namespace Ifak.Fast.Mediator
             string workingDir = Directory.GetCurrentDirectory();
             try { Console.Title = $"{title} - {workingDir}"; } catch { }
 
+            TryInitializeAppTimeZone(configFileName);
+
             Logger logger = LogManager.GetLogger("Mediator.Prog");
 
             if (!File.Exists(configFileName)) {
@@ -120,6 +124,16 @@ namespace Ifak.Fast.Mediator
             }
 
             logger.Info($"{title} terminated.");
+        }
+
+        private static void TryInitializeAppTimeZone(string configFileName) {
+            try {
+                Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
+                AppTimeZone.Initialize(config.TimeZone);
+            }
+            catch {
+                // Keep local system timezone until the main config load reports the actual error.
+            }
         }
 
         private static void DoReader(Logger logger, MediatorCore core, string title) {
