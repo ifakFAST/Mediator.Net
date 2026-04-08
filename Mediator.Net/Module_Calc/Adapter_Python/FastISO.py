@@ -123,14 +123,14 @@ def _verifyOptionalListOfTimeseriesEntry(name: str, value: Optional[list[Timeser
 
 class Logger(PyLogger):
 
-    def info(self, message: str) -> None:
-        self.Info(message)
+    def info(self, message: object) -> None:
+        self.Info(str(message))
 
-    def warn(self, message: str) -> None:
-        self.Warn(message)
+    def warn(self, message: object) -> None:
+        self.Warn(str(message))
 
-    def error(self, message: str) -> None:
-        self.Error(message)
+    def error(self, message: object) -> None:
+        self.Error(str(message))
 
 ########### Inputs #############
 
