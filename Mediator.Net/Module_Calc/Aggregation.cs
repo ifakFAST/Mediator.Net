@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using VTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTQ>;
 
 namespace Ifak.Fast.Mediator.Calc;
@@ -182,12 +183,16 @@ public class TimeAlignedMatrix
     public double[,] Values { get; set; } = new double[0, 0];
 
     public void Print(int numDigits = 3) {
+        string matrixString = ToString(numDigits);
+        Console.WriteLine(matrixString);
+    }
+
+    public string ToString(int numDigits = 3) {
         int rows = Values.GetLength(0);
         int cols = Values.GetLength(1);
 
         if (rows == 0 || cols == 0) {
-            Console.WriteLine("(empty matrix)");
-            return;
+            return "(empty matrix)";
         }
 
         // Calculate optimal width for each column
@@ -216,33 +221,37 @@ public class TimeAlignedMatrix
             timestampWidth = Math.Max(timestampWidth, maxTimestampWidth + 2);
         }
 
+        var sb = new StringBuilder();
+        sb.AppendLine("");
         // Print header with column indices
-        Console.Write("Timestamp".PadRight(timestampWidth));
+        sb.Append("Timestamp".PadRight(timestampWidth));
         for (int col = 0; col < cols; col++) {
-            Console.Write($"Col{col}".PadLeft(colWidths[col]));
+            sb.Append($"Col{col}".PadLeft(colWidths[col]));
         }
-        Console.WriteLine();
+        sb.AppendLine();
 
         // Print separator line
-        Console.Write(new string('-', timestampWidth));
+        sb.Append(new string('-', timestampWidth));
         for (int col = 0; col < cols; col++) {
-            Console.Write(new string('-', colWidths[col]));
+            sb.Append(new string('-', colWidths[col]));
         }
-        Console.WriteLine();
+        sb.AppendLine();
 
         // Print data rows
         for (int row = 0; row < rows; row++) {
             // Print timestamp
-            Console.Write(Timestamps[row].ToString().PadRight(timestampWidth));
+            sb.Append(Timestamps[row].ToString().PadRight(timestampWidth));
 
             // Print values for this row
             for (int col = 0; col < cols; col++) {
                 double value = Values[row, col];
                 string formattedValue = double.IsNaN(value) ? "NaN" : value.ToString($"F{numDigits}", CultureInfo.InvariantCulture);
-                Console.Write(formattedValue.PadLeft(colWidths[col]));
+                sb.Append(formattedValue.PadLeft(colWidths[col]));
             }
-            Console.WriteLine();
+            sb.AppendLine();
         }
-        Console.WriteLine("   ");
+        sb.AppendLine("   ");
+
+        return sb.ToString();
     }
 }
