@@ -197,7 +197,7 @@ namespace Ifak.Fast.Mediator.Dashboard
 
                         var addElement = AddArrayElement.Make(objParent, dropParams.ToArray, objValue.Value);
 
-                        await Connection.UpdateConfig(new ObjectValue[] { deleteObj }, new MemberValue[0], new AddArrayElement[] { addElement } );
+                        await Connection.UpdateConfig([deleteObj], [], [addElement]);
 
                         objects = await Connection.GetAllObjects(moduleID);
                         TreeNode node = TransformModel(objects);

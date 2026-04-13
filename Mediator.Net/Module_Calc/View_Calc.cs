@@ -103,6 +103,23 @@ public class View_Calc : ViewBase
                     return await GetModelResult();
                 }
 
+            case "DragDrop": {
+
+                    DragDropParams dropParams = parameters.Object<DragDropParams>() ?? throw new Exception("DragDropParams is null");
+
+                    ObjectRef obj = ObjectRef.Make(moduleID, dropParams.FromID);
+                    ObjectValue objValue = await Connection.GetObjectValueByID(obj);
+
+                    var deleteObj = ObjectValue.Make(obj, DataValue.Empty);
+
+                    ObjectRef objParent = ObjectRef.Make(moduleID, dropParams.ToID);
+                    var addElement = AddArrayElement.Make(objParent, dropParams.ToArray, objValue.Value);
+
+                    await Connection.UpdateConfig([deleteObj], [], [addElement]);
+                    Context.NotifyRefreshConcurrentViews();
+                    return await GetModelResult();
+                }
+
             case "MoveObject": {
 
                     var move = parameters.Object<MoveObject_Params>() ?? throw new Exception("MoveObject_Params is null");
@@ -439,6 +456,13 @@ public class View_Calc : ViewBase
         public string NewObjID { get; set; } = "";
         public string NewObjType { get; set; } = "";
         public string NewObjName { get; set; } = "";
+    }
+
+    public class DragDropParams
+    {
+        public string FromID { get; set; } = "";
+        public string ToID { get; set; } = "";
+        public string ToArray { get; set; } = "";
     }
 
     public class MoveObject_Params

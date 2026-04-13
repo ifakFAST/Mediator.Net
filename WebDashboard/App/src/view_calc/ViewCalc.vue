@@ -11,10 +11,13 @@
       >
         <TreeView
           v-model:selected="selectedNode"
+          :can-drop-function="canDropFunction"
+          :draggable-function="draggableFunction"
           :expanded="true"
           :icon-function="iconFunction"
           :title-function="titleFunction"
           :root="treeRoot"
+          @drag-drop="onDragDrop"
         />
       </div>
     </template>
@@ -336,6 +339,73 @@ const moveObject = (up: boolean): void => {
   const dashboard = window.parent['dashboardApp']
   dashboard.sendViewRequest('MoveObject', info, (strResponse: string) => {
     initModel(strResponse, id)
+  })
+}
+
+type FolderMemberName = 'Folders' | 'Signals' | 'Calculations'
+
+const getDropArrayName = (item: TreeItem): FolderMemberName => {
+  if (item.objectType === 'Folder') {
+    return 'Folders'
+  }
+  if (item.objectType === 'Signal') {
+    return 'Signals'
+  }
+  return 'Calculations'
+}
+
+const draggableFunction = (node: Node): boolean => {
+  const item = node as unknown as TreeItem
+  if (item.parentID === null) {
+    return false
+  }
+  return !(isObjectDirty.value)
+}
+
+const canDropFunction = (fromID: string, toID: string): boolean => {
+  const tree = treeRoot.value
+  if (tree === null) {
+    return false
+  }
+  const fromItem = findTreeItem(tree, fromID)
+  const toItem = findTreeItem(tree, toID)
+  if (fromItem === null || toItem === null) {
+    return false
+  }
+  if (fromItem.parentID === null || toItem.objectType !== 'Folder') {
+    return false
+  }
+  if (fromItem.id === toItem.id) {
+    return false
+  }
+  if (fromItem.objectType === 'Folder' && findTreeItem(fromItem, toItem.id) !== null) {
+    return false
+  }
+  if (fromItem.parentID === toItem.id) {
+    return false
+  }
+  return true
+}
+
+const onDragDrop = (fromID: string, toID: string): void => {
+  const tree = treeRoot.value
+  if (tree === null) {
+    return
+  }
+  const fromItem = findTreeItem(tree, fromID)
+  const toItem = findTreeItem(tree, toID)
+  if (fromItem === null || toItem === null || !canDropFunction(fromID, toID)) {
+    return
+  }
+  const info = {
+    FromID: fromItem.id,
+    ToID: toItem.id,
+    ToArray: getDropArrayName(fromItem),
+  }
+  // @ts-ignore
+  const dashboard = window.parent['dashboardApp']
+  dashboard.sendViewRequest('DragDrop', info, (strResponse: string) => {
+    initModel(strResponse, fromItem.id)
   })
 }
 
