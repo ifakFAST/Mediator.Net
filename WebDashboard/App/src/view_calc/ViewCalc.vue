@@ -13,6 +13,7 @@
           v-model:selected="selectedNode"
           :expanded="true"
           :icon-function="iconFunction"
+          :title-function="titleFunction"
           :root="treeRoot"
         />
       </div>
@@ -201,6 +202,14 @@ interface EventEntry {
   Q: fast.Quality
 }
 
+interface CalcRuntimeState {
+  CalcID: string
+  State: string
+  IsRunning: boolean
+  RunningForSeconds: number
+  LastRunFailed: boolean
+}
+
 const selectedNode = ref<Node | null>(null)
 const restoringSelection = ref(false)
 const treeRoot = ref<TreeItem | null>(null)
@@ -225,6 +234,7 @@ const addDialog = ref({
 const adapterTypesInfo = ref<global.AdapterInfo[]>([])
 
 const mapVariables = ref(new Map<string, fast.VTQ>())
+const calcRuntimeStates = ref(new Map<string, CalcRuntimeState>())
 
 const isFolderObject = computed((): boolean => {
   return editObject.value !== null && editObjectType.value === 'Folder'
@@ -418,7 +428,9 @@ const initModel = (strResponse: string, activeItemID?: string): void => {
   const objectInfos: global.ObjInfo[] = res.objectInfos
   const moduleInfos: global.ModuleInfo[] = res.moduleInfos
   const varValues: EventEntry[] = res.variableValues
+  const runtimeStates: CalcRuntimeState[] = res.calcRuntimeStates ?? []
   adapterTypesInfo.value = res.adapterTypesInfo
+  setCalcRuntimeStates(runtimeStates)
 
   global.mapObjects.clear()
   objectInfos.forEach((obj) => {
@@ -455,6 +467,10 @@ const processEventEntries = (entries: EventEntry[]): void => {
       vtq.Q = entry.Q
     }
   }
+}
+
+const setCalcRuntimeStates = (runtimeStates: CalcRuntimeState[]): void => {
+  calcRuntimeStates.value = new Map(runtimeStates.map((state) => [state.CalcID, state]))
 }
 
 const findTreeItem = (root: TreeItem, id: string | null): TreeItem | null => {
@@ -518,18 +534,101 @@ onMounted(() => {
   dashboard.registerViewEventListener((eventName: string, eventPayload: any) => {
     if (eventName === 'VarChange') {
       processEventEntries(eventPayload as EventEntry[])
-    } 
+    }
+    else if (eventName === 'CalcRuntimeStatesUpdate') {
+      setCalcRuntimeStates(eventPayload as CalcRuntimeState[])
+    }
     else if (eventName === 'CalcLogUpdate') {
       newCalcLogEvent.value = eventPayload as global.CalcLogEvent
     }
   })
 })
 
+const getCalculationNodeIcon = (calculation: calcmodel.Calculation): NodeIcon => {
+
+  if (!calculation.Enabled) {
+    return {
+      icon: 'mdi-file-cog-outline',
+    }
+  }
+
+  const runtimeState = calcRuntimeStates.value.get(calculation.ID)
+  if (runtimeState === undefined) {
+    return {
+      icon: 'mdi-file-cog-outline',
+    }
+  }
+
+  if (runtimeState.IsRunning) {
+    return {
+      icon: 'mdi-file-refresh-outline',
+      color: 'green',
+    }
+  }
+
+  if (runtimeState.LastRunFailed || runtimeState.State === 'InitError') {
+    return {
+      icon: 'mdi-file-alert-outline',
+      color: 'red',
+    }
+  }
+
+  if (runtimeState.State !== 'Running' && runtimeState.State !== 'InitComplete') {
+    return {
+      icon: 'mdi-file-cog-outline',
+    }
+  }
+
+  return {
+    icon: 'mdi-file-check-outline',
+    color: 'green',
+  }
+}
+
+const getCalculationNodeTitle = (calculation: calcmodel.Calculation): string => {
+  const runtimeState = calcRuntimeStates.value.get(calculation.ID)
+  if (runtimeState === undefined || !runtimeState.IsRunning) {
+    return calculation.Name
+  }
+
+  return `${calculation.Name} [Running since ${runtimeState.RunningForSeconds} s]`
+}
+
+const folderContainsRedCalculation = (folder: TreeItem): boolean => {
+  for (const child of folder.children) {
+    if (child.objectType === 'Calculation') {
+      const calculation = child.object as calcmodel.Calculation
+      if (getCalculationNodeIcon(calculation).color === 'red') {
+        return true
+      }
+      continue
+    }
+
+    if (child.objectType === 'Folder' && folderContainsRedCalculation(child)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const titleFunction = (node: Node): string => {
+  const item = node as unknown as TreeItem
+
+  if (item.objectType === 'Calculation') {
+    const calculation = item.object as calcmodel.Calculation
+    return getCalculationNodeTitle(calculation)
+  }
+
+  return node.title
+}
+
 const iconFunction = (node: Node, isExpanded: boolean): string | NodeIcon => {
   const item = node as unknown as TreeItem
 
   if (item.objectType === 'Folder') {
-    return isExpanded ? 'mdi-folder-open' : 'mdi-folder'
+    const icon = isExpanded ? 'mdi-folder-open' : 'mdi-folder'
+    return folderContainsRedCalculation(item) ? { icon, color: 'red' } : icon
   }
 
   if (item.objectType === 'Signal') {
@@ -538,10 +637,7 @@ const iconFunction = (node: Node, isExpanded: boolean): string | NodeIcon => {
 
   if (item.objectType === 'Calculation') {
     const calculation = item.object as calcmodel.Calculation
-    return {
-      icon: calculation.Enabled ? 'mdi-file-check-outline' : 'mdi-file-cog-outline',
-      color: calculation.Enabled ? 'green' : undefined,
-    }
+    return getCalculationNodeIcon(calculation)
   }
 
   return ''

@@ -24,6 +24,9 @@ public class View_Calc : ViewBase
     private uint calclog_SinceCounter = 0;
     private int calclog_Generation = 0;
     private bool calclog_Polling = false;
+    private string calcRuntimeStates_Snapshot = "";
+    private int calcRuntimeStates_Generation = 0;
+    private bool calcRuntimeStates_Polling = false;
 
     public override Task OnActivate() {
         if (Config.NonEmpty) {
@@ -35,6 +38,8 @@ public class View_Calc : ViewBase
     public override Task OnDeactivate() {
         calclog_Generation++;
         calclog_Polling = false;
+        calcRuntimeStates_Generation++;
+        calcRuntimeStates_Polling = false;
         return Task.FromResult(true);
     }
 
@@ -50,6 +55,7 @@ public class View_Calc : ViewBase
                     RootID = root.ID;
 
                     await Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), root.ID);
+                    StartCalcRuntimeStatesPolling();
 
                     return await GetModelResult();
                 }
@@ -267,6 +273,14 @@ public class View_Calc : ViewBase
 
         DataValue resGetAdapterInfo = await Connection.CallMethod(moduleID, "GetAdapterInfo");
         AdapterInfo[] adapterTypesInfo = resGetAdapterInfo.Object<AdapterInfo[]>() ?? new AdapterInfo[0];
+        CalcRuntimeStateInfo[] calcRuntimeStates;
+        try {
+            calcRuntimeStates = await ReadCalcRuntimeStates();
+        }
+        catch (Exception) {
+            calcRuntimeStates = [];
+        }
+        calcRuntimeStates_Snapshot = MakeCalcRuntimeStatesSnapshot(calcRuntimeStates);
 
         model.Normalize(adapterTypesInfo);
 
@@ -278,10 +292,43 @@ public class View_Calc : ViewBase
                 Name = m.Name
             }).ToArray(),
             variableValues = changes,
+            calcRuntimeStates = calcRuntimeStates,
             adapterTypesInfo = adapterTypesInfo,
         };
 
         return ReqResult.OK(res, ignoreShouldSerializeMembers: true);
+    }
+
+    private void StartCalcRuntimeStatesPolling() {
+        calcRuntimeStates_Generation++;
+        calcRuntimeStates_Polling = true;
+        int currentGeneration = calcRuntimeStates_Generation;
+        _ = PollCalcRuntimeStates(currentGeneration);
+    }
+
+    private async Task PollCalcRuntimeStates(int generation) {
+        while (calcRuntimeStates_Polling && calcRuntimeStates_Generation == generation) {
+            try { await Task.Delay(1000); } catch (Exception) { }
+            if (!calcRuntimeStates_Polling || calcRuntimeStates_Generation != generation) break;
+            try {
+                CalcRuntimeStateInfo[] calcRuntimeStates = await ReadCalcRuntimeStates();
+                string snapshot = MakeCalcRuntimeStatesSnapshot(calcRuntimeStates);
+                if (snapshot != calcRuntimeStates_Snapshot) {
+                    calcRuntimeStates_Snapshot = snapshot;
+                    await Context.SendEventToUI("CalcRuntimeStatesUpdate", calcRuntimeStates);
+                }
+            }
+            catch (Exception) { }
+        }
+    }
+
+    private async Task<CalcRuntimeStateInfo[]> ReadCalcRuntimeStates() {
+        DataValue result = await Connection.CallMethod(moduleID, "GetCalcRuntimeStates");
+        return result.Object<CalcRuntimeStateInfo[]>() ?? [];
+    }
+
+    private static string MakeCalcRuntimeStatesSnapshot(CalcRuntimeStateInfo[] calcRuntimeStates) {
+        return DataValue.FromObject(calcRuntimeStates).JSON;
     }
 
     private ObjectRef[] GetObjects(Config.Calculation c) {
@@ -442,6 +489,15 @@ public class View_Calc : ViewBase
     public class StartCalcLogWatchParams
     {
         public string CalcID { get; set; } = "";
+    }
+
+    public class CalcRuntimeStateInfo
+    {
+        public string CalcID { get; set; } = "";
+        public string State { get; set; } = "";
+        public bool IsRunning { get; set; }
+        public int RunningForSeconds { get; set; }
+        public bool LastRunFailed { get; set; }
     }
 
     public class EventEntry

@@ -486,6 +486,19 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(entries)));
             }
 
+            case "GetCalcRuntimeStates": {
+                var runtimeStates = adapters.Select(a => new {
+                    CalcID = a.CalcConfig.ID,
+                    State = a.State.ToString(),
+                    IsRunning = a.IsStepRunning,
+                    RunningForSeconds = a.IsStepRunning && a.StepRunningSince.HasValue
+                        ? Math.Max(0, (int)(Timestamp.Now - a.StepRunningSince.Value).TotalSeconds)
+                        : 0,
+                    LastRunFailed = a.LastRunFailed,
+                }).ToArray();
+                return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(runtimeStates)));
+            }
+
             case "ClearCalcLog": {
                 string calcID = parameters.FirstOrDefault(p => p.Name == "CalcID").Value ?? "";
                 CalcInstance? inst = adapters.FirstOrDefault(a => a.CalcConfig.ID == calcID);
@@ -985,12 +998,32 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             }
 
             var swStep = System.Diagnostics.Stopwatch.StartNew();
-            StepResult result = await instance.Step(t, dt, inputValues);
-            swStep.Stop();
-            string stepDurationStr = swStep.ElapsedMilliseconds < 1000
-                ? swStep.Elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms"
-                : swStep.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s";
-            adapter.LogBuffer.AddWithTimestamp($"Step completed in {stepDurationStr}", LogLevel.Info);
+            adapter.IsStepRunning = true;
+            adapter.StepRunningSince = Timestamp.Now;
+
+            string GetStepDurationStr() {
+                TimeSpan elapsed = swStep.Elapsed;
+                return elapsed.TotalSeconds >= 1
+                    ? elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s"
+                    : elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms";
+            }
+
+            StepResult result;
+            try {
+                result = await instance.Step(t, dt, inputValues);
+                adapter.LastRunFailed = false;
+            }
+            catch (Exception exp) {
+                adapter.LastRunFailed = true;
+                adapter.LogBuffer.AddWithTimestamp($"Step failed after {GetStepDurationStr()}: {exp.Message}", LogLevel.Error);
+                throw;
+            }
+            finally {
+                adapter.IsStepRunning = false;
+                adapter.StepRunningSince = null;
+                swStep.Stop();
+            }
+            adapter.LogBuffer.AddWithTimestamp($"Step completed in {GetStepDurationStr()}", LogLevel.Info);
 
             OutputValue[] outValues = result.Output ?? [];
             StateValue[] stateValues = result.State ?? [];

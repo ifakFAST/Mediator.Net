@@ -26,7 +26,7 @@
           small
           >{{ nodeIcon.icon }}</v-icon
         >
-        {{ node.title }}
+        {{ nodeTitle }}
       </span>
     </div>
     <TreeView
@@ -36,6 +36,7 @@
       class="ml-4"
       :expanded="false"
       :icon-function="iconFunction"
+      :title-function="titleFunction"
       :root="child"
     />
   </div>
@@ -58,6 +59,7 @@ export interface NodeIcon {
 const props = defineProps<{
   root: Node | null
   iconFunction: (node: Node, isExpanded: boolean) => string | NodeIcon
+  titleFunction?: (node: Node) => string
   expanded: boolean
 }>()
 
@@ -88,6 +90,10 @@ const nodeIcon = computed<NodeIcon | null>(() => {
     return icon ? { icon } : null
   }
   return icon.icon ? icon : null
+})
+
+const nodeTitle = computed(() => {
+  return props.titleFunction ? props.titleFunction(node.value) : node.value.title
 })
 
 const expandIcon = computed(() => {

@@ -39,6 +39,9 @@ public class CalcInstance
         instance = new SingleThreadCalculation(rawAdapter);
         State = State.Created;
         LastError = "";
+        IsStepRunning = false;
+        StepRunningSince = null;
+        // Do not reset LastRunFailed here, to keep failure state latched across restarts until the next successful step.
     }
 
     private ModuleInitInfo info = new();
@@ -72,6 +75,10 @@ public class CalcInstance
     public string LastError { get; set; } = "";
 
     public bool IsRestarting = false;
+    public bool IsStepRunning { get; set; } = false;
+    public Timestamp? StepRunningSince { get; set; } = null;
+    // Keep failure state latched across restarts until the next successful step.
+    public bool LastRunFailed { get; set; } = false;
 
     public string Name => CalcConfig == null ? "?" : CalcConfig.Name;
 
