@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      :class="[isSelected && 'bg-primary rounded', '']"
+      :class="['tree-node', isSelected && 'bg-primary rounded']"
       style="padding: 2px"
       @click="selectNode()"
     >
@@ -106,6 +106,10 @@ const selectNode = (): void => {
 </script>
 
 <style scoped>
+.tree-node {
+  cursor: pointer;
+}
+
 .node-content {
   display: inline-flex;
   align-items: center;
