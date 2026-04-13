@@ -192,7 +192,7 @@ import FolderEditor from './FolderEditor.vue'
 import SignalEditor from './SignalEditor.vue'
 import CalculationEditor from './CalculationEditor.vue'
 import Splitter from '../components/Splitter.vue'
-import type { Node } from '../components/TreeView.vue'
+import type { Node, NodeIcon } from '../components/TreeView.vue'
 
 interface EventEntry {
   Key: string
@@ -525,7 +525,7 @@ onMounted(() => {
   })
 })
 
-const iconFunction = (node: Node, isExpanded: boolean): string => {
+const iconFunction = (node: Node, isExpanded: boolean): string | NodeIcon => {
   const item = node as unknown as TreeItem
 
   if (item.objectType === 'Folder') {
@@ -537,7 +537,11 @@ const iconFunction = (node: Node, isExpanded: boolean): string => {
   }
 
   if (item.objectType === 'Calculation') {
-    return 'mdi-file-cog-outline'
+    const calculation = item.object as calcmodel.Calculation
+    return {
+      icon: calculation.Enabled ? 'mdi-file-check-outline' : 'mdi-file-cog-outline',
+      color: calculation.Enabled ? 'green' : undefined,
+    }
   }
 
   return ''

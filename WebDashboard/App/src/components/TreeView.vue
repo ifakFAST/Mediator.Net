@@ -22,8 +22,9 @@
         <v-icon
           v-if="nodeIcon"
           class="mr-1"
+          :color="nodeIcon.color"
           small
-          >{{ nodeIcon }}</v-icon
+          >{{ nodeIcon.icon }}</v-icon
         >
         {{ node.title }}
       </span>
@@ -49,9 +50,14 @@ export interface Node {
   children: Node[]
 }
 
+export interface NodeIcon {
+  icon: string
+  color?: string
+}
+
 const props = defineProps<{
   root: Node | null
-  iconFunction: (node: Node, isExpanded: boolean) => string
+  iconFunction: (node: Node, isExpanded: boolean) => string | NodeIcon
   expanded: boolean
 }>()
 
@@ -76,8 +82,12 @@ const isSelected = computed(() => {
   return selectedNode.value?.id === node.value.id
 })
 
-const nodeIcon = computed(() => {
-  return props.iconFunction(node.value, isExpanded.value)
+const nodeIcon = computed<NodeIcon | null>(() => {
+  const icon = props.iconFunction(node.value, isExpanded.value)
+  if (typeof icon === 'string') {
+    return icon ? { icon } : null
+  }
+  return icon.icon ? icon : null
 })
 
 const expandIcon = computed(() => {
