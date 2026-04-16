@@ -3,7 +3,6 @@ import Components from 'unplugin-vue-components/vite'
 import Vue from '@vitejs/plugin-vue'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import webfontDownload from 'vite-plugin-webfont-dl'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 // Utilities
 import { defineConfig } from 'vite'
@@ -16,7 +15,7 @@ export default defineConfig({
     outDir: '../../Run/DashboardDist/App',
     emptyOutDir: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 2500,
   },
   plugins: [
     Vue({
@@ -27,14 +26,6 @@ export default defineConfig({
     webfontDownload([
       'https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap',
     ]),
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'src/assets',
-          dest: ''
-        }
-      ]
-    }),
   ],
   optimizeDeps: {
     exclude: ['vuetify'],

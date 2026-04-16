@@ -49,6 +49,9 @@ import * as model from '../model'
 
 import * as L from 'leaflet'
 import 'leaflet-groupedlayercontrol'
+import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import type { Feature, GeoJsonObject, GeoJsonTypes, BBox } from 'geojson'
 import { type GeoMapConfig, type NamedLayerType, type GeoLayerType, type StaticLayer } from './GeoMapConfigTypes'
 import GeoMapConfigDlgMap from './GeoMapConfigDlgMap.vue'
@@ -74,8 +77,7 @@ declare const GeoRasterLayer: GeoRasterLayerConstructor
 //import parseGeoraster from 'georaster'
 //import GeoRasterLayer from 'georaster-layer-for-leaflet'
 
-//import 'leaflet/dist/leaflet.css'
-import '../../assets/leaflet.css'
+import 'leaflet/dist/leaflet.css'
 import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
 
 interface ColorMapRange {
@@ -152,12 +154,11 @@ interface AnimationController {
   isPaused: boolean
 }
 
-// @ts-ignore
-L.Icon.Default.prototype.options.iconRetinaUrl = 'App/assets/images/marker-icon-2x.png'
-// @ts-ignore
-L.Icon.Default.prototype.options.iconUrl = 'App/assets/images/marker-icon.png'
-// @ts-ignore
-L.Icon.Default.prototype.options.shadowUrl = 'App/assets/images/marker-shadow.png'
+Object.assign(L.Icon.Default.prototype.options, {
+  iconRetinaUrl: markerIcon2xUrl,
+  iconUrl: markerIconUrl,
+  shadowUrl: markerShadowUrl,
+})
 
 // Props
 interface Props {
@@ -1303,6 +1304,40 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
+.geomap-widget .leaflet-zoom-box,
+.geomap-widget .leaflet-control,
+.geomap-widget .leaflet-top,
+.geomap-widget .leaflet-bottom {
+  z-index: 8;
+}
+
+.geomap-widget .leaflet-pane,
+.geomap-widget .leaflet-overlay-pane {
+  z-index: 4;
+}
+
+.geomap-widget .leaflet-tile-pane,
+.geomap-widget .leaflet-map-pane svg {
+  z-index: 2;
+}
+
+.geomap-widget .leaflet-shadow-pane {
+  z-index: 5;
+}
+
+.geomap-widget .leaflet-marker-pane {
+  z-index: 6;
+}
+
+.geomap-widget .leaflet-tooltip-pane,
+.geomap-widget .leaflet-popup-pane {
+  z-index: 7;
+}
+
+.geomap-widget .leaflet-map-pane canvas {
+  z-index: 1;
+}
+
 .geomap-label {
   position: absolute;
   padding: 0px;
