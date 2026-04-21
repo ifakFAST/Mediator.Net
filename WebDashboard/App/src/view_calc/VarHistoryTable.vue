@@ -243,7 +243,7 @@ import { globalState } from '../global'
 interface HistoryRow {
   T: string
   TJ: number
-  Q: string
+  Q: 'Good' | 'Bad' | 'Uncertain'
   V: string
 }
 
@@ -267,6 +267,12 @@ const totalCount = ref<number | null>(null)
 const showRawJson = ref(false)
 const sortDesc = ref(true)
 const viewMode = ref<'table' | 'plot'>('table')
+
+const QUALITY_COLORS: Record<HistoryRow['Q'], string> = {
+  Good: 'green',
+  Bad: 'red',
+  Uncertain: 'orange',
+}
 
 const displayedRows = computed(() => {
   if (sortDesc.value) {
@@ -297,6 +303,8 @@ const graphOptions = computed(() => ({
   labels: ['Date', props.variableName],
   legend: 'always',
   drawPoints: true,
+  drawPointCallback: drawQualityPoint,
+  drawHighlightPointCallback: drawQualityPoint,
   strokeWidth: 0,
   pointSize: 3,
 }))
@@ -422,13 +430,26 @@ function getStructMemberValue(v: string, member: string): string {
 }
 
 function qualityColor(q: string): string {
-  if (q === 'Good') {
-    return 'green'
-  }
-  if (q === 'Uncertain') {
-    return 'orange'
-  }
-  return 'red'
+  return QUALITY_COLORS[q as HistoryRow['Q']] ?? 'red'
+}
+
+function drawQualityPoint(
+  _g: any,
+  _seriesName: string,
+  canvasContext: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  _color: string,
+  pointSize: number,
+  idx: number,
+): void {
+  const row = historyRows.value[idx]
+  const color = row ? qualityColor(row.Q) : _color
+
+  canvasContext.beginPath()
+  canvasContext.fillStyle = color
+  canvasContext.arc(cx, cy, pointSize, 0, 2 * Math.PI, false)
+  canvasContext.fill()
 }
 
 function refresh(): void {
