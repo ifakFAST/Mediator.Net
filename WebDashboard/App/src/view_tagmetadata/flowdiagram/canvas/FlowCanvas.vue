@@ -50,6 +50,8 @@ const emit = defineEmits<{
   (e: 'doubleclick', payload: simu.BlockDoubleClickEvent): void
   (e: 'contextmenu', payload: simu.BlockContextMenuEvent): void
   (e: 'escape'): void
+  (e: 'rename_selected'): void
+  (e: 'rotate_selected'): void
 }>()
 
 const canvasWidth = 3000
@@ -632,6 +634,18 @@ function onContextMenu(e: MouseEvent) {
 }
 
 function onKeyDown(e: KeyboardEvent) {
+  if (!e.ctrlKey && !e.altKey && !e.shiftKey && e.key === 'F2') {
+    e.preventDefault()
+    emit('rename_selected')
+    return
+  }
+
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r') {
+    e.preventDefault()
+    emit('rotate_selected')
+    return
+  }
+
   if (e.key === 'Delete') {
     sendDeleteSeletionCmd()
   }

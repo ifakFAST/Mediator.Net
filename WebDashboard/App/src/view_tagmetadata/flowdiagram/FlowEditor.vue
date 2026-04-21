@@ -172,6 +172,8 @@
       @doubleclick="onDoubleClick"
       @contextmenu="onContextMenu"
       @escape="onEscape"
+      @rename_selected="onRenameSelectedBlock"
+      @rotate_selected="onRotateSelectedBlock"
       @blockDrop="onBlockDrop"
       @interactive="onInteractiveClick"
       @edit_copy="onEditCopy"
@@ -193,7 +195,10 @@
             }
           "
         >
-          <v-list-item-title>{{ item.title }}</v-list-item-title>
+          <v-list-item-title class="context-menu-item-title">
+            <span>{{ item.title }}</span>
+            <span v-if="item.shortcut" class="context-menu-shortcut">{{ item.shortcut }}</span>
+          </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-menu>
@@ -237,6 +242,7 @@ interface ContextMenu {
 
 interface ContextMenuItem {
   title: string
+  shortcut?: string
   handler: (block: simu.Block) => void
 }
 
@@ -474,10 +480,10 @@ const onContextMenu = (e: simu.BlockContextMenuEvent) => {
 
 const contextMenuItemsForBlock = (b: simu.Block): ContextMenuItem[] => {
   const entries = [
-    { title: 'Rename...', handler: onRenameBlock },
+    { title: 'Rename...', shortcut: 'F2', handler: onRenameBlock },
     { title: 'Parameters...', handler: onConfigureBlockParams },
     { title: 'Block Properties...', handler: onConfigureBlockProperties },
-    { title: 'Rotate', handler: onRotateBlock },
+    { title: 'Rotate', shortcut: 'Ctrl+R', handler: onRotateBlock },
   ]
   const otherEntries = props.block2ContextMenu(b)
   for (const entry of otherEntries) {
@@ -511,9 +517,32 @@ const onRotateBlock = (block: simu.Block): void => {
   onCommand(cmd)
 }
 
+const getSelectedBlock = (): simu.Block | null => {
+  if (selectedBlockNames.value.length !== 1) {
+    return null
+  }
+  const blockName = selectedBlockNames.value[0]
+  const block = currentDiagram.value.blocks.find((b) => b.name === blockName)
+  return block ?? null
+}
+
+const onRotateSelectedBlock = (): void => {
+  const block = getSelectedBlock()
+  if (block !== null) {
+    onRotateBlock(block)
+  }
+}
+
 const onRenameBlock = (block: simu.Block): void => {
   configureBlock.value = block
   showBlockRename.value = true
+}
+
+const onRenameSelectedBlock = (): void => {
+  const block = getSelectedBlock()
+  if (block !== null) {
+    onRenameBlock(block)
+  }
 }
 
 const onConfigureBlockParams = (block: simu.Block): void => {
@@ -573,3 +602,17 @@ const onBlockSelectionChanged = (blockNames: string[]): void => {
   )
 }
 </script>
+
+<style scoped>
+.context-menu-item-title {
+  align-items: center;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+}
+
+.context-menu-shortcut {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.85em;
+}
+</style>
