@@ -1030,6 +1030,22 @@ function duplicateSelection() {
   emit('command', cmd)
 }
 
+function rotateBlockByName(name: string): void {
+  const b: draw.Block | undefined = drawBlockMap.value.get(name)
+  if (b === undefined) return
+
+  const current: simu.Rotation = b.rotation !== undefined ? b.rotation : '0'
+  const next: simu.Rotation = current === '0' ? '90' : current === '90' ? '180' : current === '180' ? '270' : '0'
+  b.rotation = next
+
+  updateBlock(b)
+  redraw(false)
+
+  emit('command', new command.BlockRotate(name, getChangedLines()))
+}
+
+defineExpose({ rotateBlockByName })
+
 function updateBlock(b: draw.Block): void {
   const isSelected = b.selected
 

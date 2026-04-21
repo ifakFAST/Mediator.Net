@@ -159,6 +159,7 @@
       </tbody>
     </table>
     <FlowCanvas
+      ref="flowCanvasRef"
       :diagram="currentDiagram"
       :changeStackCount="changeStack.length"
       :scale="scale"
@@ -275,6 +276,7 @@ const copyModel = (m: simu.FlowModel): simu.FlowModel => {
 }
 
 // Reactive state
+const flowCanvasRef = ref<InstanceType<typeof FlowCanvas> | null>(null)
 const myModel = ref<simu.FlowModel>(copyModel(props.model))
 const currentDiagramPath = ref<string[]>([])
 const changeStack = ref<command.Command[]>([])
@@ -513,8 +515,7 @@ const onDoubleClick = (e: simu.BlockDoubleClickEvent) => {
 }
 
 const onRotateBlock = (block: simu.Block): void => {
-  const cmd = new command.BlockRotate(block)
-  onCommand(cmd)
+  flowCanvasRef.value?.rotateBlockByName(block.name)
 }
 
 const getSelectedBlock = (): simu.Block | null => {

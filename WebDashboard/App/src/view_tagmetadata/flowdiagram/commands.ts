@@ -225,16 +225,21 @@ export class BlockRename extends Command {
 
 export class BlockRotate extends Command {
   private blockName = ''
+  private changedLinePoints: LinePoints[] = []
 
-  constructor(block: simu.Block) {
+  constructor(blockName: string, changedLinePoints: LinePoints[] = []) {
     super()
-    this.blockName = block.name
+    this.blockName = blockName
+    this.changedLinePoints = copyLinePoints(changedLinePoints)
   }
 
   apply(model: simu.FlowDiagram): void {
     const b = model.blocks.find((bl) => bl.name === this.blockName)
     if (b !== undefined) {
       b.rotation = this.newRotation(b)
+    }
+    for (const line of this.changedLinePoints) {
+      model.lines[line.lineIdx].points = copyPoints(line.points)
     }
   }
 
