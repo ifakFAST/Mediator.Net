@@ -173,6 +173,8 @@ const plotHeight = computed(() => {
   return props.height
 })
 
+const yAxisName = computed(() => props.config.ChartConfig?.YAxisName?.trim() ?? '')
+
 const chartOptions = computed<ChartOptions<'bar'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
@@ -192,7 +194,8 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
         precision: 0,
       },
       title: {
-        display: false,
+        display: yAxisName.value !== '',
+        text: yAxisName.value,
       },
     },
   },

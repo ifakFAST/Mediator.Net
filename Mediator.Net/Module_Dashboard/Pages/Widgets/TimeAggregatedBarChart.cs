@@ -35,6 +35,7 @@ public class TimeAggregatedBarChart : WidgetBaseWithConfig<TimeAggregatedBarChar
 
     public async Task<ReqResult> UiReq_SaveConfig(TimeAggregatedBarChartConfig config) {
         configuration.ChartConfig = config.ChartConfig ?? new TimeAggregatedBarChartMainConfig();
+        configuration.ChartConfig.YAxisName = configuration.ChartConfig.YAxisName?.Trim() ?? "";
         configuration.DataSeries = config.DataSeries ?? [];
         await Context.SaveWidgetConfiguration(configuration);
         return ReqResult.OK();
@@ -246,12 +247,14 @@ public sealed class TimeAggregatedBarChartMainConfig
 {
     public Timestamp StartTime { get; set; } = Timestamp.FromComponents(2025, 1, 1, 0, 0, 0);
     public Timestamp? EndTime { get; set; } = null;
+    public string YAxisName { get; set; } = "";
     public TimeGranularity TimeGranularity { get; set; } = TimeGranularity.Monthly;
     public DayOfWeek WeekStart { get; set; } = DayOfWeek.Monday; // relevant if TimeMode == Weekly
     public bool ShowSumOverBars { get; set; } = true;
     public int SumFractionDigits { get; set; } = 1;
 
     public bool ShouldSerializeEndTime() => EndTime.HasValue;
+    public bool ShouldSerializeYAxisName() => !string.IsNullOrWhiteSpace(YAxisName);
 }
 
 public enum TimeGranularity

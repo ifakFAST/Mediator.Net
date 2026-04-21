@@ -19,6 +19,7 @@ export interface TimeAggregatedBarChartDataSeries {
 export interface TimeAggregatedBarChartMainConfig {
   StartTime: string
   EndTime?: string | null
+  YAxisName: string
   TimeGranularity: TimeGranularityOption
   WeekStart: WeekStartOption
   ShowSumOverBars: boolean

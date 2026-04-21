@@ -157,6 +157,16 @@
 
                 <v-row>
                   <v-col cols="4">
+                    <v-text-field
+                      v-model="configData.ChartConfig.YAxisName"
+                      label="Y Axis Name"
+                      clearable
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+
+                <v-row>
+                  <v-col cols="4">
                     <v-select
                       v-model="configData.ChartConfig.TimeGranularity"
                       label="Time Granularity"
@@ -244,6 +254,7 @@ const createDefaultConfig = (): TimeAggregatedBarChartConfig => ({
   ChartConfig: {
     StartTime: '',
     EndTime: null,
+    YAxisName: '',
     TimeGranularity: 'Monthly',
     WeekStart: 'Monday',
     ShowSumOverBars: true,
@@ -340,6 +351,7 @@ const open = (
       normalizedConfig.ChartConfig = {
         StartTime: normalizedConfig.ChartConfig.StartTime ?? '',
         EndTime: normalizedConfig.ChartConfig.EndTime ?? null,
+        YAxisName: normalizedConfig.ChartConfig.YAxisName ?? '',
         TimeGranularity: (normalizedConfig.ChartConfig.TimeGranularity || 'Monthly') as TimeGranularityOption,
         WeekStart: (normalizedConfig.ChartConfig.WeekStart || 'Monday') as WeekStartOption,
         ShowSumOverBars: normalizedConfig.ChartConfig.ShowSumOverBars ?? true,
@@ -373,6 +385,7 @@ const save = () => {
   const resultConfig: TimeAggregatedBarChartConfig = {
     ChartConfig: {
       ...configData.value.ChartConfig,
+      YAxisName: configData.value.ChartConfig.YAxisName?.trim() ?? '',
       StartTime: toIsoUtc(configData.value.ChartConfig.StartTime) ?? '',
       EndTime: toIsoUtc(configData.value.ChartConfig.EndTime),
     },
