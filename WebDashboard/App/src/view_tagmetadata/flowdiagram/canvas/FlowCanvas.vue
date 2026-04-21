@@ -1117,6 +1117,31 @@ function normalizeLine(line: draw.Line): void {
     }
   }
 
+  // Ensure all segments are orthogonal. Segment direction alternates starting
+  // from the source port's orientation: segment i is horizontal if
+  // (i % 2 === 0) === srcHorizontal, where segment 0 is portSrc -> points[0].
+  
+  const n = line.points.length
+  for (let i = 1; i < n; i++) {
+    const prev = line.points[i - 1]
+    const curr = line.points[i]
+    const horizontal = (i % 2 === 0) === srcHorizontal
+    const lastSegment = i === n - 1 && portDst !== undefined
+    if (horizontal) {
+      if (lastSegment && dstHorizontal) {
+        prev.y = curr.y
+      } else {
+        curr.y = prev.y
+      }
+    } else {
+      if (lastSegment && !dstHorizontal) {
+        prev.x = curr.x
+      } else {
+        curr.x = prev.x
+      }
+    }
+  }
+
   // console.info('normalizeLine', line.points.length)
 }
 
