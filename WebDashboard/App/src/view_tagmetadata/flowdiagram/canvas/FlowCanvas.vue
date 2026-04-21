@@ -1046,6 +1046,9 @@ function updateBlock(b: draw.Block): void {
 }
 
 function normalizeLine(line: draw.Line): void {
+
+  // console.info('normalizeLine...', line.points.length)
+
   const blockSrc = drawBlockMap.value.get(line.source)
   const blockDst = drawBlockMap.value.get(line.dest)
 
@@ -1053,9 +1056,34 @@ function normalizeLine(line: draw.Line): void {
   const portDst = blockDst !== undefined ? blockDst.ports[line.destIdx] : undefined
 
   const srcHorizontal = portSrc === undefined ? true : portSrc.orientation === 'left' || portSrc.orientation === 'right'
+  const dstHorizontal = portDst === undefined ? true : portDst.orientation === 'left' || portDst.orientation === 'right'
+
+  if (line.points.length === 0 && portSrc !== undefined && portDst !== undefined) {
+    const horizontal = dstHorizontal && srcHorizontal
+    if (horizontal) {
+      // console.info('add two points for horizontal line')
+      const x = portSrc.x + (portDst.x - portSrc.x) / 2
+      const y1 = portSrc.y
+      const y2 = portDst.y
+      line.points.push({ x, y: y1, selected: false })
+      line.points.push({ x, y: y2, selected: false })
+      return
+    }
+    const vertical = dstHorizontal === false && srcHorizontal === false
+    if (vertical) {
+      // console.info('add two points for vertical line')
+      const y = portSrc.y + (portDst.y - portSrc.y) / 2
+      const x1 = portSrc.x
+      const x2 = portDst.x
+      line.points.push({ x: x1, y, selected: false })
+      line.points.push({ x: x2, y, selected: false })
+      return
+    }
+  }
 
   if (portSrc !== undefined) {
     if (line.points.length === 0) {
+      // console.info('add point for src port')
       addPoint(line, portSrc)
     } else {
       const p1 = line.points[0]
@@ -1068,8 +1096,8 @@ function normalizeLine(line: draw.Line): void {
   }
 
   if (portDst !== undefined) {
-    const dstHorizontal = portDst.orientation === 'left' || portDst.orientation === 'right'
     if (line.points.length === 1 && dstHorizontal === srcHorizontal) {
+      // console.info('add point for dst port')
       addPoint(line, portDst)
       const p1 = line.points[0]
       const p2 = line.points[1]
@@ -1077,6 +1105,7 @@ function normalizeLine(line: draw.Line): void {
       line.points.splice(1, 0, pMid)
     } else {
       if (line.points.length === 0) {
+        // console.info('add point for dst port [2]')
         addPoint(line, portDst)
       }
       const p1 = line.points[line.points.length - 1]
@@ -1087,12 +1116,14 @@ function normalizeLine(line: draw.Line): void {
       }
     }
   }
+
+  // console.info('normalizeLine', line.points.length)
 }
 
 function addPoint(line: draw.Line, port: draw.Port) {
   let x = 0
   let y = 0
-  const off = 2 * draw.grid
+  const off = 6 * draw.grid
   switch (port.orientation) {
     case 'left':
       x = port.x - off
