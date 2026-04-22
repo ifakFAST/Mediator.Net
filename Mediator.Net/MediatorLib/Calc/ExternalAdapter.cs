@@ -132,30 +132,33 @@ namespace Ifak.Fast.Mediator.Calc
             try {
 
                 Timestamp tStart = Timestamp.Now;
-                const int timeout = 8;
+                const int timeout = 15;
 
                 while (!taskAbort.IsCompleted) {
 
                     if (process.HasExited) {
-                        Console.Out.WriteLine("External adapter terminated during shutdown.");
+                        Console.Out.WriteLine($"External calculation {adapterName} terminated during shutdown.");
                         break;
                     }
 
                     if (Timestamp.Now - tStart > Duration.FromSeconds(timeout)) {
-                        Console.Out.WriteLine($"Adapter did not return from Shutdown within {timeout} seconds. Killing process...");
+                        Console.Out.WriteLine($"External calculation {adapterName} did not return from Shutdown within {timeout} seconds. Killing process...");
                         break;
                     }
 
                     await Task.WhenAny(taskAbort, Task.Delay(2000));
 
                     if (process.HasExited) {
-                        Console.Out.WriteLine("External adapter terminated during shutdown.");
+                        Console.Out.WriteLine($"External calculation {adapterName} terminated during shutdown.");
                         break;
                     }
 
                     if (!taskAbort.IsCompleted) {
                         long secondsUntilTimeout = (tStart.AddSeconds(timeout) - Timestamp.Now).TotalMilliseconds / 1000;
-                        Console.Out.WriteLine("Waiting for Shutdown completion (timeout in {0} seconds)...", secondsUntilTimeout);
+                        Console.Out.WriteLine($"Waiting for Shutdown completion of external calculation {adapterName} (timeout in {secondsUntilTimeout} seconds)...");
+                    }
+                    else {
+                        Console.Out.WriteLine($"External calculation {adapterName} completed shutdown.");
                     }
                 }
             }
