@@ -613,7 +613,7 @@ const onBlockSelectionChanged = (blockNames: string[]): void => {
 }
 
 .context-menu-shortcut {
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.6);
   font-size: 0.85em;
 }
 </style>
