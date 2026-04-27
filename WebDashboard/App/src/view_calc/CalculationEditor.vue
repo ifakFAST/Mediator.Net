@@ -115,6 +115,14 @@
           type="Duration"
         />
         <member-row
+          v-if="isContinuous"
+          v-model="model.RealTimeScale"
+          name="RealTimeScale"
+          :tooltip-html="realTimeScaleTooltip"
+          :optional="false"
+          type="Number"
+        />
+        <member-row
           v-if="isContinuous && model.Offset !== '0 s'"
           v-model="model.IgnoreOffsetForTimestamps"
           name="Ignore Offset For Timestamps"
@@ -594,6 +602,14 @@ Controls the timestamp passed to the calculation in Continuous mode when Offset 
 Disabled: step timestamp equals the actual offset-aligned run time.<br>
 Enabled:  step timestamp uses cycle time without offset (timestamp = runTime - Offset).<br>
 Note: this changes timestamps (and dt), not the schedule itself.`
+
+const realTimeScaleTooltip = `
+Scaling factor for the real-time execution speed of the calculation.<br>
+A value of 1 (default) means real-time execution, i.e. wall-clock time.<br> 
+A value greater than 1 speeds up execution (e.g. 2 = double speed, i.e. half the cycle time).<br>
+A value less than 1 slows down execution accordingly.<br>
+Useful when testing/demonstrating a calculation that simulates a slow process.`
+
 const enableOutputVarWriteTooltip = `
 Controls whether calculation outputs are written to the destination variables configured in Outputs.<br>
 Enabled: mapped output variables are written after each run.<br>
