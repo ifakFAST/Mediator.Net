@@ -67,10 +67,12 @@ namespace Ifak.Fast.Mediator
 
     public sealed class Variable : IEquatable<Variable>
     {
+        public static DataValue GetDefaultValue(DataType type, int dimension) => DataValue.FromDataType(type, dimension);
+
         public Variable() { }
 
         public Variable(string name, DataType type, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :
-            this(name, type, DataValue.FromDataType(type, dimension), History.None, dimension, remember, writable, syncReadable) {
+            this(name, type, GetDefaultValue(type, dimension), History.None, dimension, remember, writable, syncReadable) {
         }
 
         public Variable(string name, DataType type, DataValue defaultValue, History history, int dimension = 1, bool remember = true, bool writable = false, bool syncReadable = false) :

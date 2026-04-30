@@ -497,7 +497,7 @@ namespace Ifak.Fast.Mediator.IO.Config
             return [ variable ];
         }
 
-        public DataValue GetDefaultValue() => /*InitialValue.HasValue ? this.InitialValue.Value :*/ DataValue.FromDataType(Type, Dimension);
+        public DataValue GetDefaultValue() => /*InitialValue.HasValue ? this.InitialValue.Value :*/ Variable.GetDefaultValue(Type, Dimension);
 
         public bool ShouldSerializeTypeConstraints() => !string.IsNullOrEmpty(TypeConstraints);
         public bool ShouldSerializeDimensionNames() => DimensionNames != null && DimensionNames.Length > 0;

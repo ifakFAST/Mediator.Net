@@ -32,7 +32,7 @@ namespace Ifak.Fast.Mediator.EventLog
                 name: "LastEvent",
                 type: DataType.Struct,
                 dimension: 1,
-                defaultValue: DataValue.FromJSON("{}"),
+                defaultValue: DataValue.Empty,
                 remember: false,
                 history: History.None
             );

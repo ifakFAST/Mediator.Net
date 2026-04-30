@@ -90,7 +90,7 @@ namespace Ifak.Fast.Mediator.IO
 
         public List<NamedValue> Config { get; set; } = new List<NamedValue>();
 
-        public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
+        public DataValue GetDefaultValue() => Variable.GetDefaultValue(Type, Dimension);
     }
 
     public struct Login

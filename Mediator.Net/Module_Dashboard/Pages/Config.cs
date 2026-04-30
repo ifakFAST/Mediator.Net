@@ -51,7 +51,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             var variable = new Variable(
                     name: "ActionLog",
                     type: DataType.Struct,
-                    defaultValue: DataValue.FromDataType(DataType.Struct, dimension: 1),
+                    defaultValue: Variable.GetDefaultValue(DataType.Struct, dimension: 1),
                     unit: "",
                     typeConstraints: "",
                     dimension: 1,

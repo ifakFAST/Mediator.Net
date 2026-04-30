@@ -106,7 +106,7 @@ public class Signal : ModelObject
     [XmlAttribute("dimension")]
     public int Dimension { get; set; } = 1;
 
-    public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
+    public DataValue GetDefaultValue() => Variable.GetDefaultValue(Type, Dimension);
 
     // SignalType, e.g. Measurement, KPI, Setpoint ?
 
@@ -297,7 +297,7 @@ public class Calculation : ModelObject
             Type = DataType.Float64,
             Unit = "ms",
             Dimension = 1,
-            DefaultValue = DataValue.FromDouble(0),
+            DefaultValue = DataValue.Empty,
             Remember = true,
             History = history
         };
@@ -384,7 +384,7 @@ public class Input : ModelObject
 
     public DataValue? Constant { get; set; } // if defined, its value will be used instead of Variable
 
-    public DataValue GetDefaultValue() => Constant ?? DataValue.FromDataType(Type, Dimension);
+    public DataValue GetDefaultValue() => Constant ?? Mediator.Variable.GetDefaultValue(Type, Dimension);
 
     protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
@@ -461,7 +461,7 @@ public class Output : ModelObject
 
     public VariableRef? Variable { get; set; }
 
-    public DataValue GetDefaultValue() => DataValue.FromDataType(Type, Dimension);
+    public DataValue GetDefaultValue() => Mediator.Variable.GetDefaultValue(Type, Dimension);
 
     protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 

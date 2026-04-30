@@ -104,7 +104,8 @@ namespace Ifak.Fast.Mediator.IO.Adapter_Dummy
             VTQ value;
 
             public ValueStore(Timestamp t, DataItem di) {
-                value = new VTQ(t, Quality.Good, di.GetDefaultValue());
+                DataValue defaultValue = DataValue.FromDataType(di.Type, di.Dimension);
+                value = new VTQ(t, Quality.Good, defaultValue);
             }
 
             public override VTQ Get() => value;
