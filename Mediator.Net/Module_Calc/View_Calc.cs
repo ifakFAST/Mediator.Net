@@ -245,6 +245,12 @@ public class View_Calc : ViewBase
                     return ReqResult.OK();
                 }
 
+            case "TriggerCalculation": {
+                    var pars = parameters.Object<TriggerCalculationParams>() ?? throw new Exception("TriggerCalculationParams is null");
+                    await Connection.CallMethod(moduleID, "TriggerCalculation", new NamedValue("CalcID", pars.CalcID));
+                    return ReqResult.OK();
+                }
+
             default:
                 return ReqResult.Bad("Unknown command: " + command);
         }
@@ -506,6 +512,11 @@ public class View_Calc : ViewBase
     }
 
     public class ClearCalcLogParams
+    {
+        public string CalcID { get; set; } = "";
+    }
+
+    public class TriggerCalculationParams
     {
         public string CalcID { get; set; } = "";
     }

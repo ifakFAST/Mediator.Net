@@ -575,7 +575,7 @@ const inputsRequiredValues = computed((): string[] => ['All', 'AtLeastOne', 'Non
 
 const runModeTooltip = `
 <strong>Continuous</strong>:  Runs on the configured cycle (real-time).<br>
-<strong>Triggered</strong>:   Runs when explicitly triggered by another calculation.<br>
+<strong>Triggered</strong>:   Runs when explicitly triggered by another calculation or with the 'Trigger Run' button in the toolbar.<br>
 <strong>InputDriven</strong>: Processes data from historian on Cycle/Offset-aligned timestamps. For each step, every variable input uses the value 
                               at that timestamp or the latest value before it. If no data exists at/after the step timestamp yet, the calculation waits
                               and continues later once new data has arrived. The cursor resumes from Last Run Timestamp + Cycle when available; 

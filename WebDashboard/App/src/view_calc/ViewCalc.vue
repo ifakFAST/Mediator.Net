@@ -34,6 +34,26 @@
           </div>
 
           <v-spacer />
+
+          <v-tooltip
+            v-if="showTriggerRunButton"
+            location="top"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <span v-bind="tooltipProps">
+                <v-btn
+                  :disabled="!canTriggerCalculationRun"
+                  :loading="triggerRunInProgress || selectedCalculationRuntimeState?.IsRunning"
+                  prepend-icon="mdi-play"
+                  variant="text"
+                  @click="triggerCalculationRun"
+                >
+                  Trigger Run
+                </v-btn>
+              </span>
+            </template>
+            <span>{{ triggerRunTooltip }}</span>
+          </v-tooltip>
           <v-btn
             :disabled="!isObjectDirty"
             variant="text"
@@ -225,6 +245,7 @@ const editObjectType = ref<ObjType>('Folder')
 const editObjectVariables = ref<SignalVariables | CalculationVariables | null>(null)
 const newCalcLogEvent = ref<global.CalcLogEvent | null>(null)
 const dlgConfirm = ref(null)
+const triggerRunInProgress = ref(false)
 
 const addDialog = ref({
   show: false,
@@ -277,6 +298,39 @@ const isObjectDeletable = computed((): boolean => {
   return selectedItem.value.parentID !== null
 })
 
+const selectedCalculationRuntimeState = computed((): CalcRuntimeState | null => {
+  if (editObject.value === null || editObjectType.value !== 'Calculation') {
+    return null
+  }
+  return calcRuntimeStates.value.get(editObject.value.ID) ?? null
+})
+
+const selectedCalculation = computed((): calcmodel.Calculation | null => {
+  if (editObject.value === null || editObjectType.value !== 'Calculation') {
+    return null
+  }
+  return editObject.value as calcmodel.Calculation
+})
+
+const showTriggerRunButton = computed((): boolean => selectedCalculation.value?.RunMode === 'Triggered')
+
+const canTriggerCalculationRun = computed((): boolean => {
+  const runtimeState = selectedCalculationRuntimeState.value
+  return showTriggerRunButton.value && !isObjectDirty.value && runtimeState?.State === 'Running' && !runtimeState.IsRunning
+})
+
+const triggerRunTooltip = computed((): string => {
+  const calculation = selectedCalculation.value
+  const runtimeState = selectedCalculationRuntimeState.value
+  if (calculation === null) return ''
+  if (isObjectDirty.value) return 'Save the calculation before triggering a run.'
+  if (!calculation.Enabled) return 'Enable the calculation before triggering a run.'
+  if (runtimeState === null) return 'The calculation is not active in the runtime.'
+  if (runtimeState.State !== 'Running') return `The calculation runtime state is ${runtimeState.State}.`
+  if (runtimeState.IsRunning) return 'The calculation is already running.'
+  return 'Trigger a calculation run.'
+})
+
 watch(selectedNode, (newNode: Node | null, oldNode: Node | null) => {
   if (restoringSelection.value) {
     restoringSelection.value = false
@@ -326,6 +380,20 @@ const saveObject = (): void => {
   dashboard.sendViewRequest('Save', para, (strResponse: string) => {
     initModel(strResponse, id)
   })
+}
+
+const triggerCalculationRun = async (): Promise<void> => {
+  const calculation = selectedCalculation.value
+  if (calculation === null || !canTriggerCalculationRun.value) return
+  triggerRunInProgress.value = true
+  try {
+    const dashboard = window.parent['dashboardApp']
+    await dashboard.sendViewRequestAsync('TriggerCalculation', { CalcID: calculation.ID })
+  } catch (error) {
+    alert('Failed to trigger calculation run: ' + (error instanceof Error ? error.message : error))
+  } finally {
+    triggerRunInProgress.value = false
+  }
 }
 
 const moveObject = (up: boolean): void => {

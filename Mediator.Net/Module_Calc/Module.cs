@@ -499,6 +499,33 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(runtimeStates)));
             }
 
+            case "TriggerCalculation": {
+                string calcID = parameters.FirstOrDefault(p => p.Name == "CalcID").Value ?? "";
+                CalcInstance? inst = adapters.FirstOrDefault(a => a.CalcConfig.ID == calcID);
+                if (inst == null) {
+                    Config.Calculation? config = model.GetAllCalculations().FirstOrDefault(a => a.ID == calcID);
+                    if (config == null) {
+                        return Task.FromResult(Result<DataValue>.Failure($"Calculation '{calcID}' not found."));
+                    }
+                    if (!config.Enabled) {
+                        return Task.FromResult(Result<DataValue>.Failure($"Calculation '{config.Name}' is disabled."));
+                    }
+                    if (string.IsNullOrWhiteSpace(config.Type) || string.IsNullOrWhiteSpace(config.Definition)) {
+                        return Task.FromResult(Result<DataValue>.Failure($"Calculation '{config.Name}' has no active runtime because type or definition is missing."));
+                    }
+                    return Task.FromResult(Result<DataValue>.Failure($"Calculation '{config.Name}' has no active runtime."));
+                }
+                if (inst.CalcConfig.RunMode != Config.RunMode.Triggered) {
+                    return Task.FromResult(Result<DataValue>.Failure($"Calculation '{inst.Name}' is not in Triggered run mode."));
+                }
+                if (inst.State != State.Running) {
+                    return Task.FromResult(Result<DataValue>.Failure($"Calculation '{inst.Name}' is not running."));
+                }
+                inst.Triggered_t = Timestamp.Now;
+                inst.Triggered_dt = null;
+                return Task.FromResult(Result<DataValue>.OK(DataValue.Empty));
+            }
+
             case "ClearCalcLog": {
                 string calcID = parameters.FirstOrDefault(p => p.Name == "CalcID").Value ?? "";
                 CalcInstance? inst = adapters.FirstOrDefault(a => a.CalcConfig.ID == calcID);
