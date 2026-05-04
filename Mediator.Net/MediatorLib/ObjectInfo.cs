@@ -67,7 +67,7 @@ namespace Ifak.Fast.Mediator
 
     public sealed class Variable : IEquatable<Variable>
     {
-        public static DataValue GetDefaultValue(DataType type, int dimension) => DataValue.FromDataType(type, dimension);
+        public static DataValue GetDefaultValue(DataType type, int dimension) => DataValue.Empty; // DataValue.FromDataType(type, dimension);
 
         public Variable() { }
 
