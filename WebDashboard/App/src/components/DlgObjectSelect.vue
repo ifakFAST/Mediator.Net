@@ -112,6 +112,7 @@ const props = defineProps<{
   moduleId: string
   modules: ModuleInfo[]
   allowConfigVariables?: boolean
+  allVariableTypes?: boolean
   type?: string
   filter?: string
 }>()
@@ -196,6 +197,7 @@ const refreshObjectsWithSelection = (modID: string, selectID: string): void => {
     ModuleID: modID,
     ForType: props.type,
     Filter: props.filter,
+    AllVariableTypes: props.allVariableTypes,
   }
   // @ts-ignore
   window.parent['dashboardApp'].sendViewRequest('ReadModuleObjects', para, (strResponse: string) => {

@@ -74,6 +74,18 @@
       @date-window-changed="onDateWindowChanged"
     ></history-plot>
 
+    <history-table
+      v-if="type === 'HistoryTable'"
+      :id="id"
+      :backend-async="backendAsync"
+      :config="config as any"
+      :config-variables="configVariables"
+      :event-name="eventName"
+      :event-payload="eventPayload"
+      :height="height"
+      :width="width"
+    ></history-table>
+
     <config-edit-numeric
       v-if="type === 'ConfigEditNumeric'"
       :id="id"
@@ -217,6 +229,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import HistoryPlot from './widgets/HistoryPlot.vue'
+import HistoryTable from './widgets/HistoryTable.vue'
 import ReadButton from './widgets/ReadButton.vue'
 import VarTable from './widgets/VarTable.vue'
 import VarTable2D from './widgets/VarTable2D.vue'

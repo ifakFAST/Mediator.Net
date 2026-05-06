@@ -371,7 +371,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
             WithMembers
         }
 
-        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID, DataType ForType = DataType.Float64, ObjectFilter Filter = ObjectFilter.WithVariables) {
+        public async Task<ReqResult> UiReq_ReadModuleObjects(string ModuleID, DataType ForType = DataType.Float64, ObjectFilter Filter = ObjectFilter.WithVariables, bool AllVariableTypes = false) {
 
             ObjectInfos objects;
 
@@ -384,7 +384,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
 
             async Task<ObjInfo[]> GetObjInfos() {
                 if (Filter == ObjectFilter.WithVariables) {
-                    Func<Variable, bool> isMatch = GetMatchPredicate(ForType);
+                    Func<Variable, bool> isMatch = AllVariableTypes ? _ => true : GetMatchPredicate(ForType);
                     return ReadObjectsWithVariables(Connection, objects, isMatch);
                 }
                 else {
