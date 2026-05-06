@@ -193,6 +193,7 @@ const onSubDragDrop = (fromID: string, toID: string): void => {
 <style scoped>
 .tree-node {
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .tree-node-drop-target {
