@@ -30,7 +30,12 @@ def initialize(initParams):
     log.info("initialize " + name)
 
 def step(t: datetime, dt: timedelta):
+    
     log.info(x.Value)
+    
+    if not x.HasValidValue or x.IsBad:
+        return # skip this step because input is null or Bad quality
+    
     y.Value = 2 * x.Value
 
 def shutdown():
@@ -122,6 +127,11 @@ class Script {
     Logger log = new Logger(); 
     
     public void Step(Timestamp t, Duration dt) {
+        
+        if (!X1.HasValidValue || !X2.HasValidValue || X1.IsBad || X2.IsBad) {
+            return; // skip this step because inputs are null or have Bad quality
+        }
+        
         Y1.Value = pt_1.Step(u: X1, dt: dt);
         Y2.Value = pt_2.Step(u: X2, dt: dt);
         // log.Info("Info...");
@@ -164,6 +174,10 @@ class Script {
     
     public void Step(Timestamp t, Duration dt) {
         
+        if (!X.HasValidValue) {
+            return; // skip this step because input is null
+        }
+        
         if (X.Value &gt; 10) {
             alarm1.Set(Level.Warn, "X is above limit: " + X.Value);
         }
@@ -195,6 +209,10 @@ class Script {
     EventLog eventlog = new EventLog(messagePrefix: "");
 
     public void Step(Timestamp t, Duration dt) {
+
+        if (!X.HasValidValue) {
+            return; // skip this step because input is null
+        }
 
         try {
             
