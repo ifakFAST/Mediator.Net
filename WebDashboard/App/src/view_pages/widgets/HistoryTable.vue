@@ -43,7 +43,6 @@
       <div class="history-table-status">
         <template v-if="hasConfiguredVariable">
           <span v-if="historyLoading">Loading...</span>
-          <span v-else-if="historyRows.length === 0">No history data.</span>
           <span v-else-if="totalCount !== null">Total: {{ totalCount.toLocaleString() }}</span>
           <v-btn
             v-else
