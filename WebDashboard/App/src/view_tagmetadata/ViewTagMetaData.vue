@@ -6,156 +6,166 @@
     <v-row>
       <v-col>
         <Splitter
-          :default-percent="75"
-          style="height: 550px; overflow-y: auto"
+          horizontal
+          :default-percent="60"
+          style="height: calc(100vh - 100px); overflow: hidden"
         >
           <template #left-pane>
-            <FlowEditor
-              :height="500"
-              :model="flowModel"
-              :blockParamsChange="blockParamsChange"
-              :block2ContextMenu="block2ContextMenu"
-              :saveEnabled="modelModified"
-              :saving="saving"
-              :externalCommand="externalCommand"
-              @modified="onFlowModelModified"
-              @blockDrop="onBlockDrop"
-              @interactive="onInteractiveClick"
-              @contextblock="onBlockContextClicked"
-              @save="saveFlowModel"
-              @block_selection="onBlockSelectionChanged"
-            />
-          </template>
-          <template #right-pane>
-            <v-container>
-              <v-tabs
-                v-model="currentTab"
-                density="compact"
-              >
-                <v-tab value="blocks">BlockLib</v-tab>
-                <v-tab value="tags">Tags</v-tab>
-              </v-tabs>
-
-              <v-window v-model="currentTab">
-                <v-window-item
-                  value="blocks"
-                  :transition="false"
-                  :reverse-transition="false"
-                >
-                  <v-container>
-                    <p
-                      v-for="block in blockLibrary"
-                      :key="block.name"
-                      class="blockitem"
-                      draggable="true"
-                      @dragstart="
-                        (e) => {
-                          onBlockDragStart(block, e)
-                        }
-                      "
-                    >
-                      {{ block.name }}
-                    </p>
-                    <p @click="onEditBlockLibrary">Edit block library</p>
-                  </v-container>
-                </v-window-item>
-                <v-window-item
-                  value="tags"
-                  :transition="false"
-                  :reverse-transition="false"
-                >
-                  <v-container>
-                    <div class="d-flex align-center mb-2">
-                      <div class="d-flex flex-nowrap overflow-auto flex-grow-0 flex-shrink-0">
-                        <v-btn
-                          v-for="m in moduleInfos"
-                          :key="m.ID"
-                          density="compact"
-                          class="mr-1"
-                          :color="m.ID === selectedModuleId ? 'primary' : undefined"
-                          :variant="m.ID === selectedModuleId ? 'elevated' : 'text'"
-                          @click="() => onSelectModule(m.ID)"
-                        >
-                          {{ m.Name }}
-                        </v-btn>
-                      </div>
-                      <v-text-field
-                        v-model="tagsSearch"
-                        label="Search tags"
-                        single-line
-                        hide-details
-                        density="compact"
-                        class="ml-2 flex-grow-1"
-                      />
-                    </div>
-                    <div>
-                      <p
-                        v-for="t in filteredAvailableTags"
-                        :key="t.ID"
-                        class="mb-1"
-                        draggable="true"
-                        @dragstart="(e) => onTagDragStart(t, e)"
-                      >
-                        {{ t.Name }}
-                      </p>
-                      <p v-if="filteredAvailableTags.length === 0">No tags found</p>
-                    </div>
-                  </v-container>
-                </v-window-item>
-              </v-window>
-            </v-container>
-          </template>
-        </Splitter>
-
-        <v-card>
-          <v-card-text>
-            <div
-              class="d-flex align-center mb-4"
-              style="gap: 8px"
+            <Splitter
+              :default-percent="75"
+              style="height: 100%; overflow: hidden"
             >
-              <div class="text-h6 mr-4">Assigned Tags</div>
-
-              <v-text-field
-                v-model="search"
-                label="Search"
-                style="max-width: 220px"
-              ></v-text-field>
-
-              <v-btn
-                density="compact"
-                variant="text"
-                @click="onDeleteSelected"
-                :disabled="selectedTagIDs.length === 0"
-                icon="mdi-delete"
-                title="Delete"
-                aria-label="Delete"
-              />
-            </div>
-
-            <v-data-table
-              :headers="headers"
-              :items="tagsFromSelection"
-              :items-per-page="25"
-              :search="search"
-              density="compact"
-              class="elevation-1"
-              show-select
-              item-value="id"
-              v-model="selectedTagIDs"
-            >
-              <template #item.actions="{ item }">
-                <v-btn
-                  density="compact"
-                  variant="text"
-                  icon="mdi-pencil"
-                  title="Edit"
-                  aria-label="Edit"
-                  @click="onEditTagFromRow(item)"
+              <template #left-pane>
+                <FlowEditor
+                  auto-height
+                  :height="500"
+                  :model="flowModel"
+                  :blockParamsChange="blockParamsChange"
+                  :block2ContextMenu="block2ContextMenu"
+                  :saveEnabled="modelModified"
+                  :saving="saving"
+                  :externalCommand="externalCommand"
+                  @modified="onFlowModelModified"
+                  @blockDrop="onBlockDrop"
+                  @interactive="onInteractiveClick"
+                  @contextblock="onBlockContextClicked"
+                  @save="saveFlowModel"
+                  @block_selection="onBlockSelectionChanged"
                 />
               </template>
-            </v-data-table>
-          </v-card-text>
-        </v-card>
+              <template #right-pane>
+                <v-container>
+                  <v-tabs
+                    v-model="currentTab"
+                    density="compact"
+                  >
+                    <v-tab value="blocks">BlockLib</v-tab>
+                    <v-tab value="tags">Tags</v-tab>
+                  </v-tabs>
+
+                  <v-window v-model="currentTab">
+                    <v-window-item
+                      value="blocks"
+                      :transition="false"
+                      :reverse-transition="false"
+                    >
+                      <v-container>
+                        <p
+                          v-for="block in blockLibrary"
+                          :key="block.name"
+                          class="blockitem"
+                          draggable="true"
+                          @dragstart="
+                            (e) => {
+                              onBlockDragStart(block, e)
+                            }
+                          "
+                        >
+                          {{ block.name }}
+                        </p>
+                        <p @click="onEditBlockLibrary">Edit block library</p>
+                      </v-container>
+                    </v-window-item>
+                    <v-window-item
+                      value="tags"
+                      :transition="false"
+                      :reverse-transition="false"
+                    >
+                      <v-container>
+                        <div class="d-flex align-center mb-2">
+                          <div class="d-flex flex-nowrap overflow-auto flex-grow-0 flex-shrink-0">
+                            <v-btn
+                              v-for="m in moduleInfos"
+                              :key="m.ID"
+                              density="compact"
+                              class="mr-1"
+                              :color="m.ID === selectedModuleId ? 'primary' : undefined"
+                              :variant="m.ID === selectedModuleId ? 'elevated' : 'text'"
+                              @click="() => onSelectModule(m.ID)"
+                            >
+                              {{ m.Name }}
+                            </v-btn>
+                          </div>
+                          <v-text-field
+                            v-model="tagsSearch"
+                            label="Search tags"
+                            single-line
+                            hide-details
+                            density="compact"
+                            class="ml-2 flex-grow-1"
+                          />
+                        </div>
+                        <div>
+                          <p
+                            v-for="t in filteredAvailableTags"
+                            :key="t.ID"
+                            class="mb-1"
+                            draggable="true"
+                            @dragstart="(e) => onTagDragStart(t, e)"
+                          >
+                            {{ t.Name }}
+                          </p>
+                          <p v-if="filteredAvailableTags.length === 0">No tags found</p>
+                        </div>
+                      </v-container>
+                    </v-window-item>
+                  </v-window>
+                </v-container>
+              </template>
+            </Splitter>
+          </template>
+          <template #right-pane>
+            <v-card class="h-100 overflow-y-auto">
+              <v-card-text>
+                <div
+                  class="d-flex align-center mb-4"
+                  style="gap: 8px"
+                >
+                  <div class="text-h6 mr-4">Assigned Tags</div>
+
+                  <v-text-field
+                    v-model="search"
+                    label="Search"
+                    style="max-width: 220px"
+                  ></v-text-field>
+
+                  <v-btn
+                    density="compact"
+                    variant="text"
+                    @click="onDeleteSelected"
+                    :disabled="selectedTagIDs.length === 0"
+                    icon="mdi-delete"
+                    title="Delete"
+                    aria-label="Delete"
+                  />
+                </div>
+
+                <v-data-table
+                  :headers="headers"
+                  :items="tagsFromSelection"
+                  :items-per-page="25"
+                  :search="search"
+                  density="compact"
+                  class="elevation-1"
+                  show-select
+                  item-value="id"
+                  v-model="selectedTagIDs"
+                >
+                  <template #item.actions="{ item }">
+                    <v-btn
+                      density="compact"
+                      variant="text"
+                      icon="mdi-pencil"
+                      title="Edit"
+                      aria-label="Edit"
+                      @click="onEditTagFromRow(item)"
+                    />
+                  </template>
+                </v-data-table>
+              </v-card-text>
+            </v-card>
+          </template>
+        </Splitter>
       </v-col>
     </v-row>
   </v-container>

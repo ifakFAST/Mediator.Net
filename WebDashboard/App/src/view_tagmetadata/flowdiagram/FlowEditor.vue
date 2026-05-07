@@ -1,6 +1,9 @@
 <template>
-  <div>
-    <table>
+  <div
+    ref="rootRef"
+    :class="{ 'flow-editor-auto-height': autoHeight }"
+  >
+    <table ref="toolbarRef">
       <tbody>
         <tr>
           <td>
@@ -163,7 +166,7 @@
       :diagram="currentDiagram"
       :changeStackCount="changeStack.length"
       :scale="scale"
-      :height="height"
+      :height="canvasHeight"
       :cut="cmdCut"
       :copy="cmdCopy"
       :paste="cmdPaste"
@@ -198,7 +201,11 @@
         >
           <v-list-item-title class="context-menu-item-title">
             <span>{{ item.title }}</span>
-            <span v-if="item.shortcut" class="context-menu-shortcut">{{ item.shortcut }}</span>
+            <span
+              v-if="item.shortcut"
+              class="context-menu-shortcut"
+              >{{ item.shortcut }}</span
+            >
           </v-list-item-title>
         </v-list-item>
       </v-list>
@@ -223,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive, nextTick } from 'vue'
+import { ref, computed, watch, reactive, nextTick, onMounted, onUnmounted } from 'vue'
 import FlowCanvas from './canvas/FlowCanvas.vue'
 import DlgBlockRename from './DlgBlockRename.vue'
 import DlgBlockParams from './DlgBlockParams.vue'
@@ -250,6 +257,7 @@ interface ContextMenuItem {
 // Props
 const props = defineProps<{
   height: number
+  autoHeight?: boolean
   model: simu.FlowModel
   blockParamsChange: simu.BlockParamsChanged
   block2ContextMenu: (block: simu.Block) => string[]
@@ -277,6 +285,8 @@ const copyModel = (m: simu.FlowModel): simu.FlowModel => {
 
 // Reactive state
 const flowCanvasRef = ref<InstanceType<typeof FlowCanvas> | null>(null)
+const rootRef = ref<HTMLElement | null>(null)
+const toolbarRef = ref<HTMLElement | null>(null)
 const myModel = ref<simu.FlowModel>(copyModel(props.model))
 const currentDiagramPath = ref<string[]>([])
 const changeStack = ref<command.Command[]>([])
@@ -303,6 +313,27 @@ const selectedBlockNames = ref<string[]>([])
 
 const selectedLayers = ref<string[]>(['Water', 'Signal', 'Air'])
 const allLayers = ref<string[]>(['Water', 'Signal', 'Air'])
+const canvasHeight = ref(props.height)
+let resizeObserver: ResizeObserver | null = null
+
+const autoHeight = computed(() => props.autoHeight === true)
+
+function updateCanvasHeight(): void {
+  if (!autoHeight.value) {
+    canvasHeight.value = props.height
+    return
+  }
+
+  const root = rootRef.value
+  const toolbar = toolbarRef.value
+  if (!root || root.clientHeight <= 0) {
+    canvasHeight.value = props.height
+    return
+  }
+
+  const toolbarHeight = toolbar?.offsetHeight ?? 0
+  canvasHeight.value = Math.max(100, root.clientHeight - toolbarHeight)
+}
 
 // Computed properties
 const currentDiagram = computed((): simu.FlowDiagram => {
@@ -346,6 +377,29 @@ watch(
     redoStack.value = []
   },
 )
+
+watch(
+  () => props.height,
+  () => {
+    updateCanvasHeight()
+  },
+)
+
+watch(autoHeight, () => {
+  nextTick(updateCanvasHeight)
+})
+
+onMounted(() => {
+  updateCanvasHeight()
+  resizeObserver = new ResizeObserver(() => updateCanvasHeight())
+  if (rootRef.value) resizeObserver.observe(rootRef.value)
+  if (toolbarRef.value) resizeObserver.observe(toolbarRef.value)
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
 
 watch(
   () => props.blockParamsChange,
@@ -615,5 +669,10 @@ const onBlockSelectionChanged = (blockNames: string[]): void => {
 .context-menu-shortcut {
   color: rgba(var(--v-theme-on-surface), 0.6);
   font-size: 0.85em;
+}
+
+.flow-editor-auto-height {
+  height: 100%;
+  overflow: hidden;
 }
 </style>
