@@ -32,6 +32,22 @@
         {{ connectionText }}
       </v-alert>
 
+      <v-tooltip
+        v-if="timeZoneText"
+        location="bottom"
+        :open-delay="1000"
+      >
+        <template v-slot:activator="{ props }">
+          <span
+            class="my-toolbar-timezone"
+            v-bind="props"
+          >
+            {{ timeZoneText }}
+          </span>
+        </template>
+        <span>{{ timeZoneTooltip }}</span>
+      </v-tooltip>
+
       <v-menu
         v-if="showTime"
         offset-y
@@ -926,6 +942,17 @@ const timeRangeString = computed(() => {
   return ''
 })
 
+const timeZoneText = computed(() => {
+  return globalState.timeZoneIanaId || globalState.timeZoneDisplayName
+})
+
+const timeZoneTooltip = computed(() => {
+  if (globalState.timeZoneDisplayName && globalState.timeZoneIanaId) {
+    return `${globalState.timeZoneIanaId} - ${globalState.timeZoneDisplayName}`
+  }
+  return timeZoneText.value
+})
+
 const stepSize = computed(() => globalState.diffStepSizeMS)
 
 const showRangeStepButtonLeft = computed(() => props.showTime)
@@ -997,5 +1024,19 @@ const currentViewComponent = computed(() => {
   text-transform: none;
   margin-left: 15px;
   margin-right: 15px;
+}
+
+.my-toolbar-timezone {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.5rem;
+  margin-left: 16px;
+  margin-right: 20px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 </style>
