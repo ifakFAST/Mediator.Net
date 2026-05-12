@@ -38,11 +38,15 @@
                       "MaxDataPoints": 8000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -303,11 +307,18 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "Left",
-                      "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "ClipLower": 0.0,
+                        "IncludeLower": 1.0,
+                        "IncludeUpper": 4.0,
+                        "ClipUpper": 5.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -331,18 +342,6 @@
                         "Checked": true,
                         "Variable": {
                           "Object": "IO:Data_002",
-                          "Name": "Value"
-                        }
-                      },
-                      {
-                        "Name": "TSS",
-                        "Color": "#A05000",
-                        "Size": 3.0,
-                        "SeriesType": "Scatter",
-                        "Axis": "Right",
-                        "Checked": true,
-                        "Variable": {
-                          "Object": "IO:Data_003",
                           "Name": "Value"
                         }
                       },
@@ -389,11 +388,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "Test",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -457,11 +460,18 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "ClipLower": 0.0,
+                        "IncludeLower": 0.0,
+                        "IncludeUpper": 3.0,
+                        "ClipUpper": 3.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -492,49 +502,7 @@
             },
             {
               "Width": "SixOfTwelve",
-              "Widgets": [
-                {
-                  "ID": "W_d607",
-                  "Type": "HistoryPlot",
-                  "Width": "98%",
-                  "Height": "300px",
-                  "Config": {
-                    "PlotConfig": {
-                      "MaxDataPoints": 12000,
-                      "FilterByQuality": "ExcludeBad",
-                      "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
-                      "LeftAxisScaleDivisor": 1.0,
-                      "RightAxisName": "",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
-                    },
-                    "Items": [
-                      {
-                        "Name": "NH",
-                        "Color": "#1BA1E2",
-                        "Size": 3.0,
-                        "SeriesType": "Scatter",
-                        "Axis": "Left",
-                        "Checked": true,
-                        "Variable": {
-                          "Object": "IO:Data_002",
-                          "Name": "Value"
-                        }
-                      }
-                    ],
-                    "DataExport": {
-                      "CSV": {
-                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
-                        "ColumnSeparator": ","
-                      },
-                      "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
-                      }
-                    }
-                  }
-                }
-              ]
+              "Widgets": []
             }
           ]
         }
@@ -658,11 +626,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
                       "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true,
-                      "RightAxisScaleDivisor": 1.0
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -1021,50 +993,88 @@
         {
           "Columns": [
             {
-              "Width": "Fill",
+              "Width": "TwelveOfTwelve",
               "Widgets": [
                 {
-                  "ID": "w12",
-                  "Type": "HistoryPlot",
+                  "ID": "W_942a",
+                  "Type": "HistoryTable",
                   "Width": "100%",
-                  "Height": "600px",
+                  "Height": "",
                   "Config": {
-                    "PlotConfig": {
-                      "MaxDataPoints": 12000,
-                      "FilterByQuality": "ExcludeNone",
-                      "LeftAxisName": "",
-                      "LeftAxisStartFromZero": false,
-                      "LeftAxisScaleDivisor": 1.0,
-                      "RightAxisName": "",
-                      "RightAxisStartFromZero": false,
-                      "RightAxisScaleDivisor": 1.0
+                    "Variable": {
+                      "Object": "IO:Data_001",
+                      "Name": "Value"
                     },
-                    "Items": [
-                      {
-                        "Name": "Sum0102",
-                        "Color": "#1BA1E2",
-                        "Size": 3.0,
-                        "SeriesType": "Scatter",
-                        "Axis": "Left",
-                        "Checked": true,
-                        "Variable": {
-                          "Object": "CALC:Sum0102",
-                          "Name": "Value"
-                        }
-                      }
-                    ],
-                    "DataExport": {
-                      "CSV": {
-                        "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
-                        "ColumnSeparator": ","
-                      },
-                      "Spreadsheet": {
-                        "TimestampFormat": "yyyy/mm/dd hh:mm:ss;@"
-                      }
-                    }
+                    "RowCount": 7,
+                    "ShowQualityColumn": false,
+                    "ColorQualityGood": "",
+                    "ColorQualityUncertain": "orange",
+                    "ColorQualityBad": "red",
+                    "StructColumns": "Type, Message",
+                    "InitialPosition": "Oldest",
+                    "TimeColumnTitle": "Time",
+                    "TimestampFormat": "yyyy'-'MM'-'dd' 'HH':'mm':'ss",
+                    "FractionDigits": -8
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ID": "P_36e7",
+      "Name": "BarChart",
+      "Rows": [
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": [
+                {
+                  "ID": "W_3b14",
+                  "Type": "TimeAggregatedBarChart",
+                  "Width": "100%",
+                  "Height": "300px",
+                  "Config": {
+                    "ChartConfig": {
+                      "StartTime": "2025-01-01T00:00:00Z",
+                      "TimeGranularity": "Monthly",
+                      "WeekStart": "Monday",
+                      "ShowSumOverBars": true,
+                      "SumFractionDigits": 1
+                    },
+                    "DataSeries": [
+                      {
+                        "Name": "Series 1",
+                        "Color": "#720019",
+                        "Variable": {
+                          "Object": "IO:Data_001",
+                          "Name": "Value"
+                        },
+                        "Aggregation": "Average"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
+            }
+          ]
+        },
+        {
+          "Columns": [
+            {
+              "Width": "Fill",
+              "Widgets": []
+            },
+            {
+              "Width": "Fill",
+              "Widgets": []
             }
           ]
         }

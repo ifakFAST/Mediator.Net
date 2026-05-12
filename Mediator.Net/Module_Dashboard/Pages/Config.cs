@@ -162,11 +162,15 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 MaxDataPoints = plot.MaxDataPoints,
                 FilterByQuality = plot.FilterByQuality,
                 LeftAxisName = plot.LeftAxisName,
-                LeftAxisStartFromZero = plot.LeftAxisStartFromZero,
+                LeftAxisRange = new Widgets.AxisRangeConfig {
+                    IncludeLower = plot.LeftAxisStartFromZero ? 0 : (double?)null,
+                    ClipUpper = plot.LeftAxisLimitY,
+                },
                 RightAxisName = plot.RightAxisName,
-                RightAxisStartFromZero = plot.RightAxisStartFromZero,
-                LeftAxisLimitY = plot.LeftAxisLimitY,
-                RightAxisLimitY = plot.RightAxisLimitY,
+                RightAxisRange = new Widgets.AxisRangeConfig {
+                    IncludeLower = plot.RightAxisStartFromZero ? 0 : (double?)null,
+                    ClipUpper = plot.RightAxisLimitY,
+                },
             };
         }
 

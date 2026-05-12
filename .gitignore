@@ -127,3 +127,4 @@ UpgradeLog*.htm
 /Mediator.Net/Module_IO/Properties/launchSettings.json
 /Mediator.Net/Module_Publish/Properties/launchSettings.json
 /Mediator.Net/Module_TagMetaData/Properties/launchSettings.json
+/WebDashboard/App/.claude/settings.json

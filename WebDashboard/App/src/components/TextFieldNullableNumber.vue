@@ -2,6 +2,7 @@
   <v-text-field
     :label="label"
     :model-value="valueStr"
+    :rules="rules"
     @update:model-value="updateValue"
   ></v-text-field>
 </template>
@@ -13,11 +14,13 @@ import { computed } from 'vue'
 interface Props {
   modelValue?: number | null
   label?: string
+  rules?: ((value: string) => true | string)[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: null,
   label: '',
+  rules: () => [],
 })
 
 // Emits

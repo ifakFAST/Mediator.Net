@@ -27,6 +27,8 @@
     </View>
     <View id="IkBsa5" name="History" type="Pages" group="">
       <Config>{
+  "HideHeader": false,
+  "ConfigVariables": [],
   "Pages": [
     {
       "ID": "Measurements",
@@ -47,9 +49,15 @@
                       "MaxDataPoints": 9000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "Measurements",
-                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -137,9 +145,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -197,9 +211,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -271,7 +291,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "SO Smooth",
@@ -284,7 +305,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "NH",
@@ -297,7 +319,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "NH Smooth",
@@ -310,7 +333,8 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       },
                       {
                         "Name": "TSS",
@@ -323,9 +347,12 @@
                         "WarnBelow": null,
                         "WarnAbove": null,
                         "AlarmBelow": null,
-                        "AlarmAbove": null
+                        "AlarmAbove": null,
+                        "EnumValues": ""
                       }
-                    ]
+                    ],
+                    "ShowHeader": true,
+                    "ShowTrendColumn": true
                   }
                 }
               ]
@@ -343,9 +370,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {
@@ -403,9 +436,15 @@
                       "MaxDataPoints": 12000,
                       "FilterByQuality": "ExcludeBad",
                       "LeftAxisName": "",
-                      "LeftAxisStartFromZero": true,
+                      "LeftAxisScaleDivisor": 1.0,
+                      "LeftAxisRange": {
+                        "IncludeLower": 0.0
+                      },
                       "RightAxisName": "",
-                      "RightAxisStartFromZero": true
+                      "RightAxisScaleDivisor": 1.0,
+                      "RightAxisRange": {
+                        "IncludeLower": 0.0
+                      }
                     },
                     "Items": [
                       {

@@ -260,7 +260,7 @@
 
     <v-dialog
       v-model="editorPlot.show"
-      max-width="400px"
+      max-width="500px"
       persistent
       @keydown="onEditorPlotKeydown"
     >
@@ -273,66 +273,94 @@
             <tbody>
               <tr>
                 <td>
-                  <v-text-field
-                    v-model="editorPlot.plot.LeftAxisName"
-                    label="Left Axis Caption"
-                  ></v-text-field>
+                  <div class="axis-field-row">
+                    <v-text-field
+                      v-model="editorPlot.plot.LeftAxisName"
+                      label="Left Axis Caption"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="editorPlot.plot.RightAxisName"
+                      label="Right Axis Caption"
+                    ></v-text-field>
+                  </div>
                 </td>
               </tr>
               <tr>
                 <td>
-                  <v-text-field
-                    v-model="editorPlot.plot.LeftAxisScaleDivisor"
-                    label="Left Axis Scale Divisor"
-                  ></v-text-field>
+                  <div class="axis-field-row">
+                    <v-text-field
+                      v-model="editorPlot.plot.LeftAxisScaleDivisor"
+                      label="Left Axis Scale Divisor"
+                    ></v-text-field>
+                    <v-text-field
+                      v-model="editorPlot.plot.RightAxisScaleDivisor"
+                      label="Right Axis Scale Divisor"
+                    ></v-text-field>
+                  </div>
                 </td>
               </tr>
               <tr>
                 <td>
-                  <v-checkbox
-                    v-model="editorPlot.plot.LeftAxisStartFromZero"
-                    label="Left Y Axis: Start From Zero"
-                  ></v-checkbox>
+                  <div class="axis-edge-row">
+                    <div>
+                      <div class="axis-edge-label">Left Y Axis — Upper edge</div>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.LeftAxisRange.ClipUpper"
+                        label="never above"
+                        :rules="[validateLeftAxisRange]"
+                      ></text-field-nullable-number>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.LeftAxisRange.IncludeUpper"
+                        label="always includes"
+                        :rules="[validateLeftAxisRange]"
+                      ></text-field-nullable-number>
+                    </div>
+                    <div>
+                      <div class="axis-edge-label">Right Y Axis — Upper edge</div>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.RightAxisRange.ClipUpper"
+                        label="never above"
+                        :rules="[validateRightAxisRange]"
+                      ></text-field-nullable-number>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.RightAxisRange.IncludeUpper"
+                        label="always includes"
+                        :rules="[validateRightAxisRange]"
+                      ></text-field-nullable-number>
+                    </div>
+                  </div>
                 </td>
               </tr>
               <tr>
                 <td>
-                  <text-field-nullable-number
-                    v-model="editorPlot.plot.LeftAxisLimitY"
-                    label="Left Y Axis: Limit Y Value"
-                  ></text-field-nullable-number>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <v-text-field
-                    v-model="editorPlot.plot.RightAxisName"
-                    label="Right Axis Caption"
-                  ></v-text-field>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <v-text-field
-                    v-model="editorPlot.plot.RightAxisScaleDivisor"
-                    label="Right Axis Scale Divisor"
-                  ></v-text-field>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <v-checkbox
-                    v-model="editorPlot.plot.RightAxisStartFromZero"
-                    label="Right Y Axis: Start From Zero"
-                  ></v-checkbox>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <text-field-nullable-number
-                    v-model="editorPlot.plot.RightAxisLimitY"
-                    label="Right Y Axis: Limit Y Value"
-                  ></text-field-nullable-number>
+                  <div class="axis-edge-row">
+                    <div>
+                      <div class="axis-edge-label">Left Y Axis — Lower edge</div>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.LeftAxisRange.IncludeLower"
+                        label="always includes"
+                        :rules="[validateLeftAxisRange]"
+                      ></text-field-nullable-number>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.LeftAxisRange.ClipLower"
+                        label="never below"
+                        :rules="[validateLeftAxisRange]"
+                      ></text-field-nullable-number>
+                    </div>
+                    <div>
+                      <div class="axis-edge-label">Right Y Axis — Lower edge</div>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.RightAxisRange.IncludeLower"
+                        label="always includes"
+                        :rules="[validateRightAxisRange]"
+                      ></text-field-nullable-number>
+                      <text-field-nullable-number
+                        v-model="editorPlot.plot.RightAxisRange.ClipLower"
+                        label="never below"
+                        :rules="[validateRightAxisRange]"
+                      ></text-field-nullable-number>
+                    </div>
+                  </div>
                 </td>
               </tr>
               <tr>
@@ -568,13 +596,18 @@ interface PlotConfig {
   MaxDataPoints: number
   FilterByQuality: QualityFilter
   LeftAxisName: string
-  LeftAxisStartFromZero: boolean
-  LeftAxisLimitY?: number | null
   LeftAxisScaleDivisor: number
+  LeftAxisRange: AxisRangeConfig
   RightAxisName: string
-  RightAxisStartFromZero: boolean
-  RightAxisLimitY?: number | null
   RightAxisScaleDivisor: number
+  RightAxisRange: AxisRangeConfig
+}
+
+interface AxisRangeConfig {
+  ClipLower?: number | null
+  IncludeLower?: number | null
+  IncludeUpper?: number | null
+  ClipUpper?: number | null
 }
 
 type QualityFilter = 'ExcludeNone' | 'ExcludeBad' | 'ExcludeNonGood'
@@ -734,13 +767,11 @@ const editorPlot = ref<EditorPlot>({
     MaxDataPoints: 100,
     FilterByQuality: 'ExcludeBad',
     LeftAxisName: '',
-    LeftAxisStartFromZero: true,
-    LeftAxisLimitY: null,
     LeftAxisScaleDivisor: 1,
+    LeftAxisRange: { ClipLower: null, IncludeLower: 0, IncludeUpper: null, ClipUpper: null },
     RightAxisName: '',
-    RightAxisStartFromZero: true,
-    RightAxisLimitY: null,
     RightAxisScaleDivisor: 1,
+    RightAxisRange: { ClipLower: null, IncludeLower: 0, IncludeUpper: null, ClipUpper: null },
   },
 })
 const selectObject = ref<SelectObject>({
@@ -783,21 +814,8 @@ const items = computed(() => {
   return props.config.Items ?? []
 })
 
-const plotConfig = computed(() => {
-  return (
-    props.config.PlotConfig ?? {
-      MaxDataPoints: 1000,
-      FilterByQuality: 'ExcludeBad',
-      LeftAxisName: '',
-      LeftAxisLimitY: null,
-      LeftAxisScaleDivisor: 1,
-      RightAxisName: '',
-      LeftAxisStartFromZero: true,
-      RightAxisStartFromZero: true,
-      RightAxisLimitY: null,
-      RightAxisScaleDivisor: 1,
-    }
-  )
+const plotConfig = computed<PlotConfig>(() => {
+  return props.config.PlotConfig
 })
 
 const graphStyle = computed(() => {
@@ -810,7 +828,6 @@ const graphStyle = computed(() => {
 })
 
 const options = computed(() => {
-  const plotConfigValue = plotConfig.value
   const itemsValue = items.value
 
   const makeLabel = (it: ItemConfig) => {
@@ -834,13 +851,11 @@ const options = computed(() => {
     y: {
       independentTicks: true,
       drawGrid: true,
-      includeZero: plotConfigValue.LeftAxisStartFromZero,
       gridLinePattern: null,
     },
     y2: {
       independentTicks: true,
       drawGrid: true,
-      includeZero: plotConfigValue.RightAxisStartFromZero,
       gridLinePattern: [2, 2],
     },
   }
@@ -880,7 +895,10 @@ const options = computed(() => {
     }
 
     emit('date-window-changed', dateWindow)
-    enforceYAxisLimitsWithCurrentRanges(yRanges)
+
+    // A vertical mouse zoom sets valueRange first. Reapplying the "always includes"
+    // bounds here would immediately expand the axis again and undo the zoom.
+    enforceYAxisLimitsWithCurrentRanges(yRanges, !theGraphValue.isZoomed('y'))
   }
   /*
   const drawPointCallback = (g: any, seriesName: string, canvasContext: CanvasRenderingContext2D, cx: number, cy: number, color: string, pointSize: number, idx: number) => {
@@ -980,6 +998,33 @@ const isItemsOK = computed(() => {
 // Methods
 const closeContextMenu = (): void => {
   contextMenu.value.show = false
+}
+
+const getAxisRangeValidationError = (range: AxisRangeConfig): true | string => {
+  if (range.IncludeUpper != null && range.ClipUpper != null && range.IncludeUpper > range.ClipUpper) {
+    return 'Upper edge: always includes must not be greater than never above.'
+  }
+  if (range.IncludeLower != null && range.ClipLower != null && range.IncludeLower < range.ClipLower) {
+    return 'Lower edge: always includes must not be less than never below.'
+  }
+  if (range.ClipLower != null && range.ClipUpper != null && range.ClipLower > range.ClipUpper) {
+    return 'Never below must not be greater than never above.'
+  }
+  if (range.ClipLower != null && range.IncludeUpper != null && range.ClipLower > range.IncludeUpper) {
+    return 'Never below must not be greater than upper always includes.'
+  }
+  if (range.IncludeLower != null && range.ClipUpper != null && range.IncludeLower > range.ClipUpper) {
+    return 'Lower always includes must not be greater than never above.'
+  }
+  return true
+}
+
+const validateLeftAxisRange = (_value: string): true | string => {
+  return getAxisRangeValidationError(editorPlot.value.plot.LeftAxisRange)
+}
+
+const validateRightAxisRange = (_value: string): true | string => {
+  return getAxisRangeValidationError(editorPlot.value.plot.RightAxisRange)
 }
 
 const determineTimestampStep = (rangeMs: number): number => {
@@ -1317,42 +1362,54 @@ const enforceYAxisLimits = (): void => {
   })
 }
 
-const enforceYAxisLimitsWithCurrentRanges = (yRanges: number[][]): void => {
-  const plotConfigValue = props.config.PlotConfig
-  const y1UpperBound: number | null = plotConfigValue.LeftAxisLimitY ?? null
-  const y2UpperBound: number | null = plotConfigValue.RightAxisLimitY ?? null
+const hasAnyBound = (range: AxisRangeConfig): boolean => {
+  return range.ClipLower != null || range.IncludeLower != null || range.IncludeUpper != null || range.ClipUpper != null
+}
 
-  if (y1UpperBound !== null || y2UpperBound !== null) {
-    const theGraphValue = dyGraph.value
+const applyBounds = (autoLow: number, autoHigh: number, range: AxisRangeConfig, includeAlwaysReachBounds = true): [number, number] => {
+  let low = autoLow
+  let high = autoHigh
+  if (range.ClipLower != null && low < range.ClipLower) low = range.ClipLower
+  if (includeAlwaysReachBounds && range.IncludeLower != null && low > range.IncludeLower) low = range.IncludeLower
+  if (includeAlwaysReachBounds && range.IncludeUpper != null && high < range.IncludeUpper) high = range.IncludeUpper
+  if (range.ClipUpper != null && high > range.ClipUpper) high = range.ClipUpper
+  return [low, high]
+}
 
-    const y1 = yRanges[0]
-    const y2 = yRanges[1] ?? [0, 0.001]
-    const y1Lower = y1[0]
-    const y2Lower = y2[0]
-    const y1Upper = y1[1]
-    const y2Upper = y2[1]
+const enforceYAxisLimitsWithCurrentRanges = (yRanges: number[][], includeAlwaysReachBounds = true): void => {
 
-    const y1NeedsUpdate = y1UpperBound !== null && y1Upper > y1UpperBound
-    const y2NeedsUpdate = y2UpperBound !== null && y2Upper > y2UpperBound
+  const leftRange = plotConfig.value.LeftAxisRange
+  const rightRange = plotConfig.value.RightAxisRange
 
-    if (y1NeedsUpdate || y2NeedsUpdate) {
-      const newY1Upper = y1UpperBound === null ? y1Upper : Math.min(y1Upper, y1UpperBound)
-      const newY2Upper = y2UpperBound === null ? y2Upper : Math.min(y2Upper, y2UpperBound)
+  // console.info('enforceYAxisLimitsWithCurrentRanges', JSON.stringify(leftRange), JSON.stringify(rightRange))
 
-      const axesValueRange = {
-        y: {
-          valueRange: [y1Lower, newY1Upper],
-        },
-        y2: {
-          valueRange: [y2Lower, newY2Upper],
-        },
-      }
-
-      theGraphValue.updateOptions({
-        axes: axesValueRange,
-      })
-    }
+  if (!hasAnyBound(leftRange) && !hasAnyBound(rightRange)) {
+    return
   }
+
+  const theGraphValue = dyGraph.value
+  if (!theGraphValue) return
+
+  const y1 = yRanges[0]
+  const y2 = yRanges[1] ?? [0, 0.001]
+
+  const [newY1Lower, newY1Upper] = applyBounds(y1[0], y1[1], leftRange, includeAlwaysReachBounds)
+  const [newY2Lower, newY2Upper] = applyBounds(y2[0], y2[1], rightRange, includeAlwaysReachBounds)
+
+  // console.info('Calculated new Y ranges', [newY1Lower, newY1Upper], [newY2Lower, newY2Upper])
+
+  const changed =
+    newY1Lower !== y1[0] || newY1Upper !== y1[1] ||
+    newY2Lower !== y2[0] || newY2Upper !== y2[1]
+
+  if (!changed) return
+
+  theGraphValue.updateOptions({
+    axes: {
+      y: { valueRange: [newY1Lower, newY1Upper] },
+      y2: { valueRange: [newY2Lower, newY2Upper] },
+    },
+  })
 }
 
 const editorItems_AddItem = (): void => {
@@ -1534,6 +1591,18 @@ const onConfigurePlot = (): void => {
 }
 
 const editorPlot_Save = async (): Promise<void> => {
+  const leftRangeError = getAxisRangeValidationError(editorPlot.value.plot.LeftAxisRange)
+  if (leftRangeError !== true) {
+    alert('Left Y Axis: ' + leftRangeError)
+    return
+  }
+
+  const rightRangeError = getAxisRangeValidationError(editorPlot.value.plot.RightAxisRange)
+  if (rightRangeError !== true) {
+    alert('Right Y Axis: ' + rightRangeError)
+    return
+  }
+
   editorPlot.value.show = false
 
   const para = {
@@ -1718,6 +1787,14 @@ watch(
 )
 
 watch(
+  () => [plotConfig.value.LeftAxisRange, plotConfig.value.RightAxisRange],
+  () => {
+    enforceYAxisLimits()
+  },
+  { deep: true },
+)
+
+watch(
   () => props.eventPayload,
   () => {
     if (props.eventName === 'DataAppend') {
@@ -1811,3 +1888,29 @@ onBeforeUnmount(() => {
   }
 })
 </script>
+
+<style scoped>
+.axis-field-row,
+.axis-edge-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.axis-edge-row {
+  margin-top: 8px;
+}
+
+.axis-edge-label {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 0.875rem;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 420px) {
+  .axis-field-row,
+  .axis-edge-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

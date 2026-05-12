@@ -8,6 +8,7 @@ using System.Text;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Ifak.Fast.Json;
 using Ifak.Fast.Mediator.Util;
 using System.Globalization;
 using ClosedXML.Excel;
@@ -362,8 +363,8 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
             configuration.PlotConfig.MaxDataPoints != plot.MaxDataPoints ||
             configuration.PlotConfig.LeftAxisScaleDivisor != plot.LeftAxisScaleDivisor ||
             configuration.PlotConfig.FilterByQuality != plot.FilterByQuality ||
-            configuration.PlotConfig.LeftAxisLimitY != plot.LeftAxisLimitY ||
-            configuration.PlotConfig.RightAxisLimitY != plot.RightAxisLimitY ||
+            !configuration.PlotConfig.LeftAxisRange.Equals(plot.LeftAxisRange) ||
+            !configuration.PlotConfig.RightAxisRange.Equals(plot.RightAxisRange) ||
             configuration.PlotConfig.RightAxisScaleDivisor != plot.RightAxisScaleDivisor;
 
         configuration.PlotConfig = plot;
@@ -954,19 +955,56 @@ public class PlotConfig
     public QualityFilter FilterByQuality { get; set; } = QualityFilter.ExcludeBad;
 
     public string LeftAxisName { get; set; } = "";
-    public bool LeftAxisStartFromZero { get; set; } = true;
     public double LeftAxisScaleDivisor { get; set; } = 1.0;
+    public AxisRangeConfig LeftAxisRange { get; set; } = new AxisRangeConfig { IncludeLower = 0 };
 
     public string RightAxisName { get; set; } = "";
-    public bool RightAxisStartFromZero { get; set; } = true;
     public double RightAxisScaleDivisor { get; set; } = 1.0;
+    public AxisRangeConfig RightAxisRange { get; set; } = new AxisRangeConfig { IncludeLower = 0 };
 
-    public double? LeftAxisLimitY { get; set; } = null;
+    [JsonProperty]
+    private bool LeftAxisStartFromZero {
+        set { LeftAxisRange.IncludeLower = value ? 0 : null; }
+    }
 
-    public double? RightAxisLimitY { get; set; } = null;
+    [JsonProperty]
+    private double? LeftAxisLimitY {
+        set { LeftAxisRange.ClipUpper = value; }
+    }
 
-    public bool ShouldSerializeLeftAxisLimitY() => LeftAxisLimitY.HasValue;
-    public bool ShouldSerializeRightAxisLimitY() => RightAxisLimitY.HasValue;
+    [JsonProperty]
+    private bool RightAxisStartFromZero {
+        set { RightAxisRange.IncludeLower = value ? 0 : null; }
+    }
+
+    [JsonProperty]
+    private double? RightAxisLimitY {
+        set { RightAxisRange.ClipUpper = value; }
+    }
+}
+
+public class AxisRangeConfig : IEquatable<AxisRangeConfig>
+{
+    public double? ClipLower { get; set; } = null;
+    public double? IncludeLower { get; set; } = null;
+    public double? IncludeUpper { get; set; } = null;
+    public double? ClipUpper { get; set; } = null;
+
+    public bool ShouldSerializeClipLower() => ClipLower.HasValue;
+    public bool ShouldSerializeIncludeLower() => IncludeLower.HasValue;
+    public bool ShouldSerializeIncludeUpper() => IncludeUpper.HasValue;
+    public bool ShouldSerializeClipUpper() => ClipUpper.HasValue;
+
+    public bool Equals(AxisRangeConfig? other) {
+        if (other is null) return false;
+        return ClipLower == other.ClipLower
+            && IncludeLower == other.IncludeLower
+            && IncludeUpper == other.IncludeUpper
+            && ClipUpper == other.ClipUpper;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as AxisRangeConfig);
+    public override int GetHashCode() => HashCode.Combine(ClipLower, IncludeLower, IncludeUpper, ClipUpper);
 }
 
 internal class Annotation
