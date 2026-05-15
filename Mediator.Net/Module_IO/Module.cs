@@ -974,6 +974,10 @@ namespace Ifak.Fast.Mediator.IO
                 return vtq;
             }
 
+            if (vtq.V.IsEmpty) {
+                return vtq;
+            }
+
             bool SrcIsBool = vtq.V.IsBool;
             bool DstIsFloat = istate.Type.IsFloat();
 
