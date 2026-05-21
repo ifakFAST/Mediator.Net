@@ -53,9 +53,9 @@ internal class VarPubTask {
         Console.WriteLine($"Starting variable publish task {publisher.PublisherID}: RootObjects={strObjects}; {cyclicStr}; {changeStr}");
 
         async Task WaitForNextCycle() {
-                Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
-                await Time.WaitUntil(t, abort: shutdown);
-            }
+            Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+            await Time.WaitUntil(t, abort: shutdown);
+        }
 
         if (!enableChangeBasedVariableUpdates && !enableHistoryBasedVariableUpdates) {
             await WaitForNextCycle();

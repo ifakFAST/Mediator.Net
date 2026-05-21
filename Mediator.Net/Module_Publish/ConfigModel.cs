@@ -12,10 +12,10 @@ namespace Ifak.Fast.Mediator.Publish;
 [XmlRoot(Namespace = "Module_Publish", ElementName = "Publish_Model")]
 public class Model : ModelObject {
 
-    [XmlAttribute("id")]
+    [XmlIgnore]
     public string ID { get; set; } = "Root";
 
-    [XmlAttribute("name")]
+    [XmlIgnore]
     public string Name { get; set; } = "Publish_Model";
 
     public List<MqttConfig>  MQTT { get; set; } = [];
