@@ -492,6 +492,15 @@ const resetVariables = async (): Promise<void> => {
 const deleteObject = async (): Promise<void> => {
   const confirm = dlgConfirm.value as any
   const name = objectTitle.value
+  const runningCalculation = findRunningCalculation(selectedItem.value)
+  if (runningCalculation !== null) {
+    await confirm.open(
+      'Cannot Delete',
+      `The calculation "${runningCalculation.Name}" is still running. Stop the calculation first by setting Enabled = false and saving it before deleting.`,
+      { color: 'warning', width: 450 },
+    )
+    return
+  }
   if (await confirm.open('Confirm Delete', `Do you want to delete ${name}?`, { color: 'red' })) {
     const id = editObject.value?.ID
     const tree = treeRoot.value
@@ -505,6 +514,25 @@ const deleteObject = async (): Promise<void> => {
       initModel(strResponse, nextSelectID)
     })
   }
+}
+
+const findRunningCalculation = (item: TreeItem | null): calcmodel.Calculation | null => {
+  if (item === null) {
+    return null
+  }
+  if (item.objectType === 'Calculation') {
+    const calculation = item.object as calcmodel.Calculation
+    return calculation.Enabled ? calculation : null
+  }
+  if (item.objectType === 'Folder') {
+    for (const child of item.children) {
+      const runningCalculation = findRunningCalculation(child)
+      if (runningCalculation !== null) {
+        return runningCalculation
+      }
+    }
+  }
+  return null
 }
 
 const addFolder = (): void => {
