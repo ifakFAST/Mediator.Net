@@ -22,6 +22,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private Duration? retentionTime = null;
         private Duration retentionCheckInterval = Duration.FromHours(1);  // default 1 hour
         private Timestamp lastRetentionCheck = Timestamp.Empty;
+        private bool readOnly = false;
 
         public override bool IsOpen => connection != null;
 
@@ -69,6 +70,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             if (IsOpen) throw new Invalid​Operation​Exception("DB already open");
 
             bool readOnly = parameter.ReadWriteMode == Mode.ReadOnly;
+            this.readOnly = readOnly;
             string name = parameter.Name;
             string connectionString = parameter.ConnectionString;
             string[]? settings = parameter.Settings;
@@ -151,6 +153,9 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
         public override void Vacuum() {
             try {
+                // Drain pending trash first so the subsequent VACUUM also reclaims that space.
+                // Use a generous budget so an explicit vacuum effectively cleans out the backlog.
+                DrainTrash(TimeSpan.FromMinutes(1));
                 Execute("VACUUM;");
                 Execute("PRAGMA wal_checkpoint(TRUNCATE);");
                 Update_wal_autocheckpoint();
@@ -190,13 +195,23 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
         private void CheckDbChannelInfoOrCreate() {
 
+            bool channelDefsExists;
             using (var command = Factory.MakeCommand("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND tbl_name = 'channel_defs';", connection!)) {
-                if (command.ExecuteScalar() != null) {
-                    return;
-                }
+                channelDefsExists = command.ExecuteScalar() != null;
             }
 
-            using (var command = Factory.MakeCommand("CREATE TABLE channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection!)) {
+            if (!channelDefsExists) {
+                using var command = Factory.MakeCommand("CREATE TABLE channel_defs (obj TEXT not null, var TEXT not null, type TEXT not null, table_name TEXT not null, primary key (obj, var));", connection!);
+                command.ExecuteNonQuery();
+            }
+
+            // channel_trash holds tables that have been logically removed but not yet physically dropped.
+            // RemoveChannel renames the data table into this trash namespace so the operation is O(1);
+            // DrainTrash later issues the real DROP TABLE under a time budget. Idempotent so it also
+            // migrates existing databases on first open. Skip in read-only mode (no writes allowed,
+            // and removal/drain cannot be invoked anyway).
+            if (!readOnly) {
+                using var command = Factory.MakeCommand("CREATE TABLE IF NOT EXISTS channel_trash (table_name TEXT NOT NULL PRIMARY KEY, deleted_at INTEGER NOT NULL);", connection!);
                 command.ExecuteNonQuery();
             }
         }
@@ -237,14 +252,43 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             if (!entry.HasValue) return false;
             string table = entry.Value.DataTableName;
 
-            using (var command = Factory.MakeCommand($"DROP TABLE \"{table}\"", connection!)) {
-                command.ExecuteNonQuery();
+            // Defer the expensive DROP TABLE: rename the data table into the trash namespace and
+            // remove the channel from channel_defs in a single transaction. DrainTrash will perform
+            // the real DROP later, off the caller's critical path.
+            string trashName = "ZZZ__TRASH$" + Guid.NewGuid().ToString("N");
+            long nowMs = Timestamp.Now.JavaTicks;
+
+            using (var transaction = connection!.BeginTransaction()) {
+                try {
+                    using (var command = Factory.MakeCommand("INSERT INTO channel_trash (table_name, deleted_at) VALUES (@name, @ts)", connection)) {
+                        command.Transaction = transaction;
+                        command.Parameters.Add(Factory.MakeParameter("name", trashName));
+                        command.Parameters.Add(Factory.MakeParameter("ts", nowMs));
+                        command.ExecuteNonQuery();
+                    }
+                    using (var command = Factory.MakeCommand($"ALTER TABLE \"{table}\" RENAME TO \"{trashName}\"", connection)) {
+                        command.Transaction = transaction;
+                        command.ExecuteNonQuery();
+                    }
+                    using (var command = Factory.MakeCommand("DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection)) {
+                        command.Transaction = transaction;
+                        command.Parameters.Add(Factory.MakeParameter("obj", objectID));
+                        command.Parameters.Add(Factory.MakeParameter("var", variable));
+                        command.ExecuteNonQuery();
+                    }
+                    transaction.Commit();
+                }
+                catch (Exception) {
+                    try {
+                        transaction.Rollback();
+                    }
+                    catch (Exception exp) {
+                        logger.Warn("RemoveChannel: transaction.Rollback failed: " + exp.Message);
+                    }
+                    throw;
+                }
             }
-            using (var command = Factory.MakeCommand($"DELETE FROM channel_defs WHERE obj = @obj AND var = @var", connection!)) {
-                command.Parameters.Add(Factory.MakeParameter("obj", objectID));
-                command.Parameters.Add(Factory.MakeParameter("var", variable));
-                command.ExecuteNonQuery();
-            }
+
             cacheChannelEntry.Clear();
             return true;
         }
@@ -349,16 +393,93 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         }
 
         public void CheckAndApplyRetention() {
-            if (retentionTime == null || connection == null) return;
+            if (connection == null) return;
 
             Timestamp now = Timestamp.Now;
             if (now - lastRetentionCheck < retentionCheckInterval) return;  // Not time yet
 
             lastRetentionCheck = now;
+
+            if (retentionTime != null) {
+                var sw = Stopwatch.StartNew();
+                ApplyRetention(now - retentionTime.Value);
+                sw.Stop();
+                logger.Debug($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
+            }
+
+            // Piggyback the trash drain on the maintenance pass. The budget keeps the worker
+            // responsive even when a large backlog of removed channels is being cleaned up.
+            DrainTrash(TimeSpan.FromSeconds(1));
+        }
+
+        /// <summary>
+        /// Physically drops tables that were previously trashed by <see cref="RemoveChannel"/>.
+        /// Each table is dropped in its own short transaction so the loop can be interrupted as
+        /// soon as the time budget is exhausted, keeping the worker thread responsive to other
+        /// queued operations.
+        /// </summary>
+        private void DrainTrash(TimeSpan budget) {
+            if (connection == null) return;
+
             var sw = Stopwatch.StartNew();
-            ApplyRetention(now - retentionTime.Value);
-            sw.Stop();
-            logger.Debug($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
+            int processed = 0;
+
+            while (true) {
+
+                if (sw.Elapsed >= budget) break;
+
+                string? trashName = null;
+                try {
+                    using var command = Factory.MakeCommand("SELECT table_name FROM channel_trash ORDER BY deleted_at LIMIT 1", connection);
+                    using var reader = command.ExecuteReader();
+                    if (reader.Read()) {
+                        trashName = (string)reader["table_name"];
+                    }
+                }
+                catch (Exception exp) {
+                    logger.Warn($"DrainTrash: failed to read channel_trash: {exp.Message}");
+                    break;
+                }
+
+                if (trashName == null) break;
+
+                try {
+                    using var transaction = connection.BeginTransaction();
+                    try {
+                        using (var cmd = Factory.MakeCommand($"DROP TABLE IF EXISTS \"{trashName}\"", connection)) {
+                            cmd.Transaction = transaction;
+                            cmd.ExecuteNonQuery();
+                        }
+                        using (var cmd = Factory.MakeCommand("DELETE FROM channel_trash WHERE table_name = @name", connection)) {
+                            cmd.Transaction = transaction;
+                            cmd.Parameters.Add(Factory.MakeParameter("name", trashName));
+                            cmd.ExecuteNonQuery();
+                        }
+                        transaction.Commit();
+                    }
+                    catch (Exception) {
+                        try { transaction.Rollback(); }
+                        catch (Exception exp) { logger.Warn("DrainTrash: transaction.Rollback failed: " + exp.Message); }
+                        throw;
+                    }
+                    processed++;
+                }
+                catch (Exception exp) {
+                    // Stop on the failing entry so we don't spin on it; the next drain pass will retry.
+                    logger.Warn($"DrainTrash: failed to drop trashed table '{trashName}': {exp.Message}");
+                    break;
+                }
+            }
+
+            if (processed > 0) {
+                logger.Info($"DrainTrash dropped {processed} trashed table(s) in {sw.ElapsedMilliseconds} ms");
+                try {
+                    Update_wal_autocheckpoint();
+                }
+                catch (Exception exp) {
+                    logger.Warn($"DrainTrash: Update_wal_autocheckpoint failed: {exp.Message}");
+                }
+            }
         }
 
         private void ApplyRetention(Timestamp cutoff) {
