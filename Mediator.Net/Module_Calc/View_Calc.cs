@@ -76,7 +76,14 @@ public class View_Calc : ViewBase
 
             case "Delete": {
 
-                    ObjectRef obj = ObjectRef.Make(moduleID, parameters.GetString() ?? "");
+                    DeleteParams deleteParams = parameters.IsObject
+                        ? parameters.Object<DeleteParams>() ?? throw new Exception("DeleteParams is null")
+                        : new DeleteParams() { ID = parameters.GetString() ?? "" };
+
+                    ObjectRef obj = ObjectRef.Make(moduleID, deleteParams.ID);
+                    if (deleteParams.DeleteVariables) {
+                        await Connection.HistorianDeleteAllVariablesOfObjectTree(obj);
+                    }
                     await Connection.UpdateConfig(ObjectValue.Make(obj, DataValue.Empty));
                     Context.NotifyRefreshConcurrentViews();
                     return await GetModelResult();
@@ -453,6 +460,13 @@ public class View_Calc : ViewBase
         public string ID { get; set; } = "";
 
         public JObject Obj { get; set; } = new JObject();
+    }
+
+    public class DeleteParams
+    {
+        public string ID { get; set; } = "";
+
+        public bool DeleteVariables { get; set; } = true;
     }
 
     public class AddObjectParams

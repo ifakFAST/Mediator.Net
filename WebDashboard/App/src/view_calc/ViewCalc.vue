@@ -501,16 +501,20 @@ const deleteObject = async (): Promise<void> => {
     )
     return
   }
-  if (await confirm.open('Confirm Delete', `Do you want to delete ${name}?`, { color: 'red' })) {
+  if (await confirm.open('Confirm Delete', `Do you want to delete ${name}? Note that all variables and their history are deleted too!`, { color: 'red' })) {
     const id = editObject.value?.ID
     const tree = treeRoot.value
     if (!id || !tree) return
     const treeItemDelete = findTreeItem(tree, id)
     const nextSelect = findNextSelectObj(tree, treeItemDelete)
     const nextSelectID = nextSelect === null ? '' : nextSelect.id
+    const deleteParams = {
+      ID: id,
+      DeleteVariables: true,
+    }
     // @ts-ignore
     const dashboard = window.parent['dashboardApp']
-    dashboard.sendViewRequest('Delete', JSON.stringify(id), (strResponse: string) => {
+    dashboard.sendViewRequest('Delete', deleteParams, (strResponse: string) => {
       initModel(strResponse, nextSelectID)
     })
   }
