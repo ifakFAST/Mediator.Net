@@ -108,10 +108,12 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
         }
 
         private readonly HashSet<MemberRef> jsonMembers = new HashSet<MemberRef>();
+        private readonly HashSet<MemberRef> stringMembers = new HashSet<MemberRef>();
 
         public async Task<ResultEntry[]> ReadValues() {
 
             jsonMembers.Clear();
+            stringMembers.Clear();
 
             MemberRef[] members = UsedMemberRefs();
 
@@ -119,22 +121,29 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
 
                 MemberValues memValues = await Connection.GetMemberValues(members);
                 bool[] canEdit = await Connection.CanUpdateConfig(members);
+                Dictionary<MemberRef, DataType> memberTypes = await View.ReadMemberTypes(Connection, members);
 
                 var res = new List<ResultEntry>();
 
                 for (int i = 0; i < memValues.Count; i++) {
 
                     MemberValue it = memValues[i];
+                    bool isStringMember = memberTypes.GetValueOrDefault(it.Member) == DataType.String;
+                    bool isJSONMember = memberTypes.GetValueOrDefault(it.Member) == DataType.JSON;
                     bool isStrValue = it.Value.JSON.StartsWith('"');
 
-                    if (isStrValue) { // assume type of member is JSON/DataValue
+                    if (isStringMember) {
+                        stringMembers.Add(it.Member);
+                    }
+
+                    if (isJSONMember) {
                         jsonMembers.Add(it.Member);
                     }
 
                     var entry = new ResultEntry {
                         Object = it.Member.Object,
                         Member = it.Member.Name,
-                        Value = isStrValue ? it.Value.GetString()! : it.Value.JSON,
+                        Value = (isStringMember || isStrValue) ? it.Value.GetString()! : it.Value.JSON,
                         CanEdit = canEdit[i],
                     };
 
@@ -155,6 +164,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
             bool isJSON = jsonMembers.Contains(memberRef);
             if (isJSON) {
                 dataValue = DataValue.FromObject(dataValue);
+            }
+            else if (stringMembers.Contains(memberRef)) {
+                dataValue = DataValue.FromString(dataValue.JSON);
             }
 
             MemberValue m = MemberValue.Make(memberRef, dataValue);

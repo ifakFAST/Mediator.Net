@@ -18,6 +18,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
     ConfigEditNumeric2DConfig configuration => Config;
 
     private readonly HashSet<MemberRef> jsonMembers = [];
+    private readonly HashSet<MemberRef> stringMembers = [];
 
     public override async Task OnActivate() {
         ObjectRef[] objs = UsedObjects();
@@ -83,10 +84,12 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
     public async Task<ResultEntry2D[]> ReadValues() {
 
         jsonMembers.Clear();
+        stringMembers.Clear();
 
         MemberRef[] members = UsedMemberRefs();
         MemberValues memValues = await Connection.GetMemberValues(members, ignoreMissing: true);
         bool[] canEditArr = await Connection.CanUpdateConfig(members);
+        Dictionary<MemberRef, DataType> memberTypes = await View.ReadMemberTypes(Connection, members);
 
         Dictionary<MemberRef, bool> canEditMap = members.Zip(canEditArr, (m, e) => (m, e)).ToDictionary(t => t.m, t => t.e);
         Dictionary<MemberRef, MemberValue> map = memValues.ToDictionary(mv => mv.Member);
@@ -111,11 +114,16 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
             string value = "";
             if (memberValue.HasValue) {
                 MemberValue memVal = memberValue.Value;
+                bool isStringMember = memberTypes.GetValueOrDefault(memVal.Member) == DataType.String;
+                bool isJSONMember = memberTypes.GetValueOrDefault(memVal.Member) == DataType.JSON;
                 bool isStrValue = memVal.Value.JSON.StartsWith('"');
-                if (isStrValue) { // assume type of member is JSON/DataValue
+                if (isStringMember) {
+                    stringMembers.Add(memVal.Member);
+                }
+                if (isJSONMember) {
                     jsonMembers.Add(memVal.Member);
                 }
-                value = isStrValue ? memVal.Value.GetString()! : memVal.Value.JSON;
+                value = (isStringMember || isStrValue) ? memVal.Value.GetString()! : memVal.Value.JSON;
             }
             
             res.Add(new ResultEntry2D {
@@ -147,6 +155,9 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         bool isJSON = jsonMembers.Contains(memberRef);
         if (isJSON) {
             dataValue = DataValue.FromObject(dataValue);
+        }
+        else if (stringMembers.Contains(memberRef)) {
+            dataValue = DataValue.FromString(dataValue.JSON);
         }
 
         MemberValue m = MemberValue.Make(memberRef, dataValue);

@@ -423,7 +423,11 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 mapMeta[moduleID] = meta.Classes.ToDictionary(cls => cls.FullName);
             }
 
-            Func<SimpleMember, bool> isNumeric = (sm) => sm.Type.IsNumeric() || sm.Type == DataType.Bool || sm.Type == DataType.JSON;
+            Func<SimpleMember, bool> isNumeric = (sm) => 
+                                                        sm.Type.IsNumeric() || 
+                                                        sm.Type == DataType.Bool || 
+                                                        sm.Type == DataType.JSON ||
+                                                        sm.Type == DataType.String;
 
             Func<ObjectInfo, bool> hasMembers = (obj) => {
                 var mapClasses = mapMeta[obj.ID.ModuleID];
@@ -443,6 +447,32 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
                 Name = o.Name,
                 Members = getMembers(o)
             }).ToArray();
+        }
+
+        public static async Task<Dictionary<MemberRef, DataType>> ReadMemberTypes(Connection connection, MemberRef[] members) {
+
+            ObjectRef[] objects = members.Select(m => m.Object).Distinct().ToArray();
+            ObjectInfos infos = await connection.GetObjectsByID(objects, ignoreMissing: true);
+
+            string[] moduleIDs = infos.Select(obj => obj.ID.ModuleID).Distinct().ToArray();
+            var mapMeta = new Dictionary<string, Dictionary<string, ClassInfo>>();
+            foreach (string moduleID in moduleIDs) {
+                MetaInfos meta = await connection.GetMetaInfos(moduleID);
+                mapMeta[moduleID] = meta.Classes.ToDictionary(cls => cls.FullName);
+            }
+
+            var res = new Dictionary<MemberRef, DataType>();
+            foreach (ObjectInfo obj in infos) {
+                var mapClasses = mapMeta[obj.ID.ModuleID];
+                if (!mapClasses.TryGetValue(obj.ClassNameFull, out ClassInfo? cls)) continue;
+                Dictionary<string, DataType> memberTypes = cls.SimpleMember.ToDictionary(sm => sm.Name, sm => sm.Type);
+                foreach (MemberRef member in members.Where(m => m.Object == obj.ID)) {
+                    if (memberTypes.TryGetValue(member.Name, out DataType type)) {
+                        res[member] = type;
+                    }
+                }
+            }
+            return res;
         }
 
         public static ObjInfo[] ReadObjectsWithVariables(Connection connection, ObjectInfos objects, Func<Variable, bool> isVariableMatch) {
