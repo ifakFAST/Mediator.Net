@@ -182,7 +182,9 @@
                 <th style="text-align: left">Orange Above</th>
                 <th style="text-align: left">Red Below</th>
                 <th style="text-align: left">Red Above</th>
-                <th style="text-align: left">Enum Values</th>
+                <th style="text-align: left">
+                  <enum-values-column-header></enum-values-column-header>
+                </th>
                 <th>&nbsp;</th>
                 <th>&nbsp;</th>
               </tr>
@@ -351,6 +353,8 @@ import type { StyleValue } from 'vue'
 import * as fast from '../../fast_types'
 import type { TimeRange } from '../../utils'
 import DlgObjectSelect from '../../components/DlgObjectSelect.vue'
+import EnumValuesColumnHeader from './config_edit/EnumValuesColumnHeader.vue'
+import EnumValuesField from './config_edit/EnumValuesField.vue'
 import type { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
 
 interface Config {

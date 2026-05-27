@@ -35,7 +35,9 @@
                 <th style="text-align: left">Type</th>
                 <th style="text-align: left">Min</th>
                 <th style="text-align: left">Max</th>
-                <th style="text-align: left">Enum Values</th>
+                <th style="text-align: left">
+                  <enum-values-column-header></enum-values-column-header>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -100,11 +102,10 @@
                   ></v-text-field>
                 </td>
                 <td>
-                  <v-text-field
+                  <enum-values-field
                     v-if="item.Type === 'Enum'"
                     v-model="item.EnumValues"
-                    style="width: 16ch"
-                  ></v-text-field>
+                  ></enum-values-field>
                 </td>
               </tr>
             </tbody>
@@ -153,6 +154,8 @@
 import { computed, ref } from 'vue'
 import type { ModuleInfo, Obj, SelectObject } from '../common'
 import DlgObjectSelect from '../../../components/DlgObjectSelect.vue'
+import EnumValuesColumnHeader from './EnumValuesColumnHeader.vue'
+import EnumValuesField from './EnumValuesField.vue'
 
 interface ItemConfig {
   Unit: string
