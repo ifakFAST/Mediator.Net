@@ -108,6 +108,16 @@
           </table>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            variant="text"
+            @click="replaceItemsFromCsvFromClipboard"
+            >Import</v-btn
+          >
+          <v-btn
+            variant="text"
+            @click="copyItemsAsCsvToClipboard"
+            >Export</v-btn
+          >
           <v-spacer></v-spacer>
           <v-btn
             color="grey-darken-1"
@@ -305,6 +315,128 @@ const onDialogKeydown = (e: KeyboardEvent): void => {
   if (e.key === 'Escape' && !selectObject.value.show) {
     closeDialog()
   }
+}
+
+const defaultItemConfig = (): EditableItemConfig => ({
+  Variable: emptyVariable(),
+  WarnBelow: null,
+  WarnAbove: null,
+  AlarmBelow: null,
+  AlarmAbove: null,
+  EnumValues: '',
+})
+
+const parseCsvLineToItemConfig = (
+  parts: string[],
+  header: string[] | undefined,
+  existing: EditableItemConfig,
+): EditableItemConfig => {
+  const it: EditableItemConfig = { ...existing, Variable: { ...existing.Variable } }
+
+  header?.forEach((column, index) => {
+    const value = parts[index] ?? ''
+    switch (column) {
+      case 'Object':
+        it.Variable.Object = value
+        break
+      case 'Variable':
+        it.Variable.Name = value
+        break
+      case 'WarnBelow':
+        it.WarnBelow = value === '' ? null : Number(value)
+        break
+      case 'WarnAbove':
+        it.WarnAbove = value === '' ? null : Number(value)
+        break
+      case 'AlarmBelow':
+        it.AlarmBelow = value === '' ? null : Number(value)
+        break
+      case 'AlarmAbove':
+        it.AlarmAbove = value === '' ? null : Number(value)
+        break
+      case 'EnumValues':
+        it.EnumValues = value
+        break
+    }
+  })
+
+  return it
+}
+
+const copyItemsAsCsvToClipboard = (): void => {
+  const colCount = props.config.Columns.length
+  const header = 'Row,Column,Object,Variable,WarnBelow,WarnAbove,AlarmBelow,AlarmAbove,EnumValues'
+  const csvData = items.value
+    .map((item, idx) => {
+      const row = colCount > 0 ? (props.config.Rows[Math.floor(idx / colCount)] ?? '') : ''
+      const column = colCount > 0 ? (props.config.Columns[idx % colCount] ?? '') : ''
+      return [
+        row,
+        column,
+        item.Variable.Object,
+        item.Variable.Name,
+        item.WarnBelow ?? '',
+        item.WarnAbove ?? '',
+        item.AlarmBelow ?? '',
+        item.AlarmAbove ?? '',
+        item.EnumValues,
+      ].join(',')
+    })
+    .join('\r\n')
+
+  navigator.clipboard
+    .writeText(header + '\r\n' + csvData)
+    .then(() => {
+      alert('CSV data copied to clipboard')
+    })
+    .catch((error) => {
+      alert('Failed to copy CSV data to clipboard: ' + error)
+    })
+}
+
+const replaceItemsFromCsvFromClipboard = (): void => {
+  navigator.clipboard
+    .readText()
+    .then((csvData) => {
+      const lines = csvData.split('\n')
+      const header = lines.shift()?.trim().split(',')
+      const colCount = props.config.Columns.length
+      const hasRowColumn = header?.includes('Row') && header?.includes('Column')
+      const updatedItems = items.value.map((item) => ({
+        ...item,
+        Variable: { ...item.Variable },
+      }))
+      let sequentialIdx = 0
+
+      lines
+        .filter((line) => line.trim() !== '')
+        .forEach((line) => {
+          const parts = line.split(',')
+          let targetIdx = sequentialIdx
+
+          if (hasRowColumn) {
+            const rowIdx = header!.indexOf('Row')
+            const colIdx = header!.indexOf('Column')
+            const rowLabel = parts[rowIdx] ?? ''
+            const colLabel = parts[colIdx] ?? ''
+            const r = props.config.Rows.indexOf(rowLabel)
+            const c = props.config.Columns.indexOf(colLabel)
+            if (r < 0 || c < 0 || colCount === 0) return
+            targetIdx = r * colCount + c
+          }
+
+          if (targetIdx < 0 || targetIdx >= updatedItems.length) return
+
+          const existing = updatedItems[targetIdx] ?? defaultItemConfig()
+          updatedItems[targetIdx] = parseCsvLineToItemConfig(parts, header, existing)
+          sequentialIdx++
+        })
+
+      items.value = updatedItems
+    })
+    .catch((error) => {
+      alert('Failed to paste CSV data from clipboard: ' + error)
+    })
 }
 
 defineExpose({ showDialog })

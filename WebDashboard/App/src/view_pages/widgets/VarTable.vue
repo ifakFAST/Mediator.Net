@@ -307,6 +307,16 @@
           </table>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            variant="text"
+            @click="replaceItemsFromCsvFromClipboard"
+            >Import</v-btn
+          >
+          <v-btn
+            variant="text"
+            @click="copyItemsAsCsvToClipboard"
+            >Export</v-btn
+          >
           <v-spacer></v-spacer>
           <v-btn
             color="grey-darken-1"
@@ -518,21 +528,110 @@ const onLoadData = async (): Promise<void> => {
 }
 
 const editorItems_AddItem = (): void => {
-  const item: ItemConfig = {
+  editorItems.value.items.push(defaultItemConfig())
+}
+
+const defaultItemConfig = (): ItemConfig => ({
+  Name: '',
+  Unit: '',
+  TrendFrame: '15 min',
+  WarnBelow: null,
+  WarnAbove: null,
+  AlarmBelow: null,
+  AlarmAbove: null,
+  EnumValues: '',
+  Variable: {
+    Object: '',
     Name: '',
-    Unit: '',
-    TrendFrame: '15 min',
-    WarnBelow: null,
-    WarnAbove: null,
-    AlarmBelow: null,
-    AlarmAbove: null,
-    EnumValues: '',
-    Variable: {
-      Object: '',
-      Name: '',
-    },
-  }
-  editorItems.value.items.push(item)
+  },
+})
+
+const parseCsvLineToItemConfig = (parts: string[], header: string[] | undefined): ItemConfig => {
+  const it = defaultItemConfig()
+
+  header?.forEach((column, index) => {
+    const value = parts[index] ?? ''
+    switch (column) {
+      case 'Name':
+        it.Name = value
+        break
+      case 'Unit':
+        it.Unit = value
+        break
+      case 'Object':
+        it.Variable.Object = value
+        break
+      case 'Variable':
+        it.Variable.Name = value
+        break
+      case 'TrendFrame':
+        it.TrendFrame = value as fast.Duration
+        break
+      case 'WarnBelow':
+        it.WarnBelow = value === '' ? null : Number(value)
+        break
+      case 'WarnAbove':
+        it.WarnAbove = value === '' ? null : Number(value)
+        break
+      case 'AlarmBelow':
+        it.AlarmBelow = value === '' ? null : Number(value)
+        break
+      case 'AlarmAbove':
+        it.AlarmAbove = value === '' ? null : Number(value)
+        break
+      case 'EnumValues':
+        it.EnumValues = value
+        break
+    }
+  })
+
+  return it
+}
+
+const copyItemsAsCsvToClipboard = (): void => {
+  const header =
+    'Name,Unit,Object,Variable,TrendFrame,WarnBelow,WarnAbove,AlarmBelow,AlarmAbove,EnumValues'
+  const csvData = editorItems.value.items
+    .map((item) =>
+      [
+        item.Name ?? '',
+        item.Unit,
+        item.Variable.Object,
+        item.Variable.Name,
+        item.TrendFrame ?? '',
+        item.WarnBelow ?? '',
+        item.WarnAbove ?? '',
+        item.AlarmBelow ?? '',
+        item.AlarmAbove ?? '',
+        item.EnumValues,
+      ].join(','),
+    )
+    .join('\r\n')
+
+  navigator.clipboard
+    .writeText(header + '\r\n' + csvData)
+    .then(() => {
+      alert('CSV data copied to clipboard')
+    })
+    .catch((error) => {
+      alert('Failed to copy CSV data to clipboard: ' + error)
+    })
+}
+
+const replaceItemsFromCsvFromClipboard = (): void => {
+  navigator.clipboard
+    .readText()
+    .then((csvData) => {
+      const lines = csvData.split('\n')
+      const header = lines.shift()?.trim().split(',')
+
+      editorItems.value.items = lines
+        .filter((line) => line.trim() !== '')
+        .map((line) => parseCsvLineToItemConfig(line.split(','), header))
+    })
+    .catch((error) => {
+      alert('Failed to paste CSV data from clipboard: ' + error)
+    })
 }
 
 const editorItems_DeleteItem = (idx: number): void => {
