@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div>
+    <div @contextmenu="onContextMenu">
       <v-table
         density="compact"
         :height="theHeight"
@@ -115,15 +115,41 @@
         </tbody>
       </v-table>
     </div>
+
+    <v-menu
+      v-model="contextMenu.show"
+      :target="[contextMenu.clientX, contextMenu.clientY]"
+    >
+      <v-list>
+        <v-list-item @click="onConfigureLayout">
+          <v-list-item-title>Configure Layout...</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="onConfigureItems">
+          <v-list-item-title>Configure Items...</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <dlg-config-layout
+      ref="dlgConfigLayout"
+      :backend-async="backendAsync"
+      :config="config"
+    ></dlg-config-layout>
+    <dlg-var-table-items2-d
+      ref="dlgConfigItems"
+      :backend-async="backendAsync"
+      :config="config"
+    ></dlg-var-table-items2-d>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import type { StyleValue } from 'vue'
 import * as fast from '../../fast_types'
 import type { TimeRange } from '../../utils'
-import type { ModuleInfo, ObjectMap, Obj, SelectObject, ObjInfo } from './common'
+import DlgConfigLayout from './config_edit/DlgConfigLayout.vue'
+import DlgVarTableItems2D from './DlgVarTableItems2D.vue'
 
 export type UnitRenderMode = 'Hide' | 'Cell' | 'ColumnLeft' | 'ColumnRight' | 'Row'
 
@@ -135,7 +161,7 @@ interface Config {
 }
 
 interface ItemConfig {
-  Variable: fast.VariableRef
+  Variable: fast.VariableRef | null
   WarnBelow: number | null
   WarnAbove: number | null
   AlarmBelow: number | null
@@ -181,15 +207,20 @@ const props = withDefaults(defineProps<Props>(), {
 // Reactive data
 const items = ref<VarItem[]>([])
 const canUpdateConfig = ref(false)
+const contextMenu = ref({
+  show: false,
+  clientX: 0,
+  clientY: 0,
+})
+
+// Template refs
+const dlgConfigLayout = ref<InstanceType<typeof DlgConfigLayout> | null>(null)
+const dlgConfigItems = ref<InstanceType<typeof DlgVarTableItems2D> | null>(null)
 
 // Computed properties
 const theHeight = computed(() => {
   if (props.height.trim() === '') return 'auto'
   return props.height
-})
-
-const configItems = computed(() => {
-  return props.config.Items ?? []
 })
 
 // Methods
@@ -272,6 +303,35 @@ const varItemColor = (item: VarItem): string => {
 const onLoadData = async (): Promise<void> => {
   const loadedItems: VarItem[] = await props.backendAsync('LoadData', {})
   items.value = loadedItems
+}
+
+const onContextMenu = (e: MouseEvent): void => {
+  if (canUpdateConfig.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    contextMenu.value.show = false
+    contextMenu.value.clientX = e.clientX
+    contextMenu.value.clientY = e.clientY
+    nextTick(() => {
+      contextMenu.value.show = true
+    })
+  }
+}
+
+const onConfigureLayout = async (): Promise<void> => {
+  if (!dlgConfigLayout.value) return
+  const ok = await dlgConfigLayout.value.showDialog()
+  if (ok) {
+    await onLoadData()
+  }
+}
+
+const onConfigureItems = async (): Promise<void> => {
+  if (!dlgConfigItems.value) return
+  const ok = await dlgConfigItems.value.showDialog()
+  if (ok) {
+    await onLoadData()
+  }
 }
 
 // Watchers

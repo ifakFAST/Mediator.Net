@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Ifak.Fast.Mediator.Util;
 using VariableValues = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableValue>;
 using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
@@ -26,7 +27,7 @@ public class VarTable2D : WidgetBaseWithConfig<VarTable2DConfig>
 
     public override Task OnActivate() {
 
-        Variables = configuration.Items.Select(it => it.Variable).ToArray();
+        Variables = ExtractVariables(configuration.Items);
 
         Task ignored1 = Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), Variables);
 
@@ -36,6 +37,77 @@ public class VarTable2D : WidgetBaseWithConfig<VarTable2DConfig>
     public async Task<ReqResult> UiReq_LoadData() {
         var items = await LoadData();
         return ReqResult.OK(items);
+    }
+
+    public Task<ReqResult> UiReq_GetItemsData() {
+        ObjectRef[] usedObjects = configuration.Items
+            .Where(it => it.Variable.HasValue)
+            .Select(it => it.Variable!.Value.Object)
+            .Distinct()
+            .ToArray();
+        return Common.GetNumericAndStringVarItemsData(Connection, usedObjects);
+    }
+
+    public async Task<ReqResult> UiReq_SaveLayout(string[] rows, string[] columns, UnitRenderMode unitRenderMode) {
+
+        int oldRowCount = configuration.Rows.Length;
+        int oldColCount = configuration.Columns.Length;
+        int newRowCount = rows.Length;
+        int newColCount = columns.Length;
+
+        var newItems = new VarItem2D[newRowCount * newColCount];
+        for (int r = 0; r < newRowCount; r++) {
+            for (int c = 0; c < newColCount; c++) {
+                int newIdx = r * newColCount + c;
+                if (r < oldRowCount && c < oldColCount) {
+                    int oldIdx = r * oldColCount + c;
+                    newItems[newIdx] = oldIdx < configuration.Items.Length
+                        ? configuration.Items[oldIdx]
+                        : new VarItem2D();
+                }
+                else {
+                    newItems[newIdx] = new VarItem2D();
+                }
+            }
+        }
+
+        configuration.Rows = rows;
+        configuration.Columns = columns;
+        configuration.UnitRenderMode = unitRenderMode;
+        configuration.Items = newItems;
+
+        VariableRef[] newVariables = ExtractVariables(newItems);
+        bool reloadData = !Arrays.Equals(newVariables, Variables);
+        Variables = newVariables;
+
+        await Context.SaveWidgetConfiguration(configuration);
+
+        if (reloadData) {
+            Task ignored = Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), Variables);
+        }
+
+        return ReqResult.OK();
+    }
+
+    public async Task<ReqResult> UiReq_SaveItems(VarItem2D[] items) {
+
+        foreach (VarItem2D item in items) {
+            item.Sanitize();
+        }
+
+        VariableRef[] newVariables = ExtractVariables(items);
+        bool reloadData = !Arrays.Equals(newVariables, Variables);
+
+        Variables = newVariables;
+        configuration.Items = items;
+
+        await Context.SaveWidgetConfiguration(configuration);
+
+        if (reloadData) {
+            Task ignored = Connection.EnableVariableValueChangedEvents(SubOptions.AllUpdates(sendValueWithEvent: true), Variables);
+        }
+
+        return ReqResult.OK();
     }
 
     public async Task<VarVal2D[]> LoadData() {
@@ -62,16 +134,22 @@ public class VarTable2D : WidgetBaseWithConfig<VarTable2DConfig>
         var res = new List<VarVal2D>();
         foreach (VarItem2D it in config.Items) {
 
+            if (!it.Variable.HasValue) {
+                res.Add(EmptyVarVal2D());
+                continue;
+            }
+
+            VariableRef variable = it.Variable.Value;
             bool empty = false;
 
-            VariableValue vv = values.FirstOrDefault(vv => vv.Variable == it.Variable);
-            if (vv.Variable != it.Variable) {
-                vv = VariableValue.Make(it.Variable, VTQ.Make("", Timestamp.Now, Quality.Bad));
+            VariableValue vv = values.FirstOrDefault(vv => vv.Variable == variable);
+            if (vv.Variable != variable) {
+                vv = VariableValue.Make(variable, VTQ.Make("", Timestamp.Now, Quality.Bad));
                 empty = true;
             }
 
-            if (!mapVar2Unit.ContainsKey(it.Variable)) {
-                mapVar2Unit[it.Variable] = "";
+            if (!mapVar2Unit.ContainsKey(variable)) {
+                mapVar2Unit[variable] = "";
             }
 
             VTQ vtq = vv.Value;
@@ -115,7 +193,7 @@ public class VarTable2D : WidgetBaseWithConfig<VarTable2DConfig>
 
             var itt = new VarVal2D() {
                 IsEmpty = empty,
-                Unit = mapVar2Unit[it.Variable],
+                Unit = mapVar2Unit[variable],
                 Time = VarTable.FormatTime(vtq.T),
                 Warning = warning,
                 Alarm = alarm,
@@ -147,18 +225,26 @@ public class VarTable2D : WidgetBaseWithConfig<VarTable2DConfig>
         }
 
         while (res.Count < config.Rows.Length * config.Columns.Length) {
-            var itt = new VarVal2D() {
-                IsEmpty = true,
-                Unit = "",
-                Time = "",
-                Warning = "",
-                Alarm = "",
-            };
-            res.Add(itt);
+            res.Add(EmptyVarVal2D());
         }
 
         return res.ToArray();
     }
+
+    private static VariableRef[] ExtractVariables(IEnumerable<VarItem2D> items) {
+        return items
+            .Where(it => it.Variable.HasValue)
+            .Select(it => it.Variable!.Value)
+            .ToArray();
+    }
+
+    private static VarVal2D EmptyVarVal2D() => new() {
+        IsEmpty = true,
+        Unit = "",
+        Time = "",
+        Warning = "",
+        Alarm = "",
+    };
 
     public override async Task OnVariableValueChanged(VariableValues variables) {
         if (IsLoaded) {
@@ -189,12 +275,22 @@ public class VarTable2DConfig
 
 public class VarItem2D
 {
-    public VariableRef Variable { get; set; }
+    public VariableRef? Variable { get; set; } = null;
     public double? WarnBelow { get; set; } = null;
     public double? WarnAbove { get; set; } = null;
     public double? AlarmBelow { get; set; } = null;
     public double? AlarmAbove { get; set; } = null;
     public string EnumValues { get; set; } = "";
+
+    public void Sanitize() {
+        if (!Variable.HasValue) {
+            return;
+        }
+        VariableRef v = Variable.Value;
+        if (string.IsNullOrEmpty(v.Object.ToEncodedString()) || string.IsNullOrEmpty(v.Name)) {
+            Variable = null;
+        }
+    }
 }
 
 public class VarVal2D
