@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div>
+    <div @contextmenu="onContextMenu">
       <v-table
         density="compact"
         :height="theHeight"
@@ -105,17 +105,43 @@
       </v-table>
     </div>
 
+    <v-menu
+      v-model="contextMenu.show"
+      :target="[contextMenu.clientX, contextMenu.clientY]"
+    >
+      <v-list>
+        <v-list-item @click="onConfigureLayout">
+          <v-list-item-title>Configure Layout...</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="onConfigureItems">
+          <v-list-item-title>Configure Items...</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <dlg-config-layout
+      ref="dlgConfigLayout"
+      :backend-async="backendAsync"
+      :config="config"
+    ></dlg-config-layout>
+    <dlg-config-items2-d
+      ref="dlgConfigItems"
+      :backend-async="backendAsync"
+      :config="config"
+    ></dlg-config-items2-d>
     <dlg-text-input ref="textInput"></dlg-text-input>
     <dlg-enum-input ref="enumInput"></dlg-enum-input>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import type { StyleValue } from 'vue'
 import type { TimeRange } from '../../../utils'
 import DlgTextInput from '../../DlgTextInput.vue'
 import DlgEnumInput from './DlgEnumInput.vue'
+import DlgConfigLayout from './DlgConfigLayout.vue'
+import DlgConfigItems2D from './DlgConfigItems2D.vue'
 import type { EnumValEntry } from './util'
 import { parseEnumValues, onWriteItemEnum, onWriteItemNumeric } from './util'
 
@@ -173,8 +199,15 @@ const props = withDefaults(defineProps<Props>(), {
 // Reactive data
 const items = ref<VarItem[]>([])
 const canUpdateConfig = ref(false)
+const contextMenu = ref({
+  show: false,
+  clientX: 0,
+  clientY: 0,
+})
 
 // Template refs
+const dlgConfigLayout = ref<InstanceType<typeof DlgConfigLayout> | null>(null)
+const dlgConfigItems = ref<InstanceType<typeof DlgConfigItems2D> | null>(null)
 const textInput = ref<InstanceType<typeof DlgTextInput> | null>(null)
 const enumInput = ref<InstanceType<typeof DlgEnumInput> | null>(null)
 
@@ -330,6 +363,35 @@ const textInputDlg = async (title: string, message: string, value: string, valid
 const enumInputDlg = async (title: string, message: string, value: string, values: string[]): Promise<string | null> => {
   if (!enumInput.value) return null
   return enumInput.value.open(title, message, value, values)
+}
+
+const onContextMenu = (e: MouseEvent): void => {
+  if (canUpdateConfig.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    contextMenu.value.show = false
+    contextMenu.value.clientX = e.clientX
+    contextMenu.value.clientY = e.clientY
+    nextTick(() => {
+      contextMenu.value.show = true
+    })
+  }
+}
+
+const onConfigureLayout = async (): Promise<void> => {
+  if (!dlgConfigLayout.value) return
+  const ok = await dlgConfigLayout.value.showDialog()
+  if (ok) {
+    await onLoadData()
+  }
+}
+
+const onConfigureItems = async (): Promise<void> => {
+  if (!dlgConfigItems.value) return
+  const ok = await dlgConfigItems.value.showDialog()
+  if (ok) {
+    await onLoadData()
+  }
 }
 
 // Watchers

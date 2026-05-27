@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
 using MemberValues = System.Collections.Generic.List<Ifak.Fast.Mediator.MemberValue>;
+using ObjectInfos = System.Collections.Generic.List<Ifak.Fast.Mediator.ObjectInfo>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
 
@@ -47,7 +48,6 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         return ReqResult.OK(await ReadValues());
     }
 
-    /*
     public async Task<ReqResult> UiReq_GetItemsData() {
 
         ObjectRef[] usedObjects = configuration
@@ -64,7 +64,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
 
         ObjectInfos infos = await Connection.GetObjectsByID(usedObjects, ignoreMissing: true);
 
-        View.ObjInfo[] res = await View.ReadObjects(Connection, infos, View.ObjectFilter.WithMembers);
+        View.ObjInfo[] res = await View.ReadObjectsWithMembers(Connection, infos);
 
         var objectMap = new Dictionary<string, ObjInfo>();
 
@@ -79,7 +79,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
             ObjectMap = objectMap,
             Modules = modules,
         });
-    } */
+    }
 
     public async Task<ResultEntry2D[]> ReadValues() {
 
@@ -191,7 +191,39 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         return (rowIdx, colIdx);
     }
 
-    /* public async Task<ReqResult> UiReq_SaveItems(ConfigItem2D[] items) {
+    public async Task<ReqResult> UiReq_SaveLayout(string[] rows, string[] columns, UnitRenderMode unitRenderMode) {
+
+        int oldRowCount = configuration.Rows.Length;
+        int oldColCount = configuration.Columns.Length;
+        int newRowCount = rows.Length;
+        int newColCount = columns.Length;
+
+        var newItems = new ConfigItem2D[newRowCount * newColCount];
+        for (int r = 0; r < newRowCount; r++) {
+            for (int c = 0; c < newColCount; c++) {
+                int newIdx = r * newColCount + c;
+                if (r < oldRowCount && c < oldColCount) {
+                    int oldIdx = r * oldColCount + c;
+                    newItems[newIdx] = oldIdx < configuration.Items.Length
+                        ? configuration.Items[oldIdx]
+                        : new ConfigItem2D();
+                }
+                else {
+                    newItems[newIdx] = new ConfigItem2D();
+                }
+            }
+        }
+
+        configuration.Rows = rows;
+        configuration.Columns = columns;
+        configuration.UnitRenderMode = unitRenderMode;
+        configuration.Items = newItems;
+
+        await Context.SaveWidgetConfiguration(configuration);
+        return ReqResult.OK();
+    }
+
+    public async Task<ReqResult> UiReq_SaveItems(ConfigItem2D[] items) {
 
         foreach (ConfigItem2D item in items) {
             item.Sanitize();
@@ -212,7 +244,7 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         }
 
         return ReqResult.OK();
-    } */
+    }
 
     public override async Task OnConfigChanged(List<ObjectRef> changedObjects) {
         ResultEntry2D[] entries = await ReadValues();

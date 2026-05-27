@@ -132,6 +132,16 @@
           </table>
         </v-card-text>
         <v-card-actions>
+          <v-btn
+            variant="text"
+            @click="replaceItemsFromCsvFromClipboard"
+            >Import</v-btn
+          >
+          <v-btn
+            variant="text"
+            @click="copyItemsAsCsvToClipboard"
+            >Export</v-btn
+          >
           <v-spacer></v-spacer>
           <v-btn
             color="grey-darken-1"
@@ -282,17 +292,104 @@ const editorItems_MoveUpItem = (idx: number): void => {
 }
 
 const editorItems_AddItem = (): void => {
-  const item: ConfigItem = {
-    Name: '',
-    Unit: '',
-    Object: null,
-    Member: null,
-    Type: 'Range',
-    MinValue: null,
-    MaxValue: null,
-    EnumValues: '0=Off; 1=On',
+  items.value.push(defaultItemConfig())
+}
+
+const defaultItemConfig = (): ConfigItem => ({
+  Name: '',
+  Unit: '',
+  Object: null,
+  Member: null,
+  Type: 'Range',
+  MinValue: null,
+  MaxValue: null,
+  EnumValues: '0=Off; 1=On',
+})
+
+const parseCsvLineToItemConfig = (parts: string[], header: string[] | undefined): ConfigItem => {
+  const it = defaultItemConfig()
+
+  header?.forEach((column, index) => {
+    const value = parts[index] ?? ''
+    switch (column) {
+      case 'Name':
+        it.Name = value
+        break
+      case 'Unit':
+        it.Unit = value
+        break
+      case 'Object':
+        it.Object = value === '' ? null : value
+        break
+      case 'Member':
+        it.Member = value === '' ? null : value
+        break
+      case 'Type':
+        it.Type = value === 'Enum' ? 'Enum' : 'Range'
+        break
+      case 'MinValue':
+        it.MinValue = value === '' ? null : Number(value)
+        break
+      case 'MaxValue':
+        it.MaxValue = value === '' ? null : Number(value)
+        break
+      case 'EnumValues':
+        it.EnumValues = value
+        break
+    }
+  })
+
+  if (it.Type === 'Range') {
+    it.EnumValues = ''
+  } else {
+    it.MinValue = null
+    it.MaxValue = null
   }
-  items.value.push(item)
+
+  return it
+}
+
+const copyItemsAsCsvToClipboard = (): void => {
+  const header = 'Name,Unit,Object,Member,Type,MinValue,MaxValue,EnumValues'
+  const csvData = items.value
+    .map((item) =>
+      [
+        item.Name ?? '',
+        item.Unit,
+        item.Object ?? '',
+        item.Member ?? '',
+        item.Type,
+        item.MinValue ?? '',
+        item.MaxValue ?? '',
+        item.EnumValues,
+      ].join(','),
+    )
+    .join('\r\n')
+
+  navigator.clipboard
+    .writeText(header + '\r\n' + csvData)
+    .then(() => {
+      alert('CSV data copied to clipboard')
+    })
+    .catch((error) => {
+      alert('Failed to copy CSV data to clipboard: ' + error)
+    })
+}
+
+const replaceItemsFromCsvFromClipboard = (): void => {
+  navigator.clipboard
+    .readText()
+    .then((csvData) => {
+      const lines = csvData.split('\n')
+      const header = lines.shift()?.trim().split(',')
+
+      items.value = lines
+        .filter((line) => line.trim() !== '')
+        .map((line) => parseCsvLineToItemConfig(line.split(','), header))
+    })
+    .catch((error) => {
+      alert('Failed to paste CSV data from clipboard: ' + error)
+    })
 }
 
 const editorItems_Save = async (): Promise<void> => {
