@@ -9,7 +9,22 @@
       <v-card>
         <v-card-title>Configure Items</v-card-title>
         <v-card-text>
-          <table style="width: 100%; border-collapse: collapse">
+          <div
+            v-if="items.length === 0"
+            class="text-center py-8"
+          >
+            <div class="text-medium-emphasis mb-4">No items configured.</div>
+            <v-btn
+              icon="mdi-plus"
+              size="small"
+              variant="text"
+              @click="editorItems_AddItem"
+            ></v-btn>
+          </div>
+          <table
+            v-else
+            style="width: 100%; border-collapse: collapse"
+          >
             <thead>
               <tr>
                 <th style="width: 100%; text-align: left">Name</th>
