@@ -7,22 +7,20 @@
       @keydown="onDialogKeydown"
     >
       <v-card>
-        <v-card-title>
-          <span class="text-h5">Configure Items</span>
-        </v-card-title>
+        <v-card-title>Configure Items</v-card-title>
         <v-card-text>
-          <v-table>
+          <table style="width: 100%; border-collapse: collapse">
             <thead>
               <tr>
-                <th class="text-left">Name</th>
-                <th class="text-left">Unit</th>
-                <th class="text-left">Object Name</th>
+                <th style="width: 100%; text-align: left">Name</th>
+                <th style="text-align: left">Unit</th>
+                <th style="text-align: left">Object Name</th>
                 <th>&nbsp;</th>
-                <th class="text-left">Member</th>
-                <th class="text-left">Type</th>
-                <th class="text-left">Min</th>
-                <th class="text-left">Max</th>
-                <th class="text-left">Enum Values</th>
+                <th style="text-align: left">Member</th>
+                <th style="text-align: left">Type</th>
+                <th style="text-align: left">Min</th>
+                <th style="text-align: left">Max</th>
+                <th style="text-align: left">Enum Values</th>
                 <th>&nbsp;</th>
                 <th>&nbsp;</th>
               </tr>
@@ -33,50 +31,47 @@
                 :key="idx"
               >
                 <td>
-                  <v-text-field
-                    v-model="item.Name"
-                    style="max-width: 15ch"
-                  ></v-text-field>
+                  <v-text-field 
+                    v-model="item.Name" 
+                    class="mr-2"></v-text-field>
                 </td>
                 <td>
                   <v-text-field
                     v-model="item.Unit"
-                    class="ml-2 mr-2"
-                    style="max-width: 8ch"
+                    class="mr-2"
+                    style="width: 7ch"
                   ></v-text-field>
                 </td>
-                <td style="font-size: 16px; max-width: 20ch; word-wrap: break-word">
+                <td style="font-size: 16px; max-width: 18ch; word-wrap: break-word">
                   {{ editorItems_ObjectID2Name(item.Object) }}
                 </td>
                 <td>
                   <v-btn
-                    class="ml-2 mr-4"
                     icon="mdi-pencil"
-                    style="min-width: 36px; width: 36px"
+                    size="small"
+                    variant="text"
                     @click="editorItems_SelectObj(item)"
                   ></v-btn>
                 </td>
                 <td>
                   <v-select
                     v-model="item.Member"
-                    class="mr-2"
                     :items="editorItems_ObjectID2Members(item.Object)"
-                    style="width: 20ch"
+                    style="margin-left: 1ex; width: 12ch"
                   ></v-select>
                 </td>
                 <td>
                   <v-select
                     v-model="item.Type"
-                    class="mr-2"
                     :items="['Range', 'Enum']"
-                    style="width: 9ch"
+                    style="margin-left: 1ex; width: 9ch"
                   ></v-select>
                 </td>
                 <td>
                   <v-text-field
                     v-if="item.Type === 'Range'"
                     v-model="item.MinValue"
-                    style="max-width: 8ch"
+                    style="margin-left: 1ex; width: 8ch"
                     type="number"
                   ></v-text-field>
                 </td>
@@ -84,8 +79,7 @@
                   <v-text-field
                     v-if="item.Type === 'Range'"
                     v-model="item.MaxValue"
-                    class="ml-2 mr-2"
-                    style="max-width: 8ch"
+                    style="margin-left: 1ex; width: 8ch"
                     type="number"
                   ></v-text-field>
                 </td>
@@ -93,41 +87,49 @@
                   <v-text-field
                     v-if="item.Type === 'Enum'"
                     v-model="item.EnumValues"
-                    style="max-width: 14ch"
+                    style="width: 12ch"
                   ></v-text-field>
                 </td>
                 <td>
                   <v-btn
-                    class="ml-2 mr-2"
                     icon="mdi-delete"
-                    style="min-width: 36px; width: 36px"
+                    size="small"
+                    variant="text"
                     @click="editorItems_DeleteItem(idx)"
                   ></v-btn>
                 </td>
                 <td>
                   <v-btn
                     v-if="idx > 0"
-                    class="ml-2 mr-2"
                     icon="mdi-chevron-up"
-                    style="min-width: 36px; width: 36px"
+                    size="small"
+                    variant="text"
                     @click="editorItems_MoveUpItem(idx)"
                   ></v-btn>
                 </td>
               </tr>
               <tr>
-                <td colspan="9">&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
                 <td>
                   <v-btn
-                    class="ml-2 mr-2"
                     icon="mdi-plus"
-                    style="min-width: 36px; width: 36px"
+                    size="small"
+                    variant="text"
                     @click="editorItems_AddItem"
                   ></v-btn>
                 </td>
                 <td>&nbsp;</td>
               </tr>
             </tbody>
-          </v-table>
+          </table>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
