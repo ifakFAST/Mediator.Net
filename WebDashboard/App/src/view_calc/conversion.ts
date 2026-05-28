@@ -8,7 +8,7 @@ export interface TreeItem {
   first: boolean
   last: boolean
   children: TreeItem[]
-  object: calcmodel.Folder | calcmodel.Signal | calcmodel.Calculation
+  object: calcmodel.FolderWithoutChildren | calcmodel.Signal | calcmodel.Calculation
   objectVariables: SignalVariables | CalculationVariables | null
   objectType: ObjType
 }
@@ -86,10 +86,11 @@ function folder2TreeItem(folder: calcmodel.Folder, parentID: string | null, isFi
   const calculations = folder.Calculations.map((c, idx) => mkCalc(c, idx === 0, idx === folder.Calculations.length - 1))
   const signals = folder.Signals.map((s, idx) => mkSignal(s, idx === 0, idx === folder.Signals.length - 1))
 
-  const folderNoChildren: calcmodel.Folder = { ...folder }
-  folderNoChildren.Folders = []
-  folderNoChildren.Signals = []
-  folderNoChildren.Calculations = []
+  const folderNoChildren: calcmodel.FolderWithoutChildren = {
+    ID: folder.ID,
+    Name: folder.Name,
+    History: folder.History,
+  }
 
   const item: TreeItem = {
     id: folder.ID,

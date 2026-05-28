@@ -16,8 +16,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Folder } from './model'
+import type { FolderWithoutChildren } from './model'
 import MemberRow from './util/MemberRow.vue'
 
-const model = defineModel<Folder>({ required: true })
+const model = defineModel<FolderWithoutChildren>({ required: true })
 </script>

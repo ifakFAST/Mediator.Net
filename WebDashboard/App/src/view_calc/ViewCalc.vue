@@ -135,7 +135,7 @@
           class="flex-grow-1 overflow-y-auto"
         >
           <FolderEditor
-            v-model="editObject as calcmodel.Folder"
+            v-model="editObject as calcmodel.FolderWithoutChildren"
           />
         </div>
         <div
@@ -240,7 +240,7 @@ const treeRoot = ref<TreeItem | null>(null)
 const selectedItem = ref<TreeItem | null>(null)
 
 const editObjectOriginal = ref('')
-const editObject = ref<calcmodel.Folder | calcmodel.Signal | calcmodel.Calculation | null>(null)
+const editObject = ref<calcmodel.FolderWithoutChildren | calcmodel.Signal | calcmodel.Calculation | null>(null)
 const editObjectType = ref<ObjType>('Folder')
 const editObjectVariables = ref<SignalVariables | CalculationVariables | null>(null)
 const newCalcLogEvent = ref<global.CalcLogEvent | null>(null)

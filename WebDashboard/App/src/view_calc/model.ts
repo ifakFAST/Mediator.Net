@@ -15,6 +15,8 @@ export interface Folder {
   Calculations: Calculation[]
 }
 
+export type FolderWithoutChildren = Omit<Folder, 'Folders' | 'Signals' | 'Calculations'>
+
 export interface Signal {
   ID: string
   Name: string

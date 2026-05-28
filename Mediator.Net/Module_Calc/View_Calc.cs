@@ -66,11 +66,13 @@ public class View_Calc : ViewBase
                     string objID = saveParams.ID;
                     IDictionary<string, JToken?> dict = saveParams.Obj;
                     MemberValue[] members = dict
-                        .Where(kv => kv.Key != "ID")
+                        .Where(kv => IsMutableSaveMember(kv.Key))
                         .Select(entry => MakeMemberValue(objID, entry))
                         .ToArray();
-                    await Connection.UpdateConfig(members);
-                    Context.NotifyRefreshConcurrentViews();
+                    if (members.Length > 0) {
+                        await Connection.UpdateConfig(members);
+                        Context.NotifyRefreshConcurrentViews();
+                    }
                     return await GetModelResult();
                 }
 
@@ -384,6 +386,14 @@ public class View_Calc : ViewBase
     }
 
     // private static bool IsNumericBoolOrStruct(Variable v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Struct;
+
+    private static bool IsMutableSaveMember(string memberName) {
+        return memberName != "ID" && !IsFolderChildCollectionMember(memberName);
+    }
+
+    private static bool IsFolderChildCollectionMember(string memberName) {
+        return memberName is nameof(Folder.Folders) or nameof(Folder.Signals) or nameof(Folder.Calculations);
+    }
 
     private MemberValue MakeMemberValue(string id, KeyValuePair<string, JToken?> entry) {
         JToken? value = entry.Value;
