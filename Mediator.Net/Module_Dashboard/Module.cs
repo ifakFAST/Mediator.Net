@@ -1232,16 +1232,13 @@ public sealed class MyPhysicalFileProvider : IFileProvider {
         }
 
         IFileInfo originalFile = pfp.GetFileInfo(subpath);
-        if (!originalFile.Exists) {
-            return originalFile;
-        }
 
         // Check if client supports compression
         var httpContext = _httpContextAccessor.HttpContext;
-        
+
         if (httpContext != null) {
             var acceptEncoding = httpContext.Request.Headers.AcceptEncoding.ToString();
-            
+
             // Try Brotli first (better compression)
             if (acceptEncoding.Contains("br", StringComparison.OrdinalIgnoreCase)) {
                 var brotliFile = pfp.GetFileInfo(subpath + ".br");
