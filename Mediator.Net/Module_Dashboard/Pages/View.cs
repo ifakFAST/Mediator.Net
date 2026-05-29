@@ -399,10 +399,16 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
         }
 
         private static Func<Variable, bool> GetMatchPredicate(DataType type) {
+
             if (type.IsNumeric() || type == DataType.Bool) {
                 return (v) => v.IsNumeric || v.Type == DataType.Bool || v.Type == DataType.Timeseries ||
                               (v.Type == DataType.Struct && v.Dimension == 1);
             }
+
+            if (type == DataType.JSON || type == DataType.Struct) {
+                return (v) => v.Type == DataType.JSON || v.Type == DataType.Struct;
+            }
+
             return (v) => v.Type == type;
         }
 
