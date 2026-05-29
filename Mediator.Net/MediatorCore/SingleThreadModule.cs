@@ -203,7 +203,9 @@ namespace Ifak.Fast.Mediator
 
                             var promise = (TaskCompletionSource<bool>)it.Promise!;
                             try {
-                                await module.Init((ModuleInitInfo)it.Param1!, (VariableValue[])it.Param2!, (Notifier)it.Param3!, moduleThread);
+                                ModuleInitInfo info = (ModuleInitInfo)it.Param1!;
+                                AppTimeZone.Initialize(info.TimeZoneId);
+                                await module.Init(info, (VariableValue[])it.Param2!, (Notifier)it.Param3!, moduleThread);
                                 promise.SetResult(true);
                             }
                             catch (Exception exp) {

@@ -202,6 +202,7 @@ namespace Ifak.Fast.Mediator
                     LoginPassword = module.Password,
                     LoginServer = "localhost",
                     LoginPort = listenPort,
+                    TimeZoneId = AppTimeZone.Id,
                     DataFolder = GetDataFolder(module.Config),
                     LogFilePath = AppLog.LogFilePath,
                     Configuration = [.. configItems],

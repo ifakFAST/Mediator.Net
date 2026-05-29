@@ -194,6 +194,7 @@ namespace Ifak.Fast.Mediator
         public string LoginPassword { get; set; }
         public string LoginServer { get; set; }
         public int LoginPort { get; set; }
+        public string TimeZoneId { get; set; }
         public string DataFolder { get; set; }
         public string LogFilePath { get; set; }
         public NamedValue[] Configuration { get; set; }

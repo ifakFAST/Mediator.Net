@@ -15,7 +15,7 @@ public static class AppTimeZone
     public static string Id => zone.Id;
     public static string DisplayName => zone.DisplayName;
 
-    public static void Initialize(string timeZoneId) {
+    public static void Initialize(string? timeZoneId) {
         zone = string.IsNullOrWhiteSpace(timeZoneId)
             ? TimeZoneInfo.Local
             : TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);

@@ -100,7 +100,10 @@ namespace Ifak.Fast.Mediator
 
                     case ID_InitOrThrow: {
                             var msg = Deserialize<InitOrThrowMsg>(request.Payload);
-                            WrapVoidCall(() => module.Init(msg.InitInfo, msg.RestoreVariableValues, this, this), reqID);
+                            WrapVoidCall(() => {
+                                AppTimeZone.Initialize(msg.InitInfo.TimeZoneId);
+                                return module.Init(msg.InitInfo, msg.RestoreVariableValues, this, this);
+                            }, reqID);
                             break;
                         }
                     case ID_InitAbort: {
