@@ -26,7 +26,7 @@ namespace Ifak.Fast.Mediator
 {
     public class HandleClientRequests : InProcApi
     {
-        private static Logger logger = LogManager.GetLogger("HandleClientRequests");
+        private static readonly Logger logger = LogManager.GetLogger("HandleClientRequests");
 
         private bool terminating = false;
 
@@ -1546,19 +1546,19 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private ReqResult Result_OK() {
+        private static ReqResult Result_OK() {
             return ReqResult.OK(null);
         }
 
-        private ReqResult Result_OK(object obj, Action<object, Stream>? serializer = null) {
+        private static ReqResult Result_OK(object? obj, Action<object, Stream>? serializer = null) {
             return ReqResult.OK(obj, serializer);
         }
 
-        private ReqResult Result_BAD(string errMsg) {
+        private static ReqResult Result_BAD(string errMsg) {
             return ReqResult.Err(errMsg);
         }
 
-        private ReqResult Result_ConnectivityErr(string errMsg) {
+        private static ReqResult Result_ConnectivityErr(string errMsg) {
             //byte[] bytes = Encoding.UTF8.GetBytes(errMsg);
             //return new ReqResult(400, new MemoryStream(bytes));
             return ReqResult.Connectivity(errMsg);
@@ -1694,7 +1694,7 @@ namespace Ifak.Fast.Mediator
                 }
             }
 
-            private Action<SessionInfo, string> terminate;
+            private readonly Action<SessionInfo, string> terminate;
 
             public readonly Timestamp StartTime;
 
@@ -1726,16 +1726,16 @@ namespace Ifak.Fast.Mediator
             private bool forceEventBuffering = false;
 
             private Timestamp lastTimeVarValues = Timestamp.Empty;
-            private Dictionary<VariableRef, VariableValue> bufferVarValues = new Dictionary<VariableRef, VariableValue>();
+            private readonly Dictionary<VariableRef, VariableValue> bufferVarValues = [];
 
             private Timestamp lastTimeVarHistory = Timestamp.Empty;
-            private Dictionary<VariableRef, HistoryChange> bufferVarHistory = new Dictionary<VariableRef, HistoryChange>();
+            private readonly Dictionary<VariableRef, HistoryChange> bufferVarHistory = [];
 
             private Timestamp lastTimeConfigChanged = Timestamp.Empty;
-            private HashSet<ObjectRef> bufferConfigChanges = new HashSet<ObjectRef>();
+            private readonly HashSet<ObjectRef> bufferConfigChanges = [];
 
             private Timestamp lastTimeEvents = Timestamp.Empty;
-            private List<AlarmOrEvent> bufferEvents = new List<AlarmOrEvent>();
+            private readonly List<AlarmOrEvent> bufferEvents = [];
 
             public void SendEvent_VariableValuesChanged(List<VariableValue> values) {
                 if (forceEventBuffering) {
@@ -2082,7 +2082,7 @@ namespace Ifak.Fast.Mediator
 
     public sealed class ReqResult : IDisposable {
 
-        private Action<object, Stream> serializer = (o, s) => StdJson.ObjectToStream(o, s);
+        private readonly Action<object, Stream> serializer = (o, s) => StdJson.ObjectToStream(o, s);
 
         public static ReqResult OK(object? obj, Action<object, Stream>? serializer = null) {
             var res = new ReqResult(ReqRes.OK, 200, obj, serializer: serializer);
