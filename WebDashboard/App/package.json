@@ -16,7 +16,7 @@
     "@mdi/font": "7.4.47",
     "@types/dygraphs": "2.1.11",
     "ace-builds": "1.43.6",
-    "axios": "1.15.2",
+    "axios": "1.16.1",
     "chart.js": "4.5.1",
     "dompurify": "3.4.2",
     "dygraphs": "2.2.1",
