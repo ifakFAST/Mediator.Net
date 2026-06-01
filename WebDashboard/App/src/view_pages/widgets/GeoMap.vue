@@ -107,6 +107,7 @@ interface GeoTiffUrl {
   setWidgetTitleVarValues?: Record<string, string>
   opacity?: number
   colorMap?: ColorMapRange[]
+  scale?: number
 }
 
 // Extend types to handle both direct layers and layer groups
@@ -128,7 +129,7 @@ interface GeoTiffFrame extends GeoContentFrame {
   colorMap?: (values: number[]) => string | null
 }
 
-function createColorMapper(colorRanges?: ColorMapRange[]): ((values: number[]) => string | null) | undefined {
+function createColorMapper(colorRanges?: ColorMapRange[], scale?: number): ((values: number[]) => string | null) | undefined {
   if (!colorRanges) {
     return undefined
   }
@@ -137,7 +138,10 @@ function createColorMapper(colorRanges?: ColorMapRange[]): ((values: number[]) =
     if (!values || values.length === 0) {
       return null
     }
-    const value = values[0]
+    let value = values[0]
+    if (scale) {
+      value = value / scale
+    }
     for (const range of ranges) {
       if (value >= range.start && value < range.end) {
         return range.color
@@ -898,7 +902,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
           frames.push({
             georaster,
             opacity: geoTiffUrl.opacity || 0.9,
-            colorMap: createColorMapper(geoTiffUrl.colorMap),
+            colorMap: createColorMapper(geoTiffUrl.colorMap, geoTiffUrl.scale),
             setVariableValues: geoTiffUrl.setVariableValues,
             setWidgetTitleVarValues: geoTiffUrl.setWidgetTitleVarValues,
           })
