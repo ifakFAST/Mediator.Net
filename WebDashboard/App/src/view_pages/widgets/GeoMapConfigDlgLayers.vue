@@ -2,11 +2,11 @@
   <div>
     <v-dialog
       v-model="show"
-      max-width="1100px"
+      max-width="1300px"
       persistent
       @keydown="
         (e: KeyboardEvent) => {
-          if (e.keyCode === 27 && !selectObject.show) {
+          if (e.keyCode === 27 && !selectObject.show && !colorMapEditor.show) {
             closeDialog()
           }
         }
@@ -185,6 +185,7 @@
                 <th>Object</th>
                 <th>Variable</th>
                 <th>Frame Count</th>
+                <th>Color Map</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -234,6 +235,37 @@
                   ></v-text-field>
                 </td>
                 <td>
+                  <div class="d-flex align-center">
+                    <v-tooltip
+                      v-if="layer.Type === 'GeoTiff'"
+                      text="Edit color map"
+                    >
+                      <template #activator="{ props: tooltipProps }">
+                        <v-btn
+                          v-bind="tooltipProps"
+                          icon="mdi-palette"
+                          size="small"
+                          @click="OpenColorMapEditor(layer)"
+                          variant="text"
+                        ></v-btn>
+                      </template>
+                    </v-tooltip>
+                    <span
+                      v-if="layer.Type === 'GeoTiff'"
+                      class="ml-1 text-medium-emphasis"
+                      style="min-width: 2ch"
+                    >
+                      {{ colorMapCount(layer) }}
+                    </span>
+                    <span
+                      v-else
+                      class="text-medium-emphasis"
+                    >
+                      -
+                    </span>
+                  </div>
+                </td>
+                <td>
                   <div class="d-flex">
                     <v-btn
                       class="mr-1"
@@ -274,6 +306,7 @@
                 <th>Object</th>
                 <th>Variable</th>
                 <th>Frame Count</th>
+                <th>Color Map</th>
                 <th>Selected by Default</th>
                 <th>Actions</th>
               </tr>
@@ -322,6 +355,37 @@
                     style="width: 10ch"
                     type="number"
                   ></v-text-field>
+                </td>
+                <td>
+                  <div class="d-flex align-center">
+                    <v-tooltip
+                      v-if="layer.Type === 'GeoTiff'"
+                      text="Edit color map"
+                    >
+                      <template #activator="{ props: tooltipProps }">
+                        <v-btn
+                          v-bind="tooltipProps"
+                          icon="mdi-palette"
+                          size="small"
+                          @click="OpenColorMapEditor(layer)"
+                          variant="text"
+                        ></v-btn>
+                      </template>
+                    </v-tooltip>
+                    <span
+                      v-if="layer.Type === 'GeoTiff'"
+                      class="ml-1 text-medium-emphasis"
+                      style="min-width: 2ch"
+                    >
+                      {{ colorMapCount(layer) }}
+                    </span>
+                    <span
+                      v-else
+                      class="text-medium-emphasis"
+                    >
+                      -
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <v-checkbox
@@ -373,6 +437,168 @@
       </v-card>
     </v-dialog>
 
+    <v-dialog
+      v-model="colorMapEditor.show"
+      max-width="760px"
+      persistent
+      @keydown.stop="
+        (e: KeyboardEvent) => {
+          if (e.keyCode === 27) {
+            CloseColorMapEditor()
+          }
+        }
+      "
+    >
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">Color Map</span>
+          <span class="ml-2 text-subtitle-1 text-medium-emphasis">{{ colorMapEditor.layerName }}</span>
+        </v-card-title>
+
+        <v-card-text>
+          <div class="d-flex mb-2">
+            <v-tooltip text="Add range">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="mr-1"
+                  icon="mdi-plus"
+                  size="small"
+                  @click="AddColorMapRange"
+                  variant="text"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip text="Copy CSV">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="mr-1"
+                  icon="mdi-content-copy"
+                  size="small"
+                  @click="CopyColorMapAsCsvToClipboard"
+                  variant="text"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip text="Paste CSV">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn
+                  v-bind="tooltipProps"
+                  class="mr-1"
+                  icon="mdi-clipboard-text"
+                  size="small"
+                  @click="ReplaceColorMapFromCsvFromClipboard"
+                  variant="text"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip text="Clear ranges">
+              <template #activator="{ props: tooltipProps }">
+                <v-btn
+                  v-bind="tooltipProps"
+                  icon="mdi-delete-sweep"
+                  size="small"
+                  @click="ClearColorMapRanges"
+                  variant="text"
+                ></v-btn>
+              </template>
+            </v-tooltip>
+          </div>
+
+          <v-table class="no-padding-table">
+            <thead>
+              <tr>
+                <th>Start</th>
+                <th>End</th>
+                <th>Color</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(range, idx) in colorMapEditor.ranges"
+                :key="'color-map-' + idx"
+              >
+                <td>
+                  <v-text-field
+                    v-model.number="range.Start"
+                    style="width: 12ch"
+                    type="number"
+                  ></v-text-field>
+                </td>
+                <td>
+                  <v-text-field
+                    v-model.number="range.End"
+                    style="width: 12ch"
+                    type="number"
+                  ></v-text-field>
+                </td>
+                <td style="width: 100%">
+                  <div class="d-flex align-center">
+                    <input
+                      class="geomap-color-map-swatch mr-2"
+                      type="color"
+                      :value="colorPickerValue(range.Color)"
+                      @input="SetColorMapRangeColor(range, $event)"
+                    />
+                    <v-text-field
+                      v-model="range.Color"
+                      style="width: 100%"
+                    ></v-text-field>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex">
+                    <v-btn
+                      class="mr-1"
+                      :disabled="idx === 0"
+                      icon="mdi-arrow-up"
+                      size="small"
+                      @click="MoveUpItem(colorMapEditor.ranges, idx)"
+                      variant="text"
+                    ></v-btn>
+                    <v-btn
+                      icon="mdi-delete"
+                      size="small"
+                      @click="DeleteItemFromArray(colorMapEditor.ranges, idx)"
+                      variant="text"
+                    ></v-btn>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="colorMapEditor.ranges.length === 0">
+                <td
+                  class="text-medium-emphasis"
+                  colspan="4"
+                >
+                  No ranges configured
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey-darken-1"
+            variant="text"
+            @click="CloseColorMapEditor"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary-darken-1"
+            variant="text"
+            @click="SaveColorMapEditor"
+          >
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <dlg-object-select
       v-model="selectObject.show"
       :allow-config-variables="true"
@@ -401,6 +627,13 @@ interface ItemWithName {
   Name: string
 }
 
+interface ColorMapEditor {
+  show: boolean
+  layer: config.NamedLayerType | null
+  layerName: string
+  ranges: config.ColorMapRange[]
+}
+
 // Props
 interface Props {
   configuration?: config.GeoMapConfig
@@ -422,7 +655,44 @@ const selectObject = ref<SelectObject>({
   selectedObjectID: '',
 })
 const currentVariable = ref<fast.VariableRef>({ Object: '', Name: '' })
+const colorMapEditor = ref<ColorMapEditor>({
+  show: false,
+  layer: null,
+  layerName: '',
+  ranges: [],
+})
 let resolveDialog: (v: boolean) => void = () => {}
+
+const normalizeColorMapRange = (range: any): config.ColorMapRange => ({
+  Start: Number(range.Start ?? range.start ?? 0),
+  End: Number(range.End ?? range.end ?? 0),
+  Color: String(range.Color ?? range.color ?? ''),
+})
+
+const normalizeLayerColorMap = (layer: config.NamedLayerType): void => {
+  const rawColorMap = (layer as any).ColorMap ?? (layer as any).colorMap
+  if (Array.isArray(rawColorMap) && rawColorMap.length > 0) {
+    layer.ColorMap = rawColorMap.map(normalizeColorMapRange)
+  } else {
+    delete layer.ColorMap
+  }
+  delete (layer as any).colorMap
+}
+
+const normalizeConfiguredColorMaps = (configValue: config.GeoMapConfig): void => {
+  configValue.MainLayers?.forEach(normalizeLayerColorMap)
+  configValue.OptionalLayers?.forEach(normalizeLayerColorMap)
+}
+
+const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+
+const isColorMapRangeOK = (range: config.ColorMapRange): boolean => {
+  return isFiniteNumber(range.Start) && isFiniteNumber(range.End) && range.Start < range.End && range.Color.trim() !== ''
+}
+
+const isLayerColorMapOK = (layer: config.NamedLayerType): boolean => {
+  return layer.Type !== 'GeoTiff' || !layer.ColorMap || layer.ColorMap.every(isColorMapRangeOK)
+}
 
 // Computed
 const isItemsOK = computed(() => {
@@ -440,6 +710,8 @@ const isItemsOK = computed(() => {
     configValue.StaticLayers.every(nameNotEmpty) &&
     configValue.MainLayers.every(nameNotEmpty) &&
     configValue.OptionalLayers.every(nameNotEmpty) &&
+    configValue.MainLayers.every(isLayerColorMapOK) &&
+    configValue.OptionalLayers.every(isLayerColorMapOK) &&
     names.size === totalSize &&
     configValue.StaticLayers.every(fileNameNotEmpty)
   return ok
@@ -457,6 +729,7 @@ const showDialog = async (): Promise<boolean> => {
 
   const str = JSON.stringify(props.configuration)
   theConfig.value = JSON.parse(str)
+  normalizeConfiguredColorMaps(theConfig.value)
   show.value = true
 
   return new Promise<boolean>((resolve) => {
@@ -550,6 +823,193 @@ const AddOptionalLayer = (): void => {
   theConfig.value.OptionalLayers.push(item)
 }
 
+const colorMapCount = (layer: config.NamedLayerType): number => {
+  return layer.ColorMap?.length ?? 0
+}
+
+const OpenColorMapEditor = (layer: config.NamedLayerType): void => {
+  if (layer.Type !== 'GeoTiff') {
+    return
+  }
+
+  normalizeLayerColorMap(layer)
+  colorMapEditor.value = {
+    show: true,
+    layer,
+    layerName: layer.Name,
+    ranges: (layer.ColorMap ?? []).map((range) => ({ ...range })),
+  }
+}
+
+const CloseColorMapEditor = (): void => {
+  colorMapEditor.value.show = false
+}
+
+const AddColorMapRange = (): void => {
+  const ranges = colorMapEditor.value.ranges
+  const previousEnd = ranges.length > 0 ? Number(ranges[ranges.length - 1].End) : 0
+  const start = Number.isFinite(previousEnd) ? previousEnd : 0
+  ranges.push({
+    Start: start,
+    End: start + 1,
+    Color: '#000000',
+  })
+}
+
+const ClearColorMapRanges = (): void => {
+  colorMapEditor.value.ranges = []
+}
+
+const colorPickerValue = (color: string): string => {
+  const normalized = color.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
+    return normalized
+  }
+  const shortHex = normalized.match(/^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/)
+  if (shortHex) {
+    return `#${shortHex[1]}${shortHex[1]}${shortHex[2]}${shortHex[2]}${shortHex[3]}${shortHex[3]}`
+  }
+  return '#000000'
+}
+
+const SetColorMapRangeColor = (range: config.ColorMapRange, event: Event): void => {
+  const input = event.target as HTMLInputElement | null
+  if (input) {
+    range.Color = input.value
+  }
+}
+
+const escapeCsvValue = (value: string | number): string => {
+  const text = String(value)
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
+const parseCsvRows = (csvData: string): string[][] => {
+  const rows: string[][] = []
+  let row: string[] = []
+  let value = ''
+  let inQuotes = false
+
+  for (let i = 0; i < csvData.length; i++) {
+    const ch = csvData[i]
+    if (inQuotes) {
+      if (ch === '"' && csvData[i + 1] === '"') {
+        value += '"'
+        i++
+      } else if (ch === '"') {
+        inQuotes = false
+      } else {
+        value += ch
+      }
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === ',') {
+      row.push(value)
+      value = ''
+    } else if (ch === '\r' || ch === '\n') {
+      row.push(value)
+      rows.push(row)
+      row = []
+      value = ''
+      if (ch === '\r' && csvData[i + 1] === '\n') {
+        i++
+      }
+    } else {
+      value += ch
+    }
+  }
+
+  if (value !== '' || row.length > 0) {
+    row.push(value)
+    rows.push(row)
+  }
+
+  return rows.filter((it) => it.some((value) => value.trim() !== ''))
+}
+
+const parseColorMapCsv = (csvData: string): config.ColorMapRange[] => {
+  const rows = parseCsvRows(csvData)
+  if (rows.length === 0) {
+    return []
+  }
+
+  const header = rows[0].map((value) => value.trim().toLowerCase())
+  const hasHeader = header.includes('start') && header.includes('end') && header.includes('color')
+  const startIdx = hasHeader ? header.indexOf('start') : 0
+  const endIdx = hasHeader ? header.indexOf('end') : 1
+  const colorIdx = hasHeader ? header.indexOf('color') : 2
+  const dataRows = hasHeader ? rows.slice(1) : rows
+
+  return dataRows.map((parts, idx) => {
+    const startText = parts[startIdx]?.trim() ?? ''
+    const endText = parts[endIdx]?.trim() ?? ''
+    const colorText = parts[colorIdx]?.trim() ?? ''
+    const range: config.ColorMapRange = {
+      Start: Number(startText),
+      End: Number(endText),
+      Color: colorText,
+    }
+    if (startText === '' || endText === '' || colorText === '') {
+      throw new Error(`Invalid color map CSV row ${idx + (hasHeader ? 2 : 1)}`)
+    }
+    if (!isColorMapRangeOK(range)) {
+      throw new Error(`Invalid color map CSV row ${idx + (hasHeader ? 2 : 1)}`)
+    }
+    return range
+  })
+}
+
+const CopyColorMapAsCsvToClipboard = (): void => {
+  const header = 'Start,End,Color'
+  const csvData = colorMapEditor.value.ranges.map((range) => [range.Start, range.End, range.Color].map(escapeCsvValue).join(',')).join('\r\n')
+
+  navigator.clipboard
+    .writeText(csvData === '' ? header : header + '\r\n' + csvData)
+    .then(() => {
+      alert('CSV data copied to clipboard')
+    })
+    .catch((error) => {
+      alert('Failed to copy CSV data to clipboard: ' + error)
+    })
+}
+
+const ReplaceColorMapFromCsvFromClipboard = (): void => {
+  navigator.clipboard
+    .readText()
+    .then((csvData) => {
+      colorMapEditor.value.ranges = parseColorMapCsv(csvData)
+    })
+    .catch((error) => {
+      alert('Failed to paste CSV data from clipboard: ' + error)
+    })
+}
+
+const SaveColorMapEditor = (): void => {
+  const layer = colorMapEditor.value.layer
+  if (!layer) {
+    CloseColorMapEditor()
+    return
+  }
+
+  const ranges = colorMapEditor.value.ranges.map((range) => ({ ...range, Color: range.Color.trim() }))
+  const invalidIdx = ranges.findIndex((range) => !isColorMapRangeOK(range))
+  if (invalidIdx >= 0) {
+    alert(`Invalid color map range at row ${invalidIdx + 1}`)
+    return
+  }
+
+  if (ranges.length > 0) {
+    layer.ColorMap = ranges
+  } else {
+    delete layer.ColorMap
+  }
+  delete (layer as any).colorMap
+  CloseColorMapEditor()
+}
+
 const SaveConfig = async (): Promise<void> => {
   const para = {
     config: theConfig.value,
@@ -585,3 +1045,14 @@ defineExpose({
   showDialog,
 })
 </script>
+
+<style scoped>
+.geomap-color-map-swatch {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+</style>

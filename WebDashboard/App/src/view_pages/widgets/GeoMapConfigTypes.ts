@@ -66,11 +66,18 @@ export interface StaticLayer {
 
 export type GeoLayerType = 'GeoJson' | 'GeoTiff'
 
+export interface ColorMapRange {
+  Start: number
+  End: number
+  Color: string
+}
+
 export interface NamedLayerType {
   Name: string
   Type: GeoLayerType
   Variable: fast.VariableRef
   FrameCount?: number
+  ColorMap?: ColorMapRange[]
 }
 
 export interface MainLayer extends NamedLayerType {}

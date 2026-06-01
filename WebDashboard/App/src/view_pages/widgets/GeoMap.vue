@@ -53,7 +53,13 @@ import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
 import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import type { Feature, GeoJsonObject, GeoJsonTypes, BBox } from 'geojson'
-import { type GeoMapConfig, type NamedLayerType, type GeoLayerType, type StaticLayer } from './GeoMapConfigTypes'
+import {
+  type GeoMapConfig,
+  type NamedLayerType,
+  type GeoLayerType,
+  type StaticLayer,
+  type ColorMapRange as ConfigColorMapRange,
+} from './GeoMapConfigTypes'
 import GeoMapConfigDlgMap from './GeoMapConfigDlgMap.vue'
 import GeoMapConfigDlgLayers from './GeoMapConfigDlgLayers.vue'
 import GeoMapHtmlDialog from './GeoMapHtmlDialog.vue'
@@ -80,11 +86,13 @@ declare const GeoRasterLayer: GeoRasterLayerConstructor
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-groupedlayercontrol/src/leaflet.groupedlayercontrol.css'
 
-interface ColorMapRange {
+interface GeoTiffColorMapRange {
   start: number // inclusive
   end: number // exclusive
   color: string
 }
+
+type ColorMapRangeInput = GeoTiffColorMapRange | ConfigColorMapRange
 
 interface GeoJsonObj {
   type: GeoJsonTypes // copied from GeoJsonObject
@@ -106,7 +114,7 @@ interface GeoTiffUrl {
   setVariableValues?: Record<string, string>
   setWidgetTitleVarValues?: Record<string, string>
   opacity?: number
-  colorMap?: ColorMapRange[]
+  colorMap?: GeoTiffColorMapRange[]
   scale?: number
 }
 
@@ -129,11 +137,26 @@ interface GeoTiffFrame extends GeoContentFrame {
   colorMap?: (values: number[]) => string | null
 }
 
-function createColorMapper(colorRanges?: ColorMapRange[], scale?: number): ((values: number[]) => string | null) | undefined {
-  if (!colorRanges) {
+function normalizeColorMapRange(range: ColorMapRangeInput): GeoTiffColorMapRange {
+  const lowerCaseRange = range as Partial<GeoTiffColorMapRange>
+  const configRange = range as Partial<ConfigColorMapRange>
+  return {
+    start: lowerCaseRange.start ?? configRange.Start ?? 0,
+    end: lowerCaseRange.end ?? configRange.End ?? 0,
+    color: lowerCaseRange.color ?? configRange.Color ?? '',
+  }
+}
+
+function createColorMapper(colorRanges?: ColorMapRangeInput[], scale?: number): ((values: number[]) => string | null) | undefined {
+  if (!colorRanges || colorRanges.length === 0) {
     return undefined
   }
-  const ranges = [...colorRanges]
+  const ranges = colorRanges
+    .map(normalizeColorMapRange)
+    .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.color !== '')
+  if (ranges.length === 0) {
+    return undefined
+  }
   return (values: number[]): string | null => {
     if (!values || values.length === 0) {
       return null
@@ -149,6 +172,11 @@ function createColorMapper(colorRanges?: ColorMapRange[], scale?: number): ((val
     }
     return null
   }
+}
+
+function getConfiguredColorMap(layer: NamedLayerType): ColorMapRangeInput[] | undefined {
+  const configuredColorMap = layer.ColorMap ?? (layer as any).colorMap
+  return configuredColorMap && configuredColorMap.length > 0 ? configuredColorMap : undefined
 }
 
 interface AnimationController {
@@ -862,6 +890,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
       await loadGeoRasterModules()
 
       const frames: GeoTiffFrame[] = []
+      const configuredColorMap = getConfiguredColorMap(layerObj)
 
       for (const geoTiffUrl of dataArray as GeoTiffUrl[]) {
         if (abortController.signal.aborted) {
@@ -902,7 +931,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
           frames.push({
             georaster,
             opacity: geoTiffUrl.opacity || 0.9,
-            colorMap: createColorMapper(geoTiffUrl.colorMap, geoTiffUrl.scale),
+            colorMap: createColorMapper(configuredColorMap ?? geoTiffUrl.colorMap, geoTiffUrl.scale),
             setVariableValues: geoTiffUrl.setVariableValues,
             setWidgetTitleVarValues: geoTiffUrl.setWidgetTitleVarValues,
           })

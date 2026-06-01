@@ -183,6 +183,8 @@ public sealed class MainLayer {
     public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRefUnresolved Variable { get; set; }
     public int FrameCount { get; set; } = 1;
+    public ColorMapRange[]? ColorMap { get; set; } = null;
+    public bool ShouldSerializeColorMap() => ColorMap != null && ColorMap.Length > 0;
 }
 
 public sealed class OptionalLayer {
@@ -191,6 +193,14 @@ public sealed class OptionalLayer {
     public VariableRefUnresolved Variable { get; set; }
     public bool IsSelected { get; set; } = true;
     public int FrameCount { get; set; } = 1;
+    public ColorMapRange[]? ColorMap { get; set; } = null;
+    public bool ShouldSerializeColorMap() => ColorMap != null && ColorMap.Length > 0;
+}
+
+public sealed class ColorMapRange {
+    public double Start { get; set; } = 0;
+    public double End { get; set; } = 0;
+    public string Color { get; set; } = "";
 }
 
 public enum LayerType {
