@@ -39,7 +39,7 @@ export function parseEnumValues(it: string): EnumValEntry[] {
 }
 
 export async function onWriteItemEnum(
-  it: ConfigItem,
+  it: DefaultableItem & { Name?: string; Object: string; Member: string },
   oldValue: string,
   enumInputDlg: (title: string, message: string, value: string, values: string[]) => Promise<string | null>,
   backendAsync: (request: string, parameters: object) => Promise<any>,
@@ -76,7 +76,7 @@ export async function onWriteItemEnum(
 }
 
 export async function onWriteItemNumeric(
-  it: ConfigItem,
+  it: DefaultableItem & { Name?: string; Object: string; Member: string },
   oldValue: string,
   textInputDlg: (title: string, message: string, value: string, valid: (str: string) => string) => Promise<string | null>,
   backendAsync: (request: string, parameters: object) => Promise<any>,
@@ -101,7 +101,7 @@ export async function onWriteItemNumeric(
     }
   }
 
-  const hint = it.MinValue !== null && it.MaxValue !== null ? `New value in range [${it.MinValue}, ${it.MaxValue}]` : ''
+  const hint = buildNumericWriteHint(it)
   const newValue = await textInputDlg(it.Name ?? '', hint, oldValue, isValid)
   if (newValue === null) {
     return
@@ -241,6 +241,21 @@ export function resolveDefaultDisplayValue(item: DefaultableItem): string | null
     }
   }
   return String(num)
+}
+
+/** Hint text for the numeric write dialog (range and/or configured default). */
+export function buildNumericWriteHint(item: DefaultableItem): string {
+  const parts: string[] = []
+  if (item.MinValue !== null && item.MaxValue !== null) {
+    parts.push(`New value in range [${item.MinValue}, ${item.MaxValue}]`)
+  }
+  if (hasDefaultValue(item)) {
+    const defaultDisplay = resolveDefaultDisplayValue(item)
+    if (defaultDisplay !== null) {
+      parts.push(`Default value: ${defaultDisplay}`)
+    }
+  }
+  return parts.join('. ')
 }
 
 export function normalizeItemDefaultValue(item: DefaultableItem): void {

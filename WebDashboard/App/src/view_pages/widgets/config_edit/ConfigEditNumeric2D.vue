@@ -559,10 +559,25 @@ const onLoadData = async (): Promise<void> => {
 const onWriteItem = async (rowIdx: number, colIdx: number): Promise<void> => {
   const it: ItemConfig = configItemFromRowColumn(rowIdx, colIdx)
   const value = valueForItem(rowIdx, colIdx)
+
+  if (it.Object === null || it.Member === null || it.Object === '' || it.Member === '' || it.Object === undefined || it.Member === undefined) {
+    return
+  }
+
+  const item: DefaultableItem & { Object: string; Member: string } = {
+    Type: it.Type,
+    Object: it.Object,
+    Member: it.Member,
+    MinValue: it.MinValue,
+    MaxValue: it.MaxValue,
+    EnumValues: it.EnumValues,
+    DefaultValue: it.DefaultValue,
+  }
+
   if (it.Type === 'Range') {
-    await onWriteItemNumeric(it, value, textInputDlg, props.backendAsync)
+    await onWriteItemNumeric(item, value, textInputDlg, props.backendAsync)
   } else {
-    await onWriteItemEnum(it, value, enumInputDlg, props.backendAsync)
+    await onWriteItemEnum(item, value, enumInputDlg, props.backendAsync)
   }
 }
 
