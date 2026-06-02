@@ -39,7 +39,8 @@ export function parseEnumValues(it: string): EnumValEntry[] {
 }
 
 export async function onWriteItemEnum(
-  it: DefaultableItem & { Name?: string; Object: string; Member: string },
+  it: DefaultableItem & { Object: string; Member: string },
+  title: string,
   oldValue: string,
   enumInputDlg: (title: string, message: string, value: string, values: string[]) => Promise<string | null>,
   backendAsync: (request: string, parameters: object) => Promise<any>,
@@ -48,7 +49,7 @@ export async function onWriteItemEnum(
 
   const vals: EnumValEntry[] = parseEnumValues(it.EnumValues)
   const values = vals.map((v) => v.label)
-  const newValue = await enumInputDlg(it.Name ?? '', hint, oldValue, values)
+  const newValue = await enumInputDlg(title, hint, oldValue, values)
   if (newValue === null) {
     return
   }
@@ -76,7 +77,8 @@ export async function onWriteItemEnum(
 }
 
 export async function onWriteItemNumeric(
-  it: DefaultableItem & { Name?: string; Object: string; Member: string },
+  it: DefaultableItem & { Object: string; Member: string },
+  title: string,
   oldValue: string,
   textInputDlg: (title: string, message: string, value: string, valid: (str: string) => string) => Promise<string | null>,
   backendAsync: (request: string, parameters: object) => Promise<any>,
@@ -102,7 +104,7 @@ export async function onWriteItemNumeric(
   }
 
   const hint = buildNumericWriteHint(it)
-  const newValue = await textInputDlg(it.Name ?? '', hint, oldValue, isValid)
+  const newValue = await textInputDlg(title, hint, oldValue, isValid)
   if (newValue === null) {
     return
   }

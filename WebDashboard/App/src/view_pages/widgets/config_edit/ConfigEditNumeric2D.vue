@@ -574,10 +574,13 @@ const onWriteItem = async (rowIdx: number, colIdx: number): Promise<void> => {
     DefaultValue: it.DefaultValue,
   }
 
+  // Set title as row, column:
+  const title = `${props.config.Rows[rowIdx] ?? ''}, ${props.config.Columns[colIdx] ?? ''}`
+
   if (it.Type === 'Range') {
-    await onWriteItemNumeric(item, value, textInputDlg, props.backendAsync)
+    await onWriteItemNumeric(item, title, value, textInputDlg, props.backendAsync)
   } else {
-    await onWriteItemEnum(item, value, enumInputDlg, props.backendAsync)
+    await onWriteItemEnum(item, title, value, enumInputDlg, props.backendAsync)
   }
 }
 

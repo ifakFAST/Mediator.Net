@@ -257,9 +257,9 @@ const writeEnabled = (it: ConfigItem): boolean => {
 const onWriteItem = async (it: ConfigItem): Promise<void> => {
   const oldValue: string = valueForItem(it, '')
   if (it.Type === 'Range') {
-    await onWriteItemNumeric(it, oldValue, textInputDlg, props.backendAsync)
+    await onWriteItemNumeric(it, it.Name, oldValue, textInputDlg, props.backendAsync)
   } else {
-    await onWriteItemEnum(it, oldValue, enumInputDlg, props.backendAsync)
+    await onWriteItemEnum(it, it.Name, oldValue, enumInputDlg, props.backendAsync)
   }
 }
 
