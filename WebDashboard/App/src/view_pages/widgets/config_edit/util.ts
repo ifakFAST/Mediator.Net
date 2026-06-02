@@ -1,4 +1,4 @@
-import type { ConfigItem } from './types'
+import type { ConfigItem, DefaultableItem } from './types'
 
 export interface EnumValEntry {
   num: number
@@ -122,7 +122,7 @@ export async function onWriteItemNumeric(
   // console.info('Config: ' + JSON.stringify(this.config))
 }
 
-export function hasDefaultValue(item: ConfigItem): boolean {
+export function hasDefaultValue(item: DefaultableItem): boolean {
   const v = item.DefaultValue
   return v !== undefined && v !== null && String(v).trim() !== ''
 }
@@ -167,7 +167,7 @@ function parseExactNumber(raw: string): number | null {
   return null
 }
 
-export function validateItemDefaultValue(item: ConfigItem): string {
+export function validateItemDefaultValue(item: DefaultableItem): string {
   if (!hasDefaultValue(item)) {
     return ''
   }
@@ -190,7 +190,7 @@ export function validateItemDefaultValue(item: ConfigItem): string {
   return ''
 }
 
-export function resolveDefaultJsonValue(item: ConfigItem): string | null {
+export function resolveDefaultJsonValue(item: DefaultableItem): string | null {
   if (!hasDefaultValue(item)) {
     return null
   }
@@ -225,7 +225,7 @@ export function resolveDefaultJsonValue(item: ConfigItem): string | null {
   return null
 }
 
-export function resolveDefaultDisplayValue(item: ConfigItem): string | null {
+export function resolveDefaultDisplayValue(item: DefaultableItem): string | null {
   const json = resolveDefaultJsonValue(item)
   if (json === null) {
     return null
@@ -243,7 +243,7 @@ export function resolveDefaultDisplayValue(item: ConfigItem): string | null {
   return String(num)
 }
 
-export function normalizeItemDefaultValue(item: ConfigItem): void {
+export function normalizeItemDefaultValue(item: DefaultableItem): void {
   if (!hasDefaultValue(item)) {
     item.DefaultValue = null
     return

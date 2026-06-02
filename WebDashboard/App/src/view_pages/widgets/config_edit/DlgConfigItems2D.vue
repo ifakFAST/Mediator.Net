@@ -38,6 +38,7 @@
                 <th style="text-align: left">
                   <enum-values-column-header></enum-values-column-header>
                 </th>
+                <th style="text-align: left">Default</th>
               </tr>
             </thead>
             <tbody>
@@ -107,6 +108,12 @@
                     v-model="item.EnumValues"
                   ></enum-values-field>
                 </td>
+                <td>
+                  <v-text-field
+                    v-model="item.DefaultValue"
+                    style="margin-left: 1ex; width: 6ch"
+                  ></v-text-field>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -156,15 +163,13 @@ import type { ModuleInfo, Obj, SelectObject } from '../common'
 import DlgObjectSelect from '../../../components/DlgObjectSelect.vue'
 import EnumValuesColumnHeader from './EnumValuesColumnHeader.vue'
 import EnumValuesField from './EnumValuesField.vue'
+import type { DefaultableItem } from './types'
+import { normalizeItemDefaultValue, validateItemDefaultValue } from './util'
 
-interface ItemConfig {
+interface ItemConfig extends DefaultableItem {
   Unit: string
   Object: string | null
   Member: string | null
-  Type: 'Range' | 'Enum'
-  MinValue: number | null
-  MaxValue: number | null
-  EnumValues: string
 }
 
 interface ObjInfo {
@@ -295,6 +300,16 @@ const showDialog = async (): Promise<boolean> => {
 }
 
 const save = async (): Promise<void> => {
+  for (const item of items.value) {
+    normalizeItemDefaultValue(item)
+  }
+  for (const item of items.value) {
+    const err = validateItemDefaultValue(item)
+    if (err !== '') {
+      alert(err)
+      return
+    }
+  }
   try {
     await props.backendAsync('SaveItems', { items: items.value })
   } catch (exp) {
@@ -324,6 +339,7 @@ const defaultItemConfig = (): ItemConfig => ({
   MinValue: null,
   MaxValue: null,
   EnumValues: '',
+  DefaultValue: null,
 })
 
 const parseCsvLineToItemConfig = (
@@ -357,6 +373,9 @@ const parseCsvLineToItemConfig = (
       case 'EnumValues':
         it.EnumValues = value
         break
+      case 'DefaultValue':
+        it.DefaultValue = value === '' ? null : value
+        break
     }
   })
 
@@ -372,7 +391,7 @@ const parseCsvLineToItemConfig = (
 
 const copyItemsAsCsvToClipboard = (): void => {
   const colCount = props.config.Columns.length
-  const header = 'Row,Column,Unit,Object,Member,Type,MinValue,MaxValue,EnumValues'
+  const header = 'Row,Column,Unit,Object,Member,Type,MinValue,MaxValue,EnumValues,DefaultValue'
   const csvData = items.value
     .map((item, idx) => {
       const row = colCount > 0 ? (props.config.Rows[Math.floor(idx / colCount)] ?? '') : ''
@@ -387,6 +406,7 @@ const copyItemsAsCsvToClipboard = (): void => {
         item.MinValue ?? '',
         item.MaxValue ?? '',
         item.EnumValues,
+        item.DefaultValue ?? '',
       ].join(',')
     })
     .join('\r\n')
