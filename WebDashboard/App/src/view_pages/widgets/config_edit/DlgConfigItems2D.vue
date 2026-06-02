@@ -2,7 +2,7 @@
   <div>
     <v-dialog
       v-model="show"
-      max-width="900px"
+      max-width="1200px"
       persistent
       @keydown="onDialogKeydown"
     >
@@ -17,106 +17,108 @@
             label="Show items for"
             style="max-width: 320px; margin-bottom: 8px"
           ></v-select>
-          <table style="border-collapse: collapse">
-            <thead>
-              <tr>
-                <th
-                  v-if="selectedFilter?.type === 'col'"
-                  style="text-align: left"
-                >Row</th>
-                <th
-                  v-if="selectedFilter?.type === 'row'"
-                  style="text-align: left"
-                >Column</th>
-                <th style="text-align: left">Unit</th>
-                <th style="text-align: left">Object Name</th>
-                <th>&nbsp;</th>
-                <th style="text-align: left">Member</th>
-                <th style="text-align: left">Type</th>
-                <th style="text-align: left">Min</th>
-                <th style="text-align: left">Max</th>
-                <th style="text-align: left">
-                  <enum-values-column-header></enum-values-column-header>
-                </th>
-                <th style="text-align: left">Default</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="{ item, idx } in filteredItems"
-                :key="idx"
-              >
-                <td
-                  v-if="selectedFilter?.type === 'col'"
-                  style="font-size: 14px; padding-right: 1ex; white-space: break-word"
-                >{{ rowLabelForIdx(idx) }}</td>
-                <td
-                  v-if="selectedFilter?.type === 'row'"
-                  style="font-size: 14px; padding-right: 1ex; white-space: break-word"
-                >{{ colLabelForIdx(idx) }}</td>
-                <td>
-                  <v-text-field
-                    v-model="item.Unit"
-                    class="mr-2"
-                    style="width: 7ch"
-                  ></v-text-field>
-                </td>
-                <td style="font-size: 16px; max-width: 20ch; word-wrap: break-word">
-                  {{ objectID2Name(item.Object) }}
-                </td>
-                <td>
-                  <v-btn
-                    icon="mdi-pencil"
-                    size="small"
-                    variant="text"
-                    @click="selectObj(item)"
-                  ></v-btn>
-                </td>
-                <td>
-                  <v-select
-                    v-model="item.Member"
-                    :items="objectID2Members(item.Object)"
-                    style="margin-left: 1ex; width: 14ch"
-                  ></v-select>
-                </td>
-                <td>
-                  <v-select
-                    v-model="item.Type"
-                    :items="['Range', 'Enum']"
-                    style="margin-left: 1ex; width: 9ch"
-                  ></v-select>
-                </td>
-                <td>
-                  <v-text-field
-                    v-if="item.Type === 'Range'"
-                    v-model="item.MinValue"
-                    style="margin-left: 1ex; width: 8ch"
-                    type="number"
-                  ></v-text-field>
-                </td>
-                <td>
-                  <v-text-field
-                    v-if="item.Type === 'Range'"
-                    v-model="item.MaxValue"
-                    style="margin-left: 1ex; width: 8ch"
-                    type="number"
-                  ></v-text-field>
-                </td>
-                <td>
-                  <enum-values-field
-                    v-if="item.Type === 'Enum'"
-                    v-model="item.EnumValues"
-                  ></enum-values-field>
-                </td>
-                <td>
-                  <v-text-field
-                    v-model="item.DefaultValue"
-                    style="margin-left: 1ex; width: 6ch"
-                  ></v-text-field>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="items-table-scroll">
+            <table class="items-table">
+              <colgroup>
+                <col class="label-column">
+                <col class="unit-column">
+                <col class="object-column">
+                <col class="edit-column">
+                <col class="member-column">
+                <col class="type-column">
+                <col class="number-column">
+                <col class="number-column">
+                <col class="enum-column">
+                <col class="default-column">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th v-if="selectedFilter?.type === 'col'">Row</th>
+                  <th v-if="selectedFilter?.type === 'row'">Column</th>
+                  <th>Unit</th>
+                  <th>Object Name</th>
+                  <th>&nbsp;</th>
+                  <th>Member</th>
+                  <th>Type</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th>
+                    <enum-values-column-header></enum-values-column-header>
+                  </th>
+                  <th>Default</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="{ item, idx } in filteredItems"
+                  :key="idx"
+                >
+                  <td
+                    v-if="selectedFilter?.type === 'col'"
+                    class="label-cell"
+                  >{{ rowLabelForIdx(idx) }}</td>
+                  <td
+                    v-if="selectedFilter?.type === 'row'"
+                    class="label-cell"
+                  >{{ colLabelForIdx(idx) }}</td>
+                  <td>
+                    <v-text-field
+                      v-model="item.Unit"
+                    ></v-text-field>
+                  </td>
+                  <td class="object-cell">
+                    {{ objectID2Name(item.Object) }}
+                  </td>
+                  <td class="edit-cell">
+                    <v-btn
+                      icon="mdi-pencil"
+                      size="small"
+                      variant="text"
+                      @click="selectObj(item)"
+                    ></v-btn>
+                  </td>
+                  <td>
+                    <v-select
+                      v-model="item.Member"
+                      :items="objectID2Members(item.Object)"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-select
+                      v-model="item.Type"
+                      :items="['Range', 'Enum']"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-if="item.Type === 'Range'"
+                      v-model="item.MinValue"
+                      type="number"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-if="item.Type === 'Range'"
+                      v-model="item.MaxValue"
+                      type="number"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <enum-values-field
+                      v-if="item.Type === 'Enum'"
+                      v-model="item.EnumValues"
+                      field-style="width: 100%"
+                    ></enum-values-field>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-model="item.DefaultValue"
+                    ></v-text-field>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-btn
@@ -465,3 +467,83 @@ const replaceItemsFromCsvFromClipboard = (): void => {
 
 defineExpose({ showDialog })
 </script>
+
+<style scoped>
+.items-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.items-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 1040px;
+  width: 100%;
+}
+
+.items-table th,
+.items-table td {
+  padding-right: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.items-table th:last-child,
+.items-table td:last-child {
+  padding-right: 0;
+}
+
+.label-column {
+  width: 160px;
+}
+
+.unit-column {
+  width: 70px;
+}
+
+.object-column {
+  width: 180px;
+}
+
+.edit-column {
+  width: 44px;
+}
+
+.member-column {
+  width: 148px;
+}
+
+.type-column {
+  width: 100px;
+}
+
+.number-column {
+  width: 86px;
+}
+
+.enum-column {
+  width: 126px;
+}
+
+.default-column {
+  width: 70px;
+}
+
+.label-cell {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.object-cell {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.edit-cell {
+  text-align: center;
+}
+
+.items-table :deep(.v-input) {
+  min-width: 0;
+}
+</style>

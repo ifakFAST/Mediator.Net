@@ -21,140 +21,143 @@
               @click="editorItems_AddItem"
             ></v-btn>
           </div>
-          <table
+          <div
             v-else
-            style="width: 100%; border-collapse: collapse"
+            class="items-table-scroll"
           >
-            <thead>
-              <tr>
-                <th style="width: 100%; text-align: left">Name</th>
-                <th style="text-align: left">Unit</th>
-                <th style="text-align: left">Object Name</th>
-                <th>&nbsp;</th>
-                <th style="text-align: left">Member</th>
-                <th style="text-align: left">Type</th>
-                <th style="text-align: left">Min</th>
-                <th style="text-align: left">Max</th>
-                <th style="text-align: left">
-                  <enum-values-column-header></enum-values-column-header>
-                </th>
-                <th style="text-align: left">Default</th>
-                <th>&nbsp;</th>
-                <th>&nbsp;</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(item, idx) in items"
-                :key="idx"
-              >
-                <td>
-                  <v-text-field 
-                    v-model="item.Name" 
-                    class="mr-2"></v-text-field>
-                </td>
-                <td>
-                  <v-text-field
-                    v-model="item.Unit"
-                    class="mr-2"
-                    style="width: 7ch"
-                  ></v-text-field>
-                </td>
-                <td style="font-size: 16px; max-width: 18ch; word-wrap: break-word">
-                  {{ editorItems_ObjectID2Name(item.Object) }}
-                </td>
-                <td>
-                  <v-btn
-                    icon="mdi-pencil"
-                    size="small"
-                    variant="text"
-                    @click="editorItems_SelectObj(item)"
-                  ></v-btn>
-                </td>
-                <td>
-                  <v-select
-                    v-model="item.Member"
-                    :items="editorItems_ObjectID2Members(item.Object)"
-                    style="margin-left: 1ex; width: 12ch"
-                  ></v-select>
-                </td>
-                <td>
-                  <v-select
-                    v-model="item.Type"
-                    :items="['Range', 'Enum']"
-                    style="margin-left: 1ex; width: 9ch"
-                  ></v-select>
-                </td>
-                <td>
-                  <v-text-field
-                    v-if="item.Type === 'Range'"
-                    v-model="item.MinValue"
-                    style="margin-left: 1ex; width: 8ch"
-                    type="number"
-                  ></v-text-field>
-                </td>
-                <td>
-                  <v-text-field
-                    v-if="item.Type === 'Range'"
-                    v-model="item.MaxValue"
-                    style="margin-left: 1ex; width: 8ch"
-                    type="number"
-                  ></v-text-field>
-                </td>
-                <td>
-                  <enum-values-field
-                    v-if="item.Type === 'Enum'"
-                    v-model="item.EnumValues"
-                    field-style="margin-left: 1ex; width: 12ch"
-                  ></enum-values-field>
-                </td>
-                <td>
-                  <v-text-field
-                    v-model="item.DefaultValue"
-                    style="margin-left: 1ex; width: 6ch"
-                  ></v-text-field>
-                </td>
-                <td>
-                  <v-btn
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="editorItems_DeleteItem(idx)"
-                  ></v-btn>
-                </td>
-                <td>
-                  <v-btn
-                    v-if="idx > 0"
-                    icon="mdi-chevron-up"
-                    size="small"
-                    variant="text"
-                    @click="editorItems_MoveUpItem(idx)"
-                  ></v-btn>
-                </td>
-              </tr>
-              <tr>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>
-                  <v-btn
-                    icon="mdi-plus"
-                    size="small"
-                    variant="text"
-                    @click="editorItems_AddItem"
-                  ></v-btn>
-                </td>
-                <td>&nbsp;</td>
-              </tr>
-            </tbody>
-          </table>
+            <table class="items-table">
+              <colgroup>
+                <col class="name-column">
+                <col class="unit-column">
+                <col class="object-column">
+                <col class="icon-column">
+                <col class="member-column">
+                <col class="type-column">
+                <col class="number-column">
+                <col class="number-column">
+                <col class="enum-column">
+                <col class="default-column">
+                <col class="icon-column">
+                <col class="icon-column">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Unit</th>
+                  <th>Object Name</th>
+                  <th>&nbsp;</th>
+                  <th>Member</th>
+                  <th>Type</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th>
+                    <enum-values-column-header></enum-values-column-header>
+                  </th>
+                  <th>Default</th>
+                  <th>&nbsp;</th>
+                  <th>&nbsp;</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(item, idx) in items"
+                  :key="idx"
+                >
+                  <td>
+                    <v-text-field v-model="item.Name"></v-text-field>
+                  </td>
+                  <td>
+                    <v-text-field v-model="item.Unit"></v-text-field>
+                  </td>
+                  <td class="object-cell">
+                    {{ editorItems_ObjectID2Name(item.Object) }}
+                  </td>
+                  <td class="icon-cell">
+                    <v-btn
+                      icon="mdi-pencil"
+                      size="small"
+                      variant="text"
+                      @click="editorItems_SelectObj(item)"
+                    ></v-btn>
+                  </td>
+                  <td>
+                    <v-select
+                      v-model="item.Member"
+                      :items="editorItems_ObjectID2Members(item.Object)"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-select
+                      v-model="item.Type"
+                      :items="['Range', 'Enum']"
+                    ></v-select>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-if="item.Type === 'Range'"
+                      v-model="item.MinValue"
+                      type="number"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <v-text-field
+                      v-if="item.Type === 'Range'"
+                      v-model="item.MaxValue"
+                      type="number"
+                    ></v-text-field>
+                  </td>
+                  <td>
+                    <enum-values-field
+                      v-if="item.Type === 'Enum'"
+                      v-model="item.EnumValues"
+                      field-style="width: 100%"
+                    ></enum-values-field>
+                  </td>
+                  <td>
+                    <v-text-field v-model="item.DefaultValue"></v-text-field>
+                  </td>
+                  <td class="icon-cell">
+                    <v-btn
+                      icon="mdi-delete"
+                      size="small"
+                      variant="text"
+                      @click="editorItems_DeleteItem(idx)"
+                    ></v-btn>
+                  </td>
+                  <td class="icon-cell">
+                    <v-btn
+                      v-if="idx > 0"
+                      icon="mdi-chevron-up"
+                      size="small"
+                      variant="text"
+                      @click="editorItems_MoveUpItem(idx)"
+                    ></v-btn>
+                  </td>
+                </tr>
+                <tr>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td>&nbsp;</td>
+                  <td class="icon-cell">
+                    <v-btn
+                      icon="mdi-plus"
+                      size="small"
+                      variant="text"
+                      @click="editorItems_AddItem"
+                    ></v-btn>
+                  </td>
+                  <td>&nbsp;</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-btn
@@ -473,3 +476,78 @@ defineExpose({
   showDialog,
 })
 </script>
+
+<style scoped>
+.items-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.items-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 1120px;
+  width: 100%;
+}
+
+.items-table th,
+.items-table td {
+  padding-right: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.items-table th:last-child,
+.items-table td:last-child {
+  padding-right: 0;
+}
+
+.name-column {
+  width: 156px;
+}
+
+.unit-column {
+  width: 70px;
+}
+
+.object-column {
+  width: 170px;
+}
+
+.icon-column {
+  width: 44px;
+}
+
+.member-column {
+  width: 132px;
+}
+
+.type-column {
+  width: 100px;
+}
+
+.number-column {
+  width: 86px;
+}
+
+.enum-column {
+  width: 126px;
+}
+
+.default-column {
+  width: 86px;
+}
+
+.object-cell {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.icon-cell {
+  text-align: center;
+}
+
+.items-table :deep(.v-input) {
+  min-width: 0;
+}
+</style>
