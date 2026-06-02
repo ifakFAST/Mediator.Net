@@ -121,3 +121,142 @@ export async function onWriteItemNumeric(
   }
   // console.info('Config: ' + JSON.stringify(this.config))
 }
+
+export function hasDefaultValue(item: ConfigItem): boolean {
+  const v = item.DefaultValue
+  return v !== undefined && v !== null && String(v).trim() !== ''
+}
+
+function parseRangeDefaultNumber(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') {
+    return null
+  }
+  try {
+    const json = JSON.parse(trimmed)
+    if (typeof json === 'number' && Number.isFinite(json)) {
+      return json
+    }
+  } catch {
+    /* fall through */
+  }
+  const num = Number(trimmed)
+  if (Number.isFinite(num)) {
+    return num
+  }
+  return null
+}
+
+function parseExactNumber(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') {
+    return null
+  }
+  try {
+    const json = JSON.parse(trimmed)
+    if (typeof json === 'number' && Number.isFinite(json)) {
+      return json
+    }
+  } catch {
+    /* fall through */
+  }
+  const num = Number(trimmed)
+  if (Number.isFinite(num) && String(num) === trimmed) {
+    return num
+  }
+  return null
+}
+
+export function validateItemDefaultValue(item: ConfigItem): string {
+  if (!hasDefaultValue(item)) {
+    return ''
+  }
+  if (item.Type === 'Range') {
+    const num = parseRangeDefaultNumber(String(item.DefaultValue).trim())
+    if (num === null) {
+      return 'Default must be a number'
+    }
+    if (item.MinValue !== null && num < item.MinValue) {
+      return 'Default is below minimum ' + item.MinValue
+    }
+    if (item.MaxValue !== null && num > item.MaxValue) {
+      return 'Default is above maximum ' + item.MaxValue
+    }
+    return ''
+  }
+  if (resolveDefaultJsonValue(item) === null) {
+    return 'Default must match an enum value or label'
+  }
+  return ''
+}
+
+export function resolveDefaultJsonValue(item: ConfigItem): string | null {
+  if (!hasDefaultValue(item)) {
+    return null
+  }
+  const raw = String(item.DefaultValue).trim()
+  if (item.Type === 'Range') {
+    const num = parseRangeDefaultNumber(raw)
+    if (num === null) {
+      return null
+    }
+    if (item.MinValue !== null && num < item.MinValue) {
+      return null
+    }
+    if (item.MaxValue !== null && num > item.MaxValue) {
+      return null
+    }
+    return JSON.stringify(num)
+  }
+  const vals: EnumValEntry[] = parseEnumValues(item.EnumValues)
+  const asNum = parseExactNumber(raw)
+  if (asNum !== null) {
+    for (const entry of vals) {
+      if (entry.num === asNum) {
+        return JSON.stringify(entry.num)
+      }
+    }
+  }
+  for (const entry of vals) {
+    if (entry.label === raw) {
+      return JSON.stringify(entry.num)
+    }
+  }
+  return null
+}
+
+export function resolveDefaultDisplayValue(item: ConfigItem): string | null {
+  const json = resolveDefaultJsonValue(item)
+  if (json === null) {
+    return null
+  }
+  if (item.Type === 'Range') {
+    return json
+  }
+  const num = JSON.parse(json) as number
+  const vals: EnumValEntry[] = parseEnumValues(item.EnumValues)
+  for (const entry of vals) {
+    if (entry.num === num) {
+      return entry.label
+    }
+  }
+  return String(num)
+}
+
+export function normalizeItemDefaultValue(item: ConfigItem): void {
+  if (!hasDefaultValue(item)) {
+    item.DefaultValue = null
+    return
+  }
+  if (item.Type === 'Range') {
+    const num = parseRangeDefaultNumber(String(item.DefaultValue).trim())
+    if (num !== null) {
+      item.DefaultValue = JSON.stringify(num)
+    }
+    return
+  }
+  const json = resolveDefaultJsonValue(item)
+  if (json !== null) {
+    item.DefaultValue = JSON.parse(json).toString()
+  }
+}

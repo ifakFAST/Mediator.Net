@@ -24,7 +24,27 @@
               class="text-left"
               style="font-size: 14px; height: 36px"
             ></th>
-            <th>&nbsp;</th>
+            <th
+              class="pl-5 pr-4"
+              style="font-size: 14px; height: 36px"
+            >
+              <v-tooltip
+                v-if="hasAnyDefaultValue"
+                location="bottom"
+              >
+                <template #activator="{ props: tooltipProps }">
+                  <span v-bind="tooltipProps">
+                    <v-icon
+                      :disabled="defaultApplyPlan.length === 0"
+                      icon="mdi-pencil-outline"
+                      style="font-size: 21px"
+                      @click="onApplyDefaults"
+                    ></v-icon>
+                  </span>
+                </template>
+                <span>Apply default values</span>
+              </v-tooltip>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +108,7 @@
     ></dlg-config-items>
     <dlg-text-input ref="textInput"></dlg-text-input>
     <dlg-enum-input ref="enumInput"></dlg-enum-input>
+    <dlg-apply-defaults ref="dlgApplyDefaults"></dlg-apply-defaults>
   </div>
 </template>
 
@@ -97,9 +118,17 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import DlgTextInput from '../../DlgTextInput.vue'
 import DlgEnumInput from './DlgEnumInput.vue'
 import DlgConfigItems from './DlgConfigItems.vue'
+import DlgApplyDefaults from './DlgApplyDefaults.vue'
 import type { Config, ConfigItem, ItemValue } from './types'
 import type { EnumValEntry } from './util'
-import { parseEnumValues, onWriteItemEnum, onWriteItemNumeric } from './util'
+import {
+  parseEnumValues,
+  onWriteItemEnum,
+  onWriteItemNumeric,
+  hasDefaultValue,
+  resolveDefaultJsonValue,
+  resolveDefaultDisplayValue,
+} from './util'
 
 // Props
 interface Props {
@@ -137,6 +166,14 @@ const canUpdateConfig = ref(false)
 const dlgConfigItems = ref<InstanceType<typeof DlgConfigItems> | null>(null)
 const textInput = ref<InstanceType<typeof DlgTextInput> | null>(null)
 const enumInput = ref<InstanceType<typeof DlgEnumInput> | null>(null)
+const dlgApplyDefaults = ref<InstanceType<typeof DlgApplyDefaults> | null>(null)
+
+interface DefaultApplyPlanEntry {
+  item: ConfigItem
+  currentDisplay: string
+  newDisplay: string
+  jsonValue: string
+}
 
 // Computed properties
 const theHeight = computed(() => {
@@ -146,6 +183,51 @@ const theHeight = computed(() => {
 
 const hasUnitColumn = computed(() => {
   return props.config.Items.some((it) => it.Unit.trim() !== '')
+})
+
+const hasAnyDefaultValue = computed(() => {
+  return props.config.Items.some((it) => hasDefaultValue(it))
+})
+
+const defaultApplyPlan = computed((): DefaultApplyPlanEntry[] => {
+  const plan: DefaultApplyPlanEntry[] = []
+  for (const it of props.config.Items) {
+    if (!hasDefaultValue(it)) {
+      continue
+    }
+    const bound =
+      it.Object !== undefined && it.Object !== null && it.Object !== '' && it.Member !== undefined && it.Member !== null && it.Member !== ''
+    if (!bound || !writeEnabled(it)) {
+      continue
+    }
+    const jsonValue = resolveDefaultJsonValue(it)
+    const newDisplay = resolveDefaultDisplayValue(it)
+    if (jsonValue === null || newDisplay === null) {
+      continue
+    }
+    plan.push({
+      item: it,
+      currentDisplay: valueForItem(it, ''),
+      newDisplay,
+      jsonValue,
+    })
+  }
+  return plan
+})
+
+const skippedDefaultsCount = computed(() => {
+  let count = 0
+  for (const it of props.config.Items) {
+    if (!hasDefaultValue(it)) {
+      continue
+    }
+    const bound =
+      it.Object !== undefined && it.Object !== null && it.Object !== '' && it.Member !== undefined && it.Member !== null && it.Member !== ''
+    if (!bound || !writeEnabled(it) || resolveDefaultJsonValue(it) === null) {
+      count++
+    }
+  }
+  return count
 })
 
 // Methods
@@ -262,6 +344,37 @@ const onConfigureItems = async (): Promise<void> => {
   if (ok) {
     await readValues()
   }
+}
+
+const onApplyDefaults = async (): Promise<void> => {
+  if (!dlgApplyDefaults.value || defaultApplyPlan.value.length === 0) {
+    return
+  }
+  const dlgRows = defaultApplyPlan.value.map((entry) => ({
+    name: entry.item.Name ?? '',
+    currentDisplay: entry.currentDisplay,
+    newDisplay: entry.newDisplay,
+  }))
+  const ok = await dlgApplyDefaults.value.open(dlgRows, skippedDefaultsCount.value)
+  if (!ok) {
+    return
+  }
+  for (const entry of defaultApplyPlan.value) {
+    const para = {
+      theObject: entry.item.Object,
+      member: entry.item.Member,
+      jsonValue: entry.jsonValue,
+      displayValue: entry.newDisplay,
+      oldValue: entry.currentDisplay,
+    }
+    try {
+      await props.backendAsync('WriteValue', para)
+    } catch (exp) {
+      alert(exp)
+      return
+    }
+  }
+  await readValues()
 }
 
 // Watchers

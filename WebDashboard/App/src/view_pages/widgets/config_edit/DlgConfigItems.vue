@@ -2,7 +2,7 @@
   <div>
     <v-dialog
       v-model="show"
-      max-width="1100px"
+      max-width="1200px"
       persistent
       @keydown="onDialogKeydown"
     >
@@ -38,6 +38,7 @@
                 <th style="text-align: left">
                   <enum-values-column-header></enum-values-column-header>
                 </th>
+                <th style="text-align: left">Default</th>
                 <th>&nbsp;</th>
                 <th>&nbsp;</th>
               </tr>
@@ -104,8 +105,14 @@
                   <enum-values-field
                     v-if="item.Type === 'Enum'"
                     v-model="item.EnumValues"
-                    field-style="width: 12ch"
+                    field-style="margin-left: 1ex; width: 12ch"
                   ></enum-values-field>
+                </td>
+                <td>
+                  <v-text-field
+                    v-model="item.DefaultValue"
+                    style="margin-left: 1ex; width: 6ch"
+                  ></v-text-field>
                 </td>
                 <td>
                   <v-btn
@@ -126,6 +133,7 @@
                 </td>
               </tr>
               <tr>
+                <td>&nbsp;</td>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
@@ -195,6 +203,7 @@ import type { ConfigItem } from './types'
 import DlgObjectSelect from '../../../components/DlgObjectSelect.vue'
 import EnumValuesColumnHeader from './EnumValuesColumnHeader.vue'
 import EnumValuesField from './EnumValuesField.vue'
+import { normalizeItemDefaultValue, validateItemDefaultValue } from './util'
 
 interface ObjInfo {
   Name: string
@@ -232,7 +241,8 @@ let resolveDialog: (v: boolean) => void = () => {}
 const isItemsOK = computed(() => {
   const notEmpty = (it: ConfigItem) => it.Name !== '' /* && it.Object !== '' && it.Member !== '' */
   const names = new Set(items.value.map((it) => it.Name))
-  return items.value.every(notEmpty) && names.size === items.value.length
+  const defaultsValid = items.value.every((it) => validateItemDefaultValue(it) === '')
+  return items.value.every(notEmpty) && names.size === items.value.length && defaultsValid
 })
 
 // Methods
@@ -323,6 +333,7 @@ const defaultItemConfig = (): ConfigItem => ({
   MinValue: null,
   MaxValue: null,
   EnumValues: '0=Off; 1=On',
+  DefaultValue: null,
 })
 
 const parseCsvLineToItemConfig = (parts: string[], header: string[] | undefined): ConfigItem => {
@@ -355,6 +366,9 @@ const parseCsvLineToItemConfig = (parts: string[], header: string[] | undefined)
       case 'EnumValues':
         it.EnumValues = value
         break
+      case 'DefaultValue':
+        it.DefaultValue = value === '' ? null : value
+        break
     }
   })
 
@@ -369,7 +383,7 @@ const parseCsvLineToItemConfig = (parts: string[], header: string[] | undefined)
 }
 
 const copyItemsAsCsvToClipboard = (): void => {
-  const header = 'Name,Unit,Object,Member,Type,MinValue,MaxValue,EnumValues'
+  const header = 'Name,Unit,Object,Member,Type,MinValue,MaxValue,EnumValues,DefaultValue'
   const csvData = items.value
     .map((item) =>
       [
@@ -381,6 +395,7 @@ const copyItemsAsCsvToClipboard = (): void => {
         item.MinValue ?? '',
         item.MaxValue ?? '',
         item.EnumValues,
+        item.DefaultValue ?? '',
       ].join(','),
     )
     .join('\r\n')
@@ -412,6 +427,9 @@ const replaceItemsFromCsvFromClipboard = (): void => {
 }
 
 const editorItems_Save = async (): Promise<void> => {
+  for (const item of items.value) {
+    normalizeItemDefaultValue(item)
+  }
   const para = {
     items: items.value,
   }

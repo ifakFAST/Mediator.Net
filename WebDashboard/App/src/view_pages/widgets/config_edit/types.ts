@@ -12,6 +12,7 @@ export interface ConfigItem {
   MinValue: number | null
   MaxValue: number | null
   EnumValues: string
+  DefaultValue?: string | null
 }
 
 export interface ItemValue {

@@ -226,6 +226,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
         public double? MinValue { get; set; } = null;
         public double? MaxValue { get; set; } = null;
         public string EnumValues { get; set; } = "";
+        public string? DefaultValue { get; set; } = null;
 
         public void Sanitize() {
             if (Type == ItemType.Range) {
