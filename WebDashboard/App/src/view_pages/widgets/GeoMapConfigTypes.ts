@@ -77,6 +77,7 @@ export interface NamedLayerType {
   Type: GeoLayerType
   Variable: fast.VariableRef
   FrameCount?: number
+  Opacity?: number
   ColorMap?: ColorMapRange[]
 }
 

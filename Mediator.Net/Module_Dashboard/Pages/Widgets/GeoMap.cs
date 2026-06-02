@@ -183,6 +183,8 @@ public sealed class MainLayer {
     public LayerType Type { get; set; } = LayerType.GeoJson;
     public VariableRefUnresolved Variable { get; set; }
     public int FrameCount { get; set; } = 1;
+    public double? Opacity { get; set; } = null;
+    public bool ShouldSerializeOpacity() => Opacity != null;
     public ColorMapRange[]? ColorMap { get; set; } = null;
     public bool ShouldSerializeColorMap() => ColorMap != null && ColorMap.Length > 0;
 }
@@ -193,6 +195,8 @@ public sealed class OptionalLayer {
     public VariableRefUnresolved Variable { get; set; }
     public bool IsSelected { get; set; } = true;
     public int FrameCount { get; set; } = 1;
+    public double? Opacity { get; set; } = null;
+    public bool ShouldSerializeOpacity() => Opacity != null;
     public ColorMapRange[]? ColorMap { get; set; } = null;
     public bool ShouldSerializeColorMap() => ColorMap != null && ColorMap.Length > 0;
 }

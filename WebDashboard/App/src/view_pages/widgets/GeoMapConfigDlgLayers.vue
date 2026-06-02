@@ -185,6 +185,7 @@
                 <th>Object</th>
                 <th>Variable</th>
                 <th>Frame Count</th>
+                <th>Opacity</th>
                 <th>Color Map</th>
                 <th>Actions</th>
               </tr>
@@ -233,6 +234,24 @@
                     style="width: 10ch"
                     type="number"
                   ></v-text-field>
+                </td>
+                <td>
+                  <v-text-field
+                    v-if="layer.Type === 'GeoTiff'"
+                    :model-value="layer.Opacity ?? ''"
+                    max="1"
+                    min="0"
+                    step="0.01"
+                    style="width: 10ch"
+                    type="number"
+                    @update:model-value="SetLayerOpacity(layer, $event)"
+                  ></v-text-field>
+                  <span
+                    v-else
+                    class="text-medium-emphasis"
+                  >
+                    -
+                  </span>
                 </td>
                 <td>
                   <div class="d-flex align-center">
@@ -306,6 +325,7 @@
                 <th>Object</th>
                 <th>Variable</th>
                 <th>Frame Count</th>
+                <th>Opacity</th>
                 <th>Color Map</th>
                 <th>Selected by Default</th>
                 <th>Actions</th>
@@ -355,6 +375,24 @@
                     style="width: 10ch"
                     type="number"
                   ></v-text-field>
+                </td>
+                <td>
+                  <v-text-field
+                    v-if="layer.Type === 'GeoTiff'"
+                    :model-value="layer.Opacity ?? ''"
+                    max="1"
+                    min="0"
+                    step="0.01"
+                    style="width: 10ch"
+                    type="number"
+                    @update:model-value="SetLayerOpacity(layer, $event)"
+                  ></v-text-field>
+                  <span
+                    v-else
+                    class="text-medium-emphasis"
+                  >
+                    -
+                  </span>
                 </td>
                 <td>
                   <div class="d-flex align-center">
@@ -679,9 +717,21 @@ const normalizeLayerColorMap = (layer: config.NamedLayerType): void => {
   delete (layer as any).colorMap
 }
 
-const normalizeConfiguredColorMaps = (configValue: config.GeoMapConfig): void => {
-  configValue.MainLayers?.forEach(normalizeLayerColorMap)
-  configValue.OptionalLayers?.forEach(normalizeLayerColorMap)
+const normalizeLayerGeoTiffConfig = (layer: config.NamedLayerType): void => {
+  normalizeLayerColorMap(layer)
+
+  const rawOpacity = (layer as any).Opacity ?? (layer as any).opacity
+  if (rawOpacity === undefined || rawOpacity === null || rawOpacity === '') {
+    delete layer.Opacity
+  } else {
+    layer.Opacity = Number(rawOpacity)
+  }
+  delete (layer as any).opacity
+}
+
+const normalizeConfiguredGeoTiffConfig = (configValue: config.GeoMapConfig): void => {
+  configValue.MainLayers?.forEach(normalizeLayerGeoTiffConfig)
+  configValue.OptionalLayers?.forEach(normalizeLayerGeoTiffConfig)
 }
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
@@ -692,6 +742,10 @@ const isColorMapRangeOK = (range: config.ColorMapRange): boolean => {
 
 const isLayerColorMapOK = (layer: config.NamedLayerType): boolean => {
   return layer.Type !== 'GeoTiff' || !layer.ColorMap || layer.ColorMap.every(isColorMapRangeOK)
+}
+
+const isLayerOpacityOK = (layer: config.NamedLayerType): boolean => {
+  return layer.Type !== 'GeoTiff' || layer.Opacity === undefined || (isFiniteNumber(layer.Opacity) && layer.Opacity >= 0 && layer.Opacity <= 1)
 }
 
 // Computed
@@ -712,6 +766,8 @@ const isItemsOK = computed(() => {
     configValue.OptionalLayers.every(nameNotEmpty) &&
     configValue.MainLayers.every(isLayerColorMapOK) &&
     configValue.OptionalLayers.every(isLayerColorMapOK) &&
+    configValue.MainLayers.every(isLayerOpacityOK) &&
+    configValue.OptionalLayers.every(isLayerOpacityOK) &&
     names.size === totalSize &&
     configValue.StaticLayers.every(fileNameNotEmpty)
   return ok
@@ -729,7 +785,7 @@ const showDialog = async (): Promise<boolean> => {
 
   const str = JSON.stringify(props.configuration)
   theConfig.value = JSON.parse(str)
-  normalizeConfiguredColorMaps(theConfig.value)
+  normalizeConfiguredGeoTiffConfig(theConfig.value)
   show.value = true
 
   return new Promise<boolean>((resolve) => {
@@ -825,6 +881,15 @@ const AddOptionalLayer = (): void => {
 
 const colorMapCount = (layer: config.NamedLayerType): number => {
   return layer.ColorMap?.length ?? 0
+}
+
+const SetLayerOpacity = (layer: config.NamedLayerType, value: unknown): void => {
+  if (value === undefined || value === null || value === '') {
+    delete layer.Opacity
+    return
+  }
+
+  layer.Opacity = Number(value)
 }
 
 const OpenColorMapEditor = (layer: config.NamedLayerType): void => {

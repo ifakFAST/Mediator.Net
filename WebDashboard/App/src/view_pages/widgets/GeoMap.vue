@@ -179,6 +179,11 @@ function getConfiguredColorMap(layer: NamedLayerType): ColorMapRangeInput[] | un
   return configuredColorMap && configuredColorMap.length > 0 ? configuredColorMap : undefined
 }
 
+function getConfiguredOpacity(layer: NamedLayerType): number | undefined {
+  const configuredOpacity = layer.Opacity ?? (layer as any).opacity
+  return typeof configuredOpacity === 'number' && Number.isFinite(configuredOpacity) ? configuredOpacity : undefined
+}
+
 interface AnimationController {
   isRunning: boolean
   currentIndex: number
@@ -891,6 +896,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
 
       const frames: GeoTiffFrame[] = []
       const configuredColorMap = getConfiguredColorMap(layerObj)
+      const configuredOpacity = getConfiguredOpacity(layerObj)
 
       for (const geoTiffUrl of dataArray as GeoTiffUrl[]) {
         if (abortController.signal.aborted) {
@@ -930,7 +936,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
 
           frames.push({
             georaster,
-            opacity: geoTiffUrl.opacity || 0.9,
+            opacity: configuredOpacity ?? geoTiffUrl.opacity ?? 0.9,
             colorMap: createColorMapper(configuredColorMap ?? geoTiffUrl.colorMap, geoTiffUrl.scale),
             setVariableValues: geoTiffUrl.setVariableValues,
             setWidgetTitleVarValues: geoTiffUrl.setWidgetTitleVarValues,
