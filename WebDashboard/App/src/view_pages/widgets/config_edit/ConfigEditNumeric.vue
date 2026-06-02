@@ -359,20 +359,18 @@ const onApplyDefaults = async (): Promise<void> => {
   if (!ok) {
     return
   }
-  for (const entry of defaultApplyPlan.value) {
-    const para = {
-      theObject: entry.item.Object,
-      member: entry.item.Member,
-      jsonValue: entry.jsonValue,
-      displayValue: entry.newDisplay,
-      oldValue: entry.currentDisplay,
-    }
-    try {
-      await props.backendAsync('WriteValue', para)
-    } catch (exp) {
-      alert(exp)
-      return
-    }
+  const values = defaultApplyPlan.value.map((entry) => ({
+    theObject: entry.item.Object,
+    member: entry.item.Member,
+    jsonValue: entry.jsonValue,
+    displayValue: entry.newDisplay,
+    oldValue: entry.currentDisplay,
+  }))
+  try {
+    await props.backendAsync('WriteValues', { values })
+  } catch (exp) {
+    alert(exp)
+    return
   }
   await readValues()
 }

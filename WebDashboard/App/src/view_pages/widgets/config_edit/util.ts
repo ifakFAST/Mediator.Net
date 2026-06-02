@@ -61,7 +61,7 @@ export async function onWriteItemEnum(
     }
   }
 
-  const para = {
+  const value = {
     theObject: it.Object,
     member: it.Member,
     jsonValue: newValueNum,
@@ -69,7 +69,7 @@ export async function onWriteItemEnum(
     oldValue,
   }
   try {
-    await backendAsync('WriteValue', para)
+    await backendAsync('WriteValues', { values: [value] })
   } catch (exp) {
     alert(exp)
   }
@@ -109,7 +109,7 @@ export async function onWriteItemNumeric(
     return
   }
 
-  const para = {
+  const value = {
     theObject: it.Object,
     member: it.Member,
     jsonValue: newValue,
@@ -117,7 +117,7 @@ export async function onWriteItemNumeric(
     oldValue,
   }
   try {
-    await backendAsync('WriteValue', para)
+    await backendAsync('WriteValues', { values: [value] })
   } catch (exp) {
     alert(exp)
   }

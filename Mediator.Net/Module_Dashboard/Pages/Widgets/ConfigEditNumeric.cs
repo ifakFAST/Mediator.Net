@@ -156,10 +156,21 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
             }
         }
 
-        public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue, string oldValue) {
+        public async Task<ReqResult> UiReq_WriteValues(ConfigEditWriteValueEntry[] values) {
 
-            DataValue dataValue = DataValue.FromJSON(jsonValue);
-            MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(theObject), member);
+            MemberValue[] members = values.Select(MakeMemberValue).ToArray();
+            await Connection.UpdateConfig(members);
+
+            for (int i = 0; i < members.Length; i++) {
+                LogPageAction(members[i].Member, values[i]);
+            }
+
+            return ReqResult.OK();
+        }
+
+        private MemberValue MakeMemberValue(ConfigEditWriteValueEntry value) {
+            DataValue dataValue = DataValue.FromJSON(value.jsonValue);
+            MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(value.theObject), value.member);
 
             bool isJSON = jsonMembers.Contains(memberRef);
             if (isJSON) {
@@ -169,14 +180,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
                 dataValue = DataValue.FromString(dataValue.JSON);
             }
 
-            MemberValue m = MemberValue.Make(memberRef, dataValue);
-            await Connection.UpdateConfig(m);
+            return MemberValue.Make(memberRef, dataValue);
+        }
 
+        private void LogPageAction(MemberRef memberRef, ConfigEditWriteValueEntry value) {
             ConfigItem? item = ConfigItemByMemberRef(memberRef);
             string name = item != null ? item.Name : "???";
-            Task _ = Context.LogPageAction($"{name}: {oldValue} 🡒 {displayValue}");
-
-            return ReqResult.OK();
+            Task _ = Context.LogPageAction($"{name}: {value.oldValue} 🡒 {value.displayValue}");
         }
 
         private ConfigItem? ConfigItemByMemberRef(MemberRef memberRef) {
@@ -249,5 +259,13 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets {
         public string Member { get; set; } = "";
         public string Value { get; set; } = "";
         public bool CanEdit { get; set; } = false;
+    }
+
+    public sealed class ConfigEditWriteValueEntry {
+        public string theObject { get; set; } = "";
+        public string member { get; set; } = "";
+        public string jsonValue { get; set; } = "";
+        public string displayValue { get; set; } = "";
+        public string oldValue { get; set; } = "";
     }
 }

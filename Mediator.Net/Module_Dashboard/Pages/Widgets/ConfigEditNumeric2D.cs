@@ -147,10 +147,21 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
         return res.ToArray();
     }
 
-    public async Task<ReqResult> UiReq_WriteValue(string theObject, string member, string jsonValue, string displayValue, string oldValue) {
+    public async Task<ReqResult> UiReq_WriteValues(ConfigEditWriteValueEntry[] values) {
 
-        DataValue dataValue = DataValue.FromJSON(jsonValue);
-        MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(theObject), member);
+        MemberValue[] members = values.Select(MakeMemberValue).ToArray();
+        await Connection.UpdateConfig(members);
+
+        for (int i = 0; i < members.Length; i++) {
+            LogPageAction(members[i].Member, values[i]);
+        }
+
+        return ReqResult.OK();
+    }
+
+    private MemberValue MakeMemberValue(ConfigEditWriteValueEntry value) {
+        DataValue dataValue = DataValue.FromJSON(value.jsonValue);
+        MemberRef memberRef = MemberRef.Make(ObjectRef.FromEncodedString(value.theObject), value.member);
 
         bool isJSON = jsonMembers.Contains(memberRef);
         if (isJSON) {
@@ -160,20 +171,19 @@ public class ConfigEditNumeric2D : WidgetBaseWithConfig<ConfigEditNumeric2DConfi
             dataValue = DataValue.FromString(dataValue.JSON);
         }
 
-        MemberValue m = MemberValue.Make(memberRef, dataValue);
-        await Connection.UpdateConfig(m);
+        return MemberValue.Make(memberRef, dataValue);
+    }
 
+    private void LogPageAction(MemberRef memberRef, ConfigEditWriteValueEntry value) {
         var  (rowIdx, colIdx) = GetRowColIdx(memberRef);
         if (rowIdx < 0 || colIdx < 0) {
-            return ReqResult.OK();
+            return;
         }
         string Row = configuration.Rows[rowIdx];
         string Col = configuration.Columns[colIdx];
 
         string name = $"{Row} {Col}";
-        Task _ = Context.LogPageAction($"{name}: {oldValue} 🡒 {displayValue}");
-
-        return ReqResult.OK();
+        Task _ = Context.LogPageAction($"{name}: {value.oldValue} 🡒 {value.displayValue}");
     }
 
     private (int rowIdx, int Colidx) GetRowColIdx(MemberRef member) {

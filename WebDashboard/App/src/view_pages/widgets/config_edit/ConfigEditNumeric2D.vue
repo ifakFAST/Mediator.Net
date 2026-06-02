@@ -453,16 +453,16 @@ const applyDefaultsForAxis = async (filter: AxisFilter): Promise<void> => {
   if (!ok) {
     return
   }
-  for (const entry of plan) {
-    const para = {
+  if (plan.length > 0) {
+    const values = plan.map((entry) => ({
       theObject: entry.item.Object,
       member: entry.item.Member,
       jsonValue: entry.jsonValue,
       displayValue: entry.newDisplay,
       oldValue: entry.currentDisplay,
-    }
+    }))
     try {
-      await props.backendAsync('WriteValue', para)
+      await props.backendAsync('WriteValues', { values })
     } catch (exp) {
       alert(exp)
       return
