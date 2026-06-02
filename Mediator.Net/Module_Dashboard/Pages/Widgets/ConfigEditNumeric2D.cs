@@ -281,6 +281,11 @@ public sealed class ConfigItem2D
     public string EnumValues { get; set; } = "";
     public string? DefaultValue { get; set; } = null;
 
+    public bool ShouldSerializeMinValue() => MinValue.HasValue;
+    public bool ShouldSerializeMaxValue() => MaxValue.HasValue;
+    public bool ShouldSerializeEnumValues() => !string.IsNullOrEmpty(EnumValues);
+    public bool ShouldSerializeDefaultValue() => !string.IsNullOrEmpty(DefaultValue);
+
     public void Sanitize() {
         if (Type == ItemType.Range) {
             EnumValues = "";
