@@ -56,6 +56,7 @@ import Splitter from '../components/Splitter.vue'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, ObjectMap, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
 import globalState from '../global'
+import { isMemberValueChanged } from './memberValues'
 
 const objectTree = ref<TreeNode | null>(null)
 const selectedObjectID = ref('')
@@ -66,7 +67,7 @@ const objectMap = ref<ObjectMap>({})
 const locations = ref<LocationInfo[]>([])
 
 const isDirty = computed(() => {
-  return currObjectValues.value.some((m) => JSON.stringify(m.ValueOriginal) !== JSON.stringify(m.Value))
+  return currObjectValues.value.some(isMemberValueChanged)
 })
 
 const selectedObject = computed((): TreeNode | null => {

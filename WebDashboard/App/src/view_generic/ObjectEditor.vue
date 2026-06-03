@@ -581,6 +581,7 @@ import { isValidObjectNameOrID } from '../utils'
 import type { TreeNode, TypeMap, ObjectMember, ChildType, AddObjectParams, SaveMember } from './types'
 import type { LocationInfo } from '../fast_types'
 import { globalState } from '../global'
+import { isMemberValueChanged, memberValueToJson } from './memberValues'
 
 interface BrowseItem {
   it: string
@@ -693,7 +694,7 @@ const isImportable = computed((): boolean => {
 })
 
 const isDirty = computed(() => {
-  return -1 !== props.members.findIndex((m) => JSON.stringify(m.ValueOriginal) !== JSON.stringify(m.Value))
+  return -1 !== props.members.findIndex(isMemberValueChanged)
 })
 
 const title = computed(() => {
@@ -866,13 +867,11 @@ const qualityColor = (q: string) => {
 }
 
 const save = () => {
-  const msChanged = props.members.filter((m) => JSON.stringify(m.ValueOriginal) !== JSON.stringify(m.Value))
+  const msChanged = props.members.filter(isMemberValueChanged)
   const mem: SaveMember[] = msChanged.map((m) => {
-    console.log('Orig: ' + JSON.stringify(m.ValueOriginal))
-    console.log('Upda: ' + JSON.stringify(m.Value))
     return {
       Name: m.Name,
-      Value: JSON.stringify(m.Value),
+      Value: memberValueToJson(m),
     }
   })
   emit('save', props.selection!.ID, props.selection!.Type, mem)

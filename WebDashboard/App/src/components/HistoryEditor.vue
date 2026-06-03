@@ -65,39 +65,40 @@ import TextFieldNullableNumber from './TextFieldNullableNumber.vue'
 const model = defineModel<fast.History>({ required: true })
 
 const historyItems: fast.HistoryMode[] = fast.HistoryModeValues
+const intervalModes = new Set<fast.HistoryMode>(['Interval', 'IntervalExact', 'IntervalOrChanged', 'IntervalExactOrChanged'])
+const deadbandModes = new Set<fast.HistoryMode>(['ValueOrQualityChanged', 'IntervalOrChanged', 'IntervalExactOrChanged'])
+
+const isIntervalMode = (mode: fast.HistoryMode): boolean => {
+  return intervalModes.has(mode)
+}
+
+const isDeadbandMode = (mode: fast.HistoryMode): boolean => {
+  return deadbandModes.has(mode)
+}
+
+const isBlankDuration = (value: fast.Duration | null | undefined): boolean => {
+  return value === null || value === undefined || value.trim() === ''
+}
 
 const showInterval = computed((): boolean => {
-  return (
-    model.value.Mode === 'Interval' ||
-    model.value.Mode === 'IntervalExact' ||
-    model.value.Mode === 'IntervalOrChanged' ||
-    model.value.Mode === 'IntervalExactOrChanged'
-  )
+  return isIntervalMode(model.value.Mode)
 })
 
 const showDeadband = computed((): boolean => {
-  return (
-    model.value.Mode === 'ValueOrQualityChanged' ||
-    model.value.Mode === 'IntervalOrChanged' ||
-    model.value.Mode === 'IntervalExactOrChanged'
-  )
+  return isDeadbandMode(model.value.Mode)
 })
 
 watch(
   () => model.value.Mode,
   (newMode) => {
-    const noIntervalMode =
-      newMode !== 'Interval' && newMode !== 'IntervalExact' && newMode !== 'IntervalOrChanged' && newMode !== 'IntervalExactOrChanged'
-    if (noIntervalMode) {
+    if (!isIntervalMode(newMode)) {
       model.value.Interval = null
       model.value.Offset = null
-    } else if (model.value.Interval === null || model.value.Interval.trim() === '') {
+    } else if (isBlankDuration(model.value.Interval)) {
       model.value.Interval = '10 s'
     }
 
-    const noDeadbandMode =
-      newMode !== 'ValueOrQualityChanged' && newMode !== 'IntervalOrChanged' && newMode !== 'IntervalExactOrChanged'
-    if (noDeadbandMode) {
+    if (!isDeadbandMode(newMode)) {
       model.value.Deadband = null
     }
   },
@@ -106,12 +107,7 @@ watch(
 watch(
   () => model.value.Interval,
   (newInterval) => {
-    const noIntervalMode =
-      model.value.Mode !== 'Interval' &&
-      model.value.Mode !== 'IntervalExact' &&
-      model.value.Mode !== 'IntervalOrChanged' &&
-      model.value.Mode !== 'IntervalExactOrChanged'
-    if (noIntervalMode || newInterval === null || newInterval.trim() === '') {
+    if (!isIntervalMode(model.value.Mode) || isBlankDuration(newInterval)) {
       model.value.Interval = null
     }
   },
@@ -120,12 +116,7 @@ watch(
 watch(
   () => model.value.Offset,
   (newOffset) => {
-    const noIntervalMode =
-      model.value.Mode !== 'Interval' &&
-      model.value.Mode !== 'IntervalExact' &&
-      model.value.Mode !== 'IntervalOrChanged' &&
-      model.value.Mode !== 'IntervalExactOrChanged'
-    if (noIntervalMode || newOffset === null || newOffset.trim() === '') {
+    if (!isIntervalMode(model.value.Mode) || isBlankDuration(newOffset)) {
       model.value.Offset = null
     }
   },
