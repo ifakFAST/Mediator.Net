@@ -956,10 +956,12 @@ public class PlotConfig
 
     public string LeftAxisName { get; set; } = "";
     public double LeftAxisScaleDivisor { get; set; } = 1.0;
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public AxisRangeConfig LeftAxisRange { get; set; } = new AxisRangeConfig { IncludeLower = 0 };
 
     public string RightAxisName { get; set; } = "";
     public double RightAxisScaleDivisor { get; set; } = 1.0;
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public AxisRangeConfig RightAxisRange { get; set; } = new AxisRangeConfig { IncludeLower = 0 };
 
     [JsonProperty]
