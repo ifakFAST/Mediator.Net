@@ -16,13 +16,16 @@ namespace Ifak.Fast.Mediator.Timeseries.Archive;
 /// <summary>
 /// SQLite-based storage implementation that organizes data into quarterly database files.
 /// Each quarter (e.g., 2025Q1.db) contains data for all channels within that time period.
-/// Uses bit-packed INTEGER PRIMARY KEY for efficient storage: (var_id &lt;&lt; 24) | day_number.
+/// Uses a bit-packed INTEGER PRIMARY KEY for efficient storage:
+/// (var_id &lt;&lt; 24) | (day_number &amp; 0xFFFFFF). The low 24 bits contain a signed day number.
 /// </summary>
 public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : StorageBase {
 
     private static readonly Logger Logger = LogManager.GetLogger("SQLiteArchiveStorage");
 
     private const long MillisecondsPerDay = 86400000L;
+    private const int DayNumberMask = 0xFFFFFF;
+    private const int DayNumberSignBit = 0x800000;
 
     private readonly string baseFolder = existingBaseFolder;
     private readonly Dictionary<string, QuarterDb> quarterConnections = [];
@@ -63,8 +66,8 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
                 long minId = reader.GetInt64(0);
                 long maxId = reader.GetInt64(1);
 
-                int minDayInQuarter = (int)(minId & 0xFFFFFF);
-                int maxDayInQuarter = (int)(maxId & 0xFFFFFF);
+                int minDayInQuarter = DecodeDayNumber(minId);
+                int maxDayInQuarter = DecodeDayNumber(maxId);
 
                 if (minDay == null || minDayInQuarter < minDay) {
                     minDay = minDayInQuarter;
@@ -84,6 +87,8 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
 
     public override void WriteDayData(ChannelRef channel, int dayNumber, byte[] data) {
 
+        ValidateDayNumber(dayNumber, nameof(dayNumber));
+
         if (readOnly) {
             throw new InvalidOperationException("Cannot write data in read-only mode.");
         }
@@ -100,6 +105,8 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
     }
 
     public override Stream? ReadDayData(ChannelRef channel, int dayNumber) {
+
+        ValidateDayNumber(dayNumber, nameof(dayNumber));
 
         string quarter = GetQuarterFromDayNumber(dayNumber);
         string dbPath = GetQuarterDbPath(quarter);
@@ -138,6 +145,12 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
     }
 
     public override void DeleteDayData(ChannelRef channel, int startDayNumberInclusive, int endDayNumberInclusive) {
+
+        ValidateDayNumberRange(
+            startDayNumberInclusive,
+            endDayNumberInclusive,
+            nameof(startDayNumberInclusive),
+            nameof(endDayNumberInclusive));
 
         if (readOnly) {
             throw new InvalidOperationException("Cannot delete data in read-only mode.");
@@ -183,8 +196,16 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
     private static long ComputeKey(int varId, int dayNumber) {
         // Convert to long acts as a guard against 32-bit overflow during shift
         long vid = varId;
-        long day = dayNumber & 0xFFFFFF;
+        long day = dayNumber & DayNumberMask;
         return (vid << 24) | day;
+    }
+
+    /// <summary>
+    /// Decodes the signed 24-bit day number stored in the low bits of a packed key.
+    /// </summary>
+    private static int DecodeDayNumber(long key) {
+        int encoded = (int)(key & DayNumberMask);
+        return (encoded & DayNumberSignBit) != 0 ? encoded | ~DayNumberMask : encoded;
     }
 
     /// <summary>

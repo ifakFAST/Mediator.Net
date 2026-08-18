@@ -584,12 +584,17 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
     }
 
     /// <summary>
-    /// Converts a UTC day start timestamp to a day number (0 = Jan 1, 1970, 1 = Jan 2, 1970, etc.).
+    /// Converts a UTC timestamp to its signed day number
+    /// (0 = Jan 1, 1970, -1 = Dec 31, 1969, etc.).
     /// </summary>
-    /// <param name="dayStartUtc">The UTC day start timestamp.</param>
-    /// <returns>Day number (days since Unix epoch).</returns>
-    private static int GetDayNumber(Timestamp dayStartUtc) {
-        return (int)(dayStartUtc.JavaTicks / MillisecondsPerDay);
+    /// <param name="timestampUtc">The UTC timestamp.</param>
+    /// <returns>The signed number of UTC days relative to the Unix epoch.</returns>
+    private static int GetDayNumber(Timestamp timestampUtc) {
+        long dayNumber = Math.DivRem(timestampUtc.JavaTicks, MillisecondsPerDay, out long remainder);
+        if (remainder < 0) {
+            dayNumber--;
+        }
+        return checked((int)dayNumber);
     }
 
     /// <summary>

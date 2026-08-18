@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MediatorCore\MediatorCore.csproj" />
     <ProjectReference Include="..\MediatorLib\MediatorLib.csproj" />
   </ItemGroup>
 

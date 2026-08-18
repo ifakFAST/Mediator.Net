@@ -59,6 +59,7 @@ public sealed class FileStorage(string baseFolder) : StorageBase {
     }
 
     public override void WriteDayData(ChannelRef channel, int dayNumber, byte[] data) {
+        ValidateDayNumber(dayNumber, nameof(dayNumber));
         string channelFolder = GetChannelFolder(channel);
         if (!Directory.Exists(channelFolder)) {
             Directory.CreateDirectory(channelFolder);
@@ -68,6 +69,7 @@ public sealed class FileStorage(string baseFolder) : StorageBase {
     }
 
     public override Stream? ReadDayData(ChannelRef channel, int dayNumber) {
+        ValidateDayNumber(dayNumber, nameof(dayNumber));
         string filePath = GetFilePath(channel, dayNumber);
         return RetryVal(() => {
             if (File.Exists(filePath)) {
@@ -80,6 +82,12 @@ public sealed class FileStorage(string baseFolder) : StorageBase {
     }
 
     public override void DeleteDayData(ChannelRef channel, int startDayNumberInclusive, int endDayNumberInclusive) {
+        ValidateDayNumberRange(
+            startDayNumberInclusive,
+            endDayNumberInclusive,
+            nameof(startDayNumberInclusive),
+            nameof(endDayNumberInclusive));
+
         for (int dayNumber = startDayNumberInclusive; dayNumber <= endDayNumberInclusive; dayNumber++) {
             string filePath = GetFilePath(channel, dayNumber);
             Retry(() => { 
