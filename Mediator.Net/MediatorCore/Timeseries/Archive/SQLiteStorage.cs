@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Ifak.Fast.Mediator.Timeseries.SQLite;
 using Ifak.Fast.Mediator.Util;
 using NLog;
@@ -23,6 +24,10 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
 
     private static readonly Logger Logger = LogManager.GetLogger("SQLiteArchiveStorage");
 
+    private static readonly Lock SharedRangeCachesLock = new();
+    private static readonly Dictionary<string, SharedRangeCache> SharedRangeCaches = new(
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
     private const long MillisecondsPerDay = 86400000L;
     private const int DayNumberMask = 0xFFFFFF;
     private const int DayNumberSignBit = 0x800000;
@@ -30,8 +35,21 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
     private readonly string baseFolder = existingBaseFolder;
     private readonly Dictionary<string, QuarterDb> quarterConnections = [];
     private readonly Dictionary<(string quarter, ChannelRef channel), int> variableIdCache = [];
+    private readonly SharedRangeCache storedDayNumberRangeCache = AcquireSharedRangeCache(existingBaseFolder);
+    private bool sharedRangeCacheReleased = false;
 
     public override (int dayStart, int dayEnd)? GetStoredDayNumberRange(ChannelRef channel) {
+
+        if (storedDayNumberRangeCache.TryGet(channel, out var cachedRange)) {
+            return cachedRange;
+        }
+
+        var computedRange = ComputeStoredDayNumberRange(channel);
+        storedDayNumberRangeCache.Set(channel, computedRange);
+        return computedRange;
+    }
+
+    private (int dayStart, int dayEnd)? ComputeStoredDayNumberRange(ChannelRef channel) {
 
         // Scan all quarter files to find day range for this channel
         string[] dbFiles = Directory.GetFiles(baseFolder, "*.db");
@@ -102,6 +120,8 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
         qdb.StmtUpsertDayData![0] = key;
         qdb.StmtUpsertDayData![1] = data;
         qdb.StmtUpsertDayData!.ExecuteNonQuery();
+
+        storedDayNumberRangeCache.UpdateAfterSuccessfulWrite(channel, dayNumber);
     }
 
     public override Stream? ReadDayData(ChannelRef channel, int dayNumber) {
@@ -155,6 +175,10 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
         if (readOnly) {
             throw new InvalidOperationException("Cannot delete data in read-only mode.");
         }
+
+        // Invalidate before changing any quarter. If a later quarter fails, the next read
+        // rescans the databases instead of returning a range from before the partial delete.
+        storedDayNumberRangeCache.Invalidate(channel);
 
         // Group day ranges by quarter
         var rangesByQuarter = new Dictionary<string, (int min, int max)>();
@@ -235,6 +259,30 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
         return qdb;
     }
 
+    private static SharedRangeCache AcquireSharedRangeCache(string folder) {
+        string normalizedFolder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+
+        lock (SharedRangeCachesLock) {
+            if (!SharedRangeCaches.TryGetValue(normalizedFolder, out SharedRangeCache? cache)) {
+                cache = new SharedRangeCache(normalizedFolder);
+                SharedRangeCaches[normalizedFolder] = cache;
+            }
+            cache.ReferenceCount++;
+            return cache;
+        }
+    }
+
+    private static void ReleaseSharedRangeCache(SharedRangeCache cache) {
+        lock (SharedRangeCachesLock) {
+            cache.ReferenceCount--;
+            if (cache.ReferenceCount == 0 &&
+                SharedRangeCaches.TryGetValue(cache.NormalizedFolder, out SharedRangeCache? registeredCache) &&
+                ReferenceEquals(cache, registeredCache)) {
+                SharedRangeCaches.Remove(cache.NormalizedFolder);
+            }
+        }
+    }
+
     private int GetVariableId(QuarterDb qdb, ChannelRef channel) {
         var cacheKey = (qdb.Quarter, channel);
         if (variableIdCache.TryGetValue(cacheKey, out int cachedId)) {
@@ -297,11 +345,61 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
     }
 
     public override void Dispose() {
-        foreach (var qdb in quarterConnections.Values) {
-            qdb.Dispose();
+        try {
+            foreach (var qdb in quarterConnections.Values) {
+                qdb.Dispose();
+            }
         }
-        quarterConnections.Clear();
-        variableIdCache.Clear();
+        finally {
+            quarterConnections.Clear();
+            variableIdCache.Clear();
+
+            if (!sharedRangeCacheReleased) {
+                ReleaseSharedRangeCache(storedDayNumberRangeCache);
+                sharedRangeCacheReleased = true;
+            }
+        }
+    }
+
+    private sealed class SharedRangeCache(string normalizedFolder) {
+
+        private readonly Lock cacheLock = new();
+        private readonly Dictionary<ChannelRef, (int dayStart, int dayEnd)?> ranges = [];
+
+        public string NormalizedFolder { get; } = normalizedFolder;
+        public int ReferenceCount { get; set; } = 0;
+
+        public bool TryGet(ChannelRef channel, out (int dayStart, int dayEnd)? range) {
+            lock (cacheLock) {
+                return ranges.TryGetValue(channel, out range);
+            }
+        }
+
+        public void Set(ChannelRef channel, (int dayStart, int dayEnd)? range) {
+            lock (cacheLock) {
+                ranges[channel] = range;
+            }
+        }
+
+        public void UpdateAfterSuccessfulWrite(ChannelRef channel, int dayNumber) {
+            lock (cacheLock) {
+                if (!ranges.TryGetValue(channel, out var range)) {
+                    // A new day alone cannot establish the complete range when the folder may
+                    // already contain data that has not been scanned by this cache.
+                    return;
+                }
+
+                ranges[channel] = range.HasValue
+                    ? (Math.Min(range.Value.dayStart, dayNumber), Math.Max(range.Value.dayEnd, dayNumber))
+                    : (dayNumber, dayNumber);
+            }
+        }
+
+        public void Invalidate(ChannelRef channel) {
+            lock (cacheLock) {
+                ranges.Remove(channel);
+            }
+        }
     }
 
     /// <summary>
@@ -320,9 +418,11 @@ public sealed class SQLiteStorage(string existingBaseFolder, bool readOnly) : St
         public QuarterDb(string dbPath, bool readOnly) {
             Quarter = Path.GetFileNameWithoutExtension(dbPath);
             string connectionString = $"Filename=\"{dbPath}\";Pooling=False;";
-            //if (readOnly) {
-            //    connectionString += ";Mode=ReadOnly";
-            //}
+
+            // Keep the connection writable so SQLite can clean up WAL/SHM files when this is the last connection.
+            // if (readOnly) {
+            //     connectionString += ";Mode=ReadOnly";
+            // }
 
             Connection = Factory.MakeConnection(connectionString);
             Connection.Open();
