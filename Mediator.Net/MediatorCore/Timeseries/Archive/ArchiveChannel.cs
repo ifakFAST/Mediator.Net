@@ -130,15 +130,15 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
     }
 
     public override void Insert(VTQ[] data) {
-        InsertBody(data, (all, newData, timeDB) => JoinInsert(all, newData, timeDB, allowUpdate: false), "Insert");
+        InsertBody(data, (all, newData, timeDB) => JoinInsert(all, newData, timeDB, allowUpdate: false), "Insert", duplicatesLastWin: false);
     }
 
     public override void Update(VTQ[] data) {
-        InsertBody(data, JoinUpdate, "Update");
+        InsertBody(data, JoinUpdate, "Update", duplicatesLastWin: false);
     }
 
     public override void Upsert(VTQ[] data) {
-        InsertBody(data, (all, newData, timeDB) => JoinInsert(all, newData, timeDB, allowUpdate: true), "Upsert");
+        InsertBody(data, (all, newData, timeDB) => JoinInsert(all, newData, timeDB, allowUpdate: true), "Upsert", duplicatesLastWin: true);
     }
 
     public void UpsertVTTQs(List<VTTQ> data) {
@@ -315,9 +315,17 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
         return VTQ.Make(v, t, Quality.Good);
     }
 
-    private void InsertBody(VTQ[] data, Func<IReadOnlyList<VTTQ>, IReadOnlyList<VTQ>, Timestamp, List<VTTQ>> joinData, string context) {
+    private void InsertBody(
+        VTQ[] data,
+        Func<IReadOnlyList<VTTQ>, IReadOnlyList<VTQ>, Timestamp, List<VTTQ>> joinData,
+        string context,
+        bool duplicatesLastWin) {
 
         if (data.Length == 0) return;
+
+        if (!duplicatesLastWin) {
+            RejectDuplicateTimestamps(data, context);
+        }
 
         Timestamp timeDB = Timestamp.Now;
 
@@ -331,6 +339,9 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
             List<VTQ> periodData = group
                 .Order()
                 .ToList();
+            if (duplicatesLastWin) {
+                KeepLastForDuplicateTimestamps(periodData);
+            }
             WriteDay(t, joinData(allData, periodData, timeDB));
         }
     }
@@ -349,7 +360,42 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
             List<VTTQ> periodData = group
                 .Order()
                 .ToList();
+            KeepLastForDuplicateTimestamps(periodData);
             WriteDay(t, joinData(allData, periodData));
+        }
+    }
+
+    private static void RejectDuplicateTimestamps(VTQ[] data, string context) {
+
+        if (data.Length < 2) return;
+
+        var timestamps = new HashSet<Timestamp>(data.Length);
+        for (int i = 0; i < data.Length; i++) {
+            Timestamp timestamp = data[i].T;
+            if (!timestamps.Add(timestamp)) {
+                throw new ArgumentException($"{context} contains duplicate timestamp '{timestamp}'.", nameof(data));
+            }
+        }
+    }
+
+    private static void KeepLastForDuplicateTimestamps<T>(List<T> sortedData) where T : struct, IVTQ {
+
+        if (sortedData.Count < 2) return;
+
+        int writeIndex = 1;
+        for (int readIndex = 1; readIndex < sortedData.Count; readIndex++) {
+            T item = sortedData[readIndex];
+            if (item.T == sortedData[writeIndex - 1].T) {
+                sortedData[writeIndex - 1] = item;
+            }
+            else {
+                sortedData[writeIndex] = item;
+                writeIndex++;
+            }
+        }
+
+        if (writeIndex < sortedData.Count) {
+            sortedData.RemoveRange(writeIndex, sortedData.Count - writeIndex);
         }
     }
 
@@ -494,7 +540,7 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
 
         var (dayStart, dayEnd) = BoundedDayNumbersFromTimestamps(startInclusive, endInclusive);
 
-        var res = new List<VTTQ>(maxValues);
+        var res = new List<VTTQ>(Math.Min(maxValues, 12000));
         var filterHelper = QualityFilterHelper.Make(filter);
 
         for (int t = dayEnd; t >= dayStart; --t) {
