@@ -291,11 +291,19 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
     }
 
     public override void ReplaceAll(VTQ[] data) {
+
+        ArgumentNullException.ThrowIfNull(data);
+
+        List<(int DayNumber, byte[] CompressedData)> replacementDays = PrepareReplacementDays(data);
+
         (int dayStart, int dayEnd)? range = storage.GetStoredDayNumberRange(channel);
         if (range != null) {
             storage.DeleteDayData(channel, range.Value.dayStart, range.Value.dayEnd);
         }
-        Insert(data);
+
+        foreach (var (DayNumber, CompressedData) in replacementDays) {
+            storage.WriteDayData(channel, DayNumber, CompressedData);
+        }
     }
 
     ////////////////////////////////////////////////
@@ -313,6 +321,35 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
             _ => throw new Exception($"Unknown aggregation method: {aggregation}"),
         };
         return VTQ.Make(v, t, Quality.Good);
+    }
+
+    private static List<(int DayNumber, byte[] CompressedData)> PrepareReplacementDays(VTQ[] data) {
+
+        RejectDuplicateTimestamps(data, "ReplaceAll");
+
+        Timestamp timeDB = Timestamp.Now;
+        var replacementDays = new List<(int DayNumber, byte[] CompressedData)>();
+
+        var groups = data
+            .GroupBy(vtq => GetDayNumber(vtq.T))
+            .OrderBy(group => group.Key);
+
+        foreach (var group in groups) {
+            int dayNumber = group.Key;
+            if (dayNumber < StorageBase.MinDayNumber || dayNumber > StorageBase.MaxDayNumber) {
+                throw new ArgumentOutOfRangeException(
+                    nameof(data),
+                    dayNumber,
+                    $"A replacement timestamp maps to unsupported day number {dayNumber}.");
+            }
+
+            List<VTQ> periodData = group.Order().ToList();
+            List<VTTQ> replacementData = JoinInsert([], periodData, timeDB, allowUpdate: false);
+            byte[] compressedData = CompressVTTQ(replacementData);
+            replacementDays.Add((dayNumber, compressedData));
+        }
+
+        return replacementDays;
     }
 
     private void InsertBody(

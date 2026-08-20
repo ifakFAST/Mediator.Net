@@ -141,6 +141,86 @@ public sealed class Test_SQLiteStorage
     }
 
     [Fact]
+    public void ArchiveChannelReplaceAllWritesPreparedReplacementDays() {
+        using var folder = new TemporaryFolder();
+        using var storage = new SQLiteStorage(folder.Path, readOnly: false);
+        var channel = new ArchiveChannel(ChannelRef.Make("Object", "Value"), storage);
+        Timestamp existingTimestamp = Timestamp.FromISO8601("2025-01-01T12:00:00Z");
+        Timestamp firstReplacementTimestamp = Timestamp.FromISO8601("2025-01-02T12:00:00Z");
+        Timestamp secondReplacementTimestamp = Timestamp.FromISO8601("2025-01-03T12:00:00Z");
+        channel.Insert([VTQ.Make(1, existingTimestamp, Quality.Good)]);
+
+        channel.ReplaceAll([
+            VTQ.Make(2, firstReplacementTimestamp, Quality.Good),
+            VTQ.Make(3, secondReplacementTimestamp, Quality.Good),
+        ]);
+
+        var values = channel.ReadData(
+            Timestamp.Empty,
+            Timestamp.Max,
+            maxValues: 10,
+            Ifak.Fast.Mediator.Timeseries.BoundingMethod.TakeFirstN,
+            Ifak.Fast.Mediator.Timeseries.QualityFilter.ExcludeNone);
+        Assert.Collection(
+            values,
+            value => {
+                Assert.Equal(firstReplacementTimestamp, value.T);
+                Assert.Equal(2, value.V.GetInt());
+            },
+            value => {
+                Assert.Equal(secondReplacementTimestamp, value.T);
+                Assert.Equal(3, value.V.GetInt());
+            });
+    }
+
+    [Fact]
+    public void ArchiveChannelReplaceAllPreservesExistingDataWhenReplacementHasDuplicateTimestamps() {
+        using var folder = new TemporaryFolder();
+        using var storage = new SQLiteStorage(folder.Path, readOnly: false);
+        var channel = new ArchiveChannel(ChannelRef.Make("Object", "Value"), storage);
+        Timestamp existingTimestamp = Timestamp.FromISO8601("2025-01-01T12:00:00Z");
+        Timestamp replacementTimestamp = Timestamp.FromISO8601("2025-01-02T12:00:00Z");
+        channel.Insert([VTQ.Make(1, existingTimestamp, Quality.Good)]);
+
+        Assert.Throws<ArgumentException>(() => channel.ReplaceAll([
+            VTQ.Make(2, replacementTimestamp, Quality.Good),
+            VTQ.Make(3, replacementTimestamp, Quality.Good),
+        ]));
+
+        VTTQ value = Assert.Single(channel.ReadData(
+            Timestamp.Empty,
+            Timestamp.Max,
+            maxValues: 10,
+            Ifak.Fast.Mediator.Timeseries.BoundingMethod.TakeFirstN,
+            Ifak.Fast.Mediator.Timeseries.QualityFilter.ExcludeNone));
+        Assert.Equal(existingTimestamp, value.T);
+        Assert.Equal(1, value.V.GetInt());
+    }
+
+    [Fact]
+    public void ArchiveChannelReplaceAllPreservesExistingDataWhenReplacementTimestampIsUnsupported() {
+        using var folder = new TemporaryFolder();
+        using var storage = new SQLiteStorage(folder.Path, readOnly: false);
+        var channel = new ArchiveChannel(ChannelRef.Make("Object", "Value"), storage);
+        Timestamp existingTimestamp = Timestamp.FromISO8601("2025-01-01T12:00:00Z");
+        Timestamp unsupportedTimestamp = Timestamp.FromJavaTicks(
+            ((long)StorageBase.MaxDayNumber + 1L) * 86_400_000L);
+        channel.Insert([VTQ.Make(1, existingTimestamp, Quality.Good)]);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            channel.ReplaceAll([VTQ.Make(2, unsupportedTimestamp, Quality.Good)]));
+
+        VTTQ value = Assert.Single(channel.ReadData(
+            Timestamp.Empty,
+            Timestamp.Max,
+            maxValues: 10,
+            Ifak.Fast.Mediator.Timeseries.BoundingMethod.TakeFirstN,
+            Ifak.Fast.Mediator.Timeseries.QualityFilter.ExcludeNone));
+        Assert.Equal(existingTimestamp, value.T);
+        Assert.Equal(1, value.V.GetInt());
+    }
+
+    [Fact]
     public void SupportedDayNumberBoundariesRoundTrip() {
         using var folder = new TemporaryFolder();
         using var storage = new SQLiteStorage(folder.Path, readOnly: false);
