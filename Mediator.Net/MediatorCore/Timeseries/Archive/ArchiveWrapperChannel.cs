@@ -286,29 +286,33 @@ public sealed class ArchiveWrapperChannel : Channel
             return chArchive.ReadAggregatedIntervals(intervalBounds, aggregation, filter);
         }
 
-        // Mixed: process each interval individually
-        var result = new List<VTQ>(numIntervals);
-        for (int i = 0; i < numIntervals; i++) {
-            Timestamp start = intervalBounds[i];
-            Timestamp end = intervalBounds[i + 1];
-
-            VTQ vtq;
-            if (bound <= start) {
-                // Interval entirely in recent
-                List<VTQ> singleResult = chRecent.ReadAggregatedIntervals([start, end], aggregation, filter);
-                vtq = singleResult.Count > 0 ? singleResult[0] : VTQ.Make(DataValue.Empty, start, Quality.Good);
-            }
-            else if (end <= bound) {
-                // Interval entirely in archive
-                List<VTQ> singleResult = chArchive.ReadAggregatedIntervals([start, end], aggregation, filter);
-                vtq = singleResult.Count > 0 ? singleResult[0] : VTQ.Make(DataValue.Empty, start, Quality.Good);
-            }
-            else {
-                // Interval spans both channels - combine native partial aggregations
-                vtq = ComputeSpanningAggregation(start, end, bound, aggregation, filter);
-            }
-            result.Add(vtq);
+        int boundaryIndex = 1;
+        while (intervalBounds[boundaryIndex] < bound) {
+            boundaryIndex++;
         }
+
+        bool hasSpanningInterval = intervalBounds[boundaryIndex] > bound;
+        int spanningInterval = hasSpanningInterval ? boundaryIndex - 1 : -1;
+        int archiveIntervalCount = hasSpanningInterval ? spanningInterval : boundaryIndex;
+
+        var result = new List<VTQ>(numIntervals);
+
+        if (archiveIntervalCount > 0) {
+            Timestamp[] archiveBounds = intervalBounds[..(archiveIntervalCount + 1)];
+            result.AddRange(chArchive.ReadAggregatedIntervals(archiveBounds, aggregation, filter));
+        }
+
+        if (hasSpanningInterval) {
+            Timestamp start = intervalBounds[spanningInterval];
+            Timestamp end = intervalBounds[spanningInterval + 1];
+            result.Add(ComputeSpanningAggregation(start, end, bound, aggregation, filter));
+        }
+
+        if (boundaryIndex < numIntervals) {
+            Timestamp[] recentBounds = intervalBounds[boundaryIndex..];
+            result.AddRange(chRecent.ReadAggregatedIntervals(recentBounds, aggregation, filter));
+        }
+
         return result;
     }
 
