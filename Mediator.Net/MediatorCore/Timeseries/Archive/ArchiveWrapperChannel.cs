@@ -4,7 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using NLog;
 
 namespace Ifak.Fast.Mediator.Timeseries.Archive;
@@ -305,7 +304,7 @@ public sealed class ArchiveWrapperChannel : Channel
                 vtq = singleResult.Count > 0 ? singleResult[0] : VTQ.Make(DataValue.Empty, start, Quality.Good);
             }
             else {
-                // Interval spans both channels - read raw data and compute
+                // Interval spans both channels - combine native partial aggregations
                 vtq = ComputeSpanningAggregation(start, end, bound, aggregation, filter);
             }
             result.Add(vtq);
@@ -314,52 +313,68 @@ public sealed class ArchiveWrapperChannel : Channel
     }
 
     private VTQ ComputeSpanningAggregation(Timestamp start, Timestamp end, Timestamp bound, Aggregation aggregation, QualityFilter filter) {
-        Timestamp endInclusive = end.AddMillis(-1);
 
-        // Read from both channels
-        var archiveData = chArchive.ReadData(start, bound.AddMillis(-1), int.MaxValue, BoundingMethod.TakeFirstN, filter);
-        var recentData = chRecent.ReadData(bound, endInclusive, int.MaxValue, BoundingMethod.TakeFirstN, filter);
+        Aggregation partialAggregation = aggregation == Aggregation.Average ? Aggregation.Sum : aggregation;
+        DataValue archiveValue = GetAggregateValue(chArchive.ReadAggregatedIntervals([start, bound], partialAggregation, filter));
+        DataValue recentValue = GetAggregateValue(chRecent.ReadAggregatedIntervals([bound, end], partialAggregation, filter));
 
-        // Handle First/Last specially (return original value, not numeric aggregate)
-        if (aggregation == Aggregation.First) {
-            if (archiveData.Count > 0) return VTQ.Make(archiveData[0].V, start, Quality.Good);
-            if (recentData.Count > 0) return VTQ.Make(recentData[0].V, start, Quality.Good);
-            return VTQ.Make(DataValue.Empty, start, Quality.Good);
-        }
-        if (aggregation == Aggregation.Last) {
-            if (recentData.Count > 0) return VTQ.Make(recentData[^1].V, start, Quality.Good);
-            if (archiveData.Count > 0) return VTQ.Make(archiveData[^1].V, start, Quality.Good);
-            return VTQ.Make(DataValue.Empty, start, Quality.Good);
+        if (aggregation == Aggregation.First || aggregation == Aggregation.Last) {
+            DataValue value = aggregation == Aggregation.First
+                ? (archiveValue.NonEmpty ? archiveValue : recentValue)
+                : (recentValue.NonEmpty  ? recentValue  : archiveValue);
+
+            return VTQ.Make(value, start, Quality.Good);
         }
 
-        // Collect numeric values for aggregation
-        var values = new List<double>(archiveData.Count + recentData.Count);
-        foreach (var x in archiveData) {
-            double? v = x.V.AsDoubleNoNaN();
-            if (v.HasValue) values.Add(v.Value);
-        }
-        foreach (var x in recentData) {
-            double? v = x.V.AsDoubleNoNaN();
-            if (v.HasValue) values.Add(v.Value);
+        double archiveCount = 0;
+        double recentCount = 0;
+        if (aggregation == Aggregation.Average) {
+            archiveCount = GetAggregateValue(
+                chArchive.ReadAggregatedIntervals([start, bound], Aggregation.Count, filter)).AsDoubleNoNaN() ?? 0;
+            recentCount = GetAggregateValue(
+                chRecent.ReadAggregatedIntervals([bound, end], Aggregation.Count, filter)).AsDoubleNoNaN() ?? 0;
         }
 
-        return ComputeAggregation(aggregation, values, start);
+        DataValue combined = CombineNumericAggregations(
+            aggregation,
+            archiveValue.AsDoubleNoNaN(),
+            recentValue.AsDoubleNoNaN(),
+            archiveCount,
+            recentCount);
+
+        return VTQ.Make(combined, start, Quality.Good);
     }
 
-    private static VTQ ComputeAggregation(Aggregation aggregation, List<double> values, Timestamp t) {
-        if (values.Count == 0) {
-            return aggregation == Aggregation.Count
-                ? VTQ.Make(0, t, Quality.Good)
-                : VTQ.Make(DataValue.Empty, t, Quality.Good);
+    private static DataValue GetAggregateValue(List<VTQ> result) {
+        return result.Count > 0 ? result[0].V : DataValue.Empty;
+    }
+
+    private static DataValue CombineNumericAggregations(
+        Aggregation aggregation,
+        double? archiveValue,
+        double? recentValue,
+        double archiveCount,
+        double recentCount) {
+
+        if (aggregation == Aggregation.Count) {
+            return DataValue.FromDouble((archiveValue ?? 0) + (recentValue ?? 0));
         }
-        double v = aggregation switch {
-            Aggregation.Min => values.Min(),
-            Aggregation.Max => values.Max(),
-            Aggregation.Sum => values.Sum(),
-            Aggregation.Average => values.Average(),
-            Aggregation.Count => values.Count,
+
+        if (!archiveValue.HasValue && !recentValue.HasValue) {
+            return DataValue.Empty;
+        }
+
+        double value = aggregation switch {
+            Aggregation.Min => archiveValue.HasValue && recentValue.HasValue
+                ? Math.Min(archiveValue.Value, recentValue.Value)
+                : archiveValue ?? recentValue!.Value,
+            Aggregation.Max => archiveValue.HasValue && recentValue.HasValue
+                ? Math.Max(archiveValue.Value, recentValue.Value)
+                : archiveValue ?? recentValue!.Value,
+            Aggregation.Sum => (archiveValue ?? 0) + (recentValue ?? 0),
+            Aggregation.Average => ((archiveValue ?? 0) + (recentValue ?? 0)) / (archiveCount + recentCount),
             _ => throw new Exception($"Unknown aggregation method: {aggregation}"),
         };
-        return VTQ.Make(v, t, Quality.Good);
+        return DataValue.FromDouble(value);
     }
 }
