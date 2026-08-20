@@ -77,6 +77,30 @@ public sealed class Test_SQLiteStorage
     }
 
     [Fact]
+    public void ArchiveChannelInsertRejectsExistingTimestampOnLaterDayBeforeWritingEarlierDay() {
+        using var folder = new TemporaryFolder();
+        using var storage = new SQLiteStorage(folder.Path, readOnly: false);
+        var channel = new ArchiveChannel(ChannelRef.Make("Object", "Value"), storage);
+        Timestamp firstDay = Timestamp.FromISO8601("2025-01-01T12:00:00Z");
+        Timestamp secondDay = Timestamp.FromISO8601("2025-01-02T12:00:00Z");
+        channel.Insert([VTQ.Make(2, secondDay, Quality.Good)]);
+
+        Assert.Throws<Exception>(() => channel.Insert([
+            VTQ.Make(1, firstDay, Quality.Good),
+            VTQ.Make(3, secondDay, Quality.Good),
+        ]));
+
+        VTTQ value = Assert.Single(channel.ReadData(
+            firstDay,
+            secondDay,
+            maxValues: 10,
+            Ifak.Fast.Mediator.Timeseries.BoundingMethod.TakeFirstN,
+            Ifak.Fast.Mediator.Timeseries.QualityFilter.ExcludeNone));
+        Assert.Equal(secondDay, value.T);
+        Assert.Equal(2, value.V.GetInt());
+    }
+
+    [Fact]
     public void ArchiveChannelUpdateRejectsDuplicateTimestampsBeforeWriting() {
         using var folder = new TemporaryFolder();
         using var storage = new SQLiteStorage(folder.Path, readOnly: false);
@@ -104,6 +128,30 @@ public sealed class Test_SQLiteStorage
             values,
             value => Assert.Equal(1, value.V.GetInt()),
             value => Assert.Equal(2, value.V.GetInt()));
+    }
+
+    [Fact]
+    public void ArchiveChannelUpdateRejectsMissingTimestampOnLaterDayBeforeWritingEarlierDay() {
+        using var folder = new TemporaryFolder();
+        using var storage = new SQLiteStorage(folder.Path, readOnly: false);
+        var channel = new ArchiveChannel(ChannelRef.Make("Object", "Value"), storage);
+        Timestamp firstDay = Timestamp.FromISO8601("2025-01-01T12:00:00Z");
+        Timestamp missingSecondDay = Timestamp.FromISO8601("2025-01-02T12:00:00Z");
+        channel.Insert([VTQ.Make(1, firstDay, Quality.Good)]);
+
+        Assert.Throws<Exception>(() => channel.Update([
+            VTQ.Make(10, firstDay, Quality.Good),
+            VTQ.Make(20, missingSecondDay, Quality.Good),
+        ]));
+
+        VTTQ value = Assert.Single(channel.ReadData(
+            firstDay,
+            missingSecondDay,
+            maxValues: 10,
+            Ifak.Fast.Mediator.Timeseries.BoundingMethod.TakeFirstN,
+            Ifak.Fast.Mediator.Timeseries.QualityFilter.ExcludeNone));
+        Assert.Equal(firstDay, value.T);
+        Assert.Equal(1, value.V.GetInt());
     }
 
     [Fact]

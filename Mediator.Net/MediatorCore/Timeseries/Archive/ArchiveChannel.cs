@@ -370,6 +370,8 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
             .GroupBy(vtq => GetDayNumber(vtq.T))
             .OrderBy(g => g.Key);
 
+        var preparedDays = new List<(int DayNumber, byte[] CompressedData)>();
+
         foreach (var group in groups) {
             int t = group.Key;
             List<VTTQ> allData = ReadDay(t);
@@ -379,7 +381,12 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
             if (duplicatesLastWin) {
                 KeepLastForDuplicateTimestamps(periodData);
             }
-            WriteDay(t, joinData(allData, periodData, timeDB));
+            List<VTTQ> joinedData = joinData(allData, periodData, timeDB);
+            preparedDays.Add((t, CompressVTTQ(joinedData)));
+        }
+
+        foreach (var (DayNumber, CompressedData) in preparedDays) {
+            storage.WriteDayData(channel, DayNumber, CompressedData);
         }
     }
 
