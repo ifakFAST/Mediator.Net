@@ -94,6 +94,44 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
             }
         }
 
+        public override void Truncate() {
+
+            // Avoid creating deferred trash tables when truncation has no logical effect.
+            using (var command = Factory.MakeCommand($"SELECT 1 FROM {table} LIMIT 1", connection)) {
+                if (command.ExecuteScalar() == null) return;
+            }
+
+            // Keep truncation independent of the number of stored values. The populated table is
+            // moved out of the channel namespace and reclaimed later by SQLiteTimeseriesDB.DrainTrash.
+            string trashName = "ZZZ__TRASH$" + Guid.NewGuid().ToString("N");
+
+            using var transaction = connection.BeginTransaction();
+            try {
+                using (var command = Factory.MakeCommand("INSERT INTO channel_trash (table_name, deleted_at) VALUES (@name, @ts)", connection)) {
+                    command.Transaction = transaction;
+                    command.Parameters.Add(Factory.MakeParameter("name", trashName));
+                    command.Parameters.Add(Factory.MakeParameter("ts", Timestamp.Now.JavaTicks));
+                    command.ExecuteNonQuery();
+                }
+                using (var command = Factory.MakeCommand($"ALTER TABLE {table} RENAME TO \"{trashName}\"", connection)) {
+                    command.Transaction = transaction;
+                    command.ExecuteNonQuery();
+                }
+                using (var command = Factory.MakeCommand($"CREATE TABLE {table} (time INTEGER PRIMARY KEY, diffDB INTEGER, quality INTEGER, data TEXT)", connection)) {
+                    command.Transaction = transaction;
+                    command.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }
+            catch (Exception) {
+                try {
+                    transaction.Rollback();
+                }
+                catch (Exception) { }
+                throw;
+            }
+        }
+
         public override long DeleteData(Timestamp[] timestamps) {
             return stmtDeleteOne.RunTransaction(stmt => {
                 long counter = 0;
