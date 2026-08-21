@@ -82,6 +82,44 @@ public sealed class Test_SQLiteChannel
         }
     }
 
+    [Fact]
+    public void MaintenanceWhileClosedDoesNotDelayTrashDrainAfterOpen() {
+        using var folder = new TemporaryFolder();
+        string dbPath = Path.Combine(folder.Path, "timeseries.sqlite");
+
+        var setupDb = new SQLiteTimeseriesDB();
+        setupDb.Open(new TimeSeriesDB.OpenParams(
+            Name: "Test",
+            ConnectionString: $"Data Source={dbPath}",
+            ReadWriteMode: TimeSeriesDB.Mode.ReadWrite));
+
+        try {
+            Channel channel = setupDb.CreateChannel(new ChannelInfo("Object", "Value", DataType.Float64));
+            channel.Insert([VTQ.Make(1, Timestamp.Now, Quality.Good)]);
+            channel.Truncate();
+            Assert.Equal(1, CountTrashEntries(dbPath));
+        }
+        finally {
+            setupDb.Close();
+        }
+
+        var db = new SQLiteTimeseriesDB();
+        db.DoMaintenanceWork();
+        db.Open(new TimeSeriesDB.OpenParams(
+            Name: "Test",
+            ConnectionString: $"Data Source={dbPath}",
+            ReadWriteMode: TimeSeriesDB.Mode.ReadWrite));
+
+        try {
+            Channel channel = db.GetChannel("Object", "Value");
+            channel.Insert([VTQ.Make(2, Timestamp.Now, Quality.Good)]);
+            Assert.Equal(0, CountTrashEntries(dbPath));
+        }
+        finally {
+            db.Close();
+        }
+    }
+
     private static long CountTrashEntries(string dbPath) {
         using var connection = Factory.MakeConnection($"Data Source={dbPath};Mode=ReadOnly;Pooling=False");
         connection.Open();

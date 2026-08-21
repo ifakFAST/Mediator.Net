@@ -217,7 +217,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 return true;
             });
 
-            parentDb.CheckAndApplyRetention();
+            parentDb.DoMaintenanceWork();
         }
 
         public override void Upsert(VTQ[] data) {
@@ -236,7 +236,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 return true;
             });
 
-            parentDb.CheckAndApplyRetention();
+            parentDb.DoMaintenanceWork();
         }
 
         public override void ReplaceAll(VTQ[] data) {

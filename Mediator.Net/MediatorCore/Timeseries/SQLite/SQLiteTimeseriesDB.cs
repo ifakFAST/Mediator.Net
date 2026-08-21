@@ -22,6 +22,10 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         private Duration? retentionTime = null;
         private Duration retentionCheckInterval = Duration.FromHours(1);  // default 1 hour
         private Timestamp lastRetentionCheck = Timestamp.Empty;
+
+        private Duration drainTrashInterval = Duration.FromMinutes(15);  // default 15 minutes
+        private Timestamp lastDrainTrash = Timestamp.Empty;
+
         private bool readOnly = false;
 
         public override bool IsOpen => connection != null;
@@ -387,29 +391,35 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
 
             transaction.Commit();
 
-            CheckAndApplyRetention();
+            DoMaintenanceWork();
 
             return errors.ToArray();
         }
 
-        public void CheckAndApplyRetention() {
+        public void DoMaintenanceWork() {
             if (connection == null) return;
+            CheckAndApplyRetention();
+            CheckAndRunDrainTrash();
+        }
 
+        private void CheckAndApplyRetention() {
+            if (retentionTime == null) return;
             Timestamp now = Timestamp.Now;
-            if (now - lastRetentionCheck < retentionCheckInterval) return;  // Not time yet
-
-            lastRetentionCheck = now;
-
-            if (retentionTime != null) {
+            if (now - lastRetentionCheck >= retentionCheckInterval) {
+                lastRetentionCheck = now;
                 var sw = Stopwatch.StartNew();
                 ApplyRetention(now - retentionTime.Value);
                 sw.Stop();
                 logger.Debug($"Applied retention policy for SQLite Timeseries DB in {sw.ElapsedMilliseconds} ms");
             }
+        }
 
-            // Piggyback the trash drain on the maintenance pass. The budget keeps the worker
-            // responsive even when a large backlog of removed channels is being cleaned up.
-            DrainTrash(TimeSpan.FromSeconds(1));
+        private void CheckAndRunDrainTrash() {
+            Timestamp now = Timestamp.Now;
+            if (now - lastDrainTrash >= drainTrashInterval) {
+                lastDrainTrash = now;
+                DrainTrash(TimeSpan.FromSeconds(5));
+            }
         }
 
         /// <summary>
@@ -419,6 +429,7 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         /// queued operations.
         /// </summary>
         private void DrainTrash(TimeSpan budget) {
+
             if (connection == null) return;
 
             var sw = Stopwatch.StartNew();
@@ -483,15 +494,16 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         }
 
         private void ApplyRetention(Timestamp cutoff) {
+            if (connection == null) return;
             // The transaction will automatically rollback if not completed successfully on Dispose
-            using var transaction = connection!.BeginTransaction();
-            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection!)) {
+            using var transaction = connection.BeginTransaction();
+            using (var command = Factory.MakeCommand($"SELECT * FROM channel_defs", connection)) {
                 command.Transaction = transaction;
                 using var reader = command.ExecuteReader();
                 while (reader.Read()) {
                     string tableName = (string)reader["table_name"];
                     string table = "\"" + tableName + "\""; ;
-                    using var cmd = Factory.MakeCommand($"DELETE FROM {table} WHERE time < @cutoff", connection!);
+                    using var cmd = Factory.MakeCommand($"DELETE FROM {table} WHERE time < @cutoff", connection);
                     cmd.Transaction = transaction;
                     cmd.Parameters.Add(Factory.MakeParameter("cutoff", cutoff.JavaTicks));
                     cmd.ExecuteNonQuery();
