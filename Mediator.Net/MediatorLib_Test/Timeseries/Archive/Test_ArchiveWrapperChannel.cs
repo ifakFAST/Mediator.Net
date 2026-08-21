@@ -157,6 +157,44 @@ public sealed class Test_ArchiveWrapperChannel
         }
     }
 
+    [Fact]
+    public void TruncateDoesNotReadArchiveData() {
+        using var folder = new TemporaryFolder();
+        string archivePath = Path.Combine(folder.Path, "archive");
+        Directory.CreateDirectory(archivePath);
+        using var archiveStorage = new CountingStorage(new SQLiteStorage(archivePath, readOnly: false));
+        var recentDb = new SQLiteTimeseriesDB();
+        recentDb.Open(new TimeSeriesDB.OpenParams(
+            Name: "Recent",
+            ConnectionString: $"Data Source={Path.Combine(folder.Path, "recent.sqlite")}",
+            ReadWriteMode: TimeSeriesDB.Mode.ReadWrite));
+
+        try {
+            ChannelRef channelRef = ChannelRef.Make("Object", "Value");
+            Channel recent = recentDb.CreateChannel(new ChannelInfo("Object", "Value", DataType.Float64));
+            var archive = new ArchiveChannel(channelRef, archiveStorage);
+            var wrapper = new ArchiveWrapperChannel(recent, archive, archiveOlderThanDays: 30);
+
+            Timestamp start = Timestamp.FromISO8601("2025-01-01T00:00:00Z");
+            archive.Insert([
+                VTQ.Make(1, start, Quality.Good),
+                VTQ.Make(2, start.AddDays(1), Quality.Good),
+            ]);
+            recent.Insert([VTQ.Make(3, start.AddDays(2), Quality.Good)]);
+
+            archiveStorage.ResetReadCount();
+
+            wrapper.Truncate();
+
+            Assert.Equal(0, archiveStorage.ReadCount);
+            Assert.Null(archiveStorage.GetStoredDayNumberRange(channelRef));
+            Assert.Equal(0, recent.CountAll());
+        }
+        finally {
+            recentDb.Close();
+        }
+    }
+
     private static void AssertValues(Timestamp[] bounds, double[] expected, List<VTQ> result) {
         Assert.Equal(expected.Length, result.Count);
         for (int i = 0; i < expected.Length; i++) {

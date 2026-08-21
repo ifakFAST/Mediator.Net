@@ -55,6 +55,13 @@ public sealed class ArchiveChannel(ChannelRef channel, StorageBase storage) : Ch
         return total;
     }
 
+    public override void Truncate() {
+        (int dayStart, int dayEnd)? range = storage.GetStoredDayNumberRange(channel);
+        if (range != null) {
+            storage.DeleteDayData(channel, range.Value.dayStart, range.Value.dayEnd);
+        }
+    }
+
     public override long DeleteData(Timestamp startInclusive, Timestamp endInclusive) {
         var (dayStart, dayEnd) = BoundedDayNumbersFromTimestamps(startInclusive, endInclusive);
         long totalDeleted = 0;

@@ -71,6 +71,11 @@ public sealed class ArchiveWrapperChannel : Channel
         return count;
     }
 
+    public override void Truncate() {
+        chRecent.Truncate();
+        chArchive.Truncate();
+    }
+
     public override long DeleteData(Timestamp startInclusive, Timestamp endInclusive) {
         // Promote2DB();
         long count;
