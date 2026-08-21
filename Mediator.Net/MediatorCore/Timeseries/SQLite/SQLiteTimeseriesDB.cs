@@ -423,10 +423,9 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
         }
 
         /// <summary>
-        /// Physically drops tables that were previously trashed by <see cref="RemoveChannel"/>.
-        /// Each table is dropped in its own short transaction so the loop can be interrupted as
-        /// soon as the time budget is exhausted, keeping the worker thread responsive to other
-        /// queued operations.
+        /// Physically drains and drops tables that were previously trashed by <see cref="RemoveChannel"/>.
+        /// Rows are deleted in small batches so the loop can be interrupted as soon as the time
+        /// budget is exhausted, keeping the worker thread responsive to other queued operations.
         /// </summary>
         private void DrainTrash(TimeSpan budget) {
 
@@ -453,6 +452,46 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                 }
 
                 if (trashName == null) break;
+
+                bool tableIsEmpty = false;
+                try {
+
+                    if (!TableExists(trashName)) {
+                        // The metadata can outlive its table after manual recovery or cleanup by
+                        // another connection. Treat that entry as already drained so it cannot
+                        // block every newer entry in the FIFO queue.
+                        tableIsEmpty = true;
+                    }
+
+                    const int deleteBatchSize = 5000;
+                    while (!tableIsEmpty && sw.Elapsed < budget) {
+                        using var cmd = Factory.MakeCommand(
+                            $"DELETE FROM \"{trashName}\" WHERE rowid IN (SELECT rowid FROM \"{trashName}\" LIMIT {deleteBatchSize})",
+                            connection);
+                        int deleted = cmd.ExecuteNonQuery();
+                        if (deleted < deleteBatchSize) {
+                            tableIsEmpty = true;
+                            break;
+                        }
+                    }
+                }
+                catch (Exception exp) {
+                    // A concurrent drain may have dropped the table after the existence check.
+                    // In that case the transactional DROP IF EXISTS and metadata removal below
+                    // are still safe to run.
+                    try {
+                        tableIsEmpty = !TableExists(trashName);
+                    }
+                    catch (Exception) { }
+
+                    if (!tableIsEmpty) {
+                        logger.Warn($"DrainTrash: failed to drain trashed table '{trashName}': {exp.Message}");
+                        break;
+                    }
+                }
+
+                // Keep the table queued for the next drain pass when the budget expires mid-table.
+                if (!tableIsEmpty) break;
 
                 try {
                     using var transaction = connection.BeginTransaction();
@@ -491,6 +530,12 @@ namespace Ifak.Fast.Mediator.Timeseries.SQLite
                     logger.Warn($"DrainTrash: Update_wal_autocheckpoint failed: {exp.Message}");
                 }
             }
+        }
+
+        private bool TableExists(string tableName) {
+            using var command = Factory.MakeCommand("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = @name", connection!);
+            command.Parameters.Add(Factory.MakeParameter("name", tableName));
+            return command.ExecuteScalar() != null;
         }
 
         private void ApplyRetention(Timestamp cutoff) {

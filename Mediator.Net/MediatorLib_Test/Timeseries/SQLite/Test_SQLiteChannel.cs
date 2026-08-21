@@ -120,6 +120,45 @@ public sealed class Test_SQLiteChannel
         }
     }
 
+    [Fact]
+    public void MissingTrashTableDoesNotBlockDrain() {
+        using var folder = new TemporaryFolder();
+        string dbPath = Path.Combine(folder.Path, "timeseries.sqlite");
+        var db = new SQLiteTimeseriesDB();
+        db.Open(new TimeSeriesDB.OpenParams(
+            Name: "Test",
+            ConnectionString: $"Data Source={dbPath}",
+            ReadWriteMode: TimeSeriesDB.Mode.ReadWrite));
+
+        try {
+            Channel channel = db.CreateChannel(new ChannelInfo("Object", "Value", DataType.Float64));
+            channel.Insert([VTQ.Make(1, Timestamp.Now, Quality.Good)]);
+            channel.Truncate();
+
+            InsertTrashEntry(dbPath, "ZZZ__TRASH$missing", long.MinValue);
+            Assert.Equal(2, CountTrashEntries(dbPath));
+
+            db.Vacuum();
+
+            Assert.Equal(0, CountTrashEntries(dbPath));
+            Assert.True(db.ExistsChannel("Object", "Value"));
+        }
+        finally {
+            db.Close();
+        }
+    }
+
+    private static void InsertTrashEntry(string dbPath, string tableName, long deletedAt) {
+        using var connection = Factory.MakeConnection($"Data Source={dbPath};Pooling=False");
+        connection.Open();
+        using var command = Factory.MakeCommand(
+            "INSERT INTO channel_trash (table_name, deleted_at) VALUES (@name, @deletedAt)",
+            connection);
+        command.Parameters.Add(Factory.MakeParameter("name", tableName));
+        command.Parameters.Add(Factory.MakeParameter("deletedAt", deletedAt));
+        command.ExecuteNonQuery();
+    }
+
     private static long CountTrashEntries(string dbPath) {
         using var connection = Factory.MakeConnection($"Data Source={dbPath};Mode=ReadOnly;Pooling=False");
         connection.Open();
