@@ -1,67 +1,58 @@
 <template>
   <v-dialog
     v-model="dialog"
-    max-width="600"
+    max-width="900"
     @keydown.esc="cancel"
   >
     <v-card>
-      <v-card-title>
+      <v-card-title class="px-6 pt-5 pb-1">
         <span class="text-h5">Config Variables</span>
       </v-card-title>
-      <v-card-text>
-        <v-container
-          class="pa-0 pt-6"
-          fluid
+      <v-card-subtitle class="px-6 pb-2">
+        Define the variable IDs and their default values.
+      </v-card-subtitle>
+      <v-card-text class="px-6 pt-4">
+        <div
+          v-for="(variable, index) in configVariables"
+          :key="index"
+          class="config-variable-row"
         >
-          <template
-            v-for="(variable, index) in configVariables"
-            :key="index"
-          >
-            <v-row class="mb-2">
-              <v-col
-                class="py-0"
-                cols="auto"
-              >
-                <v-text-field
-                  v-model="variable.ID"
-                  label="ID"
-                  style="max-width: 115px"
-                />
-              </v-col>
-              <v-col
-                class="py-0"
-                cols="fill"
-              >
-                <v-text-field
-                  v-model="variable.DefaultValue"
-                  label="Default Value"
-                />
-              </v-col>
-              <v-col
-                class="py-0 pl-0 d-flex"
-                cols="auto"
-              >
-                <div class="d-flex flex-row">
-                  <v-btn
-                    color="error"
-                    icon="mdi-delete"
-                    @click="removeVariable(index)"
-                  ></v-btn>
-                  <v-btn
-                    :disabled="index === 0"
-                    icon="mdi-arrow-up"
-                    @click="moveVariable(index, 'up')"
-                  ></v-btn>
-                </div>
-              </v-col>
-            </v-row>
-          </template>
-        </v-container>
+          <v-text-field
+            v-model="variable.ID"            
+            hide-details="auto"
+            label="ID"
+            variant="outlined"
+          />
+          <v-text-field
+            v-model="variable.DefaultValue"
+            hide-details="auto"
+            label="Default Value"
+            variant="outlined"
+          />
+          <div class="config-variable-actions">
+            <v-btn
+              :aria-label="`Move variable ${index + 1} up`"
+              :disabled="index === 0"
+              icon="mdi-arrow-up"
+              size="small"
+              variant="text"
+              @click="moveVariable(index, 'up')"
+            ></v-btn>
+            <v-btn
+              :aria-label="`Delete variable ${index + 1}`"
+              color="error"
+              icon="mdi-delete-outline"
+              size="small"
+              variant="text"
+              @click="removeVariable(index)"
+            ></v-btn>
+          </div>
+        </div>
 
-        <div class="text-center">
+        <div class="mt-2">
           <v-btn
-            class="mt-2"
             color="primary"
+            prepend-icon="mdi-plus"
             variant="text"
             @click="addVariable"
           >
@@ -69,7 +60,8 @@
           </v-btn>
         </div>
       </v-card-text>
-      <v-card-actions class="pt-0">
+      <v-divider></v-divider>
+      <v-card-actions class="px-6 py-3">
         <v-spacer></v-spacer>
         <v-btn
           color="grey-darken-1"
@@ -149,3 +141,30 @@ defineExpose({
   open,
 })
 </script>
+
+<style scoped>
+.config-variable-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.35fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.config-variable-actions {
+  display: flex;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .config-variable-row {
+    grid-template-columns: 1fr;
+  }
+
+  .config-variable-actions {
+    justify-content: flex-end;
+    padding-top: 0;
+  }
+}
+</style>
