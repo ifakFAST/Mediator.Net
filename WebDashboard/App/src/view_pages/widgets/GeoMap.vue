@@ -1332,13 +1332,17 @@ watch(
     if (props.eventName === 'OnVarChanged') {
       const obj = (props.eventPayload as any)['Object'] as string
       const name = (props.eventPayload as any)['Name'] as string
+      const matchesVariable = (layer: NamedLayerType): boolean => {
+        const resolvedObject = model.VariableReplacer.replaceVariables(layer.Variable.Object, props.configVariables?.VarValues)
+        return resolvedObject === obj && layer.Variable.Name === name
+      }
       for (const mainLayer of props.config.MainLayers) {
-        if (mainLayer.Variable.Object === obj && mainLayer.Variable.Name === name) {
+        if (matchesVariable(mainLayer)) {
           loadLayerContent(mainLayer)
         }
       }
       for (const optionalLayer of props.config.OptionalLayers) {
-        if (optionalLayer.Variable.Object === obj && optionalLayer.Variable.Name === name) {
+        if (matchesVariable(optionalLayer)) {
           loadLayerContent(optionalLayer)
         }
       }

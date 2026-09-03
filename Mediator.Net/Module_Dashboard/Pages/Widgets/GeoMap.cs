@@ -67,6 +67,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange, int frameCount, Dictionary<string, string> configVars) {
 
         Context.SetConfigVariables(configVars);
+        ResolveVariables();
 
         showLatest = timeRange.Type == TimeType.Last;
         var variableResolved = Context.ResolveVariableRef(variable);
@@ -89,13 +90,13 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
     }
 
     public async Task<ReqResult> UiReq_SaveConfig(GeoMapConfig config) {
-        VariablesUnresolved = GetVariablesUnresolved();
         configuration.MapConfig = config.MapConfig;
         configuration.LegendConfig = config.LegendConfig;
         configuration.TileLayers = config.TileLayers;
         configuration.StaticLayers = config.StaticLayers;
         configuration.MainLayers = config.MainLayers;
         configuration.OptionalLayers = config.OptionalLayers;
+        VariablesUnresolved = GetVariablesUnresolved();
         await Context.SaveWidgetConfiguration(configuration);
         return ReqResult.OK();
     }
