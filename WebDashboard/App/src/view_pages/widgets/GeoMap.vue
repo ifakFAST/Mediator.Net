@@ -634,10 +634,7 @@ const loadLayers = async (layers?: NamedLayerType[]): Promise<void> => {
   for (const layer of layers) {
     await loadLayerContent(layer)
     const obj = layer.Variable.Object
-    const VariableReplacer = (window.parent as any)['dashboardApp']?.variableReplacer || {
-      replaceVariables: (str: string, vars: Record<string, string>) => str,
-    }
-    stringWithVarResolvedMap.value.set(obj, VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues))
+    stringWithVarResolvedMap.value.set(obj, model.VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues))
   }
 }
 
@@ -1294,10 +1291,7 @@ const onConfigureLayers = async (): Promise<void> => {
 watch(
   () => props.configVariables?.VarValues,
   (newVal, oldVal) => {
-    const VariableReplacer = (window.parent as any)['dashboardApp']?.variableReplacer || {
-      replaceVariables: (str: string, vars: Record<string, string>) => str,
-    }
-    const resolvedCenterNew = VariableReplacer.replaceVariables(props.config.MapConfig.Center, props.configVariables?.VarValues)
+    const resolvedCenterNew = model.VariableReplacer.replaceVariables(props.config.MapConfig.Center, props.configVariables?.VarValues)
     if (resolvedCenter.value !== resolvedCenterNew) {
       map.value?.panTo(getResolvedCenter())
     }
@@ -1306,13 +1300,13 @@ watch(
 
     const mainLayersWithVariables = props.config.MainLayers.filter((mainLayer) => {
       const obj = mainLayer.Variable.Object
-      const objResolved = VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues)
+      const objResolved = model.VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues)
       return !resolveMap.has(obj) || resolveMap.get(obj) !== objResolved
     })
 
     const optionalLayersWithVariables = props.config.OptionalLayers.filter((optionalLayer) => {
       const obj = optionalLayer.Variable.Object
-      const objResolved = VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues)
+      const objResolved = model.VariableReplacer.replaceVariables(obj, props.configVariables?.VarValues)
       return !resolveMap.has(obj) || resolveMap.get(obj) !== objResolved
     })
 
