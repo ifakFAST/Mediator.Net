@@ -273,12 +273,7 @@ const widgetTitleVarValues = ref<Record<string, string>>({})
 const dateWindowForComponents = computed(() => props.dateWindow)
 
 const setWidgetTitleVarValues = (newValues: Record<string, string>): void => {
-  const newWidgetTitleVarValues = { ...widgetTitleVarValues.value }
-  for (const key in newValues) {
-    const value = newValues[key]
-    newWidgetTitleVarValues[key] = value
-  }
-  widgetTitleVarValues.value = newWidgetTitleVarValues
+  widgetTitleVarValues.value = { ...newValues }
 }
 
 const onDateWindowChanged = (window: number[] | null | undefined): void => {

@@ -366,6 +366,7 @@ const clearMap = (): void => {
   layersWithSetVariableValues.value.clear()
   layersWithSetWidgetTitleVarValues.value.clear()
   geoContentFrames.value.clear()
+  props.setWidgetTitleVarValues?.({})
 }
 
 const stopAllAnimations = (): void => {
@@ -569,10 +570,7 @@ const onLayerAdd = (e: L.LayerEvent): void => {
       props.setConfigVariableValues?.(variableValues)
     }
 
-    if (layersWithSetWidgetTitleVarValues.value.has(layerName)) {
-      const variableValues = layersWithSetWidgetTitleVarValues.value.get(layerName)!
-      props.setWidgetTitleVarValues?.(variableValues)
-    }
+    updateWidgetTitleVarValues()
 
     // Start animation if this layer has multiple frames
     const hasGeoContentFrames = geoContentFrames.value.has(layerName) && geoContentFrames.value.get(layerName)!.length > 1
@@ -603,7 +601,29 @@ const onLayerRemove = (e: L.LayerEvent): void => {
   if (layerName) {
     // Stop animation for this layer
     stopLayerAnimation(layerName)
+    updateWidgetTitleVarValues()
   }
+}
+
+const updateWidgetTitleVarValues = (): void => {
+  const currentMap = map.value
+  const variableValues: Record<string, string> = {}
+
+  if (currentMap) {
+    // Apply active layers in configuration order. Optional layers override main
+    // layers, and later entries override earlier entries for duplicate keys.
+    const configuredLayers = props.config.MainLayers.concat(props.config.OptionalLayers)
+    for (const configuredLayer of configuredLayers) {
+      const layer = mainLayers.value[configuredLayer.Name] || optionalLayers.value[configuredLayer.Name]
+      if (!layer || !currentMap.hasLayer(layer)) {
+        continue
+      }
+
+      Object.assign(variableValues, layersWithSetWidgetTitleVarValues.value.get(configuredLayer.Name) ?? {})
+    }
+  }
+
+  props.setWidgetTitleVarValues?.(variableValues)
 }
 
 const loadLayers = async (layers?: NamedLayerType[]): Promise<void> => {
@@ -865,6 +885,10 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
 
   try {
     geoContentFrames.value.delete(layerName)
+    layersWithSetWidgetTitleVarValues.value.delete(layerName)
+    if (map.value!.hasLayer(layer)) {
+      updateWidgetTitleVarValues()
+    }
 
     const dataArray: GeoJsonObj[] | GeoJsonUrl[] | GeoTiffUrl[] = await props.backendAsync!('GetGeoData', {
       variable: variable,
@@ -1068,9 +1092,12 @@ const setFrameVariables = (frame: GeoContentFrame, layerName: string, layer: Geo
 
   if (frame.setWidgetTitleVarValues) {
     layersWithSetWidgetTitleVarValues.value.set(layerName, frame.setWidgetTitleVarValues)
-    if (map.value!.hasLayer(layer)) {
-      props.setWidgetTitleVarValues?.(frame.setWidgetTitleVarValues)
-    }
+  } else {
+    layersWithSetWidgetTitleVarValues.value.delete(layerName)
+  }
+
+  if (map.value!.hasLayer(layer)) {
+    updateWidgetTitleVarValues()
   }
 }
 
