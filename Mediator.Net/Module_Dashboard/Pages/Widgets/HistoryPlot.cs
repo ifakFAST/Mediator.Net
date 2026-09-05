@@ -20,7 +20,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
 public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 {
     private VariableRefUnresolved[] variablesUnresolved = [];
-    private VariableRef[] variables = [];
+    private HashSet<VariableRef> variables = [];
 
     private readonly Dictionary<VariableRef, DataType> VariablesType = [];
     private readonly Dictionary<VariableRef, VarInfo> VariablesInfo = [];
@@ -37,6 +37,7 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
     HistoryPlotConfig configuration => Config;
 
     public override Task OnActivate() {
+        variables.Clear(); // necessary because if we returned to this page from a previous visit, the variables will have been initialized already, but we need to subscribe to history changes again
         VariablesUnresolved = configuration.Items.Select(it => it.Variable).ToArray();
         return Task.FromResult(true);
     }
@@ -49,15 +50,14 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
         }
     }
 
-    VariableRef[] ResolvedVariablesFromCache => variables;
+    HashSet<VariableRef> ResolvedVariablesFromCache => variables;
 
-    VariableRef[] ResolveVariables() {
+    void ResolveVariables() {
         VariableRef[] newVariables = variablesUnresolved.Select(v => Context.ResolveVariableRef(v)).ToArray();
-        if (!Arrays.Equals(newVariables, variables)) {
-            variables = newVariables;
+        if (!variables.SetEquals(newVariables)) {
+            variables = [.. newVariables];
             Task ignored = Connection.EnableVariableHistoryChangedEvents(newVariables);
         }
-        return variables;
     }
 
     public Task<ReqResult> UiReq_GetItemsData() {
@@ -484,9 +484,9 @@ public class HistoryPlot : WidgetBaseWithConfig<HistoryPlotConfig>
 
         var setOfChangedVariables = changes.Select(ch => ch.Variable).ToHashSet();
 
-        VariableRef[] variables = ResolvedVariablesFromCache;
+        HashSet<VariableRef> variables = ResolvedVariablesFromCache;
 
-        if (IsLoaded && variables.Any(v => setOfChangedVariables.Contains(v))) {
+        if (IsLoaded && variables.Overlaps(setOfChangedVariables)) {
 
             VariableRef[] changedTabVariables = variables.Where(v => setOfChangedVariables.Contains(v)).ToArray();
 
