@@ -5,7 +5,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Ifak.Fast.Mediator.Util;
 using VTTQs = System.Collections.Generic.List<Ifak.Fast.Mediator.VTTQ>;
 
 namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
@@ -14,7 +13,7 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages.Widgets;
 public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
 {
     private VariableRefUnresolved[] variablesUnresolved = [];
-    private VariableRef[] variables = [];
+    private HashSet<VariableRef> variables = [];
 
     public override string DefaultHeight => "300px";
 
@@ -32,16 +31,16 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         }
     }
 
-    VariableRef[] ResolveVariables() {
+    void ResolveVariables() {
         VariableRef[] newVariables = variablesUnresolved.Select(v => Context.ResolveVariableRef(v)).ToArray();
-        if (!Arrays.Equals(newVariables, variables)) {
-            variables = newVariables;
+        if (!variables.SetEquals(newVariables)) {
+            variables = [.. newVariables];
             Task ignored = Connection.EnableVariableValueChangedEvents(SubOptions.OnlyValueAndQualityChanges(sendValueWithEvent: false), newVariables);
         }
-        return variables;
     }
 
     public override Task OnActivate() {
+        variables.Clear(); // necessary because if we returned to this page from a previous visit, the variables will have been initialized already, but we need to subscribe to value changes again
         VariablesUnresolved = GetVariablesUnresolved();
         return Task.FromResult(true);
     }
@@ -101,14 +100,14 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return ReqResult.OK();
     }
 
-    public override async Task OnVariableValueChanged(List<VariableValue> variables) {
+    public override async Task OnVariableValueChanged(List<VariableValue> variableValues) {
         if (!showLatest) return;
-        foreach (VariableValue variable in variables) {
-            VariableRef var = variable.Variable;
-            VTQ vtq = variable.Value;
+        foreach (VariableValue variableValue in variableValues) {
+            VariableRef variable = variableValue.Variable;
+            if (!variables.Contains(variable)) continue;
             var payload = new {
-                Object = var.Object,
-                Name = var.Name,
+                Object = variable.Object,
+                Name = variable.Name,
             };
             await Context.SendEventToUI("OnVarChanged", payload);
         }
