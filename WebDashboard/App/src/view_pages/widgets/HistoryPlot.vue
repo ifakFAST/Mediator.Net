@@ -1735,9 +1735,15 @@ const downloadBlob = (blob: Blob, filename: string): void => {
 }
 
 // Watchers
+// Batch time-range changes and their config-variable resets into one reload.
 watch(
-  () => props.configVariables?.VarValues,
-  () => {
+  [() => props.timeRange, () => props.configVariables?.VarValues],
+  ([timeRange], [oldTimeRange]) => {
+    if (timeRange !== oldTimeRange) {
+      onLoadData(true)
+      return
+    }
+
     const resolveMap = stringWithVarResolvedMap.value
 
     const anyChanges = items.value.some((it) => {
@@ -1776,13 +1782,6 @@ watch(
       }
       setTimeout(fn, 500)
     }
-  },
-)
-
-watch(
-  () => props.timeRange,
-  () => {
-    onLoadData(true)
   },
 )
 

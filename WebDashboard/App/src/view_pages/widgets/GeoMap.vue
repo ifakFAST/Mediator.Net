@@ -1288,12 +1288,21 @@ const onConfigureLayers = async (): Promise<void> => {
 }
 
 // Watchers
+// Batch time-range changes and their config-variable resets into one reload.
 watch(
-  () => props.configVariables?.VarValues,
-  (newVal, oldVal) => {
+  [() => props.timeRange, () => props.configVariables?.VarValues],
+  ([timeRange], [oldTimeRange]) => {
     const resolvedCenterNew = model.VariableReplacer.replaceVariables(props.config.MapConfig.Center, props.configVariables?.VarValues)
     if (resolvedCenter.value !== resolvedCenterNew) {
       map.value?.panTo(getResolvedCenter())
+    }
+
+    if (timeRange !== oldTimeRange) {
+      // Stop all animations before reloading layers. loadLayers() reloads every layer
+      // and thereby refreshes stringWithVarResolvedMap for all of them.
+      stopAllAnimations()
+      loadLayers()
+      return
     }
 
     const resolveMap = stringWithVarResolvedMap.value
@@ -1315,15 +1324,6 @@ watch(
     }
   },
   { deep: true },
-)
-
-watch(
-  () => props.timeRange,
-  () => {
-    // Stop all animations before reloading layers
-    stopAllAnimations()
-    loadLayers()
-  },
 )
 
 watch(
