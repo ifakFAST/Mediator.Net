@@ -32,6 +32,9 @@ namespace Ifak.Fast.Mediator.Dashboard.Pages
     {
         public string ID { get; set; } = "";
         public string DefaultValue { get; set; } = "";
+        public bool ResetOnTimeRangeChange { get; set; } = false;
+
+        public bool ShouldSerializeResetOnTimeRangeChange() => ResetOnTimeRangeChange;
     }
 
 

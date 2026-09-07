@@ -9,7 +9,7 @@
         <span class="text-h5">Config Variables</span>
       </v-card-title>
       <v-card-subtitle class="px-6 pb-2">
-        Define the variable IDs and their default values.
+        Define the variable IDs, their default values and whether they are reset on a time range change.
       </v-card-subtitle>
       <v-card-text class="px-6 pt-4">
         <div
@@ -28,6 +28,13 @@
             hide-details="auto"
             label="Default Value"
             variant="outlined"
+          />
+          <v-checkbox
+            v-model="variable.ResetOnTimeRangeChange"
+            class="config-variable-reset"
+            density="compact"
+            hide-details
+            label="Reset on time range change"
           />
           <div class="config-variable-actions">
             <v-btn
@@ -90,7 +97,8 @@ const configVariables = ref<ConfigVariable[]>([])
 let resolve: (v: ConfigVariable[] | null) => void = (x) => {}
 
 const open = (configVariablesValue: ConfigVariable[]): Promise<ConfigVariable[] | null> => {
-  configVariables.value = JSON.parse(JSON.stringify(configVariablesValue)) // Deep copy
+  const copy: ConfigVariable[] = JSON.parse(JSON.stringify(configVariablesValue)) // Deep copy
+  configVariables.value = copy.map((v) => ({ ...v, ResetOnTimeRangeChange: v.ResetOnTimeRangeChange ?? false }))
   dialog.value = true
   return new Promise<ConfigVariable[] | null>((resolvePromise) => {
     resolve = resolvePromise
@@ -113,6 +121,7 @@ const addVariable = (): void => {
   configVariables.value.push({
     ID: '',
     DefaultValue: '',
+    ResetOnTimeRangeChange: false,
   })
 }
 
@@ -145,7 +154,7 @@ defineExpose({
 <style scoped>
 .config-variable-row {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.35fr) auto;
+  grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.1fr) minmax(200px, auto) auto;
   gap: 12px;
   align-items: start;
   margin-bottom: 12px;
@@ -157,6 +166,10 @@ defineExpose({
   padding-top: 4px;
 }
 
+.config-variable-reset {
+  padding-top: 4px;
+}
+
 @media (max-width: 720px) {
   .config-variable-row {
     grid-template-columns: 1fr;
@@ -164,6 +177,10 @@ defineExpose({
 
   .config-variable-actions {
     justify-content: flex-end;
+    padding-top: 0;
+  }
+
+  .config-variable-reset {
     padding-top: 0;
   }
 }

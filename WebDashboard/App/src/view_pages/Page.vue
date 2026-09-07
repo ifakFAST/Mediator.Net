@@ -274,8 +274,24 @@ onMounted(() => {
 
   dashboard.registerTimeRangeListener((timeRangeValue: any) => {
     timeRange.value = timeRangeValue
+    resetConfigVarsOnTimeRangeChange()
   })
 })
+
+// Reset the value of all config variables that are marked as time range dependent,
+// so that no stale data of the previous time range is kept.
+const resetConfigVarsOnTimeRangeChange = (): void => {
+  const varValues = props.configVariables.VarValues || {}
+  const resetValues: Record<string, string> = {}
+  for (const varDef of props.configVariables.VarDefs || []) {
+    if (varDef.ResetOnTimeRangeChange === true && varValues[varDef.ID] !== varDef.DefaultValue) {
+      resetValues[varDef.ID] = varDef.DefaultValue
+    }
+  }
+  if (Object.keys(resetValues).length > 0) {
+    props.setConfigVariableValues(resetValues)
+  }
+}
 
 watch(
   () => props.page,

@@ -49,6 +49,7 @@ export interface ConfigVariableValues {
 export interface ConfigVariable {
   ID: string
   DefaultValue: string
+  ResetOnTimeRangeChange?: boolean
 }
 
 export class VariableReplacer {
