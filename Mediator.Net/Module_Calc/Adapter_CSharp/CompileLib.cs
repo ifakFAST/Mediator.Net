@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.Data.Sqlite;
 using System.Reflection;
 using System.Threading;
 
@@ -116,6 +117,7 @@ public class CompileLib
         }
 
         references.Add(MetadataReference.CreateFromFile(typeof(CSharp).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(SqliteConnection).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(Ifak.Fast.Mediator.Timestamp).Assembly.Location));
 
         foreach (Assembly ass in refAssemblies) {

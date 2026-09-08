@@ -4,6 +4,7 @@
 
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -90,6 +91,7 @@ internal class CodeToObjectScripting : CodeToObjectBase
         var referencedAssemblies = new List<Assembly>();
         referencedAssemblies.Add(typeof(IList<int>).Assembly);
         referencedAssemblies.Add(typeof(System.Linq.Enumerable).Assembly);
+        referencedAssemblies.Add(typeof(SqliteConnection).Assembly);
         referencedAssemblies.Add(typeof(Timestamp).Assembly);
         referencedAssemblies.Add(typeof(Input).Assembly);
         referencedAssemblies.AddRange(refAssemblies);
