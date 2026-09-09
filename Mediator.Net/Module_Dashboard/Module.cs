@@ -7,6 +7,10 @@ using Ifak.Fast.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using System.Globalization;
+using System.Security.Cryptography;
+using Microsoft.Data.Sqlite;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -232,15 +236,7 @@ public class Module : ModelObjectModule<DashboardModel>
 
         string webAssetsDir = Path.Combine(configPath, Session.WebAssets);
 
-        app.Use(async (context, nextMiddleware) => {
-            if (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments($"/{Session.WebAssets}")) {
-                if (!IsAuthorizedGetRequest(context.Request)) {
-                    context.Response.StatusCode = 401;
-                    return;
-                }
-            }
-            await nextMiddleware();
-        });
+        app.Use((context, nextMiddleware) => HandleWebAssetsRequest(context, nextMiddleware, webAssetsDir));
 
         try {
             IHttpContextAccessor httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
@@ -716,6 +712,211 @@ public class Module : ModelObjectModule<DashboardModel>
                 catch (Exception) { }
             }
         }
+    }
+
+    private async Task HandleWebAssetsRequest(HttpContext context, RequestDelegate next, string webAssetsDir) {
+
+        if (context.Request.Method != "GET" ||
+            !context.Request.Path.StartsWithSegments($"/{Session.WebAssets}", out PathString relativePath)) {
+            await next(context);
+            return;
+        }
+
+        if (!IsAuthorizedGetRequest(context.Request)) {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (relativePath.Value?.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) != true) {
+            await next(context);
+            return;
+        }
+
+        HttpResponse response = context.Response;
+        response.Headers.AccessControlAllowOrigin = "*";
+        response.Headers.AccessControlAllowMethods = "*";
+        response.Headers.AccessControlAllowHeaders = "*";
+
+        if (!context.Request.Query.TryGetValue("id", out StringValues ids) || ids.Count != 1 ||
+            !long.TryParse(ids[0], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long id)) {
+            response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        if (!TryResolvePathWithinRoot(webAssetsDir, relativePath.Value, out string databasePath) ||
+            !File.Exists(databasePath) || !IsRegularWebAssetPath(webAssetsDir, databasePath)) {
+            response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        try {
+            byte[] data;
+            string ext;
+            string compression;
+            DateTimeOffset lastModified;
+            // Close the reader before transmitting data so slow clients do not hold WAL snapshots open.
+            using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder {
+                DataSource = databasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false,
+                DefaultTimeout = 1,
+            }.ToString())) {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT ext, last_modified, compression, data FROM files WHERE id = $id;";
+                command.Parameters.Add("$id", SqliteType.Integer).Value = id;
+                using var reader = command.ExecuteReader();
+                if (!reader.Read()) {
+                    response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+                ext = reader.GetString(0);
+                lastModified = DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(1));
+                compression = reader.GetString(2);
+                data = (byte[])reader.GetValue(3);
+            }
+
+            if (compression != "br" && compression != "gz" && compression != "" && compression != "identity") {
+                throw new InvalidDataException("Unsupported SQLite file compression.");
+            }
+
+            IList<Microsoft.Net.Http.Headers.StringWithQualityHeaderValue> encodings;
+            try {
+                encodings = context.Request.GetTypedHeaders().AcceptEncoding;
+            }
+            catch (FormatException) {
+                response.StatusCode = StatusCodes.Status400BadRequest;
+                return;
+            }
+
+            double? Quality(string encoding) => encodings
+                .Where(value => value.Value.Equals(encoding, StringComparison.OrdinalIgnoreCase))
+                .Select(value => (double?)(value.Quality ?? 1.0))
+                .DefaultIfEmpty(null).Min();
+
+            double? wildcard = Quality("*");
+            string? contentEncoding = compression switch { "br" => "br", "gz" => "gzip", _ => null };
+            double compressedQuality = contentEncoding == null ? 0 : Quality(contentEncoding) ?? wildcard ?? 0;
+            double identityQuality = Quality("identity") ?? (wildcard == 0 ? 0 : 1);
+            // Prefer the stored representation unless identity has an explicitly higher preference.
+            bool sendCompressed = contentEncoding != null && compressedQuality > 0 &&
+                compressedQuality >= (Quality("identity") ?? 0);
+            if (!sendCompressed && identityQuality <= 0) {
+                response.StatusCode = StatusCodes.Status406NotAcceptable;
+                return;
+            }
+            if (compression == "br") {
+                data = ReadBrotliWebAsset(data, decompress: !sendCompressed, context.RequestAborted);
+            }
+
+            if (compression == "gz") {
+                if (data.Length == 0) {
+                    throw new InvalidDataException("Missing gzip web asset stream.");
+                }
+                using var input = new MemoryStream(data, writable: false);
+                using var gzip = new GZipStream(input, CompressionMode.Decompress);
+                using var output = sendCompressed ? null : new MemoryStream();
+                // Validate the stored bytes also when serving the compressed representation.
+                await gzip.CopyToAsync((Stream?)output ?? Stream.Null, context.RequestAborted);
+                data = output?.ToArray() ?? data;
+            }
+
+            var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+            contentTypes.Mappings[".tif"] = "image/tiff";
+            contentTypes.Mappings[".tiff"] = "image/tiff";
+            contentTypes.Mappings[".geojson"] = "application/json";
+            if (!contentTypes.TryGetContentType("file." + ext, out string? contentType)) {
+                contentType = "application/octet-stream";
+            }
+
+            string representation = sendCompressed ? contentEncoding! : "identity";
+            string etag = $"\"{representation}-{Convert.ToHexString(SHA256.HashData(data))}\"";
+
+            response.ContentType = contentType;
+            response.Headers.LastModified = lastModified.ToString("r", CultureInfo.InvariantCulture);
+            response.Headers.ETag = etag;
+            response.Headers.Vary = "Accept-Encoding";
+            response.Headers.CacheControl = "public, max-age=172800";
+            if (sendCompressed) {
+                response.Headers.ContentEncoding = contentEncoding;
+            }
+
+            bool notModified = false;
+            // If-None-Match takes precedence, including when it does not match.
+            if (context.Request.Headers.ContainsKey("If-None-Match")) {
+                if (Microsoft.Net.Http.Headers.EntityTagHeaderValue.TryParseList(
+                        context.Request.Headers.IfNoneMatch, out var tags)) {
+                    var currentTag = new Microsoft.Net.Http.Headers.EntityTagHeaderValue(etag);
+                    notModified = tags.Any(tag => tag == Microsoft.Net.Http.Headers.EntityTagHeaderValue.Any ||
+                        tag.Compare(currentTag, useStrongComparison: false));
+                }
+            }
+            else if (Microsoft.Net.Http.Headers.HeaderUtilities.TryParseDate(
+                         context.Request.Headers.IfModifiedSince.ToString(), out DateTimeOffset since)) {
+                notModified = lastModified <= since;
+            }
+            if (notModified) {
+                response.StatusCode = StatusCodes.Status304NotModified;
+                return;
+            }
+
+            response.ContentLength = data.LongLength;
+            await response.Body.WriteAsync(data, context.RequestAborted);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested) { }
+        catch (Exception exp) when (!response.HasStarted) {
+            LogWarn("Failed to serve SQLite web asset.", exp);
+            response.Headers.Remove("Content-Encoding");
+            response.Headers.Remove("ETag");
+            response.Headers.Remove("Last-Modified");
+            response.Headers.CacheControl = "no-store";
+            response.ContentLength = null;
+            response.ContentType = null;
+            response.StatusCode = exp is SqliteException sqlite && sqlite.SqliteErrorCode is 5 or 6
+                ? StatusCodes.Status503ServiceUnavailable
+                : StatusCodes.Status500InternalServerError;
+        }
+    }
+
+    private static byte[] ReadBrotliWebAsset(byte[] data, bool decompress, CancellationToken cancellationToken) {
+        // Validate even pass-through responses. BrotliStream alone can silently accept a truncated stream.
+        using var decoder = new BrotliDecoder();
+        using var output = decompress ? new MemoryStream() : null;
+        byte[] buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(65536);
+        try {
+            int offset = 0;
+            while (true) {
+                cancellationToken.ThrowIfCancellationRequested();
+                var status = decoder.Decompress(data.AsSpan(offset), buffer, out int consumed, out int written);
+                offset += consumed;
+                output?.Write(buffer, 0, written);
+                if (status == System.Buffers.OperationStatus.Done && offset == data.Length) {
+                    return output?.ToArray() ?? data;
+                }
+                if (status != System.Buffers.OperationStatus.DestinationTooSmall) {
+                    throw new InvalidDataException("Invalid or truncated Brotli web asset.");
+                }
+            }
+        }
+        finally {
+            System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static bool IsRegularWebAssetPath(string root, string fullPath) {
+        // Lexical containment alone does not prevent escaping via a symlink or Windows junction.
+        try {
+            string current = Path.GetFullPath(root);
+            foreach (string component in Path.GetRelativePath(current, fullPath).Split(Path.DirectorySeparatorChar)) {
+                current = Path.Combine(current, component);
+                if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
     private bool TryGetMappedFileInfo(HttpRequest request, out string fullPath, out string contentType) {

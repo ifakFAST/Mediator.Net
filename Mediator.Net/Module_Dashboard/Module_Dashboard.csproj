@@ -12,6 +12,7 @@
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="HtmlSanitizer" Version="9.1.974" />
     <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>
