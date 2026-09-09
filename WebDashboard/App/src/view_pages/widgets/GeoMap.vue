@@ -891,7 +891,7 @@ const loadLayerContent = async (layerObj: NamedLayerType): Promise<void> => {
       variable: variable,
       timeRange: props.timeRange,
       frameCount: frameCount,
-      configVars: props.configVariables?.VarValues,
+      configVars: props.configVariables?.VarValues || {},
     })
 
     if (abortController.signal.aborted) {

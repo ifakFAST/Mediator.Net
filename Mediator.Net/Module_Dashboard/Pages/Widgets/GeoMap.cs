@@ -63,9 +63,9 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         return Common.GetVarItemsData(Connection, usedObjects, IsJson);
     }
 
-    public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange, int frameCount, Dictionary<string, string> configVars) {
+    public async Task<ReqResult> UiReq_GetGeoData(VariableRefUnresolved variable, TimeRange timeRange, int frameCount, Dictionary<string, string>? configVars = null) {
 
-        Context.SetConfigVariables(configVars);
+        Context.SetConfigVariables(configVars ?? []);
         ResolveVariables();
 
         showLatest = timeRange.Type == TimeType.Last;
@@ -73,7 +73,7 @@ public class GeoMap : WidgetBaseWithConfig<GeoMapConfig>
         if (timeRange.Type == TimeType.Last && frameCount == 1) {
             
             VTQ vtq = await Connection.ReadVariable(variableResolved);
-            return ReqResult.OK(vtq.V);
+            return ReqResult.OK([vtq.V]);
         }
         else {
             Timestamp end = timeRange.GetEnd();
