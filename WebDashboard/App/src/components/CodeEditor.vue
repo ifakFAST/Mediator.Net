@@ -109,6 +109,8 @@ const editor = ref<any>(null)
 const themes = ref(['textmate', 'xcode', 'chrome', 'github', 'github_dark', 'monokai', 'twilight', 'terminal'])
 const theme = ref('textmate')
 const contentBackup = ref('')
+let resizeObserver: ResizeObserver | null = null
+let wasVisible = false
 const undoDisabled = ref(true)
 const redoDisabled = ref(true)
 const codeEditorProperties = ref({
@@ -153,6 +155,16 @@ watch(
   },
 )
 
+const refresh = (): void => {
+  if (editor.value === null) {
+    return
+  }
+  editor.value.resize(true)
+  editor.value.renderer.updateFull(true)
+}
+
+defineExpose({ refresh })
+
 onMounted(() => {
   const lang = props.lang || 'text'
   editor.value = ace.edit(rootEditor.value, {
@@ -182,9 +194,28 @@ onMounted(() => {
     undoDisabled.value = !editor.value.session.getUndoManager().hasUndo()
     redoDisabled.value = !editor.value.session.getUndoManager().hasRedo()
   })
+
+  // Ace cannot paint while its container is hidden (e.g. a v-show tab that is not
+  // selected): changes applied in that state stay pending and the editor still shows
+  // the previous content when it becomes visible again. Force a full refresh on the
+  // transition from hidden (zero size) to visible.
+  if (typeof ResizeObserver !== 'undefined' && rootEditor.value !== null) {
+    wasVisible = rootEditor.value.offsetParent !== null
+    resizeObserver = new ResizeObserver((entries) => {
+      const rect = entries[0].contentRect
+      const isVisible = rect.width > 0 && rect.height > 0
+      if (isVisible && !wasVisible) {
+        refresh()
+      }
+      wasVisible = isVisible
+    })
+    resizeObserver.observe(rootEditor.value)
+  }
 })
 
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   editor.value.destroy()
   editor.value.container.remove()
 })
