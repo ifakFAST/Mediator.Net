@@ -406,7 +406,7 @@ public class Api
 {
     public bool AbortStep => abortStep;
 
-    internal bool abortStep { get; set; } = false;
+    internal volatile bool abortStep = false;
 
     internal string moduleID { get; set; } = "";
 
