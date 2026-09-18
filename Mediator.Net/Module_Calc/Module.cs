@@ -29,6 +29,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     private Connection connection = new ClosedConnection();
     private Mediator.Config moduleConfig = new(Array.Empty<NamedValue>());
     private bool moduleShutdown = false;
+    // A shutdown that takes longer than this is reported once (but never abandoned).
+    internal TimeSpan SlowShutdownWarnDelay { get; set; } = TimeSpan.FromSeconds(30);
 
     public override async Task Init(ModuleInitInfo info, VariableValue[] restoreVariableValues, Notifier notifier, ModuleThread moduleThread) {
 
@@ -323,6 +325,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
     private async Task RestartAdapter(CalcInstance adapter, string reason, bool critical = true, int tryCounter = 0) {
 
+        if (moduleShutdown || !adapters.Contains(adapter)) { return; }
         if (adapter.IsRestarting && tryCounter == 0) { return; }
         adapter.IsRestarting = true;
 
@@ -336,14 +339,21 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             Log_Info("CalcRestart", $"Restarting calculation {adapter.Name}. Reason: {reason}");
         }
 
-        const int TimeoutSeconds = 30;
         try {
-            Task shutdown = ShutdownAdapter(adapter);
-            Task t = await Task.WhenAny(shutdown, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds)));
-            if (t != shutdown) {
-                Log_Warn("CalcShutdownTimeout", $"Shutdown request for calculation {adapter.Name} failed to complete within {TimeoutSeconds} seconds.");
-                // go ahead and hope for the best...
+            // Never give up on the shutdown. The run loop, the instance and the state live on this
+            // CalcInstance; a replacement created while the old run loop is still awaiting its step
+            // would share them with the old loop, which then keeps running against the replacement
+            // (two loops driving one calculation). A step can only be aborted cooperatively via
+            // Api.AbortStep, so wait for it to return, however long that takes.
+            await ShutdownAdapterAndWait(adapter);
+
+            // The calculation may have been removed, or the module shut down, while waiting.
+            // Do not resurrect it as an instance that is no longer tracked in 'adapters'.
+            if (moduleShutdown || !adapters.Contains(adapter)) {
+                adapter.IsRestarting = false;
+                return;
             }
+
             adapter.CreateInstance(mapAdapterTypes, initInfo);
             await InitAdapter(adapter, InitContext.Restart);
             StartRunLoopTaskIfInitCompleted(adapter);
@@ -362,8 +372,13 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     min: TimeSpan.FromSeconds(5),
                     max: TimeSpan.FromSeconds(60));
                 await Task.Delay(delay);
-                if (adapter.State != State.ShutdownCompleted && adapter.State != State.ShutdownStarted) {
+                bool retry = !moduleShutdown && adapters.Contains(adapter) &&
+                             adapter.State != State.ShutdownCompleted && adapter.State != State.ShutdownStarted;
+                if (retry) {
                     Task _ = RestartAdapter(adapter, exp.Message, critical, tryCounter + 1);
+                }
+                else {
+                    adapter.IsRestarting = false;
                 }
             }
             else {
@@ -393,10 +408,27 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                         a.State == State.InitComplete || 
                         a.State == State.InitError || 
                         a.State == State.Running)
-            .Select(ShutdownAdapter)
+            .Select(ShutdownAdapterAndWait)
             .ToArray();
 
         await Task.WhenAll(shutdownTasks);
+    }
+
+    // Waits for the shutdown of the calculation without giving up: the instance may be in the
+    // middle of a long-running step, which can only be aborted cooperatively (Api.AbortStep).
+    // A slow shutdown is reported once so that the delay is visible to the operator.
+    private async Task ShutdownAdapterAndWait(CalcInstance adapter) {
+        Task shutdown = ShutdownAdapter(adapter);
+        Task completed = await Task.WhenAny(shutdown, Task.Delay(SlowShutdownWarnDelay));
+        if (completed != shutdown) {
+            string stepInfo = "";
+            if (adapter.IsStepRunning && adapter.StepRunningSince.HasValue) {
+                long seconds = (long)(Timestamp.Now - adapter.StepRunningSince.Value).TotalSeconds;
+                stepInfo = $" The current step has been running for {seconds} seconds.";
+            }
+            Log_Warn("CalcShutdownSlow", $"Shutdown of calculation {adapter.Name} has not completed within {SlowShutdownWarnDelay.TotalSeconds:0} seconds. Waiting for it to complete.{stepInfo}", affectedObjects: [ adapter.ID ]);
+        }
+        await shutdown;
     }
 
     private async Task ShutdownAdapter(CalcInstance adapter) {
