@@ -40,6 +40,14 @@ public class OPC_UA : AdapterBase
     private Duration timeout = Duration.FromSeconds(15);
     private Duration maxAge = Duration.FromSeconds(0); // 0 means always read from down stream device (no caching)
     private bool validateRemoteCertificates = false;
+    private EndpointUrlSource endpointUrlSource = EndpointUrlSource.Configured;
+
+    private enum EndpointUrlSource
+    {
+        Configured, // the configured Address
+        Discovered, // the EndpointUrl reported by the server via GetEndpoints
+        Combined,   // scheme, host and port of the configured Address, path of the discovered EndpointUrl
+    }
 
     // Auto-creation configuration
     private bool autoCreateDataItems = false;
@@ -123,6 +131,13 @@ public class OPC_UA : AdapterBase
 
         string strValidateRemoteCertificates = config.GetConfigByName("ValidateRemoteCertificates", defaultValue: "false").ToLowerInvariant();
         this.validateRemoteCertificates = strValidateRemoteCertificates == "true";
+
+        string strEndpointUrlSource = config.GetConfigByName("EndpointUrlSource", defaultValue: nameof(EndpointUrlSource.Configured));
+        if (!Enum.TryParse(strEndpointUrlSource.Trim(), ignoreCase: true, out endpointUrlSource) || !Enum.IsDefined(endpointUrlSource)) {
+            string strValues = string.Join(", ", Enum.GetNames<EndpointUrlSource>());
+            PrintErrorLine($"Invalid value for config parameter 'EndpointUrlSource': '{strEndpointUrlSource}'. Expected any of: {strValues}. Using default: Configured");
+            endpointUrlSource = EndpointUrlSource.Configured;
+        }
 
         // Parse auto-creation configuration
         string strAutoCreateDataItems = config.GetConfigByName("AutoCreateDataItems", defaultValue: "false").ToLowerInvariant();
@@ -231,12 +246,9 @@ public class OPC_UA : AdapterBase
                 throw new Exception($"Invalid value for config setting 'Security': {sec}. Expected any of: {strKeys}");
             }
 
-            var endpoint = new EndpointDescription {
-                EndpointUrl = config.Address,
-                SecurityPolicyUri = mapSecurityPolicies[sec],
-            };
-
             IUserIdentity identity = GetIdentity();
+
+            EndpointDescription endpoint = await DiscoverEndpoint(config.Address, mapSecurityPolicies[sec], identity);
 
             ClientSessionChannelOptions opts = new() {
                 TimeoutHint = (uint)timeout.TotalMilliseconds,
@@ -308,6 +320,110 @@ public class OPC_UA : AdapterBase
             await CloseChannel();
             return false;
         }
+    }
+
+    // Performs the endpoint discovery ourselves instead of letting ClientSessionChannel do it,
+    // so that we can drop the user token policies not matching the identity type in use.
+    // Otherwise ClientSessionChannel compares the server certificate from GetEndpoints with the one
+    // from CreateSession as soon as ANY token policy requires security, even for anonymous login
+    // on a None endpoint. Some servers (e.g. Python asyncua without certificate) return null in one
+    // and an empty ByteString in the other, which fails with "Server did not return the same certificate
+    // used to create the channel".
+    private async Task<EndpointDescription> DiscoverEndpoint(string endpointUrl, string securityPolicyUri, IUserIdentity identity) {
+
+        EndpointDescription[] endpoints = await GetEndpoints(endpointUrl);
+        if (endpoints.Length == 0) {
+            throw new Exception($"'{endpointUrl}' returned no endpoints.");
+        }
+
+        UserTokenType tokenType = identity switch {
+            AnonymousIdentity => UserTokenType.Anonymous,
+            UserNameIdentity => UserTokenType.UserName,
+            X509Identity => UserTokenType.Certificate,
+            _ => UserTokenType.IssuedToken,
+        };
+
+        static string PolicyName(string? uri) => string.IsNullOrEmpty(uri) ? "Any" : uri[(uri.LastIndexOf('#') + 1)..];
+
+        EndpointDescription[] endpointsMatchingPolicy = endpoints
+            .Where(e => string.IsNullOrEmpty(securityPolicyUri) || e.SecurityPolicyUri == securityPolicyUri) // empty = Any
+            .ToArray();
+
+        if (endpointsMatchingPolicy.Length == 0) {
+            string available = string.Join(", ", endpoints.Select(e => PolicyName(e.SecurityPolicyUri)).Distinct());
+            throw new Exception($"'{endpointUrl}' returned no endpoint for the requested security policy '{PolicyName(securityPolicyUri)}'. Available: {available}");
+        }
+
+        // Endpoints may differ in the accepted login types, so select only among those accepting ours:
+        EndpointDescription? selected = endpointsMatchingPolicy
+            .Where(e => CleanNulls(e.UserIdentityTokens).Any(t => t.TokenType == tokenType))
+            .OrderBy(e => e.SecurityLevel)
+            .LastOrDefault();
+
+        if (selected == null) {
+            string available = string.Join(", ", endpoints.Select(e =>
+                $"{PolicyName(e.SecurityPolicyUri)}/{e.SecurityMode}: {string.Join("|", CleanNulls(e.UserIdentityTokens).Select(t => t.TokenType).Distinct())}"));
+            throw new Exception($"'{endpointUrl}' returned no endpoint with security policy '{PolicyName(securityPolicyUri)}' accepting login type '{tokenType}'. Available: {available}");
+        }
+
+        // The server may report a host name not reachable by us (e.g. Ignition setting "Endpoint Addresses").
+        // Combined keeps host and port of the configured address, but takes the path of the session endpoint
+        // (e.g. Ignition: discovery at opc.tcp://host:62541/discovery, session at opc.tcp://host:62541).
+        string sessionUrl = endpointUrlSource switch {
+            EndpointUrlSource.Discovered => string.IsNullOrEmpty(selected.EndpointUrl) ? endpointUrl : selected.EndpointUrl,
+            EndpointUrlSource.Combined => ReplaceUrlAuthority(selected.EndpointUrl, endpointUrl) ?? endpointUrl,
+            _ => endpointUrl,
+        };
+        if (sessionUrl != endpointUrl) {
+            PrintLine($"Using session endpoint '{sessionUrl}' (server reported '{selected.EndpointUrl}')");
+        }
+
+        return new EndpointDescription {
+            EndpointUrl = sessionUrl,
+            Server = selected.Server,
+            ServerCertificate = selected.ServerCertificate,
+            SecurityMode = selected.SecurityMode,
+            SecurityPolicyUri = selected.SecurityPolicyUri,
+            UserIdentityTokens = CleanNulls(selected.UserIdentityTokens).Where(t => t.TokenType == tokenType).ToArray(),
+            TransportProfileUri = selected.TransportProfileUri,
+            SecurityLevel = selected.SecurityLevel,
+        };
+    }
+
+    private async Task<EndpointDescription[]> GetEndpoints(string endpointUrl) {
+        var getEndpointsRequest = new GetEndpointsRequest {
+            EndpointUrl = endpointUrl,
+            ProfileUris = [TransportProfileUris.UaTcpTransport]
+        };
+        var discoveryOptions = new UaApplicationOptions {
+            TimeoutHint = (uint)timeout.TotalMilliseconds,
+        };
+        GetEndpointsResponse response = await DiscoveryService.GetEndpointsAsync(getEndpointsRequest, loggerFactory, discoveryOptions);
+        return CleanNulls(response.Endpoints).ToArray();
+    }
+
+    // Returns url with scheme and authority (host:port) taken from authorityUrl, or null if not possible.
+    // String based instead of System.Uri to leave the path exactly as reported by the server.
+    private static string? ReplaceUrlAuthority(string? url, string authorityUrl) {
+
+        static (string scheme, string authority, string rest)? Split(string? s) {
+            if (s == null) return null;
+            int idxScheme = s.IndexOf("://", StringComparison.Ordinal);
+            if (idxScheme <= 0) return null;
+            int start = idxScheme + 3;
+            int idxPath = s.IndexOf('/', start);
+            string authority = idxPath < 0 ? s[start..] : s[start..idxPath];
+            string rest = idxPath < 0 ? "" : s[idxPath..];
+            if (authority.Length == 0) return null;
+            return (s[..idxScheme], authority, rest);
+        }
+
+        var target = Split(url);
+        var source = Split(authorityUrl);
+        if (target == null || source == null) return null;
+        if (!string.Equals(target.Value.scheme, source.Value.scheme, StringComparison.OrdinalIgnoreCase)) return null;
+
+        return $"{source.Value.scheme}://{source.Value.authority}{target.Value.rest}";
     }
 
     private IUserIdentity GetIdentity() {
