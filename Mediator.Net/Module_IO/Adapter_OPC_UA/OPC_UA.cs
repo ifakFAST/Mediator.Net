@@ -239,11 +239,13 @@ public class OPC_UA : AdapterBase
                 certificateLocation = Path.Combine(pkiPath, "own", "certs");
             }
 
-            string sec = config.GetConfigByName("Security", defaultValue: "None").ToLowerInvariant();
+            // "SecurityPolicy" is accepted as alias for "Security" (the latter takes precedence if both are given):
+            string secSettingName = config.Config.Any(nv => nv.Name == "Security") || !config.Config.Any(nv => nv.Name == "SecurityPolicy") ? "Security" : "SecurityPolicy";
+            string sec = config.GetConfigByName(secSettingName, defaultValue: "None").ToLowerInvariant();
 
             if (!mapSecurityPolicies.ContainsKey(sec)) {
                 string strKeys = string.Join(", ", securityPolicies);
-                throw new Exception($"Invalid value for config setting 'Security': {sec}. Expected any of: {strKeys}");
+                throw new Exception($"Invalid value for config setting '{secSettingName}': {sec}. Expected any of: {strKeys}");
             }
 
             IUserIdentity identity = GetIdentity();
