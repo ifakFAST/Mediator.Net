@@ -250,7 +250,10 @@ public class OPC_UA : AdapterBase
 
             IUserIdentity identity = GetIdentity();
 
-            EndpointDescription endpoint = await DiscoverEndpoint(config.Address, mapSecurityPolicies[sec], identity);
+            // Print discovery details on the initial connect attempt, and on every retry if LogLevel is Debug (avoids flooding the log on retries):
+            bool printDiscoveryDetails = reportFailureImmediatelly || logger.IsEnabled(LogLevel.Debug);
+            Action<string> printDiscoveryLine = printDiscoveryDetails ? PrintLine : _ => { };
+            EndpointDescription endpoint = await DiscoverEndpoint(config.Address, mapSecurityPolicies[sec], identity, printDiscoveryLine);
 
             ClientSessionChannelOptions opts = new() {
                 TimeoutHint = (uint)timeout.TotalMilliseconds,
@@ -324,6 +327,8 @@ public class OPC_UA : AdapterBase
         }
     }
 
+    private static string PolicyName(string? uri) => string.IsNullOrEmpty(uri) ? "Any" : uri[(uri.LastIndexOf('#') + 1)..];
+
     // Performs the endpoint discovery ourselves instead of letting ClientSessionChannel do it,
     // so that we can drop the user token policies not matching the identity type in use.
     // Otherwise ClientSessionChannel compares the server certificate from GetEndpoints with the one
@@ -331,9 +336,9 @@ public class OPC_UA : AdapterBase
     // on a None endpoint. Some servers (e.g. Python asyncua without certificate) return null in one
     // and an empty ByteString in the other, which fails with "Server did not return the same certificate
     // used to create the channel".
-    private async Task<EndpointDescription> DiscoverEndpoint(string endpointUrl, string securityPolicyUri, IUserIdentity identity) {
+    private async Task<EndpointDescription> DiscoverEndpoint(string endpointUrl, string securityPolicyUri, IUserIdentity identity, Action<string> printLine) {
 
-        EndpointDescription[] endpoints = await GetEndpoints(endpointUrl);
+        EndpointDescription[] endpoints = await GetEndpoints(endpointUrl, printLine);
         if (endpoints.Length == 0) {
             throw new Exception($"'{endpointUrl}' returned no endpoints.");
         }
@@ -344,8 +349,6 @@ public class OPC_UA : AdapterBase
             X509Identity => UserTokenType.Certificate,
             _ => UserTokenType.IssuedToken,
         };
-
-        static string PolicyName(string? uri) => string.IsNullOrEmpty(uri) ? "Any" : uri[(uri.LastIndexOf('#') + 1)..];
 
         EndpointDescription[] endpointsMatchingPolicy = endpoints
             .Where(e => string.IsNullOrEmpty(securityPolicyUri) || e.SecurityPolicyUri == securityPolicyUri) // empty = Any
@@ -368,16 +371,44 @@ public class OPC_UA : AdapterBase
             throw new Exception($"'{endpointUrl}' returned no endpoint with security policy '{PolicyName(securityPolicyUri)}' accepting login type '{tokenType}'. Available: {available}");
         }
 
-        // The server may report a host name not reachable by us (e.g. Ignition setting "Endpoint Addresses").
-        // Combined keeps host and port of the configured address, but takes the path of the session endpoint
-        // (e.g. Ignition: discovery at opc.tcp://host:62541/discovery, session at opc.tcp://host:62541).
-        string sessionUrl = endpointUrlSource switch {
-            EndpointUrlSource.Discovered => string.IsNullOrEmpty(selected.EndpointUrl) ? endpointUrl : selected.EndpointUrl,
-            EndpointUrlSource.Combined => ReplaceUrlAuthority(selected.EndpointUrl, endpointUrl) ?? endpointUrl,
-            _ => endpointUrl,
-        };
-        if (sessionUrl != endpointUrl) {
-            PrintLine($"Using session endpoint '{sessionUrl}' (server reported '{selected.EndpointUrl}')");
+        // Print index of selected endpoint for debugging purposes:
+        int selectedIndex = Array.IndexOf(endpoints, selected);
+        printLine($"Selected endpoint number: {selectedIndex+1}");
+
+        string sessionUrl;
+        if (endpointUrlSource == EndpointUrlSource.Configured) {
+            sessionUrl = endpointUrl;
+            printLine($"Using configured address as session url ({sessionUrl}) because config setting EndpointUrlSource = 'Configured'");
+        }
+        else if (endpointUrlSource == EndpointUrlSource.Discovered) {
+
+            if (string.IsNullOrEmpty(selected.EndpointUrl)) {
+                sessionUrl = endpointUrl;
+                printLine($"Using configured address as session url ({sessionUrl}) because config setting EndpointUrlSource = 'Discovered' but the discovered endpoint url is empty");
+            }
+            else {
+                sessionUrl = selected.EndpointUrl;
+                printLine($"Using discovered address as session url ({sessionUrl}) because config setting EndpointUrlSource = 'Discovered'");
+            }
+        }
+        else if (endpointUrlSource == EndpointUrlSource.Combined) {
+
+            // The server may report a host name not reachable by us (e.g. Ignition setting "Endpoint Addresses").
+            // Combined keeps host and port of the configured address, but takes the path of the session endpoint
+            // (e.g. Ignition: discovery at opc.tcp://host:62541/discovery, session at opc.tcp://host:62541).
+
+            string? replaced = ReplaceUrlAuthority(selected.EndpointUrl, endpointUrl);
+            if (replaced != null) {
+                sessionUrl = replaced;
+                printLine($"Using combined address as session url ({sessionUrl}) because config setting EndpointUrlSource = 'Combined'");
+            }
+            else {
+                sessionUrl = endpointUrl;
+                printLine($"Using configured address as session url ({sessionUrl}) because config setting EndpointUrlSource = 'Combined' but the discovered endpoint url ({selected.EndpointUrl}) cannot be combined with the configured address");
+            }
+        }
+        else {
+            throw new Exception($"Unexpected EndpointUrlSource: {endpointUrlSource}");
         }
 
         return new EndpointDescription {
@@ -392,7 +423,7 @@ public class OPC_UA : AdapterBase
         };
     }
 
-    private async Task<EndpointDescription[]> GetEndpoints(string endpointUrl) {
+    private async Task<EndpointDescription[]> GetEndpoints(string endpointUrl, Action<string> printLine) {
         var getEndpointsRequest = new GetEndpointsRequest {
             EndpointUrl = endpointUrl,
             ProfileUris = [TransportProfileUris.UaTcpTransport]
@@ -400,8 +431,24 @@ public class OPC_UA : AdapterBase
         var discoveryOptions = new UaApplicationOptions {
             TimeoutHint = (uint)timeout.TotalMilliseconds,
         };
+
+        printLine($"Discovering OPC UA endpoints at '{endpointUrl}'...");
+
         GetEndpointsResponse response = await DiscoveryService.GetEndpointsAsync(getEndpointsRequest, loggerFactory, discoveryOptions);
-        return CleanNulls(response.Endpoints).ToArray();
+
+        EndpointDescription[] endpoints = CleanNulls(response.Endpoints).ToArray();
+
+        printLine($"Found {endpoints.Length} OPC UA endpoints at '{endpointUrl}':");
+
+        // Print each endpoint for debugging purposes:
+        for (int i = 0; i < endpoints.Length; i++) {
+            EndpointDescription e = endpoints[i];
+            string tokenTypes = string.Join("|", CleanNulls(e.UserIdentityTokens).Select(t => t.TokenType).Distinct());
+            string certificate = e.ServerCertificate is null ? "null" : $"{e.ServerCertificate.Length} bytes";
+            printLine($" -> Endpoint {(i+1)}: {e.EndpointUrl}, SecurityMode: {e.SecurityMode}, SecurityPolicy: {PolicyName(e.SecurityPolicyUri)}, UserTokenTypes: {tokenTypes}, ServerCertificate: {certificate}");
+        }
+
+        return endpoints;
     }
 
     // Returns url with scheme and authority (host:port) taken from authorityUrl, or null if not possible.
