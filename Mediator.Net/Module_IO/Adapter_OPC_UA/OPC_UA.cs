@@ -78,6 +78,40 @@ public class OPC_UA : AdapterBase
         { "Aes256_Sha256_RsaPss".ToLowerInvariant(),  SecurityPolicyUris.Aes256_Sha256_RsaPss },
     };
 
+    private static readonly string[] knownConfigSettings = [
+        "LogLevel",
+        "BrowseRoot_ID",
+        "BrowseRoot_Name",
+        "ExcludeUnderscoreNodes",
+        "Timeout",
+        "MaxAge",
+        "ValidateRemoteCertificates",
+        "EndpointUrlSource",
+        "AutoCreateDataItems",
+        "AutoCreateDataItems_RootNode",
+        "AutoCreateDataItems_MaxDepth",
+        "AutoCreateDataItems_ExcludeNamespaces",
+        "AutoCreateDataItems_BrowseInterval",
+        "PkiDir",
+        "Security",
+        "SecurityPolicy",
+    ];
+
+    private void WarnUnknownConfigSettings() {
+        bool anyUnknown = false;
+        foreach (NamedValue nv in config.Config) {
+            if (knownConfigSettings.Contains(nv.Name)) continue;
+            anyUnknown = true;
+            string? match = knownConfigSettings.FirstOrDefault(s => string.Equals(s, nv.Name, StringComparison.OrdinalIgnoreCase));
+            string hint = match != null ? $" Did you mean '{match}'? (setting names are case sensitive)" : "";
+            string details = $"Supported settings: {string.Join(", ", knownConfigSettings)}";
+            LogWarn("UnknownConfigSetting", $"Unknown config setting '{nv.Name}' will be ignored.{hint}", details: details);
+        }
+        if (!anyUnknown) {
+            ReturnToNormal("UnknownConfigSetting", "No unknown config settings");
+        }
+    }
+
     private static readonly string[] securityPolicies = [
         "Any",
         "None",
@@ -112,6 +146,8 @@ public class OPC_UA : AdapterBase
 
         loggerFactory = new LoggerFactory($"{config.Name}:", logLevel);
         logger = loggerFactory.CreateLogger();
+
+        WarnUnknownConfigSettings();
 
         browse_RootId = config.GetConfigByName("BrowseRoot_ID", ObjectIds.ObjectsFolder);
         browse_RootName = config.GetConfigByName("BrowseRoot_Name", "Objects");
