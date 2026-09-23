@@ -880,8 +880,36 @@ public class OPC_UA : AdapterBase
         };
     }
 
-    public override Task<string[]> BrowseAdapterAddress() {
-        return Task.FromResult(new string[0]);
+    private const string LocalDiscoveryServerUrl = "opc.tcp://localhost:4840";
+
+    // Returns the discovery URLs of all servers registered at the Local Discovery Server (LDS) of this machine.
+    public override async Task<string[]> BrowseAdapterAddress() {
+
+        var request = new FindServersRequest {
+            EndpointUrl = LocalDiscoveryServerUrl,
+        };
+        var options = new UaApplicationOptions {
+            TimeoutHint = 5000,
+        };
+
+        try {
+            FindServersResponse response = await DiscoveryService.FindServersAsync(request, loggerFactory, options);
+
+            string[] urls = CleanNulls(response.Servers)
+                .Where(s => s.ApplicationType != ApplicationType.DiscoveryServer) // skip the LDS itself
+                .SelectMany(s => CleanNulls(s.DiscoveryUrls))
+                .Where(url => url.StartsWith("opc.tcp://", StringComparison.OrdinalIgnoreCase))
+                .Distinct()
+                .ToArray();
+
+            PrintLine($"Found {urls.Length} OPC UA servers registered at local discovery server '{LocalDiscoveryServerUrl}'.");
+            return urls;
+        }
+        catch (Exception exp) {
+            Exception e = exp.GetBaseException();
+            PrintLine($"Failed to find OPC UA servers via local discovery server '{LocalDiscoveryServerUrl}': {e.Message}");
+            return [];
+        }
     }
 
     private string[]? cachedBrowseResult = null;
