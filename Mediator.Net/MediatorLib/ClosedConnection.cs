@@ -182,6 +182,10 @@ namespace Ifak.Fast.Mediator
             throw new InvalidOperationException("ResetAllVariablesOfObjectTree on closed connection");
         }
 
+        public override Task RestartModule(string moduleID, string reason) {
+            throw new InvalidOperationException("RestartModule on closed connection");
+        }
+
         public override Task UpdateConfig(ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             throw new InvalidOperationException("UpdateConfig on closed connection");
         }

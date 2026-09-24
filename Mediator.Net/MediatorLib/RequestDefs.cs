@@ -92,6 +92,7 @@ namespace Ifak.Fast.Mediator
         public static readonly ReqDef Logout = ReqDef.Make<LogoutReq>();
         public static readonly ReqDef CanUpdateConfig = ReqDef.Make<CanUpdateConfigReq>();
         public static readonly ReqDef ResetAllVariablesOfObjectTreeReq = ReqDef.Make<ResetAllVariablesOfObjectTreeReq>();
+        public static readonly ReqDef RestartModule = ReqDef.Make<RestartModuleReq>();
 
         public static readonly ReadOnlyList<ReqDef> Definitions = new ReadOnlyList<ReqDef>(
             Login, Auth,
@@ -105,7 +106,7 @@ namespace Ifak.Fast.Mediator
             HistorianReadRaw, HistorianCount, HistorianDeleteInterval, HistorianModify, HistorianDeleteAllVariablesOfObjectTree,
             HistorianDeleteVariables, HistorianGetLatestTimestampDB, HistorianReadAggregatedIntervals,
             CallMethod, BrowseObjectMemberValues, GetMetaInfos, Ping, EnableEventPing, Logout,
-            CanUpdateConfig, ResetAllVariablesOfObjectTreeReq
+            CanUpdateConfig, ResetAllVariablesOfObjectTreeReq, RestartModule
         );
     }
 
@@ -970,6 +971,19 @@ namespace Ifak.Fast.Mediator
 
         [JsonProperty("objectID")]
         public ObjectRef ObjectID { get; set; }
+    }
+
+    public class RestartModuleReq : RequestBase {
+        public const int ID = 49;
+
+        public override int GetID() => ID;
+        public override string GetPath() => "RestartModule";
+
+        [JsonProperty("moduleID")]
+        public string ModuleID { get; set; } = "";
+
+        [JsonProperty("reason")]
+        public string Reason { get; set; } = "";
     }
 
     public class GetChildrenOfObjectsRecursiveReq : RequestBase

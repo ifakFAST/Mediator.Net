@@ -306,7 +306,7 @@ namespace Ifak.Fast.Mediator
             else
                 Log_Warn("ModuleRestart", $"Restarting module '{module.Name}' (retry {tryCounter}). Reason: {reason}", module.ID);
 
-            const int TimeoutSeconds = 10;
+            const int TimeoutSeconds = ExternalModule.ShutdownTimeout + 5;
             try {
                 Task tShutdown = ShutdownModule(module);
                 Task t = await Task.WhenAny(tShutdown, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds)));
@@ -320,6 +320,7 @@ namespace Ifak.Fast.Mediator
                 await InitModule(module);
                 StartRunningModule(module);
                 module.IsRestarting = false;
+                Log_ReturnToNormal("ModuleRestart", $"Restart of module '{module.Name}' completed. Reason: {reason}", module.ID);
             }
             catch (Exception exception) {
                 Exception exp = exception.GetBaseException();
@@ -557,18 +558,22 @@ namespace Ifak.Fast.Mediator
             Log_Event(severity, type, msg, moduleID, details);
         }
 
+        private void Log_ReturnToNormal(string type, string msg, string moduleID = "") {
+            Log_Event(Severity.Info, type, msg, moduleID, returnToNormal: true);
+        }
+
         private void Log_Warn(string type, string msg, string moduleID = "", string details = "") {
             Log_Event(Severity.Warning, type, msg, moduleID, details);
         }
 
-        private void Log_Event(Severity severity, string type, string msg, string moduleID = "", string details = "") {
+        private void Log_Event(Severity severity, string type, string msg, string moduleID = "", string details = "", bool returnToNormal = false) {
             var module = modules.FirstOrDefault(m => m.ID == moduleID);
 
             var ae = new AlarmOrEvent() {
                 ModuleID = moduleID,
                 ModuleName = module != null ? module.Name : "",
                 Time = Timestamp.Now,
-                ReturnToNormal = false,
+                ReturnToNormal = returnToNormal,
                 IsSystem = true,
                 Severity = severity,
                 Type = type,

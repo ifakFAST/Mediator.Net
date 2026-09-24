@@ -99,6 +99,12 @@ public class View_Calc : ViewBase
                     return ReqResult.OK();
                 }
 
+            case "RestartModule": {
+
+                    await Connection.RestartModule(moduleID, "Restart requested via Calc view");
+                    return ReqResult.OK();
+                }
+
             case "AddObject": {
 
                     AddObjectParams addParams = parameters.Object<AddObjectParams>() ?? throw new Exception("AddObjectParams is null");

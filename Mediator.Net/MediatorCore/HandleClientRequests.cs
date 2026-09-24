@@ -893,6 +893,20 @@ namespace Ifak.Fast.Mediator
                             return Result_OK();
                         }
 
+                    case RestartModuleReq.ID: {
+
+                            var req = (RestartModuleReq)request;
+
+                            ModuleState module = ModuleFromIdOrThrow(req.ModuleID);
+                            var checkPermission = module.GetChecker(info.Origin);
+                            checkPermission(null, "No permission to restart module!");
+
+                            string reason = string.IsNullOrWhiteSpace(req.Reason) ? "Restart requested" : req.Reason;
+                            string user = info.Origin.Type == OriginType.User ? $" by user {info.Origin.Name}" : "";
+                            _ = core.RestartModule(module, reason + user);
+                            return Result_OK();
+                        }
+
                     case HistorianDeleteVariablesReq.ID: {
 
                             var req = (HistorianDeleteVariablesReq)request;

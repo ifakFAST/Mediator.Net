@@ -597,6 +597,15 @@ namespace Ifak.Fast.Mediator
         public abstract Task ResetAllVariablesOfObjectTree(ObjectRef objectID);
 
         /// <summary>
+        /// Requests a complete restart (shutdown, init, run) of a module.
+        /// Returns as soon as the restart has been initiated, i.e. without waiting for its completion.
+        /// Requires permission to change the entire module configuration.
+        /// </summary>
+        /// <param name="moduleID">The ID of the module to restart</param>
+        /// <param name="reason">The reason for the restart (will be logged)</param>
+        public abstract Task RestartModule(string moduleID, string reason);
+
+        /// <summary>
         /// Invokes a module specific method/function. This will result in a call to
         /// <see cref="ModuleBase.OnMethodCall"/> in the receiving module.
         /// If <see cref="ModuleBase.OnMethodCall"/> returns a failure Result,

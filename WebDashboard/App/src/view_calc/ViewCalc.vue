@@ -136,6 +136,9 @@
               <v-list-item @click="resetVariables">
                 <v-list-item-title>Reset Variables</v-list-item-title>
               </v-list-item>
+              <v-list-item @click="restartModule">
+                <v-list-item-title>Restart Calculation Module</v-list-item-title>
+              </v-list-item>
             </v-list>
           </v-menu>
         </v-toolbar>
@@ -515,6 +518,15 @@ const resetVariables = async (): Promise<void> => {
     // @ts-ignore
     const dashboard = window.parent['dashboardApp']
     dashboard.sendViewRequest('ResetVariables', JSON.stringify(id), () => {})
+  }
+}
+
+const restartModule = async (): Promise<void> => {
+  const confirm = dlgConfirm.value as any
+  if (await confirm.open('Confirm Restart', 'Do you want to restart the complete Calculation module? All calculations will be stopped and restarted.', { color: 'red' })) {
+    // @ts-ignore
+    const dashboard = window.parent['dashboardApp']
+    dashboard.sendViewRequest('RestartModule', {}, () => {})
   }
 }
 

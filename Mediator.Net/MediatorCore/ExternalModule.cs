@@ -14,6 +14,8 @@ namespace Ifak.Fast.Mediator
 {
     public class ExternalModule : ModuleBase
     {
+        public const int ShutdownTimeout = 20;
+
         private Process? process = null;
         private TcpConnectorMaster? connection = null;
         private Logger logger = LogManager.GetLogger("ExternalModule");
@@ -194,7 +196,6 @@ namespace Ifak.Fast.Mediator
                     var taskShutdown = SendVoidRequest(new ShutdownMsg());
 
                     Timestamp tStart = Timestamp.Now;
-                    const int timeout = 20;
 
                     while (!taskRun.IsCompleted) {
 
@@ -203,15 +204,15 @@ namespace Ifak.Fast.Mediator
                             break;
                         }
 
-                        if (Timestamp.Now - tStart > Duration.FromSeconds(timeout)) {
-                            logger.Warn($"Module did not return from Run within {timeout} seconds. Killing process...");
+                        if (Timestamp.Now - tStart > Duration.FromSeconds(ShutdownTimeout)) {
+                            logger.Warn($"Module did not return from Run within {ShutdownTimeout} seconds. Killing process...");
                             break;
                         }
 
                         await Task.WhenAny(taskRun, Task.Delay(2000));
 
                         if (!taskRun.IsCompleted) {
-                            long secondsUntilTimeout = (tStart.AddSeconds(timeout) - Timestamp.Now).TotalMilliseconds / 1000;
+                            long secondsUntilTimeout = (tStart.AddSeconds(ShutdownTimeout) - Timestamp.Now).TotalMilliseconds / 1000;
                             logger.Info("Waiting for Run completion (timeout in {0} seconds)...", secondsUntilTimeout);
                         }
                     }

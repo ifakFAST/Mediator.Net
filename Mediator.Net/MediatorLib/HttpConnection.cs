@@ -380,6 +380,13 @@ namespace Ifak.Fast.Mediator
             await PostVoid(request);
         }
 
+        public override async Task RestartModule(string moduleID, string reason) {
+            var request = MakeSessionRequest<RestartModuleReq>();
+            request.ModuleID = moduleID;
+            request.Reason = reason;
+            await PostVoid(request);
+        }
+
         public override async Task HistorianDeleteVariables(params VariableRef[] variables) {
             if (variables == null) throw new ArgumentNullException(nameof(variables));
             var request = MakeSessionRequest<HistorianDeleteVariablesReq>();
