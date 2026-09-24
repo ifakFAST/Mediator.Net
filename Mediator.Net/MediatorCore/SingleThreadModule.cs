@@ -121,6 +121,9 @@ namespace Ifak.Fast.Mediator
         public override Task<Result> UpdateConfig(Origin origin, ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             if (!isStarted) throw new Exception("UpdateConfig requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
+            if (Interlocked.CompareExchange(ref updateConfigPending, 1, 0) != 0) {
+                return Task.FromResult(Result.Failure($"UpdateConfig rejected: another UpdateConfig is still pending for module {moduleName}."));
+            }
             var promise = new TaskCompletionSource<Result>();
             queue.Post(new WorkItem(MethodID.UpdateConfig, promise, origin, updateOrDeleteObjects, updateOrDeleteMembers, addArrayElements));
             return promise.Task;
@@ -188,6 +191,7 @@ namespace Ifak.Fast.Mediator
         }
 
         private volatile bool hasTerminated = false;
+        private int updateConfigPending = 0; // 1 while an UpdateConfig call is queued or running (accessed via Interlocked)
 
         private async Task Runner() {
 
@@ -343,20 +347,7 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case MethodID.UpdateConfig: {
-
-                            var promise = (TaskCompletionSource<Result>)it.Promise!;
-                            if (hasTerminated) {
-                                promise.SetException(new Exception("Module terminated."));
-                            }
-                            else {
-                                try {
-                                    var res = await module.UpdateConfig((Origin)it.Param1!, (ObjectValue[]?)it.Param2, (MemberValue[]?)it.Param3, (AddArrayElement[]?)it.Param4);
-                                    promise.SetResult(res);
-                                }
-                                catch (Exception exp) {
-                                    promise.SetException(exp);
-                                }
-                            }
+                            Task _ = Handle_UpdateConfig(it, hasTerminated);
                             break;
                         }
 
@@ -384,6 +375,27 @@ namespace Ifak.Fast.Mediator
                         break;
                 }
             } // while
+        }
+
+        private async Task Handle_UpdateConfig(WorkItem it, bool hasTerminated) {
+            var promise = (TaskCompletionSource<Result>)it.Promise!;
+            if (hasTerminated) {
+                Interlocked.Exchange(ref updateConfigPending, 0);
+                promise.SetException(new Exception("Module terminated."));
+                return;
+            }
+            Result res;
+            try {
+                res = await module.UpdateConfig((Origin)it.Param1!, (ObjectValue[]?)it.Param2, (MemberValue[]?)it.Param3, (AddArrayElement[]?)it.Param4);
+            }
+            catch (Exception exp) {
+                Interlocked.Exchange(ref updateConfigPending, 0);
+                promise.SetException(exp);
+                return;
+            }
+            // reset before completing the promise so that a caller may immediately issue the next UpdateConfig:
+            Interlocked.Exchange(ref updateConfigPending, 0);
+            promise.SetResult(res);
         }
 
         private static async Task Handle_ReadVariables(WorkItem it, ModuleBase module, bool hasTerminated) {
