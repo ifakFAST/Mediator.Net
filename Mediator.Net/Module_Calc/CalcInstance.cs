@@ -298,6 +298,11 @@ public class CalcInstance
         string calcID = this.CalcConfig.ID;
         return VariableRef.Make(moduleID, calcID, "LastRunTimestamp");
     }
+
+    public VariableRef GetStepRunningSecondsVarRef() {
+        string calcID = this.CalcConfig.ID;
+        return VariableRef.Make(moduleID, calcID, "StepRunningSeconds");
+    }
 }
 
 public enum State

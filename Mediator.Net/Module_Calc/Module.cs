@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using VariableRefs = System.Collections.Generic.List<Ifak.Fast.Mediator.VariableRef>;
@@ -1068,6 +1069,9 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     : elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms";
             }
 
+            using var stepRunningCts = new CancellationTokenSource();
+            Task<bool> stepRunningSecondsTask = UpdateStepRunningSeconds(adapter, swStep, stepRunningCts.Token);
+
             StepResult result;
             try {
                 result = await instance.Step(t, dt, inputValues);
@@ -1083,6 +1087,12 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 adapter.StepRunningSince = null;
                 swStep.Stop();
                 adapter.LastStepDurationMs = swStep.ElapsedMilliseconds;
+                stepRunningCts.Cancel();
+                bool stepRunningSecondsPublished = await stepRunningSecondsTask;
+                if (stepRunningSecondsPublished) {
+                    var vv = VariableValue.Make(adapter.GetStepRunningSecondsVarRef(), VTQ.Make(DataValue.Empty, Timestamp.Now, Quality.Good));
+                    notifier.Notify_VariableValuesChanged([vv]);
+                }
             }
             adapter.LogBuffer.AddWithTimestamp($"Step completed in {GetStepDurationStr()}", LogLevel.Info);
 
@@ -1147,6 +1157,27 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 break;
             }
         }
+    }
+
+    // Publishes the variable StepRunningSeconds once per whole second while the Step call is running.
+    // Nothing is published for steps completing within the first second, to avoid notifications
+    // (and history entries) for every cycle of fast calculations.
+    // Returns true if a value was published, i.e. the variable must be reset to Empty afterwards.
+    private async Task<bool> UpdateStepRunningSeconds(CalcInstance adapter, System.Diagnostics.Stopwatch swStep, CancellationToken cancel) {
+        VariableRef varRef = adapter.GetStepRunningSecondsVarRef();
+        long seconds = 0;
+        try {
+            while (true) {
+                long nextSecondMS = (seconds + 1) * 1000;
+                long waitMS = Math.Max(1, nextSecondMS - swStep.ElapsedMilliseconds);
+                await Task.Delay(TimeSpan.FromMilliseconds(waitMS), cancel);
+                seconds = swStep.ElapsedMilliseconds / 1000;
+                var vv = VariableValue.Make(varRef, VTQ.Make(seconds, Timestamp.Now, Quality.Good));
+                notifier!.Notify_VariableValuesChanged([vv]);
+            }
+        }
+        catch (OperationCanceledException) { }
+        return seconds > 0;
     }
 
     private async Task WriteOutputVars(VariableValues outputDest) {

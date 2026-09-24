@@ -278,7 +278,7 @@ public class Calculation : ModelObject
 
     protected override Variable[] GetVariablesOrNull(IReadOnlyCollection<IModelObject> parents) {
 
-        History history = new History(HistoryMode.None);
+        History history = Mediator.History.None;
 
         if (History.HasValue) {
             history = History.Value;
@@ -311,9 +311,21 @@ public class Calculation : ModelObject
             History = history
         };
 
+        // Whole seconds the current Step call is running; Empty while no Step is running.
+        var varStepRunningSeconds = new Variable() {
+            Name = "StepRunningSeconds",
+            Type = DataType.Int64,
+            Unit = "s",
+            Dimension = 1,
+            DefaultValue = DataValue.Empty,
+            Remember = false,
+            History = Mediator.History.None
+        };
+
         return [
             varLastRunDuration,
-            varLastRunTime
+            varLastRunTime,
+            varStepRunningSeconds
         ];
     }
 
