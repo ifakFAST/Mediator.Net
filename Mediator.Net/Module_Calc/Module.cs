@@ -1070,7 +1070,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             }
 
             using var stepRunningCts = new CancellationTokenSource();
-            Task<bool> stepRunningSecondsTask = UpdateStepRunningSeconds(adapter, swStep, stepRunningCts.Token);
+            Task<Timestamp?> stepRunningSecondsTask = UpdateStepRunningSeconds(adapter, swStep, stepRunningCts.Token);
 
             StepResult result;
             try {
@@ -1088,9 +1088,14 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 swStep.Stop();
                 adapter.LastStepDurationMs = swStep.ElapsedMilliseconds;
                 stepRunningCts.Cancel();
-                bool stepRunningSecondsPublished = await stepRunningSecondsTask;
-                if (stepRunningSecondsPublished) {
-                    var vv = VariableValue.Make(adapter.GetStepRunningSecondsVarRef(), VTQ.Make(DataValue.Empty, Timestamp.Now, Quality.Good));
+                Timestamp? stepRunningSecondsLastPublished = await stepRunningSecondsTask;
+                if (stepRunningSecondsLastPublished.HasValue) {
+                    // The Step may complete in the same millisecond as the last update, but the history manager
+                    // requires a strictly increasing timestamp for a changed value.
+                    Timestamp tMin = stepRunningSecondsLastPublished.Value.AddMillis(1);
+                    Timestamp tNow = Timestamp.Now;
+                    Timestamp tEmpty = tNow > tMin ? tNow : tMin;
+                    var vv = VariableValue.Make(adapter.GetStepRunningSecondsVarRef(), VTQ.Make(DataValue.Empty, tEmpty, Quality.Good));
                     notifier.Notify_VariableValuesChanged([vv]);
                 }
             }
@@ -1162,22 +1167,26 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     // Publishes the variable StepRunningSeconds once per whole second while the Step call is running.
     // Nothing is published for steps completing within the first second, to avoid notifications
     // (and history entries) for every cycle of fast calculations.
-    // Returns true if a value was published, i.e. the variable must be reset to Empty afterwards.
-    private async Task<bool> UpdateStepRunningSeconds(CalcInstance adapter, System.Diagnostics.Stopwatch swStep, CancellationToken cancel) {
+    // Returns the timestamp of the last published value, or null if nothing was published.
+    // If non-null, the variable must be reset to Empty afterwards (with a later timestamp).
+    private async Task<Timestamp?> UpdateStepRunningSeconds(CalcInstance adapter, System.Diagnostics.Stopwatch swStep, CancellationToken cancel) {
         VariableRef varRef = adapter.GetStepRunningSecondsVarRef();
         long seconds = 0;
+        Timestamp? lastPublished = null;
         try {
             while (true) {
                 long nextSecondMS = (seconds + 1) * 1000;
                 long waitMS = Math.Max(1, nextSecondMS - swStep.ElapsedMilliseconds);
                 await Task.Delay(TimeSpan.FromMilliseconds(waitMS), cancel);
                 seconds = swStep.ElapsedMilliseconds / 1000;
-                var vv = VariableValue.Make(varRef, VTQ.Make(seconds, Timestamp.Now, Quality.Good));
+                Timestamp now = Timestamp.Now;
+                var vv = VariableValue.Make(varRef, VTQ.Make(seconds, now, Quality.Good));
                 notifier!.Notify_VariableValuesChanged([vv]);
+                lastPublished = now;
             }
         }
         catch (OperationCanceledException) { }
-        return seconds > 0;
+        return lastPublished;
     }
 
     private async Task WriteOutputVars(VariableValues outputDest) {
