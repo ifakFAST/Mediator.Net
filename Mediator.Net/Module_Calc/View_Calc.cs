@@ -25,6 +25,7 @@ public class View_Calc : ViewBase
     private int calclog_Generation = 0;
     private bool calclog_Polling = false;
     private string calcRuntimeStates_Snapshot = "";
+    private CalcRuntimeStateInfo[] calcRuntimeStates_Last = [];
     private int calcRuntimeStates_Generation = 0;
     private bool calcRuntimeStates_Polling = false;
 
@@ -312,6 +313,7 @@ public class View_Calc : ViewBase
         catch (Exception) {
             calcRuntimeStates = [];
         }
+        calcRuntimeStates_Last = calcRuntimeStates;
         calcRuntimeStates_Snapshot = MakeCalcRuntimeStatesSnapshot(calcRuntimeStates);
 
         model.Normalize(adapterTypesInfo);
@@ -344,6 +346,8 @@ public class View_Calc : ViewBase
             if (!calcRuntimeStates_Polling || calcRuntimeStates_Generation != generation) break;
             try {
                 CalcRuntimeStateInfo[] calcRuntimeStates = await ReadCalcRuntimeStates();
+                if (!calcRuntimeStates_Polling || calcRuntimeStates_Generation != generation) break;
+                calcRuntimeStates_Last = calcRuntimeStates;
                 string snapshot = MakeCalcRuntimeStatesSnapshot(calcRuntimeStates);
                 if (snapshot != calcRuntimeStates_Snapshot) {
                     calcRuntimeStates_Snapshot = snapshot;
@@ -403,8 +407,49 @@ public class View_Calc : ViewBase
     }
 
     public override async Task OnVariableValueChanged(List<VariableValue> variables) {
-        var changes = VarValsToEventEntries(variables);
-        await Context.SendEventToUI("VarChange", changes);
+
+        // StepRunningSeconds updates the runtime states directly, because the polled method call
+        // GetCalcRuntimeStates may be blocked for a long time, e.g. by an UpdateConfig operation
+        // that waits for the shutdown of a calculation with a long running Step call.
+        var otherVariables = new List<VariableValue>(variables.Count);
+        bool runtimeStatesChanged = false;
+        foreach (VariableValue vv in variables) {
+            if (vv.Variable.Name == "StepRunningSeconds") {
+                runtimeStatesChanged |= ApplyStepRunningSeconds(vv.Variable.Object.LocalObjectID, vv.Value.V);
+            }
+            else {
+                otherVariables.Add(vv);
+            }
+        }
+
+        if (otherVariables.Count > 0) {
+            var changes = VarValsToEventEntries(otherVariables);
+            await Context.SendEventToUI("VarChange", changes);
+        }
+
+        if (runtimeStatesChanged) {
+            calcRuntimeStates_Snapshot = MakeCalcRuntimeStatesSnapshot(calcRuntimeStates_Last);
+            await Context.SendEventToUI("CalcRuntimeStatesUpdate", calcRuntimeStates_Last);
+        }
+    }
+
+    private bool ApplyStepRunningSeconds(string calcID, DataValue value) {
+        CalcRuntimeStateInfo? state = calcRuntimeStates_Last.FirstOrDefault(s => s.CalcID == calcID);
+        if (state == null) return false;
+        bool isRunning = value.NonEmpty;
+        int runningForSeconds = 0;
+        if (isRunning) {
+            try {
+                runningForSeconds = (int)Math.Max(0, value.GetLong());
+            }
+            catch (Exception) {
+                return false;
+            }
+        }
+        if (state.IsRunning == isRunning && state.RunningForSeconds == runningForSeconds) return false;
+        state.IsRunning = isRunning;
+        state.RunningForSeconds = runningForSeconds;
+        return true;
     }
 
     private async Task PollCalcLog(string calcID, int generation) {
