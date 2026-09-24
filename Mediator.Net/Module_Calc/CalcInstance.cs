@@ -77,6 +77,7 @@ public class CalcInstance
     public bool IsRestarting = false;
     public bool IsStepRunning { get; set; } = false;
     public Timestamp? StepRunningSince { get; set; } = null;
+    public long? LastStepDurationMs { get; set; } = null;
     // Keep failure state latched across restarts until the next successful step.
     public bool LastRunFailed { get; set; } = false;
 

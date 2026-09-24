@@ -54,6 +54,16 @@
             </template>
             <span>{{ triggerRunTooltip }}</span>
           </v-tooltip>
+          <v-chip
+            v-if="longRunningStepInfo !== null"
+            class="mr-2"
+            color="blue"
+            prepend-icon="mdi-information-outline"
+            
+            variant="flat"
+          >
+            {{ longRunningStepInfo }}
+          </v-chip>
           <v-btn
             :disabled="!isObjectDirty"
             variant="text"
@@ -231,6 +241,7 @@ interface CalcRuntimeState {
   IsRunning: boolean
   RunningForSeconds: number
   LastRunFailed: boolean
+  LastStepDurationMs: number | null
 }
 
 const selectedNode = ref<Node | null>(null)
@@ -311,6 +322,24 @@ const selectedCalculation = computed((): calcmodel.Calculation | null => {
   }
   return editObject.value as calcmodel.Calculation
 })
+
+const longRunningStepInfo = computed((): string | null => {
+  const runtimeState = selectedCalculationRuntimeState.value
+  if (runtimeState === null || !runtimeState.IsRunning) return null
+  const runningFor = runtimeState.RunningForSeconds
+  const lastStepDurationMs = runtimeState.LastStepDurationMs ?? 0
+  const show = runningFor >= 3 || (runningFor >= 1 && lastStepDurationMs > 10000)
+  if (!show) return null
+  const lastStepInfo = runtimeState.LastStepDurationMs != null ? ` (last step: ${formatSeconds(Math.round(runtimeState.LastStepDurationMs / 1000))})` : ''
+  return `Step running for ${formatSeconds(runningFor)}${lastStepInfo}`
+})
+
+const formatSeconds = (totalSeconds: number): string => {
+  if (totalSeconds < 60) return `${totalSeconds} s`
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes} min ${seconds} s`
+}
 
 const showTriggerRunButton = computed((): boolean => selectedCalculation.value?.RunMode === 'Triggered')
 

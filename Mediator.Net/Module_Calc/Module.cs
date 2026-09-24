@@ -527,6 +527,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                         ? Math.Max(0, (int)(Timestamp.Now - a.StepRunningSince.Value).TotalSeconds)
                         : 0,
                     LastRunFailed = a.LastRunFailed,
+                    LastStepDurationMs = a.LastStepDurationMs,
                 }).ToArray();
                 return Task.FromResult(Result<DataValue>.OK(DataValue.FromObject(runtimeStates)));
             }
@@ -1081,6 +1082,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 adapter.IsStepRunning = false;
                 adapter.StepRunningSince = null;
                 swStep.Stop();
+                adapter.LastStepDurationMs = swStep.ElapsedMilliseconds;
             }
             adapter.LogBuffer.AddWithTimestamp($"Step completed in {GetStepDurationStr()}", LogLevel.Info);
 

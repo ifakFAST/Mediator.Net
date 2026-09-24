@@ -557,6 +557,7 @@ public class View_Calc : ViewBase
         public bool IsRunning { get; set; }
         public int RunningForSeconds { get; set; }
         public bool LastRunFailed { get; set; }
+        public long? LastStepDurationMs { get; set; }
     }
 
     public class EventEntry
