@@ -5,6 +5,7 @@
 using Ifak.Fast.Mediator.Util;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -192,6 +193,14 @@ namespace Ifak.Fast.Mediator
 
         private volatile bool hasTerminated = false;
         private int updateConfigPending = 0; // 1 while an UpdateConfig call is queued or running (accessed via Interlocked)
+        private readonly HashSet<Task> activeHandlers = new HashSet<Task>(); // detached Handle_* tasks, only accessed on the module thread
+
+        private void TrackHandler(Task t) {
+            activeHandlers.RemoveWhere(x => x.IsCompleted);
+            if (!t.IsCompleted) {
+                activeHandlers.Add(t);
+            }
+        }
 
         private async Task Runner() {
 
@@ -347,27 +356,27 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case MethodID.UpdateConfig: {
-                            Task _ = Handle_UpdateConfig(it, hasTerminated);
+                            TrackHandler(Handle_UpdateConfig(it, hasTerminated));
                             break;
                         }
 
                     case MethodID.ReadVariables: {
-                            Task _ = Handle_ReadVariables(it, module, hasTerminated);
+                            TrackHandler(Handle_ReadVariables(it, module, hasTerminated));
                             break;
                         }
 
                     case MethodID.WriteVariables: {
-                            Task _ = Handle_WriteVariables(it, module, hasTerminated);
+                            TrackHandler(Handle_WriteVariables(it, module, hasTerminated));
                             break;
                         }
 
                     case MethodID.OnMethodCall: {
-                            Task _ = Handle_MethodCall(it, module, hasTerminated);
+                            TrackHandler(Handle_MethodCall(it, module, hasTerminated));
                             break;
                         }
 
                     case MethodID.Browse: {
-                            Task _ = Handle_Browse(it, module, hasTerminated);
+                            TrackHandler(Handle_Browse(it, module, hasTerminated));
                             break;
                         }
 
@@ -375,6 +384,14 @@ namespace Ifak.Fast.Mediator
                         break;
                 }
             } // while
+
+            // Returning completes the synchronization context, which would silently drop the
+            // continuations of still running handlers and leave their promises unresolved forever:
+            activeHandlers.RemoveWhere(x => x.IsCompleted);
+            while (activeHandlers.Count > 0) {
+                await Task.WhenAll(activeHandlers);
+                activeHandlers.RemoveWhere(x => x.IsCompleted);
+            }
         }
 
         private async Task Handle_UpdateConfig(WorkItem it, bool hasTerminated) {
