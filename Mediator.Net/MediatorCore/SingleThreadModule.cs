@@ -122,8 +122,8 @@ namespace Ifak.Fast.Mediator
         public override Task<Result> UpdateConfig(Origin origin, ObjectValue[]? updateOrDeleteObjects, MemberValue[]? updateOrDeleteMembers, AddArrayElement[]? addArrayElements) {
             if (!isStarted) throw new Exception("UpdateConfig requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
-            if (Interlocked.CompareExchange(ref updateConfigPending, 1, 0) != 0) {
-                return Task.FromResult(Result.Failure($"UpdateConfig rejected: another UpdateConfig is still pending for module {moduleName}."));
+            if (Interlocked.CompareExchange(ref configChangePending, 1, 0) != 0) {
+                return Task.FromResult(Result.Failure($"UpdateConfig rejected: another configuration change is still pending for module {moduleName}."));
             }
             var promise = new TaskCompletionSource<Result>();
             queue.Post(new WorkItem(MethodID.UpdateConfig, promise, origin, updateOrDeleteObjects, updateOrDeleteMembers, addArrayElements));
@@ -178,8 +178,12 @@ namespace Ifak.Fast.Mediator
         public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
             if (!isStarted) throw new Exception("OnMethodCall requires prior Init!");
             if (hasTerminated) throw new Exception("Module terminated.");
+            bool isConfigChange = configChangingMethods.Contains(methodName);
+            if (isConfigChange && Interlocked.CompareExchange(ref configChangePending, 1, 0) != 0) {
+                return Task.FromResult(Result<DataValue>.Failure($"{methodName} rejected: another configuration change is still pending for module {moduleName}."));
+            }
             var promise = new TaskCompletionSource<Result<DataValue>>();
-            queue.Post(new WorkItem(MethodID.OnMethodCall, promise, origin, methodName, parameters));
+            queue.Post(new WorkItem(MethodID.OnMethodCall, promise, origin, methodName, parameters, isConfigChange));
             return promise.Task;
         }
 
@@ -192,7 +196,11 @@ namespace Ifak.Fast.Mediator
         }
 
         private volatile bool hasTerminated = false;
-        private int updateConfigPending = 0; // 1 while an UpdateConfig call is queued or running (accessed via Interlocked)
+        private int configChangePending = 0; // 1 while an UpdateConfig or config changing method call is queued or running (accessed via Interlocked)
+
+        // Method calls that modify the module config. They are mutually exclusive with UpdateConfig,
+        // so any method call which modifies the config must be listed here:
+        private static readonly HashSet<string> configChangingMethods = new HashSet<string> { "SetConfigString", "ImportObjectAsFile" };
         private readonly HashSet<Task> activeHandlers = new HashSet<Task>(); // detached Handle_* tasks, only accessed on the module thread
 
         private void TrackHandler(Task t) {
@@ -371,7 +379,7 @@ namespace Ifak.Fast.Mediator
                         }
 
                     case MethodID.OnMethodCall: {
-                            TrackHandler(Handle_MethodCall(it, module, hasTerminated));
+                            TrackHandler(Handle_MethodCall(it, hasTerminated));
                             break;
                         }
 
@@ -397,7 +405,7 @@ namespace Ifak.Fast.Mediator
         private async Task Handle_UpdateConfig(WorkItem it, bool hasTerminated) {
             var promise = (TaskCompletionSource<Result>)it.Promise!;
             if (hasTerminated) {
-                Interlocked.Exchange(ref updateConfigPending, 0);
+                Interlocked.Exchange(ref configChangePending, 0);
                 promise.SetException(new Exception("Module terminated."));
                 return;
             }
@@ -406,12 +414,12 @@ namespace Ifak.Fast.Mediator
                 res = await module.UpdateConfig((Origin)it.Param1!, (ObjectValue[]?)it.Param2, (MemberValue[]?)it.Param3, (AddArrayElement[]?)it.Param4);
             }
             catch (Exception exp) {
-                Interlocked.Exchange(ref updateConfigPending, 0);
+                Interlocked.Exchange(ref configChangePending, 0);
                 promise.SetException(exp);
                 return;
             }
             // reset before completing the promise so that a caller may immediately issue the next UpdateConfig:
-            Interlocked.Exchange(ref updateConfigPending, 0);
+            Interlocked.Exchange(ref configChangePending, 0);
             promise.SetResult(res);
         }
 
@@ -450,20 +458,26 @@ namespace Ifak.Fast.Mediator
             }
         }
 
-        private static async Task Handle_MethodCall(WorkItem it, ModuleBase module, bool hasTerminated) {
+        private async Task Handle_MethodCall(WorkItem it, bool hasTerminated) {
             var promise = (TaskCompletionSource<Result<DataValue>>)it.Promise!;
+            bool isConfigChange = true.Equals(it.Param4);
             if (hasTerminated) {
+                if (isConfigChange) Interlocked.Exchange(ref configChangePending, 0);
                 promise.SetException(new Exception("Module terminated."));
+                return;
             }
-            else {
-                try {
-                    var res = await module.OnMethodCall((Origin)it.Param1!, (string)it.Param2!, (NamedValue[])it.Param3!);
-                    promise.SetResult(res);
-                }
-                catch (Exception exp) {
-                    promise.SetException(exp);
-                }
+            Result<DataValue> res;
+            try {
+                res = await module.OnMethodCall((Origin)it.Param1!, (string)it.Param2!, (NamedValue[])it.Param3!);
             }
+            catch (Exception exp) {
+                if (isConfigChange) Interlocked.Exchange(ref configChangePending, 0);
+                promise.SetException(exp);
+                return;
+            }
+            // reset before completing the promise so that a caller may immediately issue the next config change:
+            if (isConfigChange) Interlocked.Exchange(ref configChangePending, 0);
+            promise.SetResult(res);
         }
 
         private static async Task Handle_Browse(WorkItem it, ModuleBase module, bool hasTerminated) {
