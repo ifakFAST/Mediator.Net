@@ -12,7 +12,10 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
+using Npgsql;
 using System.Reflection;
 using System.Threading;
 
@@ -118,6 +121,9 @@ public class CompileLib
 
         references.Add(MetadataReference.CreateFromFile(typeof(CSharp).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(SqliteConnection).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(SqlConnection).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(MySqlConnection).Assembly.Location));
+        references.Add(MetadataReference.CreateFromFile(typeof(NpgsqlConnection).Assembly.Location));
         references.Add(MetadataReference.CreateFromFile(typeof(Ifak.Fast.Mediator.Timestamp).Assembly.Location));
 
         foreach (Assembly ass in refAssemblies) {
