@@ -474,6 +474,12 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             StartRunLoopTaskIfInitCompleted(a);
         }
 
+        // Avoids a slow first compile when the user edits a C# calculation:
+        bool warmUp = moduleConfig.GetOptionalBool("csharp-compiler-warm-up", true);
+        if (warmUp && adapters.Any(a => a.CalcConfig.Type == Adapter_CSharp.CSharp.ID)) {
+            Adapter_CSharp.CompileLib.StartWarmUp();
+        }
+
         while (!shutdown()) {
             await Task.Delay(100);
         }

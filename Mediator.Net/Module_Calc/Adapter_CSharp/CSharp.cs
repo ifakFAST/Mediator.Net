@@ -13,8 +13,10 @@ using System.Threading.Tasks;
 
 namespace Ifak.Fast.Mediator.Calc.Adapter_CSharp;
 
-[Identify(id: "CSharp", showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true, codeLang: "csharp")]
+[Identify(id: ID, showWindowVisible: false, showDefinition: true, definitionLabel: "Script", definitionIsCode: true, codeLang: "csharp")]
 public class CSharp : CalculationBase, EventSink, ConnectionConsumer {
+    public const string ID = "CSharp";
+
     private InputBase[] inputs = [];
     private OutputBase[] outputs = [];
     private AbstractState[] states = [];
