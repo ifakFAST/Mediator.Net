@@ -28,9 +28,8 @@ namespace Ifak.Fast.Mediator.Util
         }
 
         public static T FromXmlFile<T>(string fileName) {
-            using (var fstream = new FileStream(fileName, FileMode.Open)) {
-                return FromXmlStream<T>(fstream);
-            }
+            using var fstream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            return FromXmlStream<T>(fstream);
         }
     }
 
