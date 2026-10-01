@@ -446,18 +446,29 @@ public class HistoryDBWorker
                             archiveStorage = StorageFactory(archiveSupport, readOnly: true);
                         }
 
-                        start.Promise.SetResult(true);
+                        // Before completing the promise: its continuation (on another thread) may call Terminate() right away,
+                        // e.g. when another read worker failed to start, and Terminate() is a no-op for a worker not started.
                         started = true;
+                        start.Promise.SetResult(true);
                     }
                     catch (Exception e) {
+                        // Terminate() is a no-op for a worker that never started:
+                        try { archiveStorage?.Dispose(); } catch (Exception) { }
+                        archiveStorage = null;
+                        try { db?.Close(); } catch (Exception) { }
+                        db = null;
                         start.Promise.SetException(e);
                         return;
                     }
                 }
                 else if (it is RWI_Terminate terminate) {
-                    db?.Close();
+                    // Always complete the promise, otherwise the termination of the DB worker waits forever:
+                    try { db?.Close(); }
+                    catch (Exception exp) { logger.Warn($"ReadWorker[{workerIndex}]: Failed to close timeseries db {dbName}: {exp.Message}"); }
+                    db = null;
                     mapChannels.Clear();
-                    archiveStorage?.Dispose();
+                    try { archiveStorage?.Dispose(); }
+                    catch (Exception exp) { logger.Warn($"ReadWorker[{workerIndex}]: Failed to dispose archive storage of timeseries db {dbName}: {exp.Message}"); }
                     archiveStorage = null;
                     terminate.Promise.SetResult(true);
                     return;
@@ -646,42 +657,28 @@ public class HistoryDBWorker
                         await Task.WhenAll(startTasks);
                     }
 
-                    start.Promise.SetResult(true);
+                    // Before completing the promise: its continuation (on another thread) may call Terminate() right away,
+                    // e.g. HistoryManager.StartModule when another DB of the module failed to start, and Terminate() is a
+                    // no-op for a worker not started.
                     started = true;
+                    start.Promise.SetResult(true);
 
                     if (archiveSupport != null && archiveStorage != null) {
                         queue.Post(new WI_ArchiveProgress());
                     }
                 }
                 catch (Exception e) {
+                    // Terminate() is a no-op for a worker that never started,
+                    // so release everything acquired so far right here:
+                    await ReleaseResources(compactArchive: false);
                     start.Promise.SetException(e);
                     return;
                 }
             }
             else if (it is WI_Terminate terminate) {
-                // Terminate read workers first
-                if (readWorkers != null) {
-                    var terminateTasks = readWorkers.Select(w => w.Terminate()).ToArray();
-                    await Task.WhenAll(terminateTasks);
-                    readWorkers = null;
-                }
-
-                // Dispose aggregation cache
-                aggregationCache?.Dispose();
-                aggregationCache = null;
-                if (archiveStorage != null) {
-                    bool compact = archiveStorage.CanCompact();
-                    if (compact) {
-                        logger.Info("Starting archive storage compaction...");
-                        var sw = Stopwatch.StartNew();
-                        archiveStorage.Compact();
-                        sw.Stop();
-                        logger.Info($"Archive storage compaction completed in {sw.Elapsed.TotalSeconds:F1} seconds");
-                    }
-                    archiveStorage.Dispose();
-                    archiveStorage = null;
-                }
-                db?.Close();
+                // ReleaseResources does not throw: the promise must always be completed,
+                // otherwise HistoryManager.StopModule (config reload) and Mediator shutdown wait forever.
+                await ReleaseResources(compactArchive: true);
                 terminate.Promise.SetResult(true);
                 return;
             }
@@ -1285,6 +1282,41 @@ public class HistoryDBWorker
     }
 
     #region Aggregation Cache Support
+
+    // Releases everything acquired by WI_Start (read workers first). Never throws.
+    private async Task ReleaseResources(bool compactArchive) {
+        if (readWorkers != null) {
+            try {
+                // read workers that failed to start have released their resources already
+                await Task.WhenAll(readWorkers.Where(w => w != null).Select(w => w.Terminate()).ToArray());
+            }
+            catch (Exception exp) {
+                logger.Warn($"Failed to terminate read workers of timeseries db {dbName}: {exp.Message}");
+            }
+            readWorkers = null;
+        }
+        try { aggregationCache?.Dispose(); }
+        catch (Exception exp) { logger.Warn($"Failed to dispose aggregation cache of timeseries db {dbName}: {exp.Message}"); }
+        aggregationCache = null;
+        if (compactArchive && archiveStorage != null) {
+            try {
+                if (archiveStorage.CanCompact()) {
+                    logger.Info("Starting archive storage compaction...");
+                    var sw = Stopwatch.StartNew();
+                    archiveStorage.Compact();
+                    sw.Stop();
+                    logger.Info($"Archive storage compaction completed in {sw.Elapsed.TotalSeconds:F1} seconds");
+                }
+            }
+            catch (Exception exp) { logger.Warn($"Archive storage compaction of timeseries db {dbName} failed: {exp.Message}"); }
+        }
+        try { archiveStorage?.Dispose(); }
+        catch (Exception exp) { logger.Warn($"Failed to dispose archive storage of timeseries db {dbName}: {exp.Message}"); }
+        archiveStorage = null;
+        try { db?.Close(); }
+        catch (Exception exp) { logger.Warn($"Failed to close timeseries db {dbName}: {exp.Message}"); }
+        db = null;
+    }
 
     private static HistoryAggregationCache? TryCreateAggregationCache(string cacheDbPath) {
         try {

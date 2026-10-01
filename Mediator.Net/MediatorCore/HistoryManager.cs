@@ -19,6 +19,8 @@ public class HistoryManager
     private static readonly Logger logger = LogManager.GetLogger("HistoryManager");
 
     private readonly Dictionary<string, ModuleDBs> dbs = [];
+    private readonly HashSet<Task> pendingStops = []; // Terminate tasks of the DB workers of stopped modules
+    private bool stopped = false;
 
     /// <summary>
     /// Tracks the last saved value per variable for proper deadband comparison.
@@ -38,8 +40,14 @@ public class HistoryManager
         this.fNotifyChanges = fNotifyChanges;
 
         foreach (Module m in modules) {
+            await StartModule(m, emptyDBs);
+        }
+    }
 
-            var workers = new List<WorkerWithBuffer>();
+    public async Task StartModule(Module m, bool emptyDBs) {
+
+        var workers = new List<WorkerWithBuffer>();
+        try {
             WorkerWithBuffer? defaultWorker = null;
             var variable2Worker = new Dictionary<string, WorkerWithBuffer>();
 
@@ -98,7 +106,20 @@ public class HistoryManager
                 logger.Warn("No default DB worker for module " + m.ID);
             }
 
+            // e.g. Mediator shutdown during a slow DB start of a module restart: Stop() would not terminate the workers
+            if (stopped) throw new Exception("History DBs have been closed because the Mediator is shutting down.");
+
             dbs[m.ID] = new ModuleDBs(m.ID, workers.ToArray(), variable2Worker, defaultWorker);
+        }
+        catch (Exception) {
+            // do not leak the workers already started (e.g. keeping a SQLite file open)
+            try {
+                await Task.WhenAll(workers.Select(w => w.Worker.Terminate()).ToArray());
+            }
+            catch (Exception exp) {
+                logger.Warn($"Failed to terminate DB workers of module {m.ID}: {exp.Message}");
+            }
+            throw;
         }
     }
 
@@ -110,9 +131,28 @@ public class HistoryManager
             }, null);
     }
 
+    public bool IsModuleStarted(string moduleID) => dbs.ContainsKey(moduleID);
+
+    public Task StopModule(string moduleID) {
+        if (!dbs.Remove(moduleID, out ModuleDBs? moduleDBs)) {
+            return Task.CompletedTask;
+        }
+        foreach (VariableRef v in lastSavedForDeadband.Keys.Where(k => k.Object.ModuleID == moduleID).ToArray()) {
+            lastSavedForDeadband.Remove(v);
+        }
+        Task t = Task.WhenAll(moduleDBs.Workers.Select(w => w.Worker.Terminate()).ToArray());
+        pendingStops.RemoveWhere(x => x.IsCompleted);
+        pendingStops.Add(t);
+        return t;
+    }
+
     public Task Stop() {
-        Task[] terminateTasks = dbs.Values.SelectMany(mDBs => mDBs.Workers.Select(w => w.Worker.Terminate()).ToArray()).ToArray();
-        return Task.WhenAll(terminateTasks);
+        stopped = true;
+        foreach (string moduleID in dbs.Keys.ToArray()) {
+            StopModule(moduleID);
+        }
+        // includes the stops of modules removed by a config reload that are still in progress
+        return Task.WhenAll(pendingStops.ToArray());
     }
 
     public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, bool priority) {
