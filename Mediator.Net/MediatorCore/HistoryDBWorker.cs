@@ -41,6 +41,8 @@ public class HistoryDBWorker
     private readonly AsyncQueue<WorkItem> queue = new();
     private volatile bool started = false;
     private volatile bool terminated = false;
+    // Set by Terminate(): work items posted after WI_Terminate would never be processed, so their promises would never complete
+    private volatile Task? terminateTask = null;
 
     // Concurrent read support
     private ReadWorker[]? readWorkers = null;
@@ -143,14 +145,17 @@ public class HistoryDBWorker
     }
 
     public Task Terminate() {
+        Task? pending = terminateTask;
+        if (pending != null) return pending;
         if (terminated || !started) return Task.FromResult(true);
         var promise = new TaskCompletionSource<bool>();
+        terminateTask = promise.Task;
         queue.Post(new WI_Terminate(promise));
         return promise.Task;
     }
 
     public int Append(IList<StoreValue> values) {
-        if (!terminated) {
+        if (!terminated && terminateTask == null) {
             queue.Post(new WI_BatchAppend(values));
             return queue.Count;
         }
@@ -504,7 +509,7 @@ public class HistoryDBWorker
     #endregion
 
     private bool CheckPrecondition<T>(TaskCompletionSource<T> promise) {
-        if (terminated) {
+        if (terminated || terminateTask != null) {
             promise.SetException(new Exception("HistoryDBWorker terminated"));
             return false;
         }
@@ -516,7 +521,7 @@ public class HistoryDBWorker
     }
 
     private bool CheckPrecondition(TaskCompletionSource promise) {
-        if (terminated) {
+        if (terminated || terminateTask != null) {
             promise.SetException(new Exception("HistoryDBWorker terminated"));
             return false;
         }

@@ -20,6 +20,7 @@ public class HistoryManager
 
     private readonly Dictionary<string, ModuleDBs> dbs = [];
     private readonly HashSet<Task> pendingStops = []; // Terminate tasks of the DB workers of stopped modules
+    private readonly Dictionary<string, Task> pendingStarts = []; // StartModule calls in progress; completes (never faults) after cleanup
     private bool stopped = false;
 
     /// <summary>
@@ -46,12 +47,21 @@ public class HistoryManager
 
     public async Task StartModule(Module m, bool emptyDBs) {
 
+        if (dbs.ContainsKey(m.ID) || pendingStarts.ContainsKey(m.ID)) {
+            // dbs[m.ID] would be overwritten and the workers already running would leak
+            throw new Exception($"History DBs of module {m.ID} are already started or starting");
+        }
+        var startDone = new TaskCompletionSource();
+        pendingStarts[m.ID] = startDone.Task;
+
         var workers = new List<WorkerWithBuffer>();
         try {
             WorkerWithBuffer? defaultWorker = null;
             var variable2Worker = new Dictionary<string, WorkerWithBuffer>();
 
             foreach (HistoryDB db in m.HistoryDBs) {
+
+                ThrowIfStopped(); // do not open further DBs after shutdown started
 
                 string dbt = db.Type.ToLowerInvariant();
                 if (dbt != "sqlite" && dbt != "postgres" && dbt != "postgresflat") {
@@ -107,7 +117,7 @@ public class HistoryManager
             }
 
             // e.g. Mediator shutdown during a slow DB start of a module restart: Stop() would not terminate the workers
-            if (stopped) throw new Exception("History DBs have been closed because the Mediator is shutting down.");
+            ThrowIfStopped();
 
             dbs[m.ID] = new ModuleDBs(m.ID, workers.ToArray(), variable2Worker, defaultWorker);
         }
@@ -121,6 +131,15 @@ public class HistoryManager
             }
             throw;
         }
+        finally {
+            // after the cleanup above: Stop() waits for this
+            pendingStarts.Remove(m.ID);
+            startDone.SetResult();
+        }
+    }
+
+    private void ThrowIfStopped() {
+        if (stopped) throw new Exception("History DBs have been closed because the Mediator is shutting down.");
     }
 
     private void Notify_Append(IEnumerable<VarHistoyChange> variables, bool allowOutOfOrder) {
@@ -151,8 +170,9 @@ public class HistoryManager
         foreach (string moduleID in dbs.Keys.ToArray()) {
             StopModule(moduleID);
         }
-        // includes the stops of modules removed by a config reload that are still in progress
-        return Task.WhenAll(pendingStops.ToArray());
+        // includes the stops of modules removed by a config reload that are still in progress,
+        // and the module starts in progress (they terminate their workers themselves when they see 'stopped')
+        return Task.WhenAll(pendingStops.Concat(pendingStarts.Values).ToArray());
     }
 
     public async Task<List<VTTQ>> HistorianReadRaw(VariableRef variable, Timestamp startInclusive, Timestamp endInclusive, int maxValues, BoundingMethod bounding, QualityFilter filter, bool priority) {
