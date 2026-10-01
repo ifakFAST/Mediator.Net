@@ -41,27 +41,39 @@
       show-select
       :sort-by="[{ key: 'T', order: 'desc' }]"
     >
-      <template #header.TimeFirstLocal="{}">
-        <v-tooltip location="top">
-          <template #activator="{ props }">
-            <span v-bind="props">First</span>
-          </template>
-          <div>{{ globalState.timeZoneIanaId }}</div>
-          <div>{{ globalState.timeZoneDisplayName }}</div>
-        </v-tooltip>
+      <template #header.T="{ column, getSortIcon }">
+        <div class="v-data-table-header__content">
+          <v-tooltip location="top">
+            <template #activator="{ props }">
+              <span v-bind="props">First</span>
+            </template>
+            <div>{{ globalState.timeZoneIanaId }}</div>
+            <div>{{ globalState.timeZoneDisplayName }}</div>
+          </v-tooltip>
+          <v-icon
+            class="v-data-table-header__sort-icon"
+            :icon="getSortIcon(column)"
+          />
+        </div>
       </template>
 
-      <template #header.TimeLastLocal="{}">
-        <v-tooltip location="top">
-          <template #activator="{ props }">
-            <span v-bind="props">Last</span>
-          </template>
-          <div>{{ globalState.timeZoneIanaId }}</div>
-          <div>{{ globalState.timeZoneDisplayName }}</div>
-        </v-tooltip>
+      <template #header.TimeLastLocal="{ column, getSortIcon }">
+        <div class="v-data-table-header__content">
+          <v-tooltip location="top">
+            <template #activator="{ props }">
+              <span v-bind="props">Last</span>
+            </template>
+            <div>{{ globalState.timeZoneIanaId }}</div>
+            <div>{{ globalState.timeZoneDisplayName }}</div>
+          </v-tooltip>
+          <v-icon
+            class="v-data-table-header__sort-icon"
+            :icon="getSortIcon(column)"
+          />
+        </div>
       </template>
 
-      <template #item.TimeFirstLocal="{ item }">
+      <template #item.T="{ item }">
         <span :class="classObject(item)">{{ item.TimeFirstLocal }}</span>
       </template>
       <template #item.TimeLastLocal="{ item }">
@@ -226,7 +238,7 @@ const comment = ref('')
 const perPage = ref(50)
 
 const headers: DataTableHeader[] = [
-  { title: 'First', align: 'start', sortable: true, key: 'TimeFirstLocal' },
+  { title: 'First', align: 'start', sortable: true, key: 'T' },
   { title: 'Last', align: 'start', sortable: true, key: 'TimeLastLocal' },
   { title: 'Message', align: 'start', sortable: true, key: 'Msg' },
   { title: 'Source', align: 'start', sortable: true, key: 'Source' },

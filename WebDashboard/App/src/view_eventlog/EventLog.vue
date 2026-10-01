@@ -39,14 +39,20 @@
       :search="search"
       :sort-by="[{ key: 'T', order: 'desc' }]"
     >
-      <template #header.T="{}">
-        <v-tooltip location="top">
-          <template #activator="{ props }">
-            <span v-bind="props">Time (Local)</span>
-          </template>
-          <div>{{ globalState.timeZoneIanaId }}</div>
-          <div>{{ globalState.timeZoneDisplayName }}</div>
-        </v-tooltip>
+      <template #header.T="{ column, getSortIcon }">
+        <div class="v-data-table-header__content">
+          <v-tooltip location="top">
+            <template #activator="{ props }">
+              <span v-bind="props">Time (Local)</span>
+            </template>
+            <div>{{ globalState.timeZoneIanaId }}</div>
+            <div>{{ globalState.timeZoneDisplayName }}</div>
+          </v-tooltip>
+          <v-icon
+            class="v-data-table-header__sort-icon"
+            :icon="getSortIcon(column)"
+          />
+        </div>
       </template>
 
       <template #item="{ item }">
