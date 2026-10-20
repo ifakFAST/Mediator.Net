@@ -18,29 +18,37 @@ internal sealed class VarMetaManagerIntern {
 
     internal async Task Check(VariableValues values, Connection clientFAST) {
 
-        bool newVars = values.Any(vv => !variables.Contains(vv.Variable));
-        if (!newVars) return;
+        bool allKnownVars = values.All(vv => variables.Contains(vv.Variable));
+        if (allKnownVars) return; // this is an optimization for the very common case that there are no unknown variables
 
-        foreach (var vv in values) {
-            variables.Add(vv.Variable);
-        }
+        List<VariableRef> newVars = values
+            .Select(vv => vv.Variable)
+            .Where(v => !variables.Contains(v))
+            .Distinct()
+            .ToList();
 
-        await UpdateVarInfo(clientFAST);
+        // New variables are only added to the known set after their meta info
+        // has been retrieved successfully, so that a failed request is retried
+        // on the next call:
+        await UpdateVarInfo(clientFAST, variables.Concat(newVars).ToArray());
     }
 
     internal Task OnConfigChanged(Connection clientFAST) {
-        return UpdateVarInfo(clientFAST);
+        return UpdateVarInfo(clientFAST, variables.ToArray());
     }
 
-    private async Task UpdateVarInfo(Connection clientFAST) {
-        VarInfoResult infoResult = await GetVarInfoFromVars(clientFAST, variables.ToArray());
+    private async Task UpdateVarInfo(Connection clientFAST, VariableRef[] vars) {
+        VarInfoResult infoResult = await GetVarInfoFromVars(clientFAST, vars);
         variables2Info = infoResult.Infos.ToDictionary(i => i.VarRef);
+        variables.UnionWith(vars);
         foreach (VariableRef v in infoResult.InvalidVarRefs) {
             variables.Remove(v);
         }
     }
 
-    private record VarInfoResult(IList<VarInfo> Infos, IList<VariableRef> InvalidVarRefs);
+    private record VarInfoResult(
+        IReadOnlyList<VarInfo> Infos,
+        IReadOnlyList<VariableRef> InvalidVarRefs);
 
     private static async Task<VarInfoResult> GetVarInfoFromVars(Connection client, VariableRef[] vars) {
 
