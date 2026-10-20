@@ -52,19 +52,26 @@ namespace Ifak.Fast.Mediator {
                 }
             }
 
+            Connection? newClient = null;
             try {
                 bool hasEvents = OnConfigurationChanged != null || OnVariableValueChanged != null || OnVariableHistoryChanged != null || OnAlarmOrEvents != null;
                 MyEventListener? listener = hasEvents ? new MyEventListener(OnConfigurationChanged, OnVariableValueChanged, OnVariableHistoryChanged, OnAlarmOrEvents) : null;
-                client = await HttpConnection.ConnectWithModuleLogin(info, listener);
+                newClient = await HttpConnection.ConnectWithModuleLogin(info, listener);
                 if (listener != null) {
-                    listener.Client = client;
+                    listener.Client = newClient;
                 }
                 if (OnConnectionCreated != null) {
-                    await OnConnectionCreated(client);
+                    await OnConnectionCreated(newClient);
                 }
+                // Only keep the connection once OnConnectionCreated succeeded, so a failed
+                // initialization (e.g. event registration) is retried on the next call:
+                client = newClient;
                 return client;
             }
             catch (Exception exp) {
+                if (newClient != null) {
+                    Task _ = newClient.Close();
+                }
                 Exception e = exp.GetBaseException() ?? exp;
                 string msg = $"Failed ifakFAST connection: {e.GetType().FullName} {e.Message}";
                 if (!e.Message.Contains("request because system is shutting down")) {

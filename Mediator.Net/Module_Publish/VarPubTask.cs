@@ -14,6 +14,8 @@ namespace Ifak.Fast.Mediator.Publish;
 
 internal class VarPubTask {
 
+    private static readonly Duration RetryDelay = Duration.FromSeconds(10);
+
     public static async Task MakeVarPubTask(BufferedVarPub publisher, VarPubCommon varPub, ModuleInitInfo info, Func<bool> shutdown) {
 
         ObjectRefs rootObjects = varPub.RootObjects;
@@ -54,6 +56,32 @@ internal class VarPubTask {
 
         async Task WaitForNextCycle() {
             Timestamp t = Time.GetNextNormalizedTimestamp(cycle, offset);
+            await Time.WaitUntil(t, abort: shutdown);
+        }
+
+        // Time at which the next regular cycle is due (a cycle is due at the first loop iteration).
+        // Only advanced after a successful cyclic publish, so that a failed cycle stays due and is retried:
+        Timestamp tNextCycleDue = Timestamp.Now;
+
+        // After a failure, retry earlier than the next regular cycle (which may be far away):
+        async Task WaitForNextCycleOrRetry(bool retry) {
+            Timestamp tNow = Timestamp.Now;
+            if (tNextCycleDue - tNow > cycle) { // system clock was set back
+                tNextCycleDue = Time.GetNextNormalizedTimestamp(cycle, offset);
+            }
+            Timestamp t;
+            if (retry) {
+                // tNextCycleDue stays unchanged, so that a failed cycle is still published on retry:
+                Timestamp tRetry = tNow + RetryDelay;
+                Timestamp tCycle = tNextCycleDue > tNow ? tNextCycleDue : Time.GetNextNormalizedTimestamp(cycle, offset);
+                t = tCycle < tRetry ? tCycle : tRetry;
+            }
+            else {
+                if (tNextCycleDue <= tNow) { // no cyclic publishing, or missed cycle(s)
+                    tNextCycleDue = Time.GetNextNormalizedTimestamp(cycle, offset);
+                }
+                t = tNextCycleDue;
+            }
             await Time.WaitUntil(t, abort: shutdown);
         }
 
@@ -102,23 +130,52 @@ internal class VarPubTask {
             OnVariableHistoryChanged = OnVariablesHistoryChangedEvent
         };
 
-        while (!shutdown()) {
-            Connection clientFAST = await wrapper.EnsureConnection();
-            if (clientFAST.IsClosed || shutdown()) {
-                break;
+        try {
+            while (!shutdown()) {
+                bool failed = false;
+                try {
+                    Connection clientFAST = await wrapper.EnsureConnection();
+                    if (shutdown()) {
+                        break;
+                    }
+                    if (clientFAST.IsClosed) {
+                        failed = true; // already logged by EnsureConnection
+                    }
+                    // Checked after EnsureConnection, which may take a while, so that a cycle
+                    // that became due during a slow reconnect attempt is not skipped.
+                    // A cycle that failed is published (late) on the next successful retry:
+                    else if (cyclicPublishing && Timestamp.Now >= tNextCycleDue) {
+                        VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);
+                        await PublishRelevantVariableValues(clientFAST, allValues);
+                        tNextCycleDue = Time.GetNextNormalizedTimestamp(cycle, offset);
+                    }
+                }
+                catch (Exception exp) {
+                    if (shutdown()) {
+                        break;
+                    }
+                    Exception e = exp.GetBaseException() ?? exp;
+                    Console.Error.WriteLine($"Variable publish task {publisher.PublisherID}: {e.GetType().FullName} {e.Message}");
+                    await CloseConnection(wrapper); // next EnsureConnection will reconnect
+                    failed = true;
+                }
+                await WaitForNextCycleOrRetry(retry: failed);
             }
-            if (cyclicPublishing) {
-                VariableValues allValues = await clientFAST.ReadAllVariablesOfObjectTrees(rootObjects);
-                await PublishRelevantVariableValues(clientFAST, allValues);
-            }
-            await WaitForNextCycle();
         }
+        finally {
+            Console.WriteLine($"Stopping variable publish task {publisher.PublisherID}");
 
-        Console.WriteLine($"Stopping variable publish task {publisher.PublisherID}");
+            await CloseConnection(wrapper);
+            publisher.Close();
+            await varMetaMan.Close();
+        }
+    }
 
-        await wrapper.Close();
-        publisher.Close();
-        await varMetaMan.Close();
+    private static async Task CloseConnection(ConnectionWrapper wrapper) {
+        try {
+            await wrapper.Close();
+        }
+        catch (Exception) { }
     }
 
     private static async Task<VariableValues> ReadHistoricChanges(Connection client, List<HistoryChange> changes) {
