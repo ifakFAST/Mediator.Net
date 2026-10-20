@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Ifak.Fast.Mediator.Util;
 using System.IO;
@@ -19,7 +20,32 @@ public class Module : ModelObjectModule<Model>
     private string certDir = ".";
     private Func<bool> moduleShutdown = () => true;
     private bool stopForRestart;
-    private readonly List<Task> runningTasks = [];
+    private readonly List<PubTask> runningTasks = [];
+    // Serializes stopping and (re)starting of the publish tasks, because overlapping
+    // config changes would otherwise lose track of tasks started in between:
+    private readonly SemaphoreSlim tasksLock = new(1, 1);
+
+    private static readonly Duration TaskRestartDelay = Duration.FromSeconds(30);
+
+    private sealed class PubTask(string name, Func<Task> start) {
+        public string Name { get; } = name;
+        // A synchronous exception of the initial start (e.g. invalid config) propagates to the caller:
+        public Task Task { get; private set; } = start();
+        public Timestamp? RestartTime { get; set; } = null;
+        public void Restart() {
+            Task = SafeStart(start);
+            RestartTime = null;
+        }
+        // Converts a synchronous exception of a restart into a faulted task so that it stays supervised:
+        private static Task SafeStart(Func<Task> start) {
+            try {
+                return start();
+            }
+            catch (Exception e) {
+                return Task.FromException(e);
+            }
+        }
+    }
 
     public override async Task Init(ModuleInitInfo info,
                                     VariableValue[] restoreVariableValues,
@@ -68,8 +94,16 @@ public class Module : ModelObjectModule<Model>
 
         if (init) return;
 
-        await StopAllTasks();
-        StartAllTasks();
+        await tasksLock.WaitAsync();
+        try {
+            await StopAllTasks();
+            if (!moduleShutdown()) {
+                StartAllTasks();
+            }
+        }
+        finally {
+            tasksLock.Release();
+        }
     }
 
     public override async Task Run(Func<bool> shutdown) {
@@ -82,10 +116,17 @@ public class Module : ModelObjectModule<Model>
         _ = StartCheckForModelFileModificationTask(shutdown);
 
         while (!shutdown()) {
-            await Task.Delay(100);
+            await Task.Delay(250);
+            SuperviseTasks();
         }
 
-        await StopAllTasks();
+        await tasksLock.WaitAsync();
+        try {
+            await StopAllTasks();
+        }
+        finally {
+            tasksLock.Release();
+        }
     }
 
     private void StartAllTasks() {
@@ -95,17 +136,48 @@ public class Module : ModelObjectModule<Model>
 
         foreach (SQLConfig sql in model.SQL) {
             if (sql.VarPublish == null || !sql.VarPublish.Enabled) continue;
-            runningTasks.Add(SQL.VarPubTask.MakeVarPubTask(sql, info, Stop));
+            runningTasks.Add(new PubTask($"SQL {sql.Name}", () => SQL.VarPubTask.MakeVarPubTask(sql, info, Stop)));
         }
 
         foreach (OpcUaConfig ua in model.OPC_UA) {
             if (ua.VarPublish == null || !ua.VarPublish.Enabled) continue;
-            runningTasks.Add(OPC_UA.VarPubTask.MakeVarPubTask(ua, info, Stop));
+            runningTasks.Add(new PubTask($"OPC UA {ua.Name}", () => OPC_UA.VarPubTask.MakeVarPubTask(ua, info, Stop)));
         }
 
         foreach (MqttConfig mqtt in model.MQTT) {
             if (mqtt.VarPublish == null || !mqtt.VarPublish.Enabled) continue;
-            runningTasks.Add(MqttPublisher.MakeVarPubTask(mqtt, info, certDir, Stop));
+            runningTasks.Add(new PubTask($"MQTT {mqtt.Name}", () => MqttPublisher.MakeVarPubTask(mqtt, info, certDir, Stop)));
+        }
+    }
+
+    // Restarts publish tasks that terminated although no stop was requested
+    // (e.g. because of an unhandled exception):
+    private void SuperviseTasks() {
+
+        if (stopForRestart || moduleShutdown()) return;
+
+        Timestamp now = Timestamp.Now;
+
+        foreach (PubTask pt in runningTasks) {
+
+            if (!pt.Task.IsCompleted) continue;
+
+            if (!pt.RestartTime.HasValue) {
+                string reason = "Task completed";
+                if (pt.Task.Exception is AggregateException exp) {
+                    Exception e = exp.GetBaseException() ?? exp;
+                    reason = $"{e.GetType().FullName} {e.Message}";
+                }
+                else if (pt.Task.IsCanceled) {
+                    reason = "Task canceled";
+                }
+                Console.Error.WriteLine($"Publish task {pt.Name} terminated unexpectedly ({reason}). Restarting in {TaskRestartDelay}...");
+                pt.RestartTime = now + TaskRestartDelay;
+            }
+            else if (now >= pt.RestartTime.Value) {
+                Console.WriteLine($"Restarting publish task {pt.Name}");
+                pt.Restart();
+            }
         }
     }
 
@@ -113,9 +185,12 @@ public class Module : ModelObjectModule<Model>
 
         stopForRestart = true;
 
-        if (runningTasks.Count > 0) {
+        // Tasks waiting for restart have already terminated and their error has been logged:
+        Task[] tasks = runningTasks.Where(pt => !pt.RestartTime.HasValue).Select(pt => pt.Task).ToArray();
+
+        if (tasks.Length > 0) {
             try {
-                await Task.WhenAll(runningTasks);
+                await Task.WhenAll(tasks);
             }
             catch (Exception exp) {
                 Exception e = exp.GetBaseException() ?? exp;
