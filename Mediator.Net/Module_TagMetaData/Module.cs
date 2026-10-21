@@ -67,6 +67,7 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
 
     protected override async Task OnConfigModelChanged(bool init) {
         await base.OnConfigModelChanged(init);
+        UpdateVariableToTag();
         // While the connection is down, skip: the reconnect enables the events for the then current model
         if (!connection.IsClosed) {
             await EnableEvents();
@@ -188,8 +189,9 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
 
     private readonly Dictionary<VariableRef, Config.Tag> variableToTag = [];
 
-    Task EventListener.OnConfigChanged(List<ObjectRef> changedObjects) {
-
+    // Called from OnConfigModelChanged: EventListener.OnConfigChanged is never called
+    // because this module does not enable config changed events
+    private void UpdateVariableToTag() {
         variableToTag.Clear();
         foreach (Config.Tag tag in model.GetAllTags()) {
             VariableRef? vr = tag.GetSourceTagVarRef();
@@ -197,7 +199,9 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
                 variableToTag[vr.Value] = tag;
             }
         }
+    }
 
+    Task EventListener.OnConfigChanged(List<ObjectRef> changedObjects) {
         return Task.FromResult(true);
     }
 
