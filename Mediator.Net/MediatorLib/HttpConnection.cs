@@ -46,14 +46,37 @@ namespace Ifak.Fast.Mediator
             if (password == null) throw new ArgumentNullException(nameof(password));
 
             var res = new HttpConnection(host, port, TimeSpan.FromSeconds(timeoutSeconds), $"User({login})");
-            await res.DoConnectAndLogin(login, password, false, roles ?? new string[0], listener);
+            try {
+                await res.DoConnectAndLogin(login, password, false, roles ?? new string[0], listener);
+            }
+            catch (Exception) {
+                await res.CloseAfterFailedLogin();
+                throw;
+            }
             return res;
         }
 
         public static async Task<Connection> ConnectWithModuleLogin(ModuleInitInfo info, EventListener? listener = null, int timeoutSeconds = 60) {
             var res = new HttpConnection(info.LoginServer, info.LoginPort, TimeSpan.FromSeconds(timeoutSeconds), $"Module({info.ModuleID})", info.InProcApi);
-            await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
+            try {
+                await res.DoConnectAndLogin(info.ModuleID, info.LoginPassword, true, new string[0], listener);
+            }
+            catch (Exception) {
+                await res.CloseAfterFailedLogin();
+                throw;
+            }
             return res;
+        }
+
+        // DoConnectAndLogin may fail after authentication (e.g. when starting the web socket),
+        // so the session must be logged out to not leak it on the core when callers retry.
+        private async Task CloseAfterFailedLogin() {
+            if (session != null) {
+                await Close(); // also disposes client
+            }
+            else {
+                client.Dispose();
+            }
         }
 
         protected readonly HttpClient client;
@@ -748,10 +771,17 @@ namespace Ifak.Fast.Mediator
                 webSocket = new ClientWebSocket();
                 webSocket.Options.KeepAliveInterval = TimeSpan.FromMilliseconds(0);
 
-                await webSocket.ConnectAsync(wsUri, CancellationToken.None);
+                try {
+                    await webSocket.ConnectAsync(wsUri, CancellationToken.None);
 
-                var sendBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(session));
-                await webSocket.SendAsync(sendBuffer, WebSocketMessageType.Text, endOfMessage: true, cancellationToken: CancellationToken.None);
+                    var sendBuffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(session));
+                    await webSocket.SendAsync(sendBuffer, WebSocketMessageType.Text, endOfMessage: true, cancellationToken: CancellationToken.None);
+                }
+                catch (Exception) {
+                    webSocket.Dispose();
+                    webSocket = null;
+                    throw;
+                }
 
                 _ = ReadWebSocketForEvents(webSocketCancel.Token, notifyConnectionBroken);
             }
@@ -836,6 +866,11 @@ namespace Ifak.Fast.Mediator
                         return;
                     }
                 }
+
+                await CloseSocket();
+                // Cancelled while dispatching an event (e.g. a request of the listener broke the connection),
+                // so ReceiveAsync did not throw: notify anyway, otherwise the listener would never reconnect.
+                await listener.OnConnectionClosed();
             }
 
             private T? ObjectFromJsonStream<T>(Stream stream) {
@@ -846,9 +881,15 @@ namespace Ifak.Fast.Mediator
 
             private async Task CloseSocket() {
                 try {
-                    await webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    // Limit the wait for the close handshake, so a half-open connection can not keep the socket from being disposed:
+                    using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5))) {
+                        await webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, "", timeout.Token);
+                    }
                 }
                 catch (Exception) { }
+                finally {
+                    webSocket!.Dispose();
+                }
             }
 
             public void Close() {
