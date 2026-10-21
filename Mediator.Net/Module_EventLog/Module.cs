@@ -18,6 +18,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     private List<AggregatedEvent> aggregatedWarningsAndAlarms = new List<AggregatedEvent>(1000);
     private Timestamp latestUsedTimestamp = Timestamp.Now.AddHours(-1);
     private bool running = false;
+    private bool restartingConnection = false;
     private readonly List<AlarmOrEvent> initBuffer = [];
     private List<NotificationState> notificationStates = [];
     private ModuleInitInfo info;
@@ -35,8 +36,15 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     }
 
     private async Task ConnectAndEnableEvents() {
-        connection = await HttpConnection.ConnectWithModuleLogin(info, this);
-        await connection.EnableAlarmsAndEvents(Severity.Info);
+        Connection con = await HttpConnection.ConnectWithModuleLogin(info, this);
+        connection = con; // assign before enabling: events may arrive on the web socket before the call returns
+        try {
+            await con.EnableAlarmsAndEvents(Severity.Info);
+        }
+        catch (Exception) {
+            _ = con.Close(); // do not leak the session when retrying
+            throw;
+        }
     }
 
     private VariableRef GetVar() => VariableRef.Make(moduleID, "Root", "LastEvent");
@@ -61,6 +69,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
         running = true;
 
         _ = KeepSessionAlive();
+        _ = WatchConnection();
         _ = UpdateVariables();
         _ = StartCheckForModelFileModificationTask(shutdown);
 
@@ -94,6 +103,19 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
         }
     }
 
+    // Fallback in case OnConnectionClosed is not called for a closed connection
+    private async Task WatchConnection() {
+
+        while (running) {
+
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            if (running && connection.IsClosed && !restartingConnection) {
+                await CheckNeedConnectionRestart("Watchdog: Connection is closed");
+            }
+        }
+    }
+
     private async Task UpdateVariables() {
 
         int? lastValue = null;
@@ -103,7 +125,8 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
 
             await Task.Delay(TimeSpan.FromSeconds(10));
 
-            if (running) {
+            // Skip while reconnecting to not log a failed write every 10 s; lastValue is unchanged, so the write follows after reconnect
+            if (running && !connection.IsClosed) {
 
                 try {
 
@@ -123,7 +146,7 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
 
                         lastValue = v;
                         lastValueStr = vStr;
-                        
+
                         Timestamp t = Timestamp.Now.TruncateMilliseconds();
                         VTQ vtqCount = VTQ.Make(v, t, Quality.Good);
                         VTQ vtqStr = VTQ.Make(vStr == "" ? model.TextForNoActiveWarningsAndAlarms : vStr, t, Quality.Good);
@@ -141,10 +164,17 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
                             values.Add(VariableValue.Make(model.ActiveWarningsAndAlarms.Value, vtqStr));
                         }
 
-                        if (values.Count > 0) {
-                            await connection.WriteVariables(values);
+                        try {
+                            if (values.Count > 0) {
+                                await connection.WriteVariables(values);
+                            }
                         }
-
+                        catch (Exception exp) when ((exp.GetBaseException() ?? exp) is ConnectivityException) {
+                            // Retry only writes that failed because of connectivity (e.g. while reconnecting);
+                            // retrying other failures (e.g. a missing variable) would flood the log
+                            lastValue = null;
+                            throw;
+                        }
                     }
                 }
                 catch (Exception exp) {
@@ -228,7 +258,9 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
 
             DataValue data = DataValue.FromObject(aggEvent);
             VTQ vtq = new VTQ(aggEvent.TimeFirst, Quality.Good, data);
-            await connection.HistorianModify(GetVar(), ModifyMode.Update, vtq);
+            // Upsert instead of Update: if the Insert of this event failed (e.g. while the connection broke), it exists
+            // only in memory, and Update would fail for the missing timestamp on every further aggregation
+            await connection.HistorianModify(GetVar(), ModifyMode.Upsert, vtq);
         }
         else if (!alarmOrEvent.ReturnToNormal) {
 
@@ -243,13 +275,15 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
             }
             latestUsedTimestamp = aggEvent.TimeFirst;
 
-            DataValue data = DataValue.FromObject(aggEvent);
-            VTQ vtq = new VTQ(aggEvent.TimeFirst, Quality.Good, data);
-            await connection.HistorianModify(GetVar(), ModifyMode.Insert, vtq);
-
+            // Notify before the Insert: mail does not depend on the core connection, so a failed Insert
+            // (e.g. while the connection broke) must not suppress the notification
             if (alarmOrEvent.Severity == Severity.Warning || alarmOrEvent.Severity == Severity.Alarm) {
                 NotifyAlarm(alarmOrEvent);
             }
+
+            DataValue data = DataValue.FromObject(aggEvent);
+            VTQ vtq = new VTQ(aggEvent.TimeFirst, Quality.Good, data);
+            await connection.HistorianModify(GetVar(), ModifyMode.Insert, vtq);
         }
     }
 
@@ -355,42 +389,73 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
     }
 
     public Task OnConnectionClosed() {
-        _ = CheckNeedConnectionRestart();
+        _ = CheckNeedConnectionRestart("EventListener.OnConnectionClosed");
         return Task.FromResult(true);
     }
 
-    private async Task CheckNeedConnectionRestart() {
+    private async Task CheckNeedConnectionRestart(string reason) {
 
         await Task.Delay(1000);
 
-        if (running) {
+        // Closing a failed attempt (or a stale connection) fires OnConnectionClosed again
+        if (!running || restartingConnection || !connection.IsClosed) {
+            return;
+        }
 
-            Console.Error.WriteLine($"{Timestamp.Now}: EventListener.OnConnectionClosed. Restarting connection...");
-            Console.Error.Flush();
+        Console.Error.WriteLine($"{Timestamp.Now}: {reason}. Restarting connection...");
+        Console.Error.Flush();
 
-            try {
-                await ConnectAndEnableEvents();
+        const int minRetryDelaySeconds = 5;
+        const int maxRetryDelaySeconds = 60;
+        int retryDelaySeconds = minRetryDelaySeconds;
+
+        restartingConnection = true;
+        try {
+            // Loop on IsClosed: the new connection may break while connecting, and the
+            // resulting OnConnectionClosed is ignored because restartingConnection is set
+            while (running && connection.IsClosed) {
+                try {
+                    await ConnectAndEnableEvents();
+                }
+                catch (Exception exp) {
+                    if (!running) {
+                        break; // module was shut down while reconnecting (Run closes the connection)
+                    }
+                    Exception e = exp.GetBaseException() ?? exp;
+                    Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}. Will retry in {retryDelaySeconds} seconds...");
+                    Console.Error.Flush();
+                    await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
+                    // Back off during longer core outages to limit log output and login attempts:
+                    retryDelaySeconds = Math.Min(2 * retryDelaySeconds, maxRetryDelaySeconds);
+                }
             }
-            catch (Exception exp) {
-                Exception e = exp.GetBaseException() ?? exp;
-                Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}");
-                Console.Error.WriteLine($"{Timestamp.Now}: Terminating in 5 seconds...");
+            if (!running) {
+                _ = connection.Close(); // module was shut down while reconnecting
+            }
+            else {
+                Console.Error.WriteLine($"{Timestamp.Now}: Connection restored.");
                 Console.Error.Flush();
-                await Task.Delay(5000);
-                Environment.Exit(1);
             }
+        }
+        finally {
+            restartingConnection = false;
         }
     }
 
-    public override Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
+    public override async Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
 
         if (methodName == "GetActiveAlarms") {
             var data = DataValue.FromObject(aggregatedWarningsAndAlarms);
-            var res = Result<DataValue>.OK(data);
-            return Task.FromResult(res);
+            return Result<DataValue>.OK(data);
         }
 
         if (methodName == "Ack" || methodName == "Reset") {
+
+            // Fail before modifying the in-memory state, otherwise the Ack/Reset would be lost
+            // while reconnecting but reported as successful
+            if (connection.IsClosed) {
+                return Result<DataValue>.Failure("EventLog is not connected to the Mediator core. Please try again later.");
+            }
 
             try {
                 string comment = parameters.FirstOrDefault(n => n.Name == "Comment").Value;
@@ -398,23 +463,23 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
                 Timestamp[] keys = strKeys.Split(';').Select(s => long.Parse(s)).Select(n => Timestamp.FromJavaTicks(n)).ToArray();
                 bool ack = methodName == "Ack";
                 if (ack) {
-                    DoACK(keys, origin, comment);
+                    await DoACK(keys, origin, comment);
                 }
                 else {
-                    DoReset(keys, origin, comment);
+                    await DoReset(keys, origin, comment);
                 }
-                var res = Result<DataValue>.OK(DataValue.Empty);
-                return Task.FromResult(res);
+                return Result<DataValue>.OK(DataValue.Empty);
             }
             catch (Exception exp) {
-                return Task.FromResult(Result<DataValue>.Failure(exp.Message));
+                Exception e = exp.GetBaseException() ?? exp;
+                return Result<DataValue>.Failure(e.Message);
             }
         }
 
-        return base.OnMethodCall(origin, methodName, parameters);
+        return await base.OnMethodCall(origin, methodName, parameters);
     }
 
-    private void DoACK(Timestamp[] keys, Origin user, string comment) {
+    private async Task DoACK(Timestamp[] keys, Origin user, string comment) {
 
         var vtqs = new List<VTQ>();
 
@@ -440,10 +505,12 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
             }
         }
 
-        connection.HistorianModify(GetVar(), ModifyMode.Update, vtqs.ToArray());
+        if (vtqs.Count > 0) {
+            await connection.HistorianModify(GetVar(), ModifyMode.Upsert, vtqs.ToArray()); // Upsert: see OnAlarmOrEvent
+        }
     }
 
-    private void DoReset(Timestamp[] keys, Origin user, string comment) {
+    private async Task DoReset(Timestamp[] keys, Origin user, string comment) {
 
         var vtqs = new List<VTQ>();
 
@@ -466,7 +533,9 @@ public class Module : ModelObjectModule<EventLogConfig>, EventListener
             vtqs.Add(new VTQ(evt.TimeFirst, Quality.Good, data));
         }
 
-        connection.HistorianModify(GetVar(), ModifyMode.Update, vtqs.ToArray());
+        if (vtqs.Count > 0) {
+            await connection.HistorianModify(GetVar(), ModifyMode.Upsert, vtqs.ToArray()); // Upsert: see OnAlarmOrEvent
+        }
     }
 
     private sealed class NotificationState(MailNotification config)
