@@ -56,14 +56,21 @@ namespace Ifak.Fast.Mediator
 
             while (!terminating) {
 
-                await Task.Delay(TimeSpan.FromMinutes(5));
+                await Task.Delay(TimeSpan.FromMinutes(1));
 
                 bool needPurge = sessions.Values.Any(session => session.IsExpired);
                 if (needPurge) {
                     var sessionItems = sessions.Values.Where(session => session.IsExpired).ToList();
                     foreach (var session in sessionItems) {
-                        logger.Info($"Terminating expired session: {session.ID}. Origin: {session.Origin}, Start: {session.StartTime}, Last activity: {session.LastActivity}");
-                        TerminateSession(session, "Session expired");
+                        if (session.Valid) {
+                            logger.Info($"Terminating expired session: {session.ID}. Origin: {session.Origin}, Start: {session.StartTime}, Last activity: {session.LastActivity}");
+                            TerminateSession(session, "Session expired");
+                        }
+                        else {
+                            // Login without completed authentication (e.g. client failed or died in between), so there is no event socket to close:
+                            logger.Debug($"Removing unauthenticated session: {session.ID}. Origin: {session.Origin}, Start: {session.StartTime}");
+                            sessions.Remove(session.ID);
+                        }
                     }
                 }
             }
@@ -1688,7 +1695,8 @@ namespace Ifak.Fast.Mediator
                 lastEventActivity = now;
             }
 
-            public bool IsExpired => (Timestamp.Now - lastActivity) > Duration.FromHours(1);
+            // Unauthenticated sessions expire quickly, so logins that are never followed by authentication do not pile up:
+            public bool IsExpired => (Timestamp.Now - lastActivity) > (Valid ? Duration.FromHours(1) : Duration.FromMinutes(1));
 
             public Origin Origin { get; private set; }
             public string Challenge { get; private set; }
