@@ -3,6 +3,7 @@
 
     <ClientListenPort>8081</ClientListenPort>
     <TimeZone></TimeZone> <!-- IANA timezone ID, e.g. "Europe/Berlin". Empty = OS local timezone. -->
+    <WatchdogStallThreshold>5 s</WatchdogStallThreshold> <!-- Log stalls of the core process, thread pool or main thread longer than this. 0 s = disabled. -->
     
     <Modules>
 

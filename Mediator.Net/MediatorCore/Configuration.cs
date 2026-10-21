@@ -15,6 +15,9 @@ public class Configuration
     public int ClientListenPort { get; set; } = 8080;
     public string TimeZone { get; set; } = "";
     public TimestampWarnMode TimestampCheckWarning { get; set; } = TimestampWarnMode.Always;
+    // Stalls of the process, the thread pool or the core main thread longer than this are logged
+    // (see CoreWatchdog). A value of "0 s" disables the watchdog (a bare "0" is not a valid Duration).
+    public Duration WatchdogStallThreshold { get; set; } = Duration.FromSeconds(5);
     public List<Module> Modules { get; set; } = [];
     public UserManagement UserManagement { get; set; } = new();
     public List<Location> Locations { get; set; } = [];

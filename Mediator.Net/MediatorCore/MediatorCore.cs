@@ -65,113 +65,121 @@ namespace Ifak.Fast.Mediator
             Configuration config = Util.Xml.FromXmlFile<Configuration>(configFileName);
             config.Normalize(configFileName, logger);
 
-            AppTimeZone.Initialize(config.TimeZone);
-
-            string tzID = AppTimeZone.Id;
-            string tsID_Iana = GetIanaTimeZoneId();
-
-            if (tzID != tsID_Iana) {
-                logger.Info($"Timezone '{tzID}' <=> IANA timezone '{tsID_Iana}'");
-            }
-            else {
-                logger.Info($"Timezone: {tzID}");
-            }
-
-            userManagement = config.UserManagement;
-            locations = config.Locations;
-
-            listenPort = config.ClientListenPort;
-            string host = config.ClientListenHost;
-            
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
-            builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.None);
-
-            WebApplication app = builder.Build();
-            app.Urls.Add($"http://{host}:{listenPort}");
-
-            var webSocketOptions = new WebSocketOptions() {
-                KeepAliveInterval = TimeSpan.FromSeconds(60)
-            };
-            app.UseWebSockets(webSocketOptions);
-            app.Run((context) => {
-                //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
-                var promise = new TaskCompletionSource();
-                theSyncContext!.Post(_ => {
-                    Task task = HandleClientRequest(context);
-                    task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
-                }, null);
-                return promise.Task;
-            });
-
-            Task _ = app.StartAsync();
-
-            Module[] enabledModules = config.Modules.Where(a => a.Enabled).ToArray();
-            this.modules = enabledModules.Select(m => new ModuleState(m, this)).ToArray();
-
-            foreach (ModuleState module in modules) {
-                module.CreateInstance();
-            }
-
-            history.TimestampCheckWarning = config.TimestampCheckWarning;
-            await history.Start(enabledModules, GetVariableDescription, reqHandler.OnVariableHistoryChanged, clearDBs);
+            var watchdog = new CoreWatchdog(theSyncContext!, config.WatchdogStallThreshold.ToTimeSpan());
+            watchdog.Start();
 
             try {
+                AppTimeZone.Initialize(config.TimeZone);
 
-                // Some modules (e.g. Alarms&Events) need to be initialized before the others
-                var sequentialModules = modules.Where(m => !m.Config.ConcurrentInit).ToArray();
-                foreach (var m in sequentialModules) {
-                    await InitModule(m);
+                string tzID = AppTimeZone.Id;
+                string tsID_Iana = GetIanaTimeZoneId();
+
+                if (tzID != tsID_Iana) {
+                    logger.Info($"Timezone '{tzID}' <=> IANA timezone '{tsID_Iana}'");
+                }
+                else {
+                    logger.Info($"Timezone: {tzID}");
                 }
 
-                var concurrentModules = modules.Where(m => m.Config.ConcurrentInit).ToArray();
-                Task[] initTasks = concurrentModules.Select(InitModule).ToArray();
-                await Task.WhenAll(initTasks);
-            }
-            catch (Exception exp) {
+                userManagement = config.UserManagement;
+                locations = config.Locations;
 
-                foreach (var module in modules) {
-                    if (module.State == State.InitError) {
-                        string msg = "Init of module " + module.Config.Name + " failed: " + module.LastError;
-                        Log_Event(Severity.Alarm, "InitFailed", msg, module.ID);
+                listenPort = config.ClientListenPort;
+                string host = config.ClientListenHost;
+                
+                WebApplicationBuilder builder = WebApplication.CreateBuilder();
+                builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.None);
+
+                WebApplication app = builder.Build();
+                app.Urls.Add($"http://{host}:{listenPort}");
+
+                var webSocketOptions = new WebSocketOptions() {
+                    KeepAliveInterval = TimeSpan.FromSeconds(60)
+                };
+                app.UseWebSockets(webSocketOptions);
+                app.Run((context) => {
+                    //logger.Info($"HTTP {context.Request.Path} {Thread.CurrentThread.ManagedThreadId}");
+                    var promise = new TaskCompletionSource();
+                    theSyncContext!.Post(_ => {
+                        Task task = HandleClientRequest(context);
+                        task.ContinueWith(completedTask => promise.CompleteFromTask(completedTask));
+                    }, null);
+                    return promise.Task;
+                });
+
+                Task _ = app.StartAsync();
+
+                Module[] enabledModules = config.Modules.Where(a => a.Enabled).ToArray();
+                this.modules = enabledModules.Select(m => new ModuleState(m, this)).ToArray();
+
+                foreach (ModuleState module in modules) {
+                    module.CreateInstance();
+                }
+
+                history.TimestampCheckWarning = config.TimestampCheckWarning;
+                await history.Start(enabledModules, GetVariableDescription, reqHandler.OnVariableHistoryChanged, clearDBs);
+
+                try {
+
+                    // Some modules (e.g. Alarms&Events) need to be initialized before the others
+                    var sequentialModules = modules.Where(m => !m.Config.ConcurrentInit).ToArray();
+                    foreach (var m in sequentialModules) {
+                        await InitModule(m);
                     }
+
+                    var concurrentModules = modules.Where(m => m.Config.ConcurrentInit).ToArray();
+                    Task[] initTasks = concurrentModules.Select(InitModule).ToArray();
+                    await Task.WhenAll(initTasks);
                 }
+                catch (Exception exp) {
+
+                    foreach (var module in modules) {
+                        if (module.State == State.InitError) {
+                            string msg = "Init of module " + module.Config.Name + " failed: " + module.LastError;
+                            Log_Event(Severity.Alarm, "InitFailed", msg, module.ID);
+                        }
+                    }
+                    await Shutdown();
+                    throw new Exception("Init of modules failed", exp);
+                }
+                
+                starting = false;
+                Log_Event(Severity.Info, "SysStartup", "System started successfully");
+
+                logger.Info("All modules initialized successfully.");
+
+                foreach (ModuleState module in modules) {
+                    StartRunningModule(module);
+                }
+
+                if (!string.IsNullOrEmpty(fileStartComplete)) {
+                    try {
+                        File.WriteAllText(fileStartComplete, DateTime.Now.ToString());
+                    }
+                    catch (Exception) { }
+                }
+
+                while (!requestShutdown) {
+                    await Task.Delay(100);
+                }
+
+                shutdown = true;
+                reqHandler.setTerminating();
+
                 await Shutdown();
-                throw new Exception("Init of modules failed", exp);
-            }
-            
-            starting = false;
-            Log_Event(Severity.Info, "SysStartup", "System started successfully");
 
-            logger.Info("All modules initialized successfully.");
-
-            foreach (ModuleState module in modules) {
-                StartRunningModule(module);
-            }
-
-            if (!string.IsNullOrEmpty(fileStartComplete)) {
-                try {
-                    File.WriteAllText(fileStartComplete, DateTime.Now.ToString());
+                if (!string.IsNullOrEmpty(fileStartComplete)) {
+                    try {
+                        File.Delete(fileStartComplete);
+                    }
+                    catch (Exception) { }
                 }
-                catch (Exception) { }
+
+                Task ignored = app.StopAsync(); // Don't wait for StopAsync to finish (takes a few seconds)
             }
-
-            while (!requestShutdown) {
-                await Task.Delay(100);
+            finally {
+                watchdog.Stop();
             }
-
-            shutdown = true;
-            reqHandler.setTerminating();
-
-            await Shutdown();
-
-            if (!string.IsNullOrEmpty(fileStartComplete)) {
-                try {
-                    File.Delete(fileStartComplete);
-                }
-                catch (Exception) { }
-            }
-
-            Task ignored = app.StopAsync(); // Don't wait for StopAsync to finish (takes a few seconds)
         }
 
         private Variable? GetVariableDescription(VariableRef varRef) {
