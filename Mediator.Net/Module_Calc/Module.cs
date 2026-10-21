@@ -170,17 +170,28 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     adapter.CreateInstance(mapAdapterTypes, initInfo);
                 }
 
+                // The reads below may wait for a reconnect, during which a concurrent config change
+                // may remove a new calculation (ShutdownAdapters skips State.Created, so it would
+                // otherwise be started untracked) or restart it (it would be initialized twice).
+                // Only continue with calculations that have not been touched in the meantime.
+                bool IsUntouched(CalcInstance a) => adapters.Contains(a) && a.State == State.Created && !a.IsRestarting;
+
                 foreach (CalcInstance adapter in newAdapters) {
                     var variables = new VariableRefs();
                     variables.AddRange(adapter.CalcConfig.States.Select(s => adapter.GetStateVarRef(s.ID)));
                     variables.AddRange(adapter.CalcConfig.Outputs.Select(o => adapter.GetOutputVarRef(o.ID)));
                     variables.Add(adapter.GetLastRunTimestampVarRef());
-                    VariableValues varValues = await connection.ReadVariablesIgnoreMissing(variables);
+                    VariableValues varValues = await ReadVariablesIgnoreMissingWithReconnect(variables);
+                    if (!IsUntouched(adapter)) {
+                        continue;
+                    }
                     Dictionary<VariableRef, VTQ> varMap = varValues.ToDictionary(v => v.Variable, v => v.Value);
                     adapter.SetInitialStateValues(varMap);
                     adapter.SetInitialOutputValues(varMap);
                     adapter.SetInitialLastRunTimestamp(varMap);
                 }
+
+                newAdapters = newAdapters.Where(IsUntouched).ToArray();
 
                 Task[] initTasks = newAdapters.Select(a => InitAdapter(a, InitContext.ConfigChanged)).ToArray();
                 await Task.WhenAll(initTasks);
@@ -946,8 +957,9 @@ public class Module : ModelObjectModule<Config.Calc_Model>
             VariableRef variable = input.Variable!.Value;
 
             while (adapter.State == State.Running) {
+                Connection conn = module.connection;
                 try {
-                    VTTQs data = await module.connection.HistorianReadRaw(
+                    VTTQs data = await conn.HistorianReadRaw(
                         variable,
                         startInclusive,
                         endInclusive,
@@ -958,7 +970,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     return data;
                 }
                 catch (ConnectivityException) {
-                    await module.RestartConnectionOrFail();
+                    await module.RestartConnection(conn, adapter);
                 }
                 catch (RequestException exp) {
                     module.Log_Error("InputDrivenConfig", $"Historian access failed for input '{input.Name}' of calculation '{adapter.Name}': {exp.Message}");
@@ -1140,13 +1152,16 @@ public class Module : ModelObjectModule<Config.Calc_Model>
 
             notifier.Notify_VariableValuesChanged(listVarValues);
 
-            if (adapter.CalcConfig.EnableOutputVarWrite) {
-                await WriteOutputVars(outputDest);
-            }
-
+            // Update before writing the output vars: the write may throw (e.g. when the calculation is
+            // shut down while waiting for a reconnect), and a restart must continue from the state
+            // that has already been published above.
             adapter.SetLastOutputValues(outValues);
             adapter.SetLastStateValues(stateValues);
             adapter.SetLastRunTimestamp(t);
+
+            if (adapter.CalcConfig.EnableOutputVarWrite) {
+                await WriteOutputVars(adapter, outputDest);
+            }
 
             TriggerCalculation[] triggerCalcs = result.TriggeredCalculations ?? Array.Empty<TriggerCalculation>();
             foreach (TriggerCalculation tc in triggerCalcs) {
@@ -1195,9 +1210,10 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         return lastPublished;
     }
 
-    private async Task WriteOutputVars(VariableValues outputDest) {
+    private async Task WriteOutputVars(CalcInstance adapter, VariableValues outputDest) {
+        Connection conn = connection;
         try {
-            await connection.WriteVariablesIgnoreMissing(outputDest); // TODO Report invalid var refs
+            await conn.WriteVariablesIgnoreMissing(outputDest); // TODO Report invalid var refs
         }
         catch (Exception exp) {
 
@@ -1215,8 +1231,8 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     throw;
                 }
 
-                await RestartConnectionOrFail();
-                await WriteOutputVars(outputDest);
+                await RestartConnection(conn, adapter);
+                await WriteOutputVars(adapter, outputDest);
             }
             else {
                 throw e;
@@ -1225,8 +1241,9 @@ public class Module : ModelObjectModule<Config.Calc_Model>
     }
 
     private async Task<VTQs> ReadInputVars(CalcInstance adapter, List<Config.Input> inputs, VariableRefs inputVars, Timestamp now) {
+        Connection conn = connection;
         try {
-            return await connection.ReadVariables(inputVars);
+            return await conn.ReadVariables(inputVars);
         }
         catch (Exception exp) {
 
@@ -1244,7 +1261,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                     throw;
                 }
 
-                await RestartConnectionOrFail();
+                await RestartConnection(conn, adapter);
                 return await ReadInputVars(adapter, inputs, inputVars, now);
             }
             else if (e is RequestException) {
@@ -1256,7 +1273,7 @@ public class Module : ModelObjectModule<Config.Calc_Model>
                 for (int i = 0; i < N; ++i) {
                     VariableRef variable = inputVars[i];
                     try {
-                        res.Add(await connection.ReadVariable(variable));
+                        res.Add(await conn.ReadVariable(variable));
                     }
                     catch(Exception) {
                         res.Add(VTQ.Make(inputs[i].GetDefaultValue(), now, Quality.Bad));
@@ -1285,35 +1302,101 @@ public class Module : ModelObjectModule<Config.Calc_Model>
         }
     }
 
-    private bool isRestartingConnection = false;
-
-    private async Task RestartConnectionOrFail() {
-
-        if (isRestartingConnection) {
-            while (isRestartingConnection) {
-                await Task.Delay(50);
+    // Used for config changes: retries until the connection is restored instead of failing,
+    // because a failure would leave new calculations created but never initialized and started.
+    private async Task<VariableValues> ReadVariablesIgnoreMissingWithReconnect(VariableRefs variables) {
+        while (true) {
+            Connection conn = connection;
+            try {
+                return await conn.ReadVariablesIgnoreMissing(variables);
             }
-            return;
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                if (e is not ConnectivityException || moduleShutdown) {
+                    throw;
+                }
+                await RestartConnection(conn, adapter: null);
+            }
         }
+    }
+
+    private Task? reconnectTask = null;
+
+    // Re-establishes the connection to the Mediator core after a connectivity error.
+    // Never gives up, because the core may be unresponsive for minutes (e.g. under heavy load):
+    // terminating the module would kill external calculations (e.g. SIMBA) without a proper
+    // shutdown, which may corrupt their state files. If the core process terminates, this module
+    // is terminated anyway by ExternalModuleHost.
+    // All concurrent callers share one reconnect loop. If failedConnection has already been
+    // replaced by a completed reconnect, returns immediately so that the caller retries with the new
+    // connection (starting another reconnect would close the healthy new connection).
+    // Throws ConnectivityException if the module or the given calculation (if any) is shut down while waiting.
+    private async Task RestartConnection(Connection failedConnection, CalcInstance? adapter) {
+
+        if (reconnectTask == null || reconnectTask.IsCompleted) {
+            if (!ReferenceEquals(failedConnection, connection)) {
+                return;
+            }
+            reconnectTask = ReconnectLoop();
+        }
+        Task task = reconnectTask;
+
+        while (!task.IsCompleted) {
+            if (moduleShutdown) {
+                throw new ConnectivityException("Waiting for reconnect aborted because of module shutdown");
+            }
+            if (adapter != null && adapter.State != State.Running) {
+                throw new ConnectivityException($"Waiting for reconnect aborted because calculation {adapter.Name} is no longer running (state: {adapter.State})");
+            }
+            await Task.WhenAny(task, Task.Delay(100));
+        }
+
+        await task;
+    }
+
+    private async Task ReconnectLoop() {
 
         Console.Out.WriteLine($"{Timestamp.Now} WARN: Connection closed unexpectedly. Restarting connection...");
         Console.Out.Flush();
+        Log_Warn("ConnectionLost", "Connection to Mediator core lost. Trying to reconnect...");
 
         try {
-            isRestartingConnection = true;
-            this.connection = await HttpConnection.ConnectWithModuleLogin(initInfo);
-            isRestartingConnection = false;
-            Console.Out.WriteLine($"{Timestamp.Now}: Connection restarted successfully.");
-            Console.Out.Flush();
+            _ = connection.Close();
         }
-        catch (Exception exp) {
-            Exception e = exp.GetBaseException() ?? exp;
-            Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}");
-            Console.Error.WriteLine($"{Timestamp.Now}: Terminating in 5 seconds...");
-            Console.Error.Flush();
-            await Task.Delay(5000);
-            Environment.Exit(1);
+        catch (Exception) { }
+
+        var swOutage = System.Diagnostics.Stopwatch.StartNew();
+        int attempt = 0;
+
+        while (!moduleShutdown) {
+
+            attempt += 1;
+
+            try {
+                this.connection = await HttpConnection.ConnectWithModuleLogin(initInfo);
+                long seconds = swOutage.ElapsedMilliseconds / 1000;
+                Console.Out.WriteLine($"{Timestamp.Now}: Connection restarted successfully (attempt {attempt}, after {seconds} s).");
+                Console.Out.Flush();
+                Log_ReturnToNormal("ConnectionLost", $"Connection to Mediator core restored after {seconds} seconds.");
+                return;
+            }
+            catch (Exception exp) {
+                Exception e = exp.GetBaseException() ?? exp;
+                TimeSpan delay = BoundDuration(
+                    duration: TimeSpan.FromSeconds(5 * attempt),
+                    min: TimeSpan.FromSeconds(5),
+                    max: TimeSpan.FromSeconds(60));
+                Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed (attempt {attempt}): {e.Message}. Retrying in {delay.TotalSeconds:0} s...");
+                Console.Error.Flush();
+
+                var swDelay = System.Diagnostics.Stopwatch.StartNew();
+                while (!moduleShutdown && swDelay.Elapsed < delay) {
+                    await Task.Delay(100);
+                }
+            }
         }
+
+        throw new ConnectivityException("Reconnect aborted because of module shutdown");
     }
 
     private Timestamp GetNextNormalizedTimestamp(Timestamp tCurrent, Duration cycle, Duration offset, CalcInstance adapter) {
