@@ -67,11 +67,26 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
 
     protected override async Task OnConfigModelChanged(bool init) {
         await base.OnConfigModelChanged(init);
-        await EnableEvents();
+        // While the connection is down, skip: the reconnect enables the events for the then current model
+        if (!connection.IsClosed) {
+            await EnableEvents();
+        }
     }
 
     private async Task Connect() {
         connection = await HttpConnection.ConnectWithModuleLogin(info, this);
+    }
+
+    private async Task ConnectAndEnableEvents() {
+        Connection con = await HttpConnection.ConnectWithModuleLogin(info, this);
+        connection = con; // assign before enabling: EnableEvents uses the field
+        try {
+            await EnableEvents();
+        }
+        catch (Exception) {
+            _ = con.Close(); // do not leak the session when retrying
+            throw;
+        }
     }
 
     private async Task EnableEvents() {
@@ -88,13 +103,47 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
     }
 
     private bool running = false;
+    private bool restartingConnection = false;
 
     public override async Task Run(Func<bool> shutdown) {
         running = true;
+        _ = KeepSessionAlive();
+        _ = WatchConnection();
         while (!shutdown()) {
             await Task.Delay(500);
         }
         running = false;
+        _ = connection.Close();
+    }
+
+    // The core expires sessions after 1 hour without activity, e.g. when no subscribed variable changes
+    private async Task KeepSessionAlive() {
+
+        while (running) {
+
+            await Task.Delay(TimeSpan.FromMinutes(15));
+
+            if (running && !connection.IsClosed) {
+
+                try {
+                    await connection.Ping();
+                }
+                catch (Exception) { }
+            }
+        }
+    }
+
+    // Fallback in case OnConnectionClosed is not called for a closed connection
+    private async Task WatchConnection() {
+
+        while (running) {
+
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            if (running && connection.IsClosed && !restartingConnection) {
+                await CheckNeedConnectionRestart("Watchdog: Connection is closed");
+            }
+        }
     }
 
     public override async Task<Result<DataValue>> OnMethodCall(Origin origin, string methodName, NamedValue[] parameters) {
@@ -218,31 +267,56 @@ public class Module : ModelObjectModule<Config.TagMetaData_Model>, EventListener
     }
 
     Task EventListener.OnConnectionClosed() {
-        _ = CheckNeedConnectionRestart();
+        _ = CheckNeedConnectionRestart("EventListener.OnConnectionClosed");
         return Task.FromResult(true);
     }
 
-    private async Task CheckNeedConnectionRestart() {
+    private async Task CheckNeedConnectionRestart(string reason) {
 
         await Task.Delay(1000);
 
-        if (running) {
+        // Closing a failed attempt (or a stale connection) fires OnConnectionClosed again
+        if (!running || restartingConnection || !connection.IsClosed) {
+            return;
+        }
 
-            Console.Error.WriteLine($"{Timestamp.Now}: EventListener.OnConnectionClosed. Restarting connection...");
-            Console.Error.Flush();
+        Console.Error.WriteLine($"{Timestamp.Now}: {reason}. Restarting connection...");
+        Console.Error.Flush();
 
-            try {
-                await Connect();
-                await EnableEvents();
+        const int minRetryDelaySeconds = 5;
+        const int maxRetryDelaySeconds = 60;
+        int retryDelaySeconds = minRetryDelaySeconds;
+
+        restartingConnection = true;
+        try {
+            // Loop on IsClosed: the new connection may break while connecting, and the
+            // resulting OnConnectionClosed is ignored because restartingConnection is set
+            while (running && connection.IsClosed) {
+                try {
+                    await ConnectAndEnableEvents();
+                }
+                catch (Exception exp) {
+                    if (!running) {
+                        break; // module was shut down while reconnecting (Run closes the connection)
+                    }
+                    Exception e = exp.GetBaseException() ?? exp;
+                    Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}. Will retry in {retryDelaySeconds} seconds...");
+                    Console.Error.Flush();
+                    await Task.Delay(TimeSpan.FromSeconds(retryDelaySeconds));
+                    // Back off during longer core outages to limit log output and login attempts:
+                    retryDelaySeconds = Math.Min(2 * retryDelaySeconds, maxRetryDelaySeconds);
+                }
             }
-            catch (Exception exp) {
-                Exception e = exp.GetBaseException() ?? exp;
-                Console.Error.WriteLine($"{Timestamp.Now}: Restarting connection failed: {e.Message}");
-                Console.Error.WriteLine($"{Timestamp.Now}: Terminating in 5 seconds...");
+            if (!running) {
+                _ = connection.Close(); // module was shut down while reconnecting
+            }
+            else {
+                Console.Error.WriteLine($"{Timestamp.Now}: Connection restored.");
                 Console.Error.Flush();
-                await Task.Delay(5000);
-                Environment.Exit(1);
             }
+        }
+        finally {
+            restartingConnection = false;
         }
     }
 
